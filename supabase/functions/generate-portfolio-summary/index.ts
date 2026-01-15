@@ -60,21 +60,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const systemPrompt = `You are a professional risk engineering assistant. Your role is to analyze portfolio metrics and provide clear, actionable executive summaries.
+    const systemPrompt = `You are a professional risk engineering assistant. You produce executive-level portfolio summaries based only on structured, aggregated risk metrics. You must not invent site-level details, recommendations, or compliance statements. If information is not present in the input, do not infer it.`;
 
-When provided with portfolio metrics, generate a concise 1-2 paragraph executive summary that:
-- Highlights the overall portfolio risk profile
-- Identifies key trends and patterns in the risk distribution
-- Notes the best and worst performing sites
-- Provides a professional assessment suitable for senior management
+    const userPrompt = `Using the portfolio metrics below, generate a concise executive summary suitable for senior management.
 
-Keep the tone professional, objective, and focused on actionable insights.`;
+The summary should:
+- Describe the overall portfolio risk profile
+- Highlight key concentrations of risk and recurring themes
+- Indicate areas that may warrant prioritised attention
+- Reflect trends where comparison data is provided
 
-    const userPrompt = `Please generate an executive summary for the following portfolio metrics:
+The summary must:
+- Be neutral and professional in tone
+- Be limited to 1–2 short paragraphs
+- Refer only to portfolio-level trends
+- Avoid compliance or site-specific language
 
-${JSON.stringify(portfolioMetrics, null, 2)}
-
-Provide a 1-2 paragraph executive summary that captures the key insights from this data.`;
+Portfolio Metrics:
+${JSON.stringify(portfolioMetrics, null, 2)}`;
 
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",

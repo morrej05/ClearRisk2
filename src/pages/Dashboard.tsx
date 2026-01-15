@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users } from 'lucide-react';
+import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users, X } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
 import NewSurveyModal from '../components/NewSurveyModal';
 import ExternalLinkModal from '../components/ExternalLinkModal';
@@ -130,6 +130,14 @@ export default function Dashboard() {
     await signOut();
     navigate('/');
   };
+
+  const handleClearFilters = () => {
+    setCompanyNameFilter('');
+    setIndustrySectorFilter('all');
+    setFrameworkFilter('all');
+  };
+
+  const hasActiveFilters = companyNameFilter !== '' || industrySectorFilter !== 'all' || frameworkFilter !== 'all';
 
   const handleNewSurvey = () => {
     if (!permissions.canCreateSurveys) {
@@ -668,6 +676,22 @@ export default function Dashboard() {
                           <option value="fire_risk_assessment">FRA</option>
                           <option value="atex">ATEX</option>
                         </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-slate-700 opacity-0">Clear</label>
+                        <button
+                          onClick={handleClearFilters}
+                          disabled={!hasActiveFilters}
+                          className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                            hasActiveFilters
+                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                              : 'bg-slate-50 text-slate-400 cursor-not-allowed border border-slate-200'
+                          }`}
+                          title="Clear all filters"
+                        >
+                          <X className="w-4 h-4" />
+                          Clear Filters
+                        </button>
                       </div>
                     </div>
                   )}

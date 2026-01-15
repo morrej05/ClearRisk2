@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle } from 'lucide-react';
+import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
 import NewSurveyModal from '../components/NewSurveyModal';
 import ExternalLinkModal from '../components/ExternalLinkModal';
@@ -43,6 +43,26 @@ interface PortfolioMetrics {
   worstSite: string;
 }
 
+type UserRole = 'admin' | 'user' | 'external';
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  user: 'Editor',
+  external: 'Viewer',
+};
+
+const ROLE_PERMISSIONS = {
+  canCreateSurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
+  canEditSurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
+  canDeleteSurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
+  canIssueSurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
+  canResurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
+  canGenerateExternalLink: (role: UserRole | null) => role === 'admin' || role === 'user',
+  canEditText: (role: UserRole | null) => role === 'admin' || role === 'user',
+  canGeneratePortfolioSummary: (role: UserRole | null) => role === 'admin' || role === 'user',
+  canViewReports: (role: UserRole | null) => true,
+};
+
 export default function Dashboard() {
   const { signOut, user, userRole } = useAuth();
   const navigate = useNavigate();
@@ -68,6 +88,7 @@ export default function Dashboard() {
     industrySector: string;
     framework: string;
   } | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchSurveys();
@@ -99,6 +120,10 @@ export default function Dashboard() {
   };
 
   const handleNewSurvey = () => {
+    if (!ROLE_PERMISSIONS.canCreateSurvey(userRole)) {
+      alert('You do not have permission to create surveys. Please contact your administrator.');
+      return;
+    }
     setShowNewSurveyModal(true);
   };
 
@@ -109,6 +134,10 @@ export default function Dashboard() {
   };
 
   const handleSelectSurvey = (surveyId: string) => {
+    if (!ROLE_PERMISSIONS.canEditSurvey(userRole)) {
+      alert('You do not have permission to edit surveys. View-only access granted.');
+      return;
+    }
     setSelectedSurveyId(surveyId);
     setShowNewSurvey(true);
   };
@@ -121,6 +150,10 @@ export default function Dashboard() {
   };
 
   const handleOpenTextEditor = (surveyId: string) => {
+    if (!ROLE_PERMISSIONS.canEditText(userRole)) {
+      alert('You do not have permission to edit survey text. View-only access granted.');
+      return;
+    }
     setSelectedSurveyId(surveyId);
     setShowTextEditor(true);
   };
@@ -234,6 +267,11 @@ export default function Dashboard() {
   const portfolioMetrics = calculateLegacyPortfolioMetrics(filteredSurveys);
 
   const handleIssueReport = async (surveyId: string) => {
+    if (!ROLE_PERMISSIONS.canIssueSurvey(userRole)) {
+      alert('You do not have permission to issue reports.');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('survey_reports')
@@ -254,9 +292,14 @@ export default function Dashboard() {
   };
 
   const handleDeleteSurvey = async (surveyId: string) => {
+    if (!ROLE_PERMISSIONS.canDeleteSurvey(userRole)) {
+      alert('You do not have permission to delete surveys.');
+      return;
+    }
+
     try {
       const survey = surveys.find(s => s.id === surveyId);
-      if (survey && survey.report_status === 'Issued') {
+      if (survey && survey.issued) {
         alert('Cannot delete an issued report. Issued reports are protected from deletion.');
         setDeleteConfirmId(null);
         return;
@@ -279,6 +322,10 @@ export default function Dashboard() {
 
   const handleResurvey = async (originalSurvey: Survey) => {
     if (!user) return;
+    if (!ROLE_PERMISSIONS.canResurvey(userRole)) {
+      alert('You do not have permission to create resurveys.');
+      return;
+    }
 
     try {
       const newSurveyData = {
@@ -330,6 +377,11 @@ export default function Dashboard() {
   };
 
   const handleGeneratePortfolioSummary = async () => {
+    if (!ROLE_PERMISSIONS.canGeneratePortfolioSummary(userRole)) {
+      alert('You do not have permission to generate portfolio summaries.');
+      return;
+    }
+
     setIsGeneratingSummary(true);
     try {
       const activeFilters = {
@@ -385,6 +437,14 @@ export default function Dashboard() {
     summaryFilterState.framework !== frameworkFilter
   );
 
+  const getCompanyLogo = () => {
+    return null;
+  };
+
+  const getCompanyName = () => {
+    return 'ClearRisk';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       {showNewSurveyModal && (
@@ -394,19 +454,34 @@ export default function Dashboard() {
         />
       )}
 
-      <nav className="bg-white border-b border-slate-200">
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="text-2xl font-bold text-slate-900">ClearRisk</div>
+            <div className="flex items-center gap-3">
+              {getCompanyLogo() ? (
+                <img src={getCompanyLogo()!} alt={getCompanyName()} className="h-8" />
+              ) : (
+                <Building2 className="w-8 h-8 text-slate-900" />
+              )}
+              <div className="flex flex-col">
+                <div className="text-xl font-bold text-slate-900">{getCompanyName()}</div>
+                <div className="text-xs text-slate-500">Fire Risk Assessment Platform</div>
+              </div>
+            </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-slate-600">{user?.email}</span>
+              <div className="flex flex-col items-end">
+                <span className="text-sm text-slate-600">{user?.email}</span>
+                <span className="text-xs text-slate-500">
+                  Role: {userRole ? ROLE_LABELS[userRole as UserRole] : 'Loading...'}
+                </span>
+              </div>
               {userRole === 'admin' && (
                 <button
                   onClick={() => navigate('/admin')}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
                 >
                   <Shield className="w-4 h-4" />
-                  Admin Dashboard
+                  Admin
                 </button>
               )}
               <button
@@ -422,76 +497,88 @@ export default function Dashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!showNewSurvey ? (
+        {!showNewSurvey && !showTextEditor ? (
           <>
-            <div className="flex items-center justify-between mb-8">
-              <h1 className="text-3xl font-bold text-slate-900">Survey Reports</h1>
-              <button
-                onClick={handleNewSurvey}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
-              >
-                <Plus className="w-5 h-5" />
-                New Survey
-              </button>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">Survey Portfolio</h1>
+                <p className="text-slate-600 mt-1">Manage and monitor your fire risk assessments</p>
+              </div>
+              {ROLE_PERMISSIONS.canCreateSurvey(userRole) ? (
+                <button
+                  onClick={handleNewSurvey}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Survey
+                </button>
+              ) : (
+                <div className="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-sm font-medium">
+                  View-Only Access
+                </div>
+              )}
             </div>
 
             {surveys.length > 0 && portfolioMetrics.scoredReports > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium text-slate-600">Portfolio Average</h3>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <div className="text-4xl font-bold text-slate-900">{portfolioMetrics.averageScore}</div>
-                    <div className={`mb-1 px-2 py-0.5 rounded text-xs font-semibold ${getRiskBandColor(getRiskBandLabel(portfolioMetrics.averageScore))}`}>
-                      {getRiskBandLabel(portfolioMetrics.averageScore)}
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold text-slate-900 mb-4">Portfolio Summary</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium text-slate-600">Portfolio Average</h3>
                     </div>
-                  </div>
-                  <p className="text-sm text-slate-500 mt-2">
-                    Based on {portfolioMetrics.scoredReports} issued site{portfolioMetrics.scoredReports !== 1 ? 's' : ''}
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-                  <h3 className="text-sm font-medium text-slate-600 mb-3">Best & Worst Sites</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600">Best:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.bestSite}>
-                          {portfolioMetrics.bestSite}
-                        </span>
-                        <span className="text-lg font-bold text-green-600">{portfolioMetrics.bestScore}</span>
+                    <div className="flex items-end gap-2">
+                      <div className="text-4xl font-bold text-slate-900">{portfolioMetrics.averageScore}</div>
+                      <div className={`mb-1 px-2 py-0.5 rounded text-xs font-semibold ${getRiskBandColor(getRiskBandLabel(portfolioMetrics.averageScore))}`}>
+                        {getRiskBandLabel(portfolioMetrics.averageScore)}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600">Worst:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.worstSite}>
-                          {portfolioMetrics.worstSite}
-                        </span>
-                        <span className="text-lg font-bold text-orange-600">{portfolioMetrics.worstScore}</span>
-                      </div>
-                    </div>
+                    <p className="text-sm text-slate-500 mt-2">
+                      Based on {portfolioMetrics.scoredReports} issued site{portfolioMetrics.scoredReports !== 1 ? 's' : ''}
+                    </p>
                   </div>
-                </div>
 
-                <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-                  <h3 className="text-sm font-medium text-slate-600 mb-3">Risk Distribution</h3>
-                  <div className="space-y-1.5">
-                    {Object.entries(portfolioMetrics.distribution)
-                      .sort((a, b) => {
-                        const order = ['Very Good', 'Good', 'Tolerable', 'Poor', 'Very Poor'];
-                        return order.indexOf(a[0]) - order.indexOf(b[0]);
-                      })
-                      .map(([band, count]) => (
-                        <div key={band} className="flex items-center justify-between text-sm">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getRiskBandColor(band)}`}>
-                            {band}
+                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+                    <h3 className="text-sm font-medium text-slate-600 mb-3">Best & Worst Sites</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">Best:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.bestSite}>
+                            {portfolioMetrics.bestSite}
                           </span>
-                          <span className="font-semibold text-slate-900">{count}</span>
+                          <span className="text-lg font-bold text-green-600">{portfolioMetrics.bestScore}</span>
                         </div>
-                      ))}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">Worst:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.worstSite}>
+                            {portfolioMetrics.worstSite}
+                          </span>
+                          <span className="text-lg font-bold text-orange-600">{portfolioMetrics.worstScore}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+                    <h3 className="text-sm font-medium text-slate-600 mb-3">Risk Distribution</h3>
+                    <div className="space-y-1.5">
+                      {Object.entries(portfolioMetrics.distribution)
+                        .sort((a, b) => {
+                          const order = ['Very Good', 'Good', 'Tolerable', 'Poor', 'Very Poor'];
+                          return order.indexOf(a[0]) - order.indexOf(b[0]);
+                        })
+                        .map(([band, count]) => (
+                          <div key={band} className="flex items-center justify-between text-sm">
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getRiskBandColor(band)}`}>
+                              {band}
+                            </span>
+                            <span className="font-semibold text-slate-900">{count}</span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -499,63 +586,79 @@ export default function Dashboard() {
 
             {surveys.length > 0 && (
               <div className="mb-6">
-                <div className="flex flex-wrap items-end gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-sm font-medium text-slate-700">Company Name:</label>
-                    <input
-                      type="text"
-                      placeholder="Search company..."
-                      value={companyNameFilter}
-                      onChange={(e) => setCompanyNameFilter(e.target.value)}
-                      className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[200px]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-sm font-medium text-slate-700">Industry Sector:</label>
-                    <select
-                      value={industrySectorFilter}
-                      onChange={(e) => setIndustrySectorFilter(e.target.value)}
-                      className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[200px]"
+                <div className="bg-white rounded-lg border border-slate-200 p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => setShowFilters(!showFilters)}
+                      className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
                     >
-                      <option value="all">All Sectors</option>
-                      <option value="Food & Beverage">Food & Beverage</option>
-                      <option value="Foundry / Metal">Foundry / Metal</option>
-                      <option value="Chemical / ATEX">Chemical / ATEX</option>
-                      <option value="Logistics / Warehouse">Logistics / Warehouse</option>
-                      <option value="Office / Commercial">Office / Commercial</option>
-                      <option value="General Industrial">General Industrial</option>
-                      <option value="Other">Other</option>
-                    </select>
+                      <Filter className="w-4 h-4" />
+                      Filters {showFilters ? '▼' : '▶'}
+                    </button>
+                    <div className="text-sm text-slate-600">
+                      Showing {filteredSurveys.length} of {surveys.length} surveys
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-sm font-medium text-slate-700">Framework:</label>
-                    <select
-                      value={frameworkFilter}
-                      onChange={(e) => setFrameworkFilter(e.target.value)}
-                      className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[180px]"
-                    >
-                      <option value="all">All Frameworks</option>
-                      <option value="fire_property">Fire Property</option>
-                      <option value="fire_risk_assessment">FRA</option>
-                      <option value="atex">ATEX</option>
-                    </select>
-                  </div>
-                  <button
-                    onClick={handleGeneratePortfolioSummary}
-                    disabled={filteredSurveys.length < 2 || isGeneratingSummary}
-                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      filteredSurveys.length < 2 || isGeneratingSummary
-                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                    }`}
-                    title={filteredSurveys.length < 2 ? 'At least 2 survey reports required' : 'Generate AI-powered portfolio summary'}
-                  >
-                    <TrendingUp className="w-4 h-4" />
-                    {isGeneratingSummary ? 'Generating...' : 'Generate Portfolio Summary'}
-                  </button>
-                </div>
-                <div className="mt-2 text-sm text-slate-600">
-                  Showing {filteredSurveys.length} of {surveys.length} surveys
+
+                  {showFilters && (
+                    <div className="flex flex-wrap items-end gap-4 pb-2 border-t border-slate-200 pt-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-slate-700">Company Name:</label>
+                        <input
+                          type="text"
+                          placeholder="Search company..."
+                          value={companyNameFilter}
+                          onChange={(e) => setCompanyNameFilter(e.target.value)}
+                          className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[200px]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-slate-700">Industry Sector:</label>
+                        <select
+                          value={industrySectorFilter}
+                          onChange={(e) => setIndustrySectorFilter(e.target.value)}
+                          className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[200px]"
+                        >
+                          <option value="all">All Sectors</option>
+                          <option value="Food & Beverage">Food & Beverage</option>
+                          <option value="Foundry / Metal">Foundry / Metal</option>
+                          <option value="Chemical / ATEX">Chemical / ATEX</option>
+                          <option value="Logistics / Warehouse">Logistics / Warehouse</option>
+                          <option value="Office / Commercial">Office / Commercial</option>
+                          <option value="General Industrial">General Industrial</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-slate-700">Framework:</label>
+                        <select
+                          value={frameworkFilter}
+                          onChange={(e) => setFrameworkFilter(e.target.value)}
+                          className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[180px]"
+                        >
+                          <option value="all">All Frameworks</option>
+                          <option value="fire_property">Fire Property</option>
+                          <option value="fire_risk_assessment">FRA</option>
+                          <option value="atex">ATEX</option>
+                        </select>
+                      </div>
+                      {ROLE_PERMISSIONS.canGeneratePortfolioSummary(userRole) && (
+                        <button
+                          onClick={handleGeneratePortfolioSummary}
+                          disabled={filteredSurveys.length < 2 || isGeneratingSummary}
+                          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                            filteredSurveys.length < 2 || isGeneratingSummary
+                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                          }`}
+                          title={filteredSurveys.length < 2 ? 'At least 2 survey reports required' : 'Generate AI-powered portfolio summary'}
+                        >
+                          <TrendingUp className="w-4 h-4" />
+                          {isGeneratingSummary ? 'Generating...' : 'Generate AI Summary'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -563,12 +666,12 @@ export default function Dashboard() {
             {portfolioSummary && (
               <div className="mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-slate-900">Portfolio Summary</h3>
+                  <h3 className="text-lg font-bold text-slate-900">AI Portfolio Analysis</h3>
                   {isSummaryOutOfDate && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
                       <AlertCircle className="w-4 h-4 text-amber-600" />
                       <span className="text-sm text-amber-700 font-medium">
-                        Summary may be out of date. Regenerate to update.
+                        Filters changed. Regenerate to update.
                       </span>
                     </div>
                   )}
@@ -587,218 +690,236 @@ export default function Dashboard() {
               <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-lg border border-slate-200">
                 <div className="w-16 h-16 text-slate-300 mb-4">📋</div>
                 <p className="text-slate-500 text-lg mb-2">No surveys yet</p>
-                <p className="text-slate-400 text-sm">Create your first survey to get started</p>
+                <p className="text-slate-400 text-sm">
+                  {ROLE_PERMISSIONS.canCreateSurvey(userRole)
+                    ? 'Create your first survey to get started'
+                    : 'No surveys available for viewing'}
+                </p>
+              </div>
+            ) : filteredSurveys.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-lg border border-slate-200">
+                <div className="w-16 h-16 text-slate-300 mb-4">🔍</div>
+                <p className="text-slate-500 text-lg mb-2">No surveys match your filters</p>
+                <p className="text-slate-400 text-sm">Try adjusting your filter criteria</p>
               </div>
             ) : (
               <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Company Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Site / Location
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Industry Sector
-                      </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Risk Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Risk Band
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Framework
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Survey Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider min-w-[200px]">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-slate-200">
-                    {filteredSurveys.map((survey) => {
-                      const canIssue = survey.report_status === 'Issue Ready' && !survey.issued;
-                      const canDelete = !survey.issued;
-                      const isSuperseded = survey.superseded_by_id !== null;
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                          Company Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                          Site / Location
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                          Industry Sector
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-slate-700 uppercase tracking-wider">
+                          Risk Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                          Risk Band
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                          Framework
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                          Survey Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider min-w-[200px]">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                      {filteredSurveys.map((survey) => {
+                        const canIssue = survey.report_status === 'Issue Ready' && !survey.issued && ROLE_PERMISSIONS.canIssueSurvey(userRole);
+                        const canDelete = !survey.issued && ROLE_PERMISSIONS.canDeleteSurvey(userRole);
+                        const isSuperseded = survey.superseded_by_id !== null;
 
-                      const industrySector = survey.form_data?.industrySector;
-                      const overallScore = survey.form_data?.overallRiskScore;
-                      const riskBand = survey.form_data?.riskBand;
+                        const industrySector = survey.form_data?.industrySector;
+                        const overallScore = survey.form_data?.overallRiskScore;
+                        const riskBand = survey.form_data?.riskBand;
 
-                      return (
-                        <tr key={survey.id} className={`hover:bg-slate-50 transition-colors ${isSuperseded ? 'opacity-60' : ''}`}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                            {survey.company_name || '—'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-slate-900">
-                              {survey.property_name || 'Untitled Survey'}
-                            </div>
-                            <div className="text-sm text-slate-500 truncate max-w-xs">
-                              {(() => {
-                                if (!survey.property_address) return '';
-                                const parts = survey.property_address.split(',').map(p => p.trim());
-                                return parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-                              })()}
-                            </div>
-                            {isSuperseded && (
-                              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-xs font-medium text-slate-600 bg-slate-100 rounded">
-                                Superseded
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
-                            {industrySector || '—'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            {overallScore ? (
-                              <span className="text-2xl font-bold text-slate-900">{overallScore}</span>
-                            ) : (
-                              <span className="text-sm text-slate-400">—</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {riskBand ? (
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded border ${getRiskBandColor(riskBand)}`}>
-                                {riskBand}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-slate-400">—</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-700">
-                              {getFrameworkLabel(survey.framework_type)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                            {formatDate(survey.survey_date)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex flex-col gap-1">
-                              <span
-                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                  survey.report_status === 'Draft'
-                                    ? 'bg-slate-100 text-slate-700'
-                                    : survey.report_status === 'Internally Reviewed'
-                                    ? 'bg-amber-100 text-amber-700'
-                                    : 'bg-green-100 text-green-700'
-                                }`}
-                              >
-                                {survey.report_status || 'Draft'}
-                              </span>
-                              {survey.issued && (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                                  <Lock className="w-3 h-3" />
-                                  ISSUED
+                        return (
+                          <tr key={survey.id} className={`hover:bg-slate-50 transition-colors ${isSuperseded ? 'opacity-60' : ''}`}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                              {survey.company_name || '—'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-slate-900">
+                                {survey.property_name || 'Untitled Survey'}
+                              </div>
+                              <div className="text-sm text-slate-500 truncate max-w-xs">
+                                {(() => {
+                                  if (!survey.property_address) return '';
+                                  const parts = survey.property_address.split(',').map(p => p.trim());
+                                  return parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+                                })()}
+                              </div>
+                              {isSuperseded && (
+                                <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-xs font-medium text-slate-600 bg-slate-100 rounded">
+                                  Superseded
                                 </span>
                               )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm min-w-[200px]">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {survey.generated_report && (
-                                <button
-                                  onClick={() => navigate(`/report/${survey.id}`)}
-                                  className="text-blue-600 hover:text-blue-900 transition-colors"
-                                  title="Preview Full Report (Form-Based)"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                              )}
-                              {(survey.survey_text || survey.recommendation_text) && (
-                                <button
-                                  onClick={() => setTextReportSurveyId(survey.id)}
-                                  className="text-teal-600 hover:text-teal-900 transition-colors"
-                                  title="View Survey & Recommendation Reports (Text-Based)"
-                                >
-                                  <FileText className="w-4 h-4" />
-                                </button>
-                              )}
-                              {survey.issued && survey.form_data?.overallComments?.length > 0 && (
-                                <button
-                                  onClick={() => setRecommendationReportSurveyId(survey.id)}
-                                  className="text-emerald-600 hover:text-emerald-900 transition-colors"
-                                  title="View Recommendations Summary (Form-Based)"
-                                >
-                                  <Sparkles className="w-4 h-4" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleSelectSurvey(survey.id)}
-                                className={`transition-colors ${
-                                  survey.issued
-                                    ? 'text-slate-400 cursor-not-allowed'
-                                    : 'text-slate-600 hover:text-slate-900'
-                                }`}
-                                title={survey.issued ? 'Issued reports are read-only' : 'Edit Survey'}
-                                disabled={survey.issued}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleOpenTextEditor(survey.id)}
-                                className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                                title="Text Editor (Write & Polish Report)"
-                              >
-                                <FileEdit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setResurveyConfirmId(survey.id)}
-                                className="text-blue-600 hover:text-blue-900 transition-colors"
-                                title="Resurvey Site"
-                              >
-                                <RefreshCw className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setExternalLinkSurveyId(survey.id)}
-                                className="text-violet-600 hover:text-violet-900 transition-colors"
-                                title="Generate External Link"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </button>
-                              {canIssue && (
-                                <button
-                                  onClick={() => setIssueConfirmId(survey.id)}
-                                  className="text-green-600 hover:text-green-900 transition-colors"
-                                  title="Issue Report"
-                                >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </button>
-                              )}
-                              {canDelete ? (
-                                <button
-                                  onClick={() => setDeleteConfirmId(survey.id)}
-                                  className="text-red-600 hover:text-red-900 transition-colors"
-                                  title="Delete Survey"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                              {industrySector || '—'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              {overallScore ? (
+                                <span className="text-2xl font-bold text-slate-900">{overallScore}</span>
                               ) : (
-                                <button
-                                  disabled
-                                  className="text-slate-300 cursor-not-allowed"
-                                  title="Issued reports cannot be deleted"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <span className="text-sm text-slate-400">—</span>
                               )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {riskBand ? (
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded border ${getRiskBandColor(riskBand)}`}>
+                                  {riskBand}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-700">
+                                {getFrameworkLabel(survey.framework_type)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                              {formatDate(survey.survey_date)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex flex-col gap-1">
+                                <span
+                                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                    survey.report_status === 'Draft'
+                                      ? 'bg-slate-100 text-slate-700'
+                                      : survey.report_status === 'Internally Reviewed'
+                                      ? 'bg-amber-100 text-amber-700'
+                                      : 'bg-green-100 text-green-700'
+                                  }`}
+                                >
+                                  {survey.report_status || 'Draft'}
+                                </span>
+                                {survey.issued && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+                                    <Lock className="w-3 h-3" />
+                                    ISSUED
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm min-w-[200px]">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {survey.generated_report && ROLE_PERMISSIONS.canViewReports(userRole) && (
+                                  <button
+                                    onClick={() => navigate(`/report/${survey.id}`)}
+                                    className="text-blue-600 hover:text-blue-900 transition-colors"
+                                    title="Preview Full Report"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {(survey.survey_text || survey.recommendation_text) && ROLE_PERMISSIONS.canViewReports(userRole) && (
+                                  <button
+                                    onClick={() => setTextReportSurveyId(survey.id)}
+                                    className="text-teal-600 hover:text-teal-900 transition-colors"
+                                    title="View Text Reports"
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {survey.issued && survey.form_data?.overallComments?.length > 0 && ROLE_PERMISSIONS.canViewReports(userRole) && (
+                                  <button
+                                    onClick={() => setRecommendationReportSurveyId(survey.id)}
+                                    className="text-emerald-600 hover:text-emerald-900 transition-colors"
+                                    title="View Recommendations"
+                                  >
+                                    <Sparkles className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {ROLE_PERMISSIONS.canEditSurvey(userRole) && (
+                                  <button
+                                    onClick={() => handleSelectSurvey(survey.id)}
+                                    className={`transition-colors ${
+                                      survey.issued
+                                        ? 'text-slate-400 cursor-not-allowed'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                    title={survey.issued ? 'Issued reports are read-only' : 'Edit Survey'}
+                                    disabled={survey.issued}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {ROLE_PERMISSIONS.canEditText(userRole) && (
+                                  <button
+                                    onClick={() => handleOpenTextEditor(survey.id)}
+                                    className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                    title="Text Editor"
+                                  >
+                                    <FileEdit className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {ROLE_PERMISSIONS.canResurvey(userRole) && (
+                                  <button
+                                    onClick={() => setResurveyConfirmId(survey.id)}
+                                    className="text-blue-600 hover:text-blue-900 transition-colors"
+                                    title="Resurvey Site"
+                                  >
+                                    <RefreshCw className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {ROLE_PERMISSIONS.canGenerateExternalLink(userRole) && (
+                                  <button
+                                    onClick={() => setExternalLinkSurveyId(survey.id)}
+                                    className="text-violet-600 hover:text-violet-900 transition-colors"
+                                    title="Generate External Link"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {canIssue && (
+                                  <button
+                                    onClick={() => setIssueConfirmId(survey.id)}
+                                    className="text-green-600 hover:text-green-900 transition-colors"
+                                    title="Issue Report"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {canDelete ? (
+                                  <button
+                                    onClick={() => setDeleteConfirmId(survey.id)}
+                                    className="text-red-600 hover:text-red-900 transition-colors"
+                                    title="Delete Survey"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                ) : survey.issued ? (
+                                  <button
+                                    disabled
+                                    className="text-slate-300 cursor-not-allowed"
+                                    title="Issued reports cannot be deleted"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}

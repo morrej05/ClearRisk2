@@ -704,8 +704,8 @@ export default function Dashboard() {
             )}
 
             {surveys.length > 0 && permissions.canGeneratePortfolioSummary && (
-              <div className="mb-6 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-6 py-4 border-b border-slate-200">
+              <div className="mb-6 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden max-h-[30vh] flex flex-col">
+                <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-6 py-4 border-b border-slate-200 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <TrendingUp className="w-5 h-5 text-blue-600" />
@@ -729,7 +729,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="p-6">
+                <div className="p-6 overflow-y-auto flex-1">
                   {portfolioSummary ? (
                     <>
                       {isSummaryOutOfDate && (
@@ -806,10 +806,10 @@ export default function Dashboard() {
                 <p className="text-slate-400 text-sm">Try adjusting your filter criteria</p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden max-h-[60vh] flex flex-col">
+                <div className="overflow-x-auto overflow-y-auto flex-1">
                   <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50">
+                    <thead className="bg-slate-50 sticky top-0 z-10">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                           Company Name

@@ -9,6 +9,8 @@ import RecommendationReport from '../components/RecommendationReport';
 import SurveyTextEditor from '../components/SurveyTextEditor';
 import TextReportModal from '../components/TextReportModal';
 import ClientBrandingModal from '../components/ClientBrandingModal';
+import SurveyDraftModal from '../components/SurveyDraftModal';
+import RecommendationDraftModal from '../components/RecommendationDraftModal';
 import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 import { ROLE_LABELS, getRolePermissions } from '../utils/permissions';
@@ -64,6 +66,8 @@ export default function Dashboard() {
   const [externalLinkSurveyId, setExternalLinkSurveyId] = useState<string | null>(null);
   const [recommendationReportSurveyId, setRecommendationReportSurveyId] = useState<string | null>(null);
   const [textReportSurveyId, setTextReportSurveyId] = useState<string | null>(null);
+  const [surveyDraftModalId, setSurveyDraftModalId] = useState<string | null>(null);
+  const [recommendationDraftModalId, setRecommendationDraftModalId] = useState<string | null>(null);
   const [portfolioSummary, setPortfolioSummary] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [summaryFilterState, setSummaryFilterState] = useState<{
@@ -918,13 +922,22 @@ export default function Dashboard() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm min-w-[200px]">
                               <div className="flex items-center gap-2 flex-wrap">
-                                {survey.generated_report && permissions.canViewSurveys && (
+                                {permissions.canViewSurveys && (
                                   <button
-                                    onClick={() => navigate(`/report/${survey.id}`)}
+                                    onClick={() => setSurveyDraftModalId(survey.id)}
                                     className="text-blue-600 hover:text-blue-900 transition-colors"
-                                    title="Preview Full Report"
+                                    title="View Draft Survey Report"
                                   >
-                                    <Eye className="w-4 h-4" />
+                                    <FileText className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {permissions.canViewSurveys && (
+                                  <button
+                                    onClick={() => setRecommendationDraftModalId(survey.id)}
+                                    className="text-emerald-600 hover:text-emerald-900 transition-colors"
+                                    title="View Draft Recommendation Report"
+                                  >
+                                    <Sparkles className="w-4 h-4" />
                                   </button>
                                 )}
                                 {(survey.survey_text || survey.recommendation_text) && permissions.canViewSurveys && (
@@ -933,16 +946,16 @@ export default function Dashboard() {
                                     className="text-teal-600 hover:text-teal-900 transition-colors"
                                     title="View Text Reports"
                                   >
-                                    <FileText className="w-4 h-4" />
+                                    <FileEdit className="w-4 h-4" />
                                   </button>
                                 )}
                                 {survey.issued && survey.form_data?.overallComments?.length > 0 && permissions.canViewSurveys && (
                                   <button
                                     onClick={() => setRecommendationReportSurveyId(survey.id)}
-                                    className="text-emerald-600 hover:text-emerald-900 transition-colors"
-                                    title="View Recommendations"
+                                    className="text-violet-600 hover:text-violet-900 transition-colors"
+                                    title="View Issued Recommendations Report"
                                   >
-                                    <Sparkles className="w-4 h-4" />
+                                    <Eye className="w-4 h-4" />
                                   </button>
                                 )}
                                 {permissions.canEditSurveys && (
@@ -1147,6 +1160,20 @@ export default function Dashboard() {
         <TextReportModal
           surveyId={textReportSurveyId}
           onClose={() => setTextReportSurveyId(null)}
+        />
+      )}
+
+      {surveyDraftModalId && (
+        <SurveyDraftModal
+          surveyId={surveyDraftModalId}
+          onClose={() => setSurveyDraftModalId(null)}
+        />
+      )}
+
+      {recommendationDraftModalId && (
+        <RecommendationDraftModal
+          surveyId={recommendationDraftModalId}
+          onClose={() => setRecommendationDraftModalId(null)}
         />
       )}
 

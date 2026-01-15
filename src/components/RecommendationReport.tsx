@@ -241,24 +241,34 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
         </div>
       )}
 
-      {aiSummary && (
-        <div className="px-8 py-6 border-b border-slate-200 bg-gradient-to-r from-violet-50 to-blue-50">
-          <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-violet-600 flex-shrink-0 mt-1" />
-            <div className="flex-1">
-              <h2 className="text-lg font-bold text-slate-900 mb-3">Executive Summary</h2>
-              <div className="prose prose-slate max-w-none">
-                <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                  {aiSummary}
+      <div className="px-8 py-6 border-b border-slate-200 bg-gradient-to-r from-violet-50 to-blue-50">
+        <div className="flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-violet-600 flex-shrink-0 mt-1" />
+          <div className="flex-1">
+            <h2 className="text-lg font-bold text-slate-900 mb-3">Executive Summary</h2>
+            {aiSummary ? (
+              <>
+                <div className="prose prose-slate max-w-none">
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    {aiSummary}
+                  </p>
+                </div>
+                <div className="text-xs text-slate-500 border-t border-violet-200 pt-3 mt-4">
+                  AI-generated summary based on structured survey data.
+                </div>
+              </>
+            ) : (
+              <div className="bg-white rounded-lg border-2 border-dashed border-violet-300 p-6 text-center">
+                <Sparkles className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+                <p className="text-slate-600 mb-2">No AI summary generated yet</p>
+                <p className="text-sm text-slate-500">
+                  Click "Generate AI Summary" in the toolbar above to create an executive summary.
                 </p>
               </div>
-              <div className="text-xs text-slate-500 border-t border-violet-200 pt-3 mt-4">
-                AI-generated summary based on structured survey data.
-              </div>
-            </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
             <div className="px-8 py-6 border-b border-slate-200 bg-slate-50">
               <div className="grid grid-cols-2 gap-6">

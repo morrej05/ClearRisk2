@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, List, Download, ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import HtmlReportViewer from '../components/HtmlReportViewer';
+import SurveyReport from '../components/SurveyReport';
 import RecommendationReport from '../components/RecommendationReport';
 import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/surveySummaryApi';
 
@@ -175,37 +175,12 @@ export default function ReportPreviewPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {aiSummary && (
-          <div className="bg-gradient-to-r from-violet-50 to-blue-50 rounded-lg border-2 border-violet-200 p-6 mb-8 print:break-inside-avoid">
-            <div className="flex items-start gap-3 mb-4">
-              <Sparkles className="w-5 h-5 text-violet-600 flex-shrink-0 mt-1" />
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-slate-900 mb-3">Executive Summary</h2>
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                    {aiSummary}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="text-xs text-slate-500 border-t border-violet-200 pt-3 mt-4">
-              AI-generated summary based on structured survey data. Not persisted automatically.
-            </div>
-          </div>
-        )}
-
         {activeTab === 'survey' ? (
-          survey.generated_report ? (
-            <HtmlReportViewer reportHtml={survey.generated_report} />
-          ) : (
-            <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
-              <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">No Survey Report Generated</h3>
-              <p className="text-slate-600">
-                Complete the survey form and generate a report to view it here.
-              </p>
-            </div>
-          )
+          <SurveyReport
+            surveyId={surveyId!}
+            embedded={true}
+            aiSummary={aiSummary}
+          />
         ) : (
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             <RecommendationReport

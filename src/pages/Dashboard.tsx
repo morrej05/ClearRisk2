@@ -642,42 +642,90 @@ export default function Dashboard() {
                           <option value="atex">ATEX</option>
                         </select>
                       </div>
-                      {ROLE_PERMISSIONS.canGeneratePortfolioSummary(userRole) && (
-                        <button
-                          onClick={handleGeneratePortfolioSummary}
-                          disabled={filteredSurveys.length < 2 || isGeneratingSummary}
-                          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                            filteredSurveys.length < 2 || isGeneratingSummary
-                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                          }`}
-                          title={filteredSurveys.length < 2 ? 'At least 2 survey reports required' : 'Generate AI-powered portfolio summary'}
-                        >
-                          <TrendingUp className="w-4 h-4" />
-                          {isGeneratingSummary ? 'Generating...' : 'Generate AI Summary'}
-                        </button>
-                      )}
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {portfolioSummary && (
-              <div className="mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-slate-900">AI Portfolio Analysis</h3>
-                  {isSummaryOutOfDate && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
-                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                      <span className="text-sm text-amber-700 font-medium">
-                        Filters changed. Regenerate to update.
-                      </span>
+            {surveys.length > 0 && ROLE_PERMISSIONS.canGeneratePortfolioSummary(userRole) && (
+              <div className="mb-6 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-6 py-4 border-b border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <TrendingUp className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-bold text-slate-900">Portfolio Summary</h3>
+                    </div>
+                    {portfolioSummary && (
+                      <button
+                        onClick={handleGeneratePortfolioSummary}
+                        disabled={filteredSurveys.length < 2 || isGeneratingSummary}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          filteredSurveys.length < 2 || isGeneratingSummary
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            : 'bg-slate-900 text-white hover:bg-slate-800'
+                        }`}
+                        title={filteredSurveys.length < 2 ? 'At least 2 survey reports required' : 'Regenerate portfolio summary'}
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isGeneratingSummary ? 'animate-spin' : ''}`} />
+                        {isGeneratingSummary ? 'Regenerating...' : 'Regenerate'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  {portfolioSummary ? (
+                    <>
+                      {isSummaryOutOfDate && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 mb-4 bg-amber-50 border border-amber-200 rounded-lg">
+                          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <span className="text-sm text-amber-700 font-medium">
+                            Filters have changed. Click "Regenerate" to update the summary with current filters.
+                          </span>
+                        </div>
+                      )}
+                      <div className="prose prose-slate max-w-none">
+                        <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{portfolioSummary}</p>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-slate-200">
+                        <p className="text-xs text-slate-500">
+                          AI-generated portfolio analysis based on {filteredSurveys.filter(s => s.issued && !s.superseded_by_id).length} issued surveys
+                          {summaryFilterState?.companyName && ` • Filtered by: ${summaryFilterState.companyName}`}
+                          {summaryFilterState?.industrySector && summaryFilterState.industrySector !== 'all' && ` • Sector: ${summaryFilterState.industrySector}`}
+                          {summaryFilterState?.framework && summaryFilterState.framework !== 'all' && ` • Framework: ${getFrameworkLabel(summaryFilterState.framework)}`}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                        <Sparkles className="w-8 h-8 text-blue-600" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-slate-900 mb-2">No Summary Generated Yet</h4>
+                      <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                        Generate an AI-powered analysis of your portfolio to identify trends, risks, and insights across your surveys.
+                      </p>
+                      <button
+                        onClick={handleGeneratePortfolioSummary}
+                        disabled={filteredSurveys.length < 2 || isGeneratingSummary}
+                        className={`flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-lg transition-colors mx-auto ${
+                          filteredSurveys.length < 2 || isGeneratingSummary
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                        }`}
+                        title={filteredSurveys.length < 2 ? 'At least 2 issued survey reports required' : 'Generate AI-powered portfolio summary'}
+                      >
+                        <Sparkles className={`w-4 h-4 ${isGeneratingSummary ? 'animate-pulse' : ''}`} />
+                        {isGeneratingSummary ? 'Generating Summary...' : 'Generate AI Summary'}
+                      </button>
+                      {filteredSurveys.length < 2 && (
+                        <p className="text-xs text-slate-500 mt-3">
+                          At least 2 issued survey reports are required to generate a portfolio summary
+                        </p>
+                      )}
                     </div>
                   )}
-                </div>
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{portfolioSummary}</p>
                 </div>
               </div>
             )}

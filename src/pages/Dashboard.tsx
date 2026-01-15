@@ -926,7 +926,7 @@ export default function Dashboard() {
                                   <button
                                     onClick={() => setSurveyDraftModalId(survey.id)}
                                     className="text-blue-600 hover:text-blue-900 transition-colors"
-                                    title="View Draft Survey Report"
+                                    title={survey.issued ? "View Survey Report" : "View Draft Survey Report"}
                                   >
                                     <FileText className="w-4 h-4" />
                                   </button>
@@ -935,9 +935,9 @@ export default function Dashboard() {
                                   <button
                                     onClick={() => setRecommendationDraftModalId(survey.id)}
                                     className="text-emerald-600 hover:text-emerald-900 transition-colors"
-                                    title="View Draft Recommendation Report"
+                                    title={survey.issued ? "View Recommendation Report" : "View Draft Recommendation Report"}
                                   >
-                                    <Sparkles className="w-4 h-4" />
+                                    <FileEdit className="w-4 h-4" />
                                   </button>
                                 )}
                                 {(survey.survey_text || survey.recommendation_text) && permissions.canViewSurveys && (
@@ -970,15 +970,6 @@ export default function Dashboard() {
                                     disabled={survey.issued}
                                   >
                                     <Edit className="w-4 h-4" />
-                                  </button>
-                                )}
-                                {permissions.canEditSurveyText && (
-                                  <button
-                                    onClick={() => handleOpenTextEditor(survey.id)}
-                                    className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                                    title="Text Editor"
-                                  >
-                                    <FileEdit className="w-4 h-4" />
                                   </button>
                                 )}
                                 {permissions.canResurvey && (

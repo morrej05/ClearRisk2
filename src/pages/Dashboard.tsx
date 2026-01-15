@@ -75,6 +75,7 @@ export default function Dashboard() {
     industrySector: string;
     framework: string;
   } | null>(null);
+  const [surveySummaryCache, setSurveySummaryCache] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [clientBranding, setClientBranding] = useState<{
     companyName: string;
@@ -453,6 +454,13 @@ export default function Dashboard() {
     } finally {
       setIsGeneratingSummary(false);
     }
+  };
+
+  const handleUpdateSurveySummary = (surveyId: string, summary: string) => {
+    setSurveySummaryCache(prev => ({
+      ...prev,
+      [surveyId]: summary,
+    }));
   };
 
   const isSummaryOutOfDate = portfolioSummary && summaryFilterState && (
@@ -1158,6 +1166,8 @@ export default function Dashboard() {
         <SurveyDraftModal
           surveyId={surveyDraftModalId}
           onClose={() => setSurveyDraftModalId(null)}
+          cachedSummary={surveySummaryCache[surveyDraftModalId]}
+          onSummaryGenerated={(summary) => handleUpdateSurveySummary(surveyDraftModalId, summary)}
         />
       )}
 
@@ -1165,6 +1175,8 @@ export default function Dashboard() {
         <RecommendationDraftModal
           surveyId={recommendationDraftModalId}
           onClose={() => setRecommendationDraftModalId(null)}
+          cachedSummary={surveySummaryCache[recommendationDraftModalId]}
+          onSummaryGenerated={(summary) => handleUpdateSurveySummary(recommendationDraftModalId, summary)}
         />
       )}
 

@@ -17,6 +17,8 @@ interface Recommendation {
 interface RecommendationDraftModalProps {
   surveyId: string;
   onClose: () => void;
+  cachedSummary?: string;
+  onSummaryGenerated?: (summary: string) => void;
 }
 
 interface Survey {
@@ -31,12 +33,12 @@ interface Survey {
   user_id: string;
 }
 
-export default function RecommendationDraftModal({ surveyId, onClose }: RecommendationDraftModalProps) {
+export default function RecommendationDraftModal({ surveyId, onClose, cachedSummary, onSummaryGenerated }: RecommendationDraftModalProps) {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [aiSummary, setAiSummary] = useState('');
+  const [aiSummary, setAiSummary] = useState(cachedSummary || '');
   const [clientBranding, setClientBranding] = useState<{
     companyName: string;
     logoUrl: string | null;
@@ -45,6 +47,12 @@ export default function RecommendationDraftModal({ surveyId, onClose }: Recommen
   useEffect(() => {
     fetchSurveyData();
   }, [surveyId]);
+
+  useEffect(() => {
+    if (cachedSummary) {
+      setAiSummary(cachedSummary);
+    }
+  }, [cachedSummary]);
 
   const fetchSurveyData = async () => {
     setIsLoading(true);
@@ -120,6 +128,9 @@ export default function RecommendationDraftModal({ surveyId, onClose }: Recommen
       const surveyData = prepareSurveyDataForSummary(survey.form_data);
       const summary = await generateSurveySummary(surveyData);
       setAiSummary(summary);
+      if (onSummaryGenerated) {
+        onSummaryGenerated(summary);
+      }
     } catch (error) {
       console.error('Error generating AI summary:', error);
       alert('Failed to generate AI summary. Please try again.');

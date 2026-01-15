@@ -7,6 +7,8 @@ import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/sur
 interface SurveyDraftModalProps {
   surveyId: string;
   onClose: () => void;
+  cachedSummary?: string;
+  onSummaryGenerated?: (summary: string) => void;
 }
 
 interface Survey {
@@ -15,15 +17,21 @@ interface Survey {
   form_data: any;
 }
 
-export default function SurveyDraftModal({ surveyId, onClose }: SurveyDraftModalProps) {
+export default function SurveyDraftModal({ surveyId, onClose, cachedSummary, onSummaryGenerated }: SurveyDraftModalProps) {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [aiSummary, setAiSummary] = useState('');
+  const [aiSummary, setAiSummary] = useState(cachedSummary || '');
 
   useEffect(() => {
     fetchSurvey();
   }, [surveyId]);
+
+  useEffect(() => {
+    if (cachedSummary) {
+      setAiSummary(cachedSummary);
+    }
+  }, [cachedSummary]);
 
   const fetchSurvey = async () => {
     setIsLoading(true);
@@ -51,6 +59,9 @@ export default function SurveyDraftModal({ surveyId, onClose }: SurveyDraftModal
       const surveyData = prepareSurveyDataForSummary(survey.form_data);
       const summary = await generateSurveySummary(surveyData);
       setAiSummary(summary);
+      if (onSummaryGenerated) {
+        onSummaryGenerated(summary);
+      }
     } catch (error) {
       console.error('Error generating AI summary:', error);
       alert('Failed to generate AI summary. Please try again.');

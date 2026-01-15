@@ -4,6 +4,7 @@ import { FileText, List, Download, ArrowLeft, Sparkles, Loader2 } from 'lucide-r
 import { supabase } from '../lib/supabase';
 import HtmlReportViewer from '../components/HtmlReportViewer';
 import RecommendationReport from '../components/RecommendationReport';
+import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/surveySummaryApi';
 
 type TabType = 'survey' | 'recommendations';
 
@@ -29,7 +30,6 @@ export default function ReportPreviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiSummary, setAiSummary] = useState('');
-  const [isEditingAI, setIsEditingAI] = useState(false);
 
   useEffect(() => {
     if (surveyId) {
@@ -50,7 +50,6 @@ export default function ReportPreviewPage() {
 
       if (error) throw error;
       setSurvey(data);
-      setAiSummary(data.notes_summary || '');
     } catch (error) {
       console.error('Error fetching survey:', error);
     } finally {
@@ -63,73 +62,19 @@ export default function ReportPreviewPage() {
 
     setIsGeneratingAI(true);
     try {
-      const notesData = {
-        propertyName: survey.property_name,
-        companyName: survey.company_name,
-        formData: survey.form_data,
-        reportType: activeTab === 'survey' ? 'Full Survey Report' : 'Recommendation Report'
-      };
+      const surveyData = prepareSurveyDataForSummary(survey.form_data);
+      const summary = await generateSurveySummary(surveyData);
 
-      const mockAISummary = generateMockAISummary(notesData);
-
-      const { error } = await supabase
-        .from('survey_reports')
-        .update({ notes_summary: mockAISummary })
-        .eq('id', surveyId);
-
-      if (error) throw error;
-
-      setAiSummary(mockAISummary);
-      alert('AI summary generated successfully!');
+      setAiSummary(summary);
     } catch (error) {
       console.error('Error generating AI summary:', error);
-      alert('Failed to generate AI summary');
+      alert('Failed to generate AI summary. Please try again.');
     } finally {
       setIsGeneratingAI(false);
     }
   };
 
-  const handleSaveAISummary = async () => {
-    if (!surveyId) return;
 
-    try {
-      const { error } = await supabase
-        .from('survey_reports')
-        .update({ notes_summary: aiSummary })
-        .eq('id', surveyId);
-
-      if (error) throw error;
-
-      setIsEditingAI(false);
-      alert('AI summary saved successfully!');
-    } catch (error) {
-      console.error('Error saving AI summary:', error);
-      alert('Failed to save AI summary');
-    }
-  };
-
-  const generateMockAISummary = (data: any) => {
-    const score = data.formData?.overallRiskScore || 'N/A';
-    const band = data.formData?.riskBand || 'Not Assessed';
-
-    return `Executive Summary
-
-Site: ${data.propertyName}
-Company: ${data.companyName || 'N/A'}
-Overall Risk Score: ${score}
-Risk Band: ${band}
-
-Key Findings:
-This ${data.reportType.toLowerCase()} provides a comprehensive assessment of fire risk at the subject property. The overall risk score of ${score} places this site in the ${band} category.
-
-Critical Areas:
-${data.formData?.constructionScore < 80 ? '- Construction and combustibility require immediate attention\n' : ''}${data.formData?.fireProtectionScore < 80 ? '- Fire protection systems need upgrading\n' : ''}${data.formData?.detectionScore < 80 ? '- Detection systems require enhancement\n' : ''}
-
-Recommendations:
-Based on the findings, priority recommendations have been identified to address the key risk drivers. Implementation of these recommendations will significantly improve the overall fire risk profile of the site.
-
-${activeTab === 'recommendations' ? '\nThis report focuses specifically on actionable recommendations that require management attention and implementation tracking.' : ''}`;
-  };
 
   const handleExportPDF = () => {
     window.print();
@@ -231,55 +176,21 @@ ${activeTab === 'recommendations' ? '\nThis report focuses specifically on actio
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {aiSummary && (
-          <div className="bg-white rounded-lg border border-slate-200 p-6 mb-8 print:break-inside-avoid">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-violet-600" />
-                <h2 className="text-lg font-bold text-slate-900">AI-Generated Summary</h2>
-              </div>
-              <div className="flex gap-2 print:hidden">
-                {!isEditingAI ? (
-                  <button
-                    onClick={() => setIsEditingAI(true)}
-                    className="text-sm text-slate-600 hover:text-slate-900"
-                  >
-                    Edit
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleSaveAISummary}
-                      className="text-sm text-green-600 hover:text-green-700 font-medium"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsEditingAI(false);
-                        setAiSummary(survey.notes_summary || '');
-                      }}
-                      className="text-sm text-slate-600 hover:text-slate-900"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                )}
+          <div className="bg-gradient-to-r from-violet-50 to-blue-50 rounded-lg border-2 border-violet-200 p-6 mb-8 print:break-inside-avoid">
+            <div className="flex items-start gap-3 mb-4">
+              <Sparkles className="w-5 h-5 text-violet-600 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-slate-900 mb-3">Executive Summary</h2>
+                <div className="prose prose-slate max-w-none">
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    {aiSummary}
+                  </p>
+                </div>
               </div>
             </div>
-            {isEditingAI ? (
-              <textarea
-                value={aiSummary}
-                onChange={(e) => setAiSummary(e.target.value)}
-                rows={12}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 font-mono text-sm"
-              />
-            ) : (
-              <div className="prose prose-slate max-w-none">
-                <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans leading-relaxed">
-                  {aiSummary}
-                </pre>
-              </div>
-            )}
+            <div className="text-xs text-slate-500 border-t border-violet-200 pt-3 mt-4">
+              AI-generated summary based on structured survey data. Not persisted automatically.
+            </div>
           </div>
         )}
 
@@ -301,6 +212,7 @@ ${activeTab === 'recommendations' ? '\nThis report focuses specifically on actio
               surveyId={surveyId!}
               onClose={() => {}}
               embedded={true}
+              aiSummary={aiSummary}
             />
           </div>
         )}

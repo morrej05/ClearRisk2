@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, XCircle, Sparkles } from 'lucide-react';
 
 interface Recommendation {
   id: string;
@@ -17,6 +17,7 @@ interface RecommendationReportProps {
   surveyId: string | null;
   onClose: () => void;
   embedded?: boolean;
+  aiSummary?: string;
 }
 
 interface Survey {
@@ -30,7 +31,7 @@ interface Survey {
   issued: boolean;
 }
 
-export default function RecommendationReport({ surveyId, onClose, embedded = false }: RecommendationReportProps) {
+export default function RecommendationReport({ surveyId, onClose, embedded = false, aiSummary }: RecommendationReportProps) {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,6 +238,25 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
         <div className="px-8 py-6 border-b border-slate-200">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Fire Risk Recommendations Report</h1>
           <p className="text-slate-600">Action-Focused Summary</p>
+        </div>
+      )}
+
+      {aiSummary && (
+        <div className="px-8 py-6 border-b border-slate-200 bg-gradient-to-r from-violet-50 to-blue-50">
+          <div className="flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-violet-600 flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-slate-900 mb-3">Executive Summary</h2>
+              <div className="prose prose-slate max-w-none">
+                <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {aiSummary}
+                </p>
+              </div>
+              <div className="text-xs text-slate-500 border-t border-violet-200 pt-3 mt-4">
+                AI-generated summary based on structured survey data.
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

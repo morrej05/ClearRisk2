@@ -6,16 +6,60 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+interface ActiveFilters {
+  companyName: string | null;
+  industrySector: string | null;
+  framework: string | null;
+}
+
 interface PortfolioMetrics {
-  averageScore: number;
-  totalIssued: number;
-  scoredReports: number;
-  distribution: Record<string, number>;
-  bestScore: number;
-  worstScore: number;
-  bestSite: string;
-  worstSite: string;
-  frameworkFilter?: string;
+  portfolioContext?: {
+    totalSurveys: number;
+    dateRange?: {
+      from: string;
+      to: string;
+    };
+    filtersApplied: ActiveFilters;
+  };
+  riskProfile?: {
+    averageRiskScore: number;
+    overallRiskRating: 'Low' | 'Moderate' | 'High';
+    riskScoreDistribution: {
+      veryGood: number;
+      good: number;
+      tolerable: number;
+      poor: number;
+      veryPoor: number;
+    };
+  };
+  constructionAndFireLoad?: {
+    dominantConstructionTypes: Array<{ type: string; count: number; percentage: number }>;
+    combustibilityStats: {
+      averageCombustiblePercentage: number;
+      sitesAbove25Percent: number;
+      sitesAbove50Percent: number;
+    };
+  };
+  protectionAndControls?: {
+    automaticFireProtection: {
+      averageSprinklerCoverage: number;
+      sitesWithFullCoverage: number;
+      sitesWithPartialCoverage: number;
+      sitesWithNoCoverage: number;
+    };
+    fireDetection: {
+      averageDetectionCoverage: number;
+      sitesWithFullCoverage: number;
+      sitesWithPartialCoverage: number;
+      sitesWithNoCoverage: number;
+    };
+  };
+  recommendationThemes?: {
+    totalRecommendations: number;
+    averageRecommendationsPerSite: number;
+    topCategories: Array<{ category: string; count: number; percentage: number }>;
+    highPriorityCount: number;
+  };
 }
 
 interface SummaryRequest {
@@ -60,21 +104,47 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const systemPrompt = `You are a professional risk engineering assistant. You produce executive-level portfolio summaries based only on structured, aggregated risk metrics. You must not invent site-level details, recommendations, or compliance statements. If information is not present in the input, do not infer it.`;
+    const systemPrompt = `You are a professional risk engineering assistant specializing in portfolio-level fire risk analysis. You produce executive-level portfolio summaries based only on structured, aggregated risk metrics.
 
-    const userPrompt = `Using the portfolio metrics below, generate a concise executive summary suitable for senior management.
+CRITICAL RULES:
+- Use only the data provided in the portfolio metrics
+- Do not invent site-level details or specific site names
+- Do not make compliance statements or regulatory references
+- Do not add recommendations beyond what the data shows
+- If a metric section is missing, do not reference it
+- Be factual, neutral, and data-driven`;
 
-The summary should:
-- Describe the overall portfolio risk profile
-- Highlight key concentrations of risk and recurring themes
-- Indicate areas that may warrant prioritised attention
-- Reflect trends where comparison data is provided
+    const userPrompt = `Generate a concise executive portfolio summary based on the aggregated metrics below.
 
-The summary must:
-- Be neutral and professional in tone
-- Be limited to 1–2 short paragraphs
-- Refer only to portfolio-level trends
-- Avoid compliance or site-specific language
+STRUCTURE YOUR SUMMARY AS FOLLOWS:
+
+1. Portfolio Overview (1 sentence)
+   - Number of sites analyzed and date range (if provided)
+   - Applied filters (if any)
+
+2. Risk Profile (2-3 sentences)
+   - Average risk score and overall rating
+   - Distribution across risk bands
+   - Key risk trends
+
+3. Construction & Fire Load (1-2 sentences, if data available)
+   - Dominant construction types
+   - Combustibility patterns
+
+4. Protection & Controls (1-2 sentences, if data available)
+   - Fire protection coverage statistics
+   - Detection system deployment
+
+5. Recommendation Themes (1-2 sentences, if data available)
+   - Most frequent recommendation categories
+   - High-priority items
+
+REQUIREMENTS:
+- Professional, neutral tone appropriate for senior management
+- Data-driven: cite specific percentages and counts
+- Total length: 2-3 paragraphs maximum
+- No site-specific identifiers or names
+- No regulatory or compliance language
 
 Portfolio Metrics:
 ${JSON.stringify(portfolioMetrics, null, 2)}`;

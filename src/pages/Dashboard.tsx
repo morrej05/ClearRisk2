@@ -9,6 +9,7 @@ import RecommendationReport from '../components/RecommendationReport';
 import SurveyTextEditor from '../components/SurveyTextEditor';
 import TextReportModal from '../components/TextReportModal';
 import { supabase } from '../lib/supabase';
+import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 
 interface Survey {
   id: string;
@@ -159,7 +160,7 @@ export default function Dashboard() {
     }
   };
 
-  const calculatePortfolioMetrics = (surveysToAnalyze: Survey[]): PortfolioMetrics => {
+  const calculateLegacyPortfolioMetrics = (surveysToAnalyze: Survey[]): PortfolioMetrics => {
     const issuedSurveys = surveysToAnalyze.filter(s => s.issued && !s.superseded_by_id);
     const scoredSurveys = issuedSurveys.filter(s =>
       s.form_data?.overallRiskScore !== undefined && s.form_data?.overallRiskScore > 0
@@ -230,7 +231,7 @@ export default function Dashboard() {
     return true;
   });
 
-  const portfolioMetrics = calculatePortfolioMetrics(filteredSurveys);
+  const portfolioMetrics = calculateLegacyPortfolioMetrics(filteredSurveys);
 
   const handleIssueReport = async (surveyId: string) => {
     try {
@@ -331,19 +332,19 @@ export default function Dashboard() {
   const handleGeneratePortfolioSummary = async () => {
     setIsGeneratingSummary(true);
     try {
-      const metrics = calculatePortfolioMetrics(filteredSurveys);
-
-      const filteredSurveyIds = filteredSurveys.map(s => s.id);
-
-      const portfolioContext = {
-        totalSurveys: filteredSurveys.length,
-        filteredSurveyIds,
-        filtersApplied: {
-          companyName: companyNameFilter || null,
-          industrySector: industrySectorFilter !== 'all' ? industrySectorFilter : null,
-          framework: frameworkFilter !== 'all' ? frameworkFilter : null,
-        },
+      const activeFilters = {
+        companyName: companyNameFilter || null,
+        industrySector: industrySectorFilter !== 'all' ? industrySectorFilter : null,
+        framework: frameworkFilter !== 'all' ? frameworkFilter : null,
       };
+
+      const aggregatedMetrics = aggregatePortfolioMetrics(filteredSurveys, activeFilters);
+
+      if (!aggregatedMetrics) {
+        alert('Insufficient data to generate portfolio summary. At least 2 issued surveys are required.');
+        setIsGeneratingSummary(false);
+        return;
+      }
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-portfolio-summary`;
       const headers = {
@@ -355,8 +356,7 @@ export default function Dashboard() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          portfolioMetrics: metrics,
-          portfolioContext,
+          portfolioMetrics: aggregatedMetrics,
         }),
       });
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles } from 'lucide-react';
+import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
 import NewSurveyModal from '../components/NewSurveyModal';
 import ExternalLinkModal from '../components/ExternalLinkModal';
@@ -58,6 +58,9 @@ export default function Dashboard() {
   const [externalLinkSurveyId, setExternalLinkSurveyId] = useState<string | null>(null);
   const [recommendationReportSurveyId, setRecommendationReportSurveyId] = useState<string | null>(null);
   const [textReportSurveyId, setTextReportSurveyId] = useState<string | null>(null);
+  const [portfolioSummary, setPortfolioSummary] = useState<string | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [summaryFilterState, setSummaryFilterState] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSurveys();
@@ -304,6 +307,40 @@ export default function Dashboard() {
     }
   };
 
+  const handleGeneratePortfolioSummary = async () => {
+    setIsGeneratingSummary(true);
+    try {
+      const metrics = calculatePortfolioMetrics();
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-portfolio-summary`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ portfolioMetrics: metrics }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate portfolio summary');
+      }
+
+      const data = await response.json();
+      setPortfolioSummary(data.summary);
+      setSummaryFilterState(frameworkFilter);
+    } catch (error) {
+      console.error('Error generating portfolio summary:', error);
+      alert('Failed to generate portfolio summary. Please try again.');
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  const isSummaryOutOfDate = portfolioSummary && summaryFilterState !== frameworkFilter;
+
   return (
     <div className="min-h-screen bg-slate-50">
       {showNewSurveyModal && (
@@ -417,18 +454,52 @@ export default function Dashboard() {
             )}
 
             {surveys.length > 0 && (
-              <div className="mb-4 flex items-center gap-2">
-                <label className="text-sm font-medium text-slate-700">Framework:</label>
-                <select
-                  value={frameworkFilter}
-                  onChange={(e) => setFrameworkFilter(e.target.value)}
-                  className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500"
+              <div className="mb-6 flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-slate-700">Framework:</label>
+                  <select
+                    value={frameworkFilter}
+                    onChange={(e) => setFrameworkFilter(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="all">All Frameworks</option>
+                    <option value="fire_property">Fire Property</option>
+                    <option value="fire_risk_assessment">FRA</option>
+                    <option value="atex">ATEX</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleGeneratePortfolioSummary}
+                  disabled={filteredSurveys.length < 2 || isGeneratingSummary}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    filteredSurveys.length < 2 || isGeneratingSummary
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                  }`}
+                  title={filteredSurveys.length < 2 ? 'At least 2 survey reports required' : 'Generate AI-powered portfolio summary'}
                 >
-                  <option value="all">All Frameworks</option>
-                  <option value="fire_property">Fire Property</option>
-                  <option value="fire_risk_assessment">FRA</option>
-                  <option value="atex">ATEX</option>
-                </select>
+                  <TrendingUp className="w-4 h-4" />
+                  {isGeneratingSummary ? 'Generating...' : 'Generate Portfolio Summary'}
+                </button>
+              </div>
+            )}
+
+            {portfolioSummary && (
+              <div className="mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900">Portfolio Summary</h3>
+                  {isSummaryOutOfDate && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm text-amber-700 font-medium">
+                        Summary may be out of date. Regenerate to update.
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="prose prose-slate max-w-none">
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{portfolioSummary}</p>
+                </div>
               </div>
             )}
 

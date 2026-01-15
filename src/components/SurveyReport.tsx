@@ -395,6 +395,12 @@ export default function SurveyReport({ surveyId, embedded = false, aiSummary }: 
               <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{formData.waterSupplies}</p>
             </div>
           )}
+
+          {!formData.fireProtectionScore && !formData.fixedFireProtectionSystems && !formData.fireDetectionAlarmSystems && !formData.waterSupplies && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 text-center">
+              <p className="text-slate-500 italic">No data added for this section</p>
+            </div>
+          )}
         </section>
 
         <section>

@@ -57,7 +57,7 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
 
       if (error) throw error;
 
-      if (!data.issued) {
+      if (!data.issued && !embedded) {
         alert('Recommendation reports are only available for issued surveys.');
         onClose();
         return;
@@ -474,6 +474,12 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
                     </div>
                   );
                 })}
+
+                {recommendations.length === 0 && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 text-center">
+                    <p className="text-slate-500 italic">No data added for this section</p>
+                  </div>
+                )}
 
                 {groupedRecommendations.Unassigned.length > 0 && (
                   <div className="mb-8">

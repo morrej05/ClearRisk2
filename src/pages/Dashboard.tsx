@@ -10,8 +10,6 @@ import RecommendationReport from '../components/RecommendationReport';
 import SurveyTextEditor from '../components/SurveyTextEditor';
 import TextReportModal from '../components/TextReportModal';
 import ClientBrandingModal from '../components/ClientBrandingModal';
-import SurveyDraftModal from '../components/SurveyDraftModal';
-import RecommendationDraftModal from '../components/RecommendationDraftModal';
 import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 import { ROLE_LABELS, getRolePermissions, UserRole } from '../utils/permissions';
@@ -68,8 +66,6 @@ export default function Dashboard() {
   const [externalLinkSurveyId, setExternalLinkSurveyId] = useState<string | null>(null);
   const [recommendationReportSurveyId, setRecommendationReportSurveyId] = useState<string | null>(null);
   const [textReportSurveyId, setTextReportSurveyId] = useState<string | null>(null);
-  const [surveyDraftModalId, setSurveyDraftModalId] = useState<string | null>(null);
-  const [recommendationDraftModalId, setRecommendationDraftModalId] = useState<string | null>(null);
   const [portfolioSummary, setPortfolioSummary] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [summaryFilterState, setSummaryFilterState] = useState<{
@@ -907,20 +903,11 @@ export default function Dashboard() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 {permissions.canViewSurveys && (
                                   <button
-                                    onClick={() => setSurveyDraftModalId(survey.id)}
+                                    onClick={() => navigate(`/report/${survey.id}`)}
                                     className="text-blue-600 hover:text-blue-900 transition-colors"
-                                    title={survey.issued ? "View Survey Report" : "View Draft Survey Report"}
+                                    title="View Reports"
                                   >
-                                    <FileText className="w-4 h-4" />
-                                  </button>
-                                )}
-                                {permissions.canViewSurveys && (
-                                  <button
-                                    onClick={() => setRecommendationDraftModalId(survey.id)}
-                                    className="text-emerald-600 hover:text-emerald-900 transition-colors"
-                                    title={survey.issued ? "View Recommendation Report" : "View Draft Recommendation Report"}
-                                  >
-                                    <FileEdit className="w-4 h-4" />
+                                    <Eye className="w-4 h-4" />
                                   </button>
                                 )}
                                 {(survey.survey_text || survey.recommendation_text) && permissions.canViewSurveys && (
@@ -930,15 +917,6 @@ export default function Dashboard() {
                                     title="View Text Reports"
                                   >
                                     <FileEdit className="w-4 h-4" />
-                                  </button>
-                                )}
-                                {survey.issued && survey.form_data?.overallComments?.length > 0 && permissions.canViewSurveys && (
-                                  <button
-                                    onClick={() => setRecommendationReportSurveyId(survey.id)}
-                                    className="text-violet-600 hover:text-violet-900 transition-colors"
-                                    title="View Issued Recommendations Report"
-                                  >
-                                    <Eye className="w-4 h-4" />
                                   </button>
                                 )}
                                 {permissions.canEditSurveys && (
@@ -1137,23 +1115,6 @@ export default function Dashboard() {
         />
       )}
 
-      {surveyDraftModalId && (
-        <SurveyDraftModal
-          surveyId={surveyDraftModalId}
-          onClose={() => setSurveyDraftModalId(null)}
-          cachedSummary={surveySummaryCache[surveyDraftModalId]}
-          onSummaryGenerated={(summary) => handleUpdateSurveySummary(surveyDraftModalId, summary)}
-        />
-      )}
-
-      {recommendationDraftModalId && (
-        <RecommendationDraftModal
-          surveyId={recommendationDraftModalId}
-          onClose={() => setRecommendationDraftModalId(null)}
-          cachedSummary={surveySummaryCache[recommendationDraftModalId]}
-          onSummaryGenerated={(summary) => handleUpdateSurveySummary(recommendationDraftModalId, summary)}
-        />
-      )}
 
       <ClientBrandingModal
         isOpen={showBrandingModal}

@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, Users, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { UserRole, ROLE_LABELS, ROLE_DESCRIPTIONS } from '../utils/permissions';
+import UserManagement from '../components/UserManagement';
 
 interface Survey {
   id: string;
@@ -23,25 +23,15 @@ interface Survey {
   creator_name?: string;
 }
 
-interface UserProfile {
-  id: string;
-  name: string;
-  role: UserRole;
-  created_at: string;
-  updated_at: string;
-}
-
 export default function AdminDashboard() {
   const { signOut, user, userRole, refreshUserRole } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'users' | 'surveys'>('users');
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [filteredSurveys, setFilteredSurveys] = useState<Survey[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
-  const [isUpdatingRole, setIsUpdatingRole] = useState<string | null>(null);
 
   // Filter states
   const [companyFilter, setCompanyFilter] = useState('');
@@ -57,30 +47,12 @@ export default function AdminDashboard() {
       navigate('/dashboard');
       return;
     }
-    fetchUsers();
     fetchSurveys();
   }, [userRole, navigate]);
 
   useEffect(() => {
     applyFiltersAndSort();
   }, [surveys, companyFilter, industrySectorFilter, frameworkFilter, statusFilter, issuedFilter, sortBy, sortOrder]);
-
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchSurveys = async () => {
     setIsLoading(true);
@@ -105,31 +77,6 @@ export default function AdminDashboard() {
       console.error('Error fetching surveys:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleRoleChange = async (userId: string, newRole: UserRole) => {
-    setIsUpdatingRole(userId);
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-
-      if (userId === user?.id) {
-        await refreshUserRole();
-      }
-
-      alert(`User role updated successfully to ${ROLE_LABELS[newRole]}`);
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      alert('Failed to update user role. Please try again.');
-    } finally {
-      setIsUpdatingRole(null);
     }
   };
 
@@ -402,83 +349,7 @@ export default function AdminDashboard() {
 
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {activeTab === 'users' ? (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-              <h2 className="text-lg font-semibold text-slate-900">User Roles</h2>
-              <p className="text-sm text-slate-600 mt-1">Manage user permissions and access levels</p>
-            </div>
-
-            {isLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-300 border-t-slate-900"></div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        User
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Current Role
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Permissions
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Created
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-slate-200">
-                    {users.map((userProfile) => (
-                      <tr key={userProfile.id} className="hover:bg-slate-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-slate-900">{userProfile.name}</div>
-                          <div className="text-sm text-slate-500">{userProfile.id === user?.id ? '(You)' : ''}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                            userProfile.role === 'admin'
-                              ? 'bg-red-100 text-red-700'
-                              : userProfile.role === 'editor'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}>
-                            {ROLE_LABELS[userProfile.role]}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs text-slate-600 max-w-xs">
-                            {ROLE_DESCRIPTIONS[userProfile.role]}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          {formatDate(userProfile.created_at)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <select
-                            value={userProfile.role}
-                            onChange={(e) => handleRoleChange(userProfile.id, e.target.value as UserRole)}
-                            disabled={isUpdatingRole === userProfile.id}
-                            className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
-                          >
-                            <option value="viewer">Viewer</option>
-                            <option value="editor">Editor</option>
-                            <option value="admin">Admin</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <UserManagement />
         ) : (
           <div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">

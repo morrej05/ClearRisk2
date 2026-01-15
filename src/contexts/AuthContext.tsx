@@ -1,22 +1,24 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { UserRole } from '../utils/permissions';
 
 interface AuthContextType {
   user: User | null;
-  userRole: 'admin' | 'user' | 'external' | null;
+  userRole: UserRole | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  refreshUserRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'user' | 'external' | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserRole = async (userId: string) => {
@@ -27,9 +29,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (data && !error) {
-      setUserRole(data.role as 'admin' | 'user' | 'external');
+      setUserRole(data.role as UserRole);
     } else {
       setUserRole(null);
+    }
+  };
+
+  const refreshUserRole = async () => {
+    if (user) {
+      await fetchUserRole(user.id);
     }
   };
 
@@ -84,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userRole, loading, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ user, userRole, loading, signIn, signUp, signOut, resetPassword, refreshUserRole }}>
       {children}
     </AuthContext.Provider>
   );

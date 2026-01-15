@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette } from 'lucide-react';
+import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
 import NewSurveyModal from '../components/NewSurveyModal';
 import ExternalLinkModal from '../components/ExternalLinkModal';
@@ -11,6 +11,7 @@ import TextReportModal from '../components/TextReportModal';
 import ClientBrandingModal from '../components/ClientBrandingModal';
 import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
+import { ROLE_LABELS, getRolePermissions } from '../utils/permissions';
 
 interface Survey {
   id: string;
@@ -44,29 +45,10 @@ interface PortfolioMetrics {
   worstSite: string;
 }
 
-type UserRole = 'admin' | 'user' | 'external';
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Admin',
-  user: 'Editor',
-  external: 'Viewer',
-};
-
-const ROLE_PERMISSIONS = {
-  canCreateSurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
-  canEditSurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
-  canDeleteSurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
-  canIssueSurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
-  canResurvey: (role: UserRole | null) => role === 'admin' || role === 'user',
-  canGenerateExternalLink: (role: UserRole | null) => role === 'admin' || role === 'user',
-  canEditText: (role: UserRole | null) => role === 'admin' || role === 'user',
-  canGeneratePortfolioSummary: (role: UserRole | null) => role === 'admin' || role === 'user',
-  canViewReports: (role: UserRole | null) => true,
-};
-
 export default function Dashboard() {
   const { signOut, user, userRole } = useAuth();
   const navigate = useNavigate();
+  const permissions = getRolePermissions(userRole);
   const [showNewSurvey, setShowNewSurvey] = useState(false);
   const [showTextEditor, setShowTextEditor] = useState(false);
   const [showNewSurveyModal, setShowNewSurveyModal] = useState(false);
@@ -150,7 +132,7 @@ export default function Dashboard() {
   };
 
   const handleNewSurvey = () => {
-    if (!ROLE_PERMISSIONS.canCreateSurvey(userRole)) {
+    if (!permissions.canCreateSurveys) {
       alert('You do not have permission to create surveys. Please contact your administrator.');
       return;
     }
@@ -164,7 +146,7 @@ export default function Dashboard() {
   };
 
   const handleSelectSurvey = (surveyId: string) => {
-    if (!ROLE_PERMISSIONS.canEditSurvey(userRole)) {
+    if (!permissions.canEditSurveys) {
       alert('You do not have permission to edit surveys. View-only access granted.');
       return;
     }
@@ -180,7 +162,7 @@ export default function Dashboard() {
   };
 
   const handleOpenTextEditor = (surveyId: string) => {
-    if (!ROLE_PERMISSIONS.canEditText(userRole)) {
+    if (!permissions.canEditSurveyText) {
       alert('You do not have permission to edit survey text. View-only access granted.');
       return;
     }
@@ -297,7 +279,7 @@ export default function Dashboard() {
   const portfolioMetrics = calculateLegacyPortfolioMetrics(filteredSurveys);
 
   const handleIssueReport = async (surveyId: string) => {
-    if (!ROLE_PERMISSIONS.canIssueSurvey(userRole)) {
+    if (!permissions.canIssueSurveys) {
       alert('You do not have permission to issue reports.');
       return;
     }
@@ -322,7 +304,7 @@ export default function Dashboard() {
   };
 
   const handleDeleteSurvey = async (surveyId: string) => {
-    if (!ROLE_PERMISSIONS.canDeleteSurvey(userRole)) {
+    if (!permissions.canDeleteSurveys) {
       alert('You do not have permission to delete surveys.');
       return;
     }
@@ -352,7 +334,7 @@ export default function Dashboard() {
 
   const handleResurvey = async (originalSurvey: Survey) => {
     if (!user) return;
-    if (!ROLE_PERMISSIONS.canResurvey(userRole)) {
+    if (!permissions.canResurvey) {
       alert('You do not have permission to create resurveys.');
       return;
     }
@@ -407,7 +389,7 @@ export default function Dashboard() {
   };
 
   const handleGeneratePortfolioSummary = async () => {
-    if (!ROLE_PERMISSIONS.canGeneratePortfolioSummary(userRole)) {
+    if (!permissions.canGeneratePortfolioSummary) {
       alert('You do not have permission to generate portfolio summaries.');
       return;
     }
@@ -509,24 +491,25 @@ export default function Dashboard() {
                   Role: {userRole ? ROLE_LABELS[userRole as UserRole] : 'Loading...'}
                 </span>
               </div>
-              {userRole === 'admin' && (
-                <>
-                  <button
-                    onClick={() => setShowBrandingModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
-                    title="Client Branding"
-                  >
-                    <Palette className="w-4 h-4" />
-                    Branding
-                  </button>
-                  <button
-                    onClick={() => navigate('/admin')}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
-                  >
-                    <Shield className="w-4 h-4" />
-                    Admin
-                  </button>
-                </>
+              {permissions.canManageBranding && (
+                <button
+                  onClick={() => setShowBrandingModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+                  title="Client Branding"
+                >
+                  <Palette className="w-4 h-4" />
+                  Branding
+                </button>
+              )}
+              {permissions.canManageUsers && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+                  title="User Management"
+                >
+                  <Users className="w-4 h-4" />
+                  Users
+                </button>
               )}
               <button
                 onClick={handleSignOut}
@@ -548,7 +531,7 @@ export default function Dashboard() {
                 <h1 className="text-3xl font-bold text-slate-900">Survey Portfolio</h1>
                 <p className="text-slate-600 mt-1">Manage and monitor your fire risk assessments</p>
               </div>
-              {ROLE_PERMISSIONS.canCreateSurvey(userRole) ? (
+              {permissions.canCreateSurveys ? (
                 <button
                   onClick={handleNewSurvey}
                   className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
@@ -692,7 +675,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {surveys.length > 0 && ROLE_PERMISSIONS.canGeneratePortfolioSummary(userRole) && (
+            {surveys.length > 0 && permissions.canGeneratePortfolioSummary && (
               <div className="mb-6 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-6 py-4 border-b border-slate-200">
                   <div className="flex items-center justify-between">
@@ -783,7 +766,7 @@ export default function Dashboard() {
                 <div className="w-16 h-16 text-slate-300 mb-4">📋</div>
                 <p className="text-slate-500 text-lg mb-2">No surveys yet</p>
                 <p className="text-slate-400 text-sm">
-                  {ROLE_PERMISSIONS.canCreateSurvey(userRole)
+                  {permissions.canCreateSurveys
                     ? 'Create your first survey to get started'
                     : 'No surveys available for viewing'}
                 </p>
@@ -831,8 +814,8 @@ export default function Dashboard() {
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-200">
                       {filteredSurveys.map((survey) => {
-                        const canIssue = survey.report_status === 'Issue Ready' && !survey.issued && ROLE_PERMISSIONS.canIssueSurvey(userRole);
-                        const canDelete = !survey.issued && ROLE_PERMISSIONS.canDeleteSurvey(userRole);
+                        const canIssue = survey.report_status === 'Issue Ready' && !survey.issued && permissions.canIssueSurveys;
+                        const canDelete = !survey.issued && permissions.canDeleteSurveys;
                         const isSuperseded = survey.superseded_by_id !== null;
 
                         const industrySector = survey.form_data?.industrySector;
@@ -911,7 +894,7 @@ export default function Dashboard() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm min-w-[200px]">
                               <div className="flex items-center gap-2 flex-wrap">
-                                {survey.generated_report && ROLE_PERMISSIONS.canViewReports(userRole) && (
+                                {survey.generated_report && permissions.canViewSurveys && (
                                   <button
                                     onClick={() => navigate(`/report/${survey.id}`)}
                                     className="text-blue-600 hover:text-blue-900 transition-colors"
@@ -920,7 +903,7 @@ export default function Dashboard() {
                                     <Eye className="w-4 h-4" />
                                   </button>
                                 )}
-                                {(survey.survey_text || survey.recommendation_text) && ROLE_PERMISSIONS.canViewReports(userRole) && (
+                                {(survey.survey_text || survey.recommendation_text) && permissions.canViewSurveys && (
                                   <button
                                     onClick={() => setTextReportSurveyId(survey.id)}
                                     className="text-teal-600 hover:text-teal-900 transition-colors"
@@ -929,7 +912,7 @@ export default function Dashboard() {
                                     <FileText className="w-4 h-4" />
                                   </button>
                                 )}
-                                {survey.issued && survey.form_data?.overallComments?.length > 0 && ROLE_PERMISSIONS.canViewReports(userRole) && (
+                                {survey.issued && survey.form_data?.overallComments?.length > 0 && permissions.canViewSurveys && (
                                   <button
                                     onClick={() => setRecommendationReportSurveyId(survey.id)}
                                     className="text-emerald-600 hover:text-emerald-900 transition-colors"
@@ -938,7 +921,7 @@ export default function Dashboard() {
                                     <Sparkles className="w-4 h-4" />
                                   </button>
                                 )}
-                                {ROLE_PERMISSIONS.canEditSurvey(userRole) && (
+                                {permissions.canEditSurveys && (
                                   <button
                                     onClick={() => handleSelectSurvey(survey.id)}
                                     className={`transition-colors ${
@@ -952,7 +935,7 @@ export default function Dashboard() {
                                     <Edit className="w-4 h-4" />
                                   </button>
                                 )}
-                                {ROLE_PERMISSIONS.canEditText(userRole) && (
+                                {permissions.canEditSurveyText && (
                                   <button
                                     onClick={() => handleOpenTextEditor(survey.id)}
                                     className="text-indigo-600 hover:text-indigo-900 transition-colors"
@@ -961,7 +944,7 @@ export default function Dashboard() {
                                     <FileEdit className="w-4 h-4" />
                                   </button>
                                 )}
-                                {ROLE_PERMISSIONS.canResurvey(userRole) && (
+                                {permissions.canResurvey && (
                                   <button
                                     onClick={() => setResurveyConfirmId(survey.id)}
                                     className="text-blue-600 hover:text-blue-900 transition-colors"
@@ -970,7 +953,7 @@ export default function Dashboard() {
                                     <RefreshCw className="w-4 h-4" />
                                   </button>
                                 )}
-                                {ROLE_PERMISSIONS.canGenerateExternalLink(userRole) && (
+                                {permissions.canGenerateExternalLink && (
                                   <button
                                     onClick={() => setExternalLinkSurveyId(survey.id)}
                                     className="text-violet-600 hover:text-violet-900 transition-colors"

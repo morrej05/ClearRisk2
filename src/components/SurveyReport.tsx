@@ -42,6 +42,10 @@ interface Building {
 export default function SurveyReport({ surveyId, embedded = false, aiSummary }: SurveyReportProps) {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [clientBranding, setClientBranding] = useState<{
+    companyName: string;
+    logoUrl: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (surveyId) {
@@ -62,6 +66,21 @@ export default function SurveyReport({ surveyId, embedded = false, aiSummary }: 
 
       if (error) throw error;
       setSurvey(data);
+
+      if (data?.user_id) {
+        const { data: brandingData } = await supabase
+          .from('client_branding')
+          .select('company_name, logo_url')
+          .eq('user_id', data.user_id)
+          .maybeSingle();
+
+        if (brandingData) {
+          setClientBranding({
+            companyName: brandingData.company_name,
+            logoUrl: brandingData.logo_url,
+          });
+        }
+      }
     } catch (error) {
       console.error('Error fetching survey:', error);
     } finally {
@@ -113,8 +132,27 @@ export default function SurveyReport({ surveyId, embedded = false, aiSummary }: 
   const reportContent = (
     <>
       <div className="px-8 py-6 border-b border-slate-200">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Fire Risk Survey Report</h1>
-        <p className="text-slate-600">Detailed Survey Findings</p>
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Fire Risk Survey Report</h1>
+            <p className="text-slate-600">Detailed Survey Findings</p>
+          </div>
+          {clientBranding?.logoUrl ? (
+            <div className="flex-shrink-0 ml-6">
+              <img
+                src={clientBranding.logoUrl}
+                alt={clientBranding.companyName}
+                className="h-16 object-contain"
+              />
+            </div>
+          ) : (
+            <div className="flex-shrink-0 ml-6">
+              <div className="flex items-center gap-2 text-slate-500">
+                <Building2 className="w-12 h-12" />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="px-8 py-6 border-b border-slate-200 bg-gradient-to-r from-violet-50 to-blue-50">

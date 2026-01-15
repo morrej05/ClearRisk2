@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { AlertCircle, CheckCircle2, Clock, XCircle, Sparkles } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, XCircle, Sparkles, Building2 } from 'lucide-react';
 
 interface Recommendation {
   id: string;
@@ -35,6 +35,10 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [clientBranding, setClientBranding] = useState<{
+    companyName: string;
+    logoUrl: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (surveyId) {
@@ -62,6 +66,21 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
       }
 
       setSurvey(data);
+
+      if (data?.user_id) {
+        const { data: brandingData } = await supabase
+          .from('client_branding')
+          .select('company_name, logo_url')
+          .eq('user_id', data.user_id)
+          .maybeSingle();
+
+        if (brandingData) {
+          setClientBranding({
+            companyName: brandingData.company_name,
+            logoUrl: brandingData.logo_url,
+          });
+        }
+      }
 
       const overallComments = data.form_data?.overallComments || [];
       const enrichedRecommendations = overallComments.map((rec: any) => {
@@ -236,8 +255,27 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
 
       {embedded && (
         <div className="px-8 py-6 border-b border-slate-200">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Fire Risk Recommendations Report</h1>
-          <p className="text-slate-600">Action-Focused Summary</p>
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-slate-900 mb-2">Fire Risk Recommendations Report</h1>
+              <p className="text-slate-600">Action-Focused Summary</p>
+            </div>
+            {clientBranding?.logoUrl ? (
+              <div className="flex-shrink-0 ml-6">
+                <img
+                  src={clientBranding.logoUrl}
+                  alt={clientBranding.companyName}
+                  className="h-16 object-contain"
+                />
+              </div>
+            ) : (
+              <div className="flex-shrink-0 ml-6">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Building2 className="w-12 h-12" />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

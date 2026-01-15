@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter } from 'lucide-react';
+import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
 import NewSurveyModal from '../components/NewSurveyModal';
 import ExternalLinkModal from '../components/ExternalLinkModal';
 import RecommendationReport from '../components/RecommendationReport';
 import SurveyTextEditor from '../components/SurveyTextEditor';
 import TextReportModal from '../components/TextReportModal';
+import ClientBrandingModal from '../components/ClientBrandingModal';
 import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 
@@ -89,9 +90,15 @@ export default function Dashboard() {
     framework: string;
   } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [clientBranding, setClientBranding] = useState<{
+    companyName: string;
+    logoUrl: string | null;
+  }>({ companyName: 'ClearRisk', logoUrl: null });
+  const [showBrandingModal, setShowBrandingModal] = useState(false);
 
   useEffect(() => {
     fetchSurveys();
+    fetchClientBranding();
   }, [user]);
 
   const fetchSurveys = async () => {
@@ -111,6 +118,29 @@ export default function Dashboard() {
       console.error('Error fetching surveys:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchClientBranding = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('client_branding')
+        .select('company_name, logo_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setClientBranding({
+          companyName: data.company_name,
+          logoUrl: data.logo_url,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching client branding:', error);
     }
   };
 
@@ -438,11 +468,15 @@ export default function Dashboard() {
   );
 
   const getCompanyLogo = () => {
-    return null;
+    return clientBranding.logoUrl;
   };
 
   const getCompanyName = () => {
-    return 'ClearRisk';
+    return clientBranding.companyName;
+  };
+
+  const handleBrandingUpdated = () => {
+    fetchClientBranding();
   };
 
   return (
@@ -476,13 +510,23 @@ export default function Dashboard() {
                 </span>
               </div>
               {userRole === 'admin' && (
-                <button
-                  onClick={() => navigate('/admin')}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowBrandingModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+                    title="Client Branding"
+                  >
+                    <Palette className="w-4 h-4" />
+                    Branding
+                  </button>
+                  <button
+                    onClick={() => navigate('/admin')}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin
+                  </button>
+                </>
               )}
               <button
                 onClick={handleSignOut}
@@ -1098,6 +1142,12 @@ export default function Dashboard() {
           onClose={() => setTextReportSurveyId(null)}
         />
       )}
+
+      <ClientBrandingModal
+        isOpen={showBrandingModal}
+        onClose={() => setShowBrandingModal(false)}
+        onBrandingUpdated={handleBrandingUpdated}
+      />
     </div>
   );
 }

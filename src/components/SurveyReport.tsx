@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { FileText, Sparkles, Building2, Calendar } from 'lucide-react';
 
 interface SurveyReportProps {
@@ -42,10 +43,7 @@ interface Building {
 export default function SurveyReport({ surveyId, embedded = false, aiSummary }: SurveyReportProps) {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [clientBranding, setClientBranding] = useState<{
-    companyName: string;
-    logoUrl: string | null;
-  } | null>(null);
+  const { branding: clientBranding } = useClientBranding();
 
   useEffect(() => {
     if (surveyId) {
@@ -66,21 +64,6 @@ export default function SurveyReport({ surveyId, embedded = false, aiSummary }: 
 
       if (error) throw error;
       setSurvey(data);
-
-      if (data?.user_id) {
-        const { data: brandingData } = await supabase
-          .from('client_branding')
-          .select('company_name, logo_url')
-          .eq('user_id', data.user_id)
-          .maybeSingle();
-
-        if (brandingData) {
-          setClientBranding({
-            companyName: brandingData.company_name,
-            logoUrl: brandingData.logo_url,
-          });
-        }
-      }
     } catch (error) {
       console.error('Error fetching survey:', error);
     } finally {
@@ -137,7 +120,7 @@ export default function SurveyReport({ surveyId, embedded = false, aiSummary }: 
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Fire Risk Survey Report</h1>
             <p className="text-slate-600">Detailed Survey Findings</p>
           </div>
-          {clientBranding?.logoUrl ? (
+          {clientBranding.logoUrl ? (
             <div className="flex-shrink-0 ml-6">
               <img
                 src={clientBranding.logoUrl}

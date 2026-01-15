@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { AlertCircle, CheckCircle2, Clock, XCircle, Sparkles, Building2 } from 'lucide-react';
 
 interface Recommendation {
@@ -35,10 +36,7 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [clientBranding, setClientBranding] = useState<{
-    companyName: string;
-    logoUrl: string | null;
-  } | null>(null);
+  const { branding: clientBranding } = useClientBranding();
 
   useEffect(() => {
     if (surveyId) {
@@ -66,21 +64,6 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
       }
 
       setSurvey(data);
-
-      if (data?.user_id) {
-        const { data: brandingData } = await supabase
-          .from('client_branding')
-          .select('company_name, logo_url')
-          .eq('user_id', data.user_id)
-          .maybeSingle();
-
-        if (brandingData) {
-          setClientBranding({
-            companyName: brandingData.company_name,
-            logoUrl: brandingData.logo_url,
-          });
-        }
-      }
 
       const overallComments = data.form_data?.overallComments || [];
       const enrichedRecommendations = overallComments.map((rec: any) => {
@@ -260,7 +243,7 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
               <h1 className="text-3xl font-bold text-slate-900 mb-2">Fire Risk Recommendations Report</h1>
               <p className="text-slate-600">Action-Focused Summary</p>
             </div>
-            {clientBranding?.logoUrl ? (
+            {clientBranding.logoUrl ? (
               <div className="flex-shrink-0 ml-6">
                 <img
                   src={clientBranding.logoUrl}

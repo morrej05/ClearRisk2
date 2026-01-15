@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users, X } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
@@ -13,7 +14,7 @@ import SurveyDraftModal from '../components/SurveyDraftModal';
 import RecommendationDraftModal from '../components/RecommendationDraftModal';
 import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
-import { ROLE_LABELS, getRolePermissions } from '../utils/permissions';
+import { ROLE_LABELS, getRolePermissions, UserRole } from '../utils/permissions';
 
 interface Survey {
   id: string;
@@ -49,6 +50,7 @@ interface PortfolioMetrics {
 
 export default function Dashboard() {
   const { signOut, user, userRole } = useAuth();
+  const { branding: clientBranding, refreshBranding } = useClientBranding();
   const navigate = useNavigate();
   const permissions = getRolePermissions(userRole);
   const [showNewSurvey, setShowNewSurvey] = useState(false);
@@ -77,15 +79,10 @@ export default function Dashboard() {
   } | null>(null);
   const [surveySummaryCache, setSurveySummaryCache] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
-  const [clientBranding, setClientBranding] = useState<{
-    companyName: string;
-    logoUrl: string | null;
-  }>({ companyName: 'ClearRisk', logoUrl: null });
   const [showBrandingModal, setShowBrandingModal] = useState(false);
 
   useEffect(() => {
     fetchSurveys();
-    fetchClientBranding();
   }, [user]);
 
   const fetchSurveys = async () => {
@@ -108,28 +105,6 @@ export default function Dashboard() {
     }
   };
 
-  const fetchClientBranding = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('client_branding')
-        .select('company_name, logo_url')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setClientBranding({
-          companyName: data.company_name,
-          logoUrl: data.logo_url,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching client branding:', error);
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -478,7 +453,7 @@ export default function Dashboard() {
   };
 
   const handleBrandingUpdated = () => {
-    fetchClientBranding();
+    refreshBranding();
   };
 
   return (
@@ -567,51 +542,51 @@ export default function Dashboard() {
             </div>
 
             {surveys.length > 0 && portfolioMetrics.scoredReports > 0 && (
-              <div className="mb-8">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4">Portfolio Summary</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-slate-900 mb-3">Portfolio Summary</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-sm font-medium text-slate-600">Portfolio Average</h3>
                     </div>
                     <div className="flex items-end gap-2">
-                      <div className="text-4xl font-bold text-slate-900">{portfolioMetrics.averageScore}</div>
+                      <div className="text-3xl font-bold text-slate-900">{portfolioMetrics.averageScore}</div>
                       <div className={`mb-1 px-2 py-0.5 rounded text-xs font-semibold ${getRiskBandColor(getRiskBandLabel(portfolioMetrics.averageScore))}`}>
                         {getRiskBandLabel(portfolioMetrics.averageScore)}
                       </div>
                     </div>
-                    <p className="text-sm text-slate-500 mt-2">
+                    <p className="text-xs text-slate-500 mt-1">
                       Based on {portfolioMetrics.scoredReports} issued site{portfolioMetrics.scoredReports !== 1 ? 's' : ''}
                     </p>
                   </div>
 
-                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-                    <h3 className="text-sm font-medium text-slate-600 mb-3">Best & Worst Sites</h3>
-                    <div className="space-y-2">
+                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4">
+                    <h3 className="text-sm font-medium text-slate-600 mb-2">Best & Worst Sites</h3>
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">Best:</span>
+                        <span className="text-xs text-slate-600">Best:</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.bestSite}>
+                          <span className="text-xs font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.bestSite}>
                             {portfolioMetrics.bestSite}
                           </span>
-                          <span className="text-lg font-bold text-green-600">{portfolioMetrics.bestScore}</span>
+                          <span className="text-base font-bold text-green-600">{portfolioMetrics.bestScore}</span>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">Worst:</span>
+                        <span className="text-xs text-slate-600">Worst:</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.worstSite}>
+                          <span className="text-xs font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.worstSite}>
                             {portfolioMetrics.worstSite}
                           </span>
-                          <span className="text-lg font-bold text-orange-600">{portfolioMetrics.worstScore}</span>
+                          <span className="text-base font-bold text-orange-600">{portfolioMetrics.worstScore}</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-                    <h3 className="text-sm font-medium text-slate-600 mb-3">Risk Distribution</h3>
-                    <div className="space-y-1.5">
+                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4">
+                    <h3 className="text-sm font-medium text-slate-600 mb-2">Risk Distribution</h3>
+                    <div className="space-y-1">
                       {Object.entries(portfolioMetrics.distribution)
                         .sort((a, b) => {
                           const order = ['Very Good', 'Good', 'Tolerable', 'Poor', 'Very Poor'];
@@ -980,7 +955,7 @@ export default function Dashboard() {
                                     <Edit className="w-4 h-4" />
                                   </button>
                                 )}
-                                {permissions.canResurvey && (
+                                {permissions.canResurvey && survey.issued && (
                                   <button
                                     onClick={() => setResurveyConfirmId(survey.id)}
                                     className="text-blue-600 hover:text-blue-900 transition-colors"

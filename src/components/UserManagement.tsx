@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, Trash2, Shield, Edit2, X, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { UserRole, ROLE_LABELS, ROLE_DESCRIPTIONS } from '../utils/permissions';
 
 interface UserProfile {
@@ -12,6 +13,7 @@ interface UserProfile {
 }
 
 export default function UserManagement() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -97,6 +99,24 @@ export default function UserManagement() {
   };
 
   const handleUpdateRole = async (userId: string, newRole: UserRole) => {
+    const adminCount = users.filter(u => u.role === 'admin').length;
+    const currentUserProfile = users.find(u => u.id === userId);
+    const isCurrentUserAdmin = currentUserProfile?.role === 'admin';
+    const isDemotingFromAdmin = isCurrentUserAdmin && newRole !== 'admin';
+    const isSelfDemotion = userId === currentUser?.id;
+
+    if (adminCount === 1 && isDemotingFromAdmin) {
+      alert('Cannot change role: At least one admin must remain in the system.');
+      setEditingUserId(null);
+      return;
+    }
+
+    if (isSelfDemotion && isDemotingFromAdmin && adminCount === 1) {
+      alert('You cannot demote yourself as you are the only admin.');
+      setEditingUserId(null);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('user_profiles')
@@ -114,6 +134,21 @@ export default function UserManagement() {
   };
 
   const handleDeleteUser = async (userId: string, userEmail?: string) => {
+    const adminCount = users.filter(u => u.role === 'admin').length;
+    const userToDelete = users.find(u => u.id === userId);
+    const isAdminUser = userToDelete?.role === 'admin';
+    const isSelfDeletion = userId === currentUser?.id;
+
+    if (adminCount === 1 && isAdminUser) {
+      alert('Cannot delete user: At least one admin must remain in the system.');
+      return;
+    }
+
+    if (isSelfDeletion && isAdminUser && adminCount === 1) {
+      alert('You cannot delete yourself as you are the only admin.');
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete user ${userEmail || 'this user'}? This action cannot be undone.`)) {
       return;
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { AlertCircle, CheckCircle2, Clock, XCircle, Sparkles, Building2, X, Download, Loader2 } from 'lucide-react';
 import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/surveySummaryApi';
 
@@ -39,10 +40,7 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiSummary, setAiSummary] = useState(cachedSummary || '');
-  const [clientBranding, setClientBranding] = useState<{
-    companyName: string;
-    logoUrl: string | null;
-  } | null>(null);
+  const { branding: clientBranding } = useClientBranding();
 
   useEffect(() => {
     fetchSurveyData();
@@ -66,21 +64,6 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
       if (error) throw error;
 
       setSurvey(data);
-
-      if (data?.user_id) {
-        const { data: brandingData } = await supabase
-          .from('client_branding')
-          .select('company_name, logo_url')
-          .eq('user_id', data.user_id)
-          .maybeSingle();
-
-        if (brandingData) {
-          setClientBranding({
-            companyName: brandingData.company_name,
-            logoUrl: brandingData.logo_url,
-          });
-        }
-      }
 
       const overallComments = data.form_data?.overallComments || [];
       const enrichedRecommendations = overallComments.map((rec: any) => {
@@ -319,7 +302,7 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
                   <h2 className="text-2xl font-bold text-slate-900 mb-2">Fire Risk Recommendations Report</h2>
                   <p className="text-slate-600">Action-Focused Summary</p>
                 </div>
-                {clientBranding?.logoUrl ? (
+                {clientBranding.logoUrl ? (
                   <div className="flex-shrink-0 ml-6">
                     <img
                       src={clientBranding.logoUrl}

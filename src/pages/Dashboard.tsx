@@ -54,13 +54,19 @@ export default function Dashboard() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [issueConfirmId, setIssueConfirmId] = useState<string | null>(null);
   const [resurveyConfirmId, setResurveyConfirmId] = useState<string | null>(null);
+  const [companyNameFilter, setCompanyNameFilter] = useState<string>('');
+  const [industrySectorFilter, setIndustrySectorFilter] = useState<string>('all');
   const [frameworkFilter, setFrameworkFilter] = useState<string>('all');
   const [externalLinkSurveyId, setExternalLinkSurveyId] = useState<string | null>(null);
   const [recommendationReportSurveyId, setRecommendationReportSurveyId] = useState<string | null>(null);
   const [textReportSurveyId, setTextReportSurveyId] = useState<string | null>(null);
   const [portfolioSummary, setPortfolioSummary] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [summaryFilterState, setSummaryFilterState] = useState<string | null>(null);
+  const [summaryFilterState, setSummaryFilterState] = useState<{
+    companyName: string;
+    industrySector: string;
+    framework: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchSurveys();
@@ -153,8 +159,8 @@ export default function Dashboard() {
     }
   };
 
-  const calculatePortfolioMetrics = (): PortfolioMetrics => {
-    const issuedSurveys = surveys.filter(s => s.issued && !s.superseded_by_id);
+  const calculatePortfolioMetrics = (surveysToAnalyze: Survey[]): PortfolioMetrics => {
+    const issuedSurveys = surveysToAnalyze.filter(s => s.issued && !s.superseded_by_id);
     const scoredSurveys = issuedSurveys.filter(s =>
       s.form_data?.overallRiskScore !== undefined && s.form_data?.overallRiskScore > 0
     );
@@ -205,11 +211,26 @@ export default function Dashboard() {
     return 'Very Poor';
   };
 
-  const filteredSurveys = frameworkFilter === 'all'
-    ? surveys
-    : surveys.filter(s => s.framework_type === frameworkFilter);
+  const filteredSurveys = surveys.filter(survey => {
+    if (companyNameFilter && !survey.company_name?.toLowerCase().includes(companyNameFilter.toLowerCase())) {
+      return false;
+    }
 
-  const portfolioMetrics = calculatePortfolioMetrics();
+    if (industrySectorFilter !== 'all') {
+      const industrySector = survey.form_data?.industrySector;
+      if (industrySector !== industrySectorFilter) {
+        return false;
+      }
+    }
+
+    if (frameworkFilter !== 'all' && survey.framework_type !== frameworkFilter) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const portfolioMetrics = calculatePortfolioMetrics(filteredSurveys);
 
   const handleIssueReport = async (surveyId: string) => {
     try {
@@ -310,7 +331,19 @@ export default function Dashboard() {
   const handleGeneratePortfolioSummary = async () => {
     setIsGeneratingSummary(true);
     try {
-      const metrics = calculatePortfolioMetrics();
+      const metrics = calculatePortfolioMetrics(filteredSurveys);
+
+      const filteredSurveyIds = filteredSurveys.map(s => s.id);
+
+      const portfolioContext = {
+        totalSurveys: filteredSurveys.length,
+        filteredSurveyIds,
+        filtersApplied: {
+          companyName: companyNameFilter || null,
+          industrySector: industrySectorFilter !== 'all' ? industrySectorFilter : null,
+          framework: frameworkFilter !== 'all' ? frameworkFilter : null,
+        },
+      };
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-portfolio-summary`;
       const headers = {
@@ -321,7 +354,10 @@ export default function Dashboard() {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ portfolioMetrics: metrics }),
+        body: JSON.stringify({
+          portfolioMetrics: metrics,
+          portfolioContext,
+        }),
       });
 
       if (!response.ok) {
@@ -330,7 +366,11 @@ export default function Dashboard() {
 
       const data = await response.json();
       setPortfolioSummary(data.summary);
-      setSummaryFilterState(frameworkFilter);
+      setSummaryFilterState({
+        companyName: companyNameFilter,
+        industrySector: industrySectorFilter,
+        framework: frameworkFilter,
+      });
     } catch (error) {
       console.error('Error generating portfolio summary:', error);
       alert('Failed to generate portfolio summary. Please try again.');
@@ -339,7 +379,11 @@ export default function Dashboard() {
     }
   };
 
-  const isSummaryOutOfDate = portfolioSummary && summaryFilterState !== frameworkFilter;
+  const isSummaryOutOfDate = portfolioSummary && summaryFilterState && (
+    summaryFilterState.companyName !== companyNameFilter ||
+    summaryFilterState.industrySector !== industrySectorFilter ||
+    summaryFilterState.framework !== frameworkFilter
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -454,33 +498,65 @@ export default function Dashboard() {
             )}
 
             {surveys.length > 0 && (
-              <div className="mb-6 flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-slate-700">Framework:</label>
-                  <select
-                    value={frameworkFilter}
-                    onChange={(e) => setFrameworkFilter(e.target.value)}
-                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500"
+              <div className="mb-6">
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-slate-700">Company Name:</label>
+                    <input
+                      type="text"
+                      placeholder="Search company..."
+                      value={companyNameFilter}
+                      onChange={(e) => setCompanyNameFilter(e.target.value)}
+                      className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[200px]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-slate-700">Industry Sector:</label>
+                    <select
+                      value={industrySectorFilter}
+                      onChange={(e) => setIndustrySectorFilter(e.target.value)}
+                      className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[200px]"
+                    >
+                      <option value="all">All Sectors</option>
+                      <option value="Food & Beverage">Food & Beverage</option>
+                      <option value="Foundry / Metal">Foundry / Metal</option>
+                      <option value="Chemical / ATEX">Chemical / ATEX</option>
+                      <option value="Logistics / Warehouse">Logistics / Warehouse</option>
+                      <option value="Office / Commercial">Office / Commercial</option>
+                      <option value="General Industrial">General Industrial</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-slate-700">Framework:</label>
+                    <select
+                      value={frameworkFilter}
+                      onChange={(e) => setFrameworkFilter(e.target.value)}
+                      className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 min-w-[180px]"
+                    >
+                      <option value="all">All Frameworks</option>
+                      <option value="fire_property">Fire Property</option>
+                      <option value="fire_risk_assessment">FRA</option>
+                      <option value="atex">ATEX</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleGeneratePortfolioSummary}
+                    disabled={filteredSurveys.length < 2 || isGeneratingSummary}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      filteredSurveys.length < 2 || isGeneratingSummary
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                    }`}
+                    title={filteredSurveys.length < 2 ? 'At least 2 survey reports required' : 'Generate AI-powered portfolio summary'}
                   >
-                    <option value="all">All Frameworks</option>
-                    <option value="fire_property">Fire Property</option>
-                    <option value="fire_risk_assessment">FRA</option>
-                    <option value="atex">ATEX</option>
-                  </select>
+                    <TrendingUp className="w-4 h-4" />
+                    {isGeneratingSummary ? 'Generating...' : 'Generate Portfolio Summary'}
+                  </button>
                 </div>
-                <button
-                  onClick={handleGeneratePortfolioSummary}
-                  disabled={filteredSurveys.length < 2 || isGeneratingSummary}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    filteredSurveys.length < 2 || isGeneratingSummary
-                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                  }`}
-                  title={filteredSurveys.length < 2 ? 'At least 2 survey reports required' : 'Generate AI-powered portfolio summary'}
-                >
-                  <TrendingUp className="w-4 h-4" />
-                  {isGeneratingSummary ? 'Generating...' : 'Generate Portfolio Summary'}
-                </button>
+                <div className="mt-2 text-sm text-slate-600">
+                  Showing {filteredSurveys.length} of {surveys.length} surveys
+                </div>
               </div>
             )}
 

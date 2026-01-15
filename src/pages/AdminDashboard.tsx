@@ -33,6 +33,7 @@ export default function AdminDashboard() {
 
   // Filter states
   const [companyFilter, setCompanyFilter] = useState('');
+  const [industrySectorFilter, setIndustrySectorFilter] = useState('all');
   const [frameworkFilter, setFrameworkFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [issuedFilter, setIssuedFilter] = useState('all');
@@ -49,7 +50,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     applyFiltersAndSort();
-  }, [surveys, companyFilter, frameworkFilter, statusFilter, issuedFilter, sortBy, sortOrder]);
+  }, [surveys, companyFilter, industrySectorFilter, frameworkFilter, statusFilter, issuedFilter, sortBy, sortOrder]);
 
   const fetchSurveys = async () => {
     setIsLoading(true);
@@ -85,6 +86,13 @@ export default function AdminDashboard() {
         s.company_name?.toLowerCase().includes(companyFilter.toLowerCase()) ||
         s.property_name.toLowerCase().includes(companyFilter.toLowerCase())
       );
+    }
+
+    if (industrySectorFilter !== 'all') {
+      result = result.filter(s => {
+        const industrySector = (s as any).form_data?.industrySector;
+        return industrySector === industrySectorFilter;
+      });
     }
 
     if (frameworkFilter !== 'all') {
@@ -327,7 +335,7 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Search</label>
               <input
@@ -337,6 +345,24 @@ export default function AdminDashboard() {
                 onChange={(e) => setCompanyFilter(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Industry Sector</label>
+              <select
+                value={industrySectorFilter}
+                onChange={(e) => setIndustrySectorFilter(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+              >
+                <option value="all">All Sectors</option>
+                <option value="Food & Beverage">Food & Beverage</option>
+                <option value="Foundry / Metal">Foundry / Metal</option>
+                <option value="Chemical / ATEX">Chemical / ATEX</option>
+                <option value="Logistics / Warehouse">Logistics / Warehouse</option>
+                <option value="Office / Commercial">Office / Commercial</option>
+                <option value="General Industrial">General Industrial</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
 
             <div>

@@ -5,9 +5,11 @@ import LandingPage from './pages/LandingPage';
 import SignIn from './pages/SignIn';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ExternalSurvey from './pages/ExternalSurvey';
 import ReportPreviewPage from './pages/ReportPreviewPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import SuperAdminRoute from './components/SuperAdminRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
@@ -42,6 +44,14 @@ function App() {
               <ProtectedRoute>
                 <AdminDashboard />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/super-admin"
+            element={
+              <SuperAdminRoute>
+                <SuperAdminDashboard />
+              </SuperAdminRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

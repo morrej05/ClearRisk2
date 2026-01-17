@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, Users, ArrowLeft, Sliders } from 'lucide-react';
+import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, Users, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import UserManagement from '../components/UserManagement';
-import SectorWeightings from '../components/SectorWeightings';
 import { INDUSTRY_SECTORS } from '../utils/industrySectors';
 
 interface Survey {
@@ -28,7 +27,7 @@ interface Survey {
 export default function AdminDashboard() {
   const { signOut, user, userRole, refreshUserRole } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'users' | 'surveys' | 'weightings'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'surveys'>('surveys');
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [filteredSurveys, setFilteredSurveys] = useState<Survey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +44,7 @@ export default function AdminDashboard() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
-    if (userRole !== 'admin') {
+    if (userRole !== 'org_admin' && userRole !== 'super_admin') {
       navigate('/dashboard');
       return;
     }
@@ -317,6 +316,15 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {userRole === 'super_admin' && (
+                <button
+                  onClick={() => navigate('/super-admin')}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  <Shield className="w-4 h-4" />
+                  Super Admin
+                </button>
+              )}
               <button
                 onClick={() => navigate('/dashboard')}
                 className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
@@ -357,17 +365,6 @@ export default function AdminDashboard() {
               <Shield className="w-4 h-4" />
               Survey Management
             </button>
-            <button
-              onClick={() => setActiveTab('weightings')}
-              className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${
-                activeTab === 'weightings'
-                  ? 'border-slate-900 text-slate-900'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Sliders className="w-4 h-4" />
-              Sector Weightings
-            </button>
           </div>
         </div>
       </nav>
@@ -375,8 +372,6 @@ export default function AdminDashboard() {
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {activeTab === 'users' ? (
           <UserManagement />
-        ) : activeTab === 'weightings' ? (
-          <SectorWeightings />
         ) : (
           <div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">

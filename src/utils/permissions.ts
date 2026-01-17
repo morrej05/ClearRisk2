@@ -1,15 +1,15 @@
-export type UserRole = 'admin' | 'editor' | 'viewer';
+export type UserRole = 'super_admin' | 'org_admin' | 'surveyor';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Admin',
-  editor: 'Editor',
-  viewer: 'Viewer',
+  super_admin: 'Super Admin',
+  org_admin: 'Organization Admin',
+  surveyor: 'Surveyor',
 };
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  admin: 'Full access including user management, branding, and all survey operations',
-  editor: 'Can create, edit, and manage surveys and reports',
-  viewer: 'Read-only access to surveys and reports',
+  super_admin: 'Platform-wide access including sector weightings, recommendation library, and all system settings',
+  org_admin: 'Organization management including user management, branding, and all survey operations',
+  surveyor: 'Can create, edit, and manage surveys and reports',
 };
 
 export interface RolePermissions {
@@ -25,6 +25,10 @@ export interface RolePermissions {
   canManageUsers: boolean;
   canManageBranding: boolean;
   canAccessAdmin: boolean;
+  canAccessSuperAdmin: boolean;
+  canManageSectorWeightings: boolean;
+  canManageRecommendationLibrary: boolean;
+  canManagePlatformSettings: boolean;
   canGenerateAISummary: boolean;
   canExportReports: boolean;
 }
@@ -44,13 +48,17 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
       canManageUsers: false,
       canManageBranding: false,
       canAccessAdmin: false,
+      canAccessSuperAdmin: false,
+      canManageSectorWeightings: false,
+      canManageRecommendationLibrary: false,
+      canManagePlatformSettings: false,
       canGenerateAISummary: false,
       canExportReports: false,
     };
   }
 
   switch (role) {
-    case 'admin':
+    case 'super_admin':
       return {
         canViewSurveys: true,
         canCreateSurveys: true,
@@ -64,11 +72,15 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
         canManageUsers: true,
         canManageBranding: true,
         canAccessAdmin: true,
+        canAccessSuperAdmin: true,
+        canManageSectorWeightings: true,
+        canManageRecommendationLibrary: true,
+        canManagePlatformSettings: true,
         canGenerateAISummary: true,
         canExportReports: true,
       };
 
-    case 'editor':
+    case 'org_admin':
       return {
         canViewSurveys: true,
         canCreateSurveys: true,
@@ -79,28 +91,36 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
         canGenerateExternalLink: true,
         canEditSurveyText: true,
         canGeneratePortfolioSummary: true,
-        canManageUsers: false,
-        canManageBranding: false,
-        canAccessAdmin: false,
+        canManageUsers: true,
+        canManageBranding: true,
+        canAccessAdmin: true,
+        canAccessSuperAdmin: false,
+        canManageSectorWeightings: false,
+        canManageRecommendationLibrary: false,
+        canManagePlatformSettings: false,
         canGenerateAISummary: true,
         canExportReports: true,
       };
 
-    case 'viewer':
+    case 'surveyor':
       return {
         canViewSurveys: true,
-        canCreateSurveys: false,
-        canEditSurveys: false,
+        canCreateSurveys: true,
+        canEditSurveys: true,
         canDeleteSurveys: false,
         canIssueSurveys: false,
         canResurvey: false,
         canGenerateExternalLink: false,
-        canEditSurveyText: false,
+        canEditSurveyText: true,
         canGeneratePortfolioSummary: false,
         canManageUsers: false,
         canManageBranding: false,
         canAccessAdmin: false,
-        canGenerateAISummary: false,
+        canAccessSuperAdmin: false,
+        canManageSectorWeightings: false,
+        canManageRecommendationLibrary: false,
+        canManagePlatformSettings: false,
+        canGenerateAISummary: true,
         canExportReports: true,
       };
 

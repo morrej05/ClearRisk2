@@ -482,6 +482,26 @@ export default function Dashboard() {
                   Role: {userRole ? ROLE_LABELS[userRole as UserRole] : 'Loading...'}
                 </span>
               </div>
+              {permissions.canAccessSuperAdmin && (
+                <button
+                  onClick={() => navigate('/super-admin')}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors"
+                  title="Super Admin Settings"
+                >
+                  <Shield className="w-4 h-4" />
+                  Super Admin
+                </button>
+              )}
+              {permissions.canAccessAdmin && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+                  title="Admin Dashboard"
+                >
+                  <Shield className="w-4 h-4" />
+                  Admin
+                </button>
+              )}
               {permissions.canManageBranding && (
                 <button
                   onClick={() => setShowBrandingModal(true)}
@@ -490,16 +510,6 @@ export default function Dashboard() {
                 >
                   <Palette className="w-4 h-4" />
                   Branding
-                </button>
-              )}
-              {permissions.canManageUsers && (
-                <button
-                  onClick={() => navigate('/admin')}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
-                  title="User Management"
-                >
-                  <Users className="w-4 h-4" />
-                  Users
                 </button>
               )}
               <button

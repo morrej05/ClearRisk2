@@ -6,6 +6,7 @@ import { UserRole } from '../utils/permissions';
 interface AuthContextType {
   user: User | null;
   userRole: UserRole | null;
+  roleError: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -19,66 +20,49 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const ensureUserProfile = async (userId: string, userEmail: string): Promise<UserRole> => {
+  const fetchUserRole = async (userId: string, userEmail: string) => {
     try {
+      setRoleError(null);
+      console.log('[AuthContext] Fetching role for user:', userId, userEmail);
+
       const { data: profile, error: fetchError } = await supabase
         .from('user_profiles')
         .select('role')
         .eq('id', userId)
         .maybeSingle();
 
-      if (profile && !fetchError) {
-        return profile.role as UserRole;
+      console.log('[AuthContext] Profile fetch result:', { profile, error: fetchError });
+
+      if (fetchError) {
+        const errorMsg = `Database error: ${fetchError.message} (Code: ${fetchError.code})`;
+        console.error('[AuthContext] Role fetch error:', errorMsg, fetchError);
+        setRoleError(errorMsg);
+        setUserRole(null);
+        setLoading(false);
+        return;
       }
 
       if (!profile) {
-        console.warn('User profile not found, creating default profile for user:', userId);
-
-        const { data: newProfile, error: insertError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: userId,
-            email: userEmail,
-            role: 'surveyor'
-          })
-          .select('role')
-          .single();
-
-        if (newProfile && !insertError) {
-          console.log('Created new user profile with role:', newProfile.role);
-          return newProfile.role as UserRole;
-        } else {
-          console.error('Failed to create user profile:', insertError);
-          throw new Error('Failed to create user profile');
-        }
+        console.warn('[AuthContext] User profile not found for:', userId);
+        const errorMsg = 'User profile not found. Please contact support.';
+        setRoleError(errorMsg);
+        setUserRole(null);
+        setLoading(false);
+        return;
       }
 
-      throw new Error('Failed to fetch user profile');
-    } catch (err) {
-      console.error('Error in ensureUserProfile:', err);
-      throw err;
-    }
-  };
-
-  const fetchUserRole = async (userId: string, userEmail: string) => {
-    const timeoutId = setTimeout(() => {
-      console.error('Role fetch timeout after 5 seconds');
-      setUserRole('surveyor');
-      setLoading(false);
-    }, 5000);
-
-    try {
-      const role = await ensureUserProfile(userId, userEmail);
-      clearTimeout(timeoutId);
-      setUserRole(role);
+      console.log('[AuthContext] Successfully fetched role:', profile.role);
+      setUserRole(profile.role as UserRole);
+      setRoleError(null);
     } catch (error) {
-      clearTimeout(timeoutId);
-      console.error('Failed to fetch user role:', error);
-      setUserRole('surveyor');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error fetching role';
+      console.error('[AuthContext] Exception in fetchUserRole:', error);
+      setRoleError(errorMsg);
+      setUserRole(null);
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -91,7 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    console.log('[AuthContext] Initializing auth state...');
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AuthContext] Initial session:', session?.user?.email || 'No user');
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserRole(session.user.id, session.user.email || '');
@@ -100,14 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AuthContext] Auth state changed:', event, session?.user?.email || 'No user');
       (async () => {
         setUser(session?.user ?? null);
         if (session?.user) {
           setLoading(true);
           await fetchUserRole(session.user.id, session.user.email || '');
         } else {
+          console.log('[AuthContext] Clearing role state on sign out');
           setUserRole(null);
+          setRoleError(null);
           setLoading(false);
         }
       })();
@@ -144,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userRole, loading, signIn, signUp, signOut, resetPassword, refreshUserRole }}>
+    <AuthContext.Provider value={{ user, userRole, roleError, loading, signIn, signUp, signOut, resetPassword, refreshUserRole }}>
       {children}
     </AuthContext.Provider>
   );

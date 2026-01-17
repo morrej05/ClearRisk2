@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useClientBranding } from '../contexts/ClientBrandingContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users, X } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
 import NewSurveyModal from '../components/NewSurveyModal';
@@ -10,6 +10,7 @@ import RecommendationReport from '../components/RecommendationReport';
 import SurveyTextEditor from '../components/SurveyTextEditor';
 import TextReportModal from '../components/TextReportModal';
 import ClientBrandingModal from '../components/ClientBrandingModal';
+import RoleDebugWidget from '../components/RoleDebugWidget';
 import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 import { ROLE_LABELS, getRolePermissions, UserRole } from '../utils/permissions';
@@ -47,10 +48,12 @@ interface PortfolioMetrics {
 }
 
 export default function Dashboard() {
-  const { signOut, user, userRole } = useAuth();
+  const { signOut, user, userRole, roleError } = useAuth();
   const { branding: clientBranding, refreshBranding } = useClientBranding();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const permissions = getRolePermissions(userRole);
+  const showDebug = searchParams.get('debug') === 'true' || roleError !== null || userRole === 'super_admin';
   const [showNewSurvey, setShowNewSurvey] = useState(false);
   const [showTextEditor, setShowTextEditor] = useState(false);
   const [showNewSurveyModal, setShowNewSurveyModal] = useState(false);
@@ -478,8 +481,8 @@ export default function Dashboard() {
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-end">
                 <span className="text-sm text-slate-600">{user?.email}</span>
-                <span className="text-xs text-slate-500">
-                  Role: {userRole ? ROLE_LABELS[userRole as UserRole] : 'Loading...'}
+                <span className={`text-xs ${roleError ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
+                  Role: {userRole ? ROLE_LABELS[userRole as UserRole] : roleError ? 'Error' : 'Loading...'}
                 </span>
               </div>
               {permissions.canAccessSuperAdmin && (
@@ -525,6 +528,28 @@ export default function Dashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {roleError && (
+          <div className="mb-6 bg-red-50 border-2 border-red-300 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-red-900 mb-1">Role Loading Error</h3>
+                <p className="text-sm text-red-800 mb-2">{roleError}</p>
+                <p className="text-xs text-red-700">
+                  Please check the browser console (F12 → Console) for detailed error logs.
+                  If the issue persists, contact support or check the RLS policies.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDebug && (
+          <div className="mb-6">
+            <RoleDebugWidget />
+          </div>
+        )}
+
         {!showNewSurvey && !showTextEditor ? (
           <>
             <div className="flex items-center justify-between mb-6">

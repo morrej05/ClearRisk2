@@ -859,20 +859,22 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
           reviewerEmail: formDataFromDb.reviewerEmail || '',
           reportStatus: (data.report_status === 'Issue Ready' ? 'Issue Ready' : 'Draft') as 'Draft' | 'Issue Ready',
           industrySector: formDataFromDb.industrySector || '',
-          constructionScore: formDataFromDb.constructionScore || 0,
-          fireProtectionScore: formDataFromDb.fireProtectionScore || 0,
-          detectionScore: formDataFromDb.detectionScore || 0,
-          managementScore: formDataFromDb.managementScore || 0,
-          specialHazardsScore: formDataFromDb.specialHazardsScore || 0,
-          businessInterruptionScore: formDataFromDb.businessInterruptionScore || 0,
-          wConstruction: formDataFromDb.wConstruction || 0.25,
-          wProtection: formDataFromDb.wProtection || 0.25,
-          wDetection: formDataFromDb.wDetection || 0.15,
-          wManagement: formDataFromDb.wManagement || 0.15,
-          wHazards: formDataFromDb.wHazards || 0.10,
-          wBi: formDataFromDb.wBi || 0.10,
-          overallRiskScore: formDataFromDb.overallRiskScore || 0,
-          riskBand: formDataFromDb.riskBand || '',
+          sectionGrades: formDataFromDb.sectionGrades || {
+            survey_info: 3,
+            property_details: 3,
+            construction: 3,
+            occupancy: 3,
+            management: 3,
+            fire_protection: 3,
+            business_continuity: 3,
+            loss_expectancy: 3,
+            hazards: 3,
+            natural_hazards: 3,
+            recommendations: 3,
+            attachments: 3,
+          },
+          overallGrade: formDataFromDb.overallGrade || 3,
+          riskBand: formDataFromDb.riskBand || 'Medium',
         });
 
         if (formDataFromDb.hazards && Array.isArray(formDataFromDb.hazards)) {
@@ -3722,6 +3724,32 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 onChange={(value) => handleSectionGradeChange('natural_hazards', value)}
                 disabled={isIssued}
               />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg shadow-md border-2 border-slate-300 p-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-slate-600 mb-1">Overall Property Grade</h3>
+                <div className="flex items-baseline gap-3">
+                  <span className="text-5xl font-bold text-slate-900">
+                    {formData.overallGrade.toFixed(1)}
+                  </span>
+                  <span className="text-lg text-slate-600">/ 5.0</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Average of all section grades</p>
+              </div>
+              <div className="text-right">
+                <h3 className="text-sm font-medium text-slate-600 mb-2">Risk Band</h3>
+                <span className={`inline-block px-6 py-3 rounded-lg text-lg font-bold ${
+                  formData.riskBand === 'Critical' ? 'bg-red-100 text-red-800 border-2 border-red-300' :
+                  formData.riskBand === 'High' ? 'bg-orange-100 text-orange-800 border-2 border-orange-300' :
+                  formData.riskBand === 'Medium' ? 'bg-amber-100 text-amber-800 border-2 border-amber-300' :
+                  'bg-green-100 text-green-800 border-2 border-green-300'
+                }`}>
+                  {formData.riskBand}
+                </span>
+              </div>
             </div>
           </div>
 

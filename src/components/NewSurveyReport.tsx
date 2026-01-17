@@ -20,6 +20,7 @@ import { reevaluateAllTriggers } from '../utils/recommendationTriggers';
 import SectionGrade from './SectionGrade';
 import { INDUSTRY_SECTORS } from '../utils/industrySectors';
 import { migrateSurveyRecommendations } from '../utils/migrateRecommendations';
+import { canAccessSmartRecommendations } from '../utils/permissions';
 
 interface Hazard {
   id: string;
@@ -285,7 +286,7 @@ const generateReferenceNumber = (country: string): string => {
 };
 
 export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportProps) {
-  const { userRole } = useAuth();
+  const { userRole, userPlan } = useAuth();
 
   const [hazards, setHazards] = useState<Hazard[]>([
     { id: crypto.randomUUID(), title: '', description: '', rating: '' }
@@ -3706,7 +3707,23 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
               Section {getSectionNumber(11)}: Recommendations
             </h2>
 
-            {surveyId ? (
+            {!canAccessSmartRecommendations(userPlan) ? (
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-6 text-center">
+                <Lock className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                  Smart Recommendations requires Pro
+                </h3>
+                <p className="text-slate-600 mb-4">
+                  Upgrade to Pro or Pro FRA to access AI-powered Smart Recommendations with automated risk assessments.
+                </p>
+                <button
+                  onClick={() => window.location.href = '/upgrade'}
+                  className="px-6 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                  View Plans
+                </button>
+              </div>
+            ) : surveyId ? (
               <SmartRecommendationsTable surveyId={surveyId} readonly={isIssued} />
             ) : (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

@@ -11,6 +11,7 @@ import SurveyTextEditor from '../components/SurveyTextEditor';
 import TextReportModal from '../components/TextReportModal';
 import ClientBrandingModal from '../components/ClientBrandingModal';
 import RoleDebugWidget from '../components/RoleDebugWidget';
+import TrialBanner from '../components/TrialBanner';
 import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 import { ROLE_LABELS, getRolePermissions, UserRole } from '../utils/permissions';
@@ -48,7 +49,7 @@ interface PortfolioMetrics {
 }
 
 export default function Dashboard() {
-  const { signOut, user, userRole, roleError } = useAuth();
+  const { signOut, user, userRole, userPlan, roleError } = useAuth();
   const { branding: clientBranding, refreshBranding } = useClientBranding();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -457,6 +458,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {userPlan === 'trial' && <TrialBanner />}
+
       {showNewSurveyModal && (
         <NewSurveyModal
           onClose={() => setShowNewSurveyModal(false)}

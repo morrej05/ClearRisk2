@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { UserRole } from '../utils/permissions';
+import { UserRole, SubscriptionPlan } from '../utils/permissions';
 
 interface AuthContextType {
   user: User | null;
   userRole: UserRole | null;
+  userPlan: SubscriptionPlan | null;
   roleError: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -20,17 +21,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [userPlan, setUserPlan] = useState<SubscriptionPlan | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserRole = async (userId: string, userEmail: string) => {
     try {
       setRoleError(null);
-      console.log('[AuthContext] Fetching role for user:', userId, userEmail);
+      console.log('[AuthContext] Fetching role and plan for user:', userId, userEmail);
 
       const { data: profile, error: fetchError } = await supabase
         .from('user_profiles')
-        .select('role')
+        .select('role, plan')
         .eq('id', userId)
         .maybeSingle();
 
@@ -41,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[AuthContext] Role fetch error:', errorMsg, fetchError);
         setRoleError(errorMsg);
         setUserRole(null);
+        setUserPlan(null);
         setLoading(false);
         return;
       }
@@ -50,18 +53,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const errorMsg = 'User profile not found. Please contact support.';
         setRoleError(errorMsg);
         setUserRole(null);
+        setUserPlan(null);
         setLoading(false);
         return;
       }
 
-      console.log('[AuthContext] Successfully fetched role:', profile.role);
+      console.log('[AuthContext] Successfully fetched role and plan:', profile.role, profile.plan);
       setUserRole(profile.role as UserRole);
+      setUserPlan(profile.plan as SubscriptionPlan);
       setRoleError(null);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error fetching role';
       console.error('[AuthContext] Exception in fetchUserRole:', error);
       setRoleError(errorMsg);
       setUserRole(null);
+      setUserPlan(null);
     } finally {
       setLoading(false);
     }
@@ -95,8 +101,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(true);
           await fetchUserRole(session.user.id, session.user.email || '');
         } else {
-          console.log('[AuthContext] Clearing role state on sign out');
+          console.log('[AuthContext] Clearing role and plan state on sign out');
           setUserRole(null);
+          setUserPlan(null);
           setRoleError(null);
           setLoading(false);
         }
@@ -134,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userRole, roleError, loading, signIn, signUp, signOut, resetPassword, refreshUserRole }}>
+    <AuthContext.Provider value={{ user, userRole, userPlan, roleError, loading, signIn, signUp, signOut, resetPassword, refreshUserRole }}>
       {children}
     </AuthContext.Provider>
   );

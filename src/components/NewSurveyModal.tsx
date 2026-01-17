@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { canAccessFRAModule } from '../utils/permissions';
 
 interface NewSurveyModalProps {
   onClose: () => void;
@@ -9,7 +10,7 @@ interface NewSurveyModalProps {
 }
 
 export default function NewSurveyModal({ onClose, onSurveyCreated }: NewSurveyModalProps) {
-  const { user } = useAuth();
+  const { user, userPlan } = useAuth();
   const [frameworkType, setFrameworkType] = useState<'fire_property'>('fire_property');
   const [surveyType, setSurveyType] = useState<'Full' | 'Abridged'>('Full');
   const [companyName, setCompanyName] = useState('');
@@ -86,11 +87,16 @@ export default function NewSurveyModal({ onClose, onSurveyCreated }: NewSurveyMo
               required
             >
               <option value="fire_property">Fire Property Risk Survey</option>
-              <option value="fire_risk_assessment" disabled>Fire Risk Assessment (FRA) — Coming Soon</option>
+              <option value="fire_risk_assessment" disabled={!canAccessFRAModule(userPlan)}>
+                Fire Risk Assessment (FRA){!canAccessFRAModule(userPlan) ? ' — Pro FRA Plan Required' : ''}
+              </option>
               <option value="atex" disabled>ATEX / DSEAR — Coming Soon</option>
             </select>
             <p className="text-xs text-slate-500 mt-1">
               Select the risk assessment framework for this survey
+              {!canAccessFRAModule(userPlan) && (
+                <span className="text-amber-600 font-medium"> • FRA requires Pro FRA plan</span>
+              )}
             </p>
           </div>
 

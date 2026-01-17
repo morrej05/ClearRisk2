@@ -6,6 +6,7 @@ import SignIn from './pages/SignIn';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import UpgradePage from './pages/UpgradePage';
 import ExternalSurvey from './pages/ExternalSurvey';
 import ReportPreviewPage from './pages/ReportPreviewPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -28,6 +29,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/upgrade"
+            element={
+              <ProtectedRoute>
+                <UpgradePage />
               </ProtectedRoute>
             }
           />

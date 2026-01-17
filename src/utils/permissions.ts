@@ -1,5 +1,7 @@
 export type UserRole = 'super_admin' | 'org_admin' | 'surveyor';
 
+export type SubscriptionPlan = 'trial' | 'pro' | 'pro_fra';
+
 export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: 'Super Admin',
   org_admin: 'Organization Admin',
@@ -10,6 +12,18 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   super_admin: 'Platform-wide access including sector weightings, recommendation library, and all system settings',
   org_admin: 'Organization management including user management, branding, and all survey operations',
   surveyor: 'Can create, edit, and manage surveys and reports',
+};
+
+export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
+  trial: 'Trial',
+  pro: 'Pro',
+  pro_fra: 'Pro FRA',
+};
+
+export const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
+  trial: 'Basic survey editing and report export',
+  pro: 'Includes Smart Recommendations and advanced analytics',
+  pro_fra: 'Includes everything in Pro plus FRA (Fire Risk Assessment) module',
 };
 
 export interface RolePermissions {
@@ -142,4 +156,62 @@ export const canPerformAction = (
   action: keyof RolePermissions
 ): boolean => {
   return hasPermission(role, action);
+};
+
+export interface PlanFeatures {
+  hasSmartRecommendations: boolean;
+  hasFRAModule: boolean;
+  hasAdvancedAnalytics: boolean;
+}
+
+export const getPlanFeatures = (plan: SubscriptionPlan | null): PlanFeatures => {
+  if (!plan) {
+    return {
+      hasSmartRecommendations: false,
+      hasFRAModule: false,
+      hasAdvancedAnalytics: false,
+    };
+  }
+
+  switch (plan) {
+    case 'trial':
+      return {
+        hasSmartRecommendations: false,
+        hasFRAModule: false,
+        hasAdvancedAnalytics: false,
+      };
+
+    case 'pro':
+      return {
+        hasSmartRecommendations: true,
+        hasFRAModule: false,
+        hasAdvancedAnalytics: true,
+      };
+
+    case 'pro_fra':
+      return {
+        hasSmartRecommendations: true,
+        hasFRAModule: true,
+        hasAdvancedAnalytics: true,
+      };
+
+    default:
+      return getPlanFeatures(null);
+  }
+};
+
+export const hasPlanFeature = (
+  plan: SubscriptionPlan | null,
+  feature: keyof PlanFeatures
+): boolean => {
+  const features = getPlanFeatures(plan);
+  return features[feature];
+};
+
+export const canAccessSmartRecommendations = (plan: SubscriptionPlan | null): boolean => {
+  return hasPlanFeature(plan, 'hasSmartRecommendations');
+};
+
+export const canAccessFRAModule = (plan: SubscriptionPlan | null): boolean => {
+  return hasPlanFeature(plan, 'hasFRAModule');
 };

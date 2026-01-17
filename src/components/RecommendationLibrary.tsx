@@ -56,8 +56,7 @@ export default function RecommendationLibrary() {
       const { data, error } = await supabase
         .from('recommendation_templates')
         .select('*')
-        .order('category', { ascending: true })
-        .order('code', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setTemplates(data || []);
@@ -189,7 +188,7 @@ export default function RecommendationLibrary() {
       template.hazard.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (template.code && template.code.toLowerCase().includes(searchQuery.toLowerCase()));
+      template.category.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory = categoryFilter === 'all' || template.category === categoryFilter;
 

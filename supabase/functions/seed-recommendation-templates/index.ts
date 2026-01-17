@@ -74,29 +74,55 @@ Deno.serve(async (req: Request) => {
 
     for (const row of csvData) {
       try {
+        // Validate and coerce types
+        const validatedRow = {
+          hazard: String(row.hazard || '').trim(),
+          description: String(row.description || '').trim(),
+          action: String(row.action || '').trim(),
+          client_response_prompt: String(row.client_response_prompt || '').trim(),
+          category: String(row.category || '').trim(),
+          default_priority: parseInt(String(row.default_priority)) || 3,
+          is_active: row.is_active === true || String(row.is_active).toLowerCase() === 'true',
+          scope: String(row.scope || 'global').trim()
+        };
+
+        // Validation
+        if (!validatedRow.hazard) {
+          errors.push(`Skipped row: missing hazard`);
+          skippedCount++;
+          continue;
+        }
+
+        const validCategories = ['Construction', 'Management Systems', 'Fire Protection & Detection', 'Special Hazards', 'Business Continuity'];
+        if (!validCategories.includes(validatedRow.category)) {
+          errors.push(`Invalid category for "${validatedRow.hazard}": ${validatedRow.category}`);
+          skippedCount++;
+          continue;
+        }
+
         const { data: existing } = await supabase
           .from('recommendation_templates')
           .select('id')
-          .eq('scope', row.scope)
-          .eq('hazard', row.hazard)
-          .ilike('description', `${row.description.substring(0, 100)}%`)
+          .eq('scope', validatedRow.scope)
+          .eq('hazard', validatedRow.hazard)
+          .ilike('description', `${validatedRow.description.substring(0, 100)}%`)
           .maybeSingle();
 
         if (existing) {
           const { error } = await supabase
             .from('recommendation_templates')
             .update({
-              description: row.description,
-              action: row.action,
-              client_response_prompt: row.client_response_prompt,
-              category: row.category,
-              default_priority: row.default_priority,
-              is_active: row.is_active
+              description: validatedRow.description,
+              action: validatedRow.action,
+              client_response_prompt: validatedRow.client_response_prompt,
+              category: validatedRow.category,
+              default_priority: validatedRow.default_priority,
+              is_active: validatedRow.is_active
             })
             .eq('id', existing.id);
 
           if (error) {
-            errors.push(`Update failed for "${row.hazard}": ${error.message}`);
+            errors.push(`Update failed for "${validatedRow.hazard}": ${error.message}`);
             skippedCount++;
           } else {
             updatedCount++;
@@ -104,19 +130,10 @@ Deno.serve(async (req: Request) => {
         } else {
           const { error } = await supabase
             .from('recommendation_templates')
-            .insert([{
-              hazard: row.hazard,
-              description: row.description,
-              action: row.action,
-              client_response_prompt: row.client_response_prompt,
-              category: row.category,
-              default_priority: row.default_priority,
-              is_active: row.is_active,
-              scope: row.scope
-            }]);
+            .insert([validatedRow]);
 
           if (error) {
-            errors.push(`Insert failed for "${row.hazard}": ${error.message}`);
+            errors.push(`Insert failed for "${validatedRow.hazard}": ${error.message}`);
             skippedCount++;
           } else {
             insertedCount++;
@@ -128,6 +145,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // DB Sanity Check - verify data actually made it
+    const { count: totalCount } = await supabase
+      .from('recommendation_templates')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: globalCount } = await supabase
+      .from('recommendation_templates')
+      .select('*', { count: 'exact', head: true })
+      .eq('scope', 'global');
+
+    const { count: activeCount } = await supabase
+      .from('recommendation_templates')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -136,6 +168,11 @@ Deno.serve(async (req: Request) => {
           inserted: insertedCount,
           updated: updatedCount,
           skipped: skippedCount
+        },
+        dbCountAfter: {
+          total: totalCount || 0,
+          global: globalCount || 0,
+          active: activeCount || 0
         },
         errors: errors.length > 0 ? errors : undefined
       }),

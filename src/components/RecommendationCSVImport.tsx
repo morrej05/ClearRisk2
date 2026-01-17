@@ -10,13 +10,27 @@ interface ImportResult {
     updated: number;
     skipped: number;
   };
+  dbCountAfter?: {
+    total: number;
+    global: number;
+    active: number;
+  };
   errors?: string[];
+}
+
+interface SanityCheckResult {
+  total: number;
+  global: number;
+  active: number;
+  recentTemplates: any[];
 }
 
 export default function RecommendationCSVImport() {
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sanityCheck, setSanityCheck] = useState<SanityCheckResult | null>(null);
+  const [isCheckingDB, setIsCheckingDB] = useState(false);
 
   const parseCSV = (csvText: string) => {
     const lines = csvText.split('\n');
@@ -47,12 +61,14 @@ export default function RecommendationCSVImport() {
       if (values.length === headers.length) {
         const row: any = {};
         headers.forEach((header, index) => {
-          let value = values[index].replace(/^"|"$/g, '');
+          let value = values[index].replace(/^"|"$/g, '').trim();
 
           if (header === 'default_priority') {
             row[header] = parseInt(value) || 3;
           } else if (header === 'is_active') {
-            row[header] = value.toLowerCase() === 'true';
+            // Robust boolean parsing
+            const lowerValue = value.toLowerCase();
+            row[header] = lowerValue === 'true' || lowerValue === '1' || lowerValue === 'yes';
           } else {
             row[header] = value;
           }
@@ -62,6 +78,46 @@ export default function RecommendationCSVImport() {
     }
 
     return data;
+  };
+
+  const handleSanityCheck = async () => {
+    setIsCheckingDB(true);
+    setSanityCheck(null);
+    setError(null);
+
+    try {
+      const { count: totalCount } = await supabase
+        .from('recommendation_templates')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: globalCount } = await supabase
+        .from('recommendation_templates')
+        .select('*', { count: 'exact', head: true })
+        .eq('scope', 'global');
+
+      const { count: activeCount } = await supabase
+        .from('recommendation_templates')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      const { data: recentTemplates } = await supabase
+        .from('recommendation_templates')
+        .select('id, hazard, category, scope, is_active, created_at')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setSanityCheck({
+        total: totalCount || 0,
+        global: globalCount || 0,
+        active: activeCount || 0,
+        recentTemplates: recentTemplates || []
+      });
+    } catch (err) {
+      console.error('Sanity check error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to check database');
+    } finally {
+      setIsCheckingDB(false);
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,10 +177,10 @@ export default function RecommendationCSVImport() {
         </p>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 flex gap-4">
         <label
           htmlFor="csv-upload"
-          className={`flex items-center justify-center gap-2 px-6 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
             isImporting
               ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
               : 'border-blue-300 hover:border-blue-400 hover:bg-blue-50'
@@ -143,6 +199,14 @@ export default function RecommendationCSVImport() {
           disabled={isImporting}
           className="hidden"
         />
+
+        <button
+          onClick={handleSanityCheck}
+          disabled={isCheckingDB || isImporting}
+          className="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed font-medium"
+        >
+          {isCheckingDB ? 'Checking...' : 'DB Sanity Check'}
+        </button>
       </div>
 
       {error && (
@@ -152,6 +216,47 @@ export default function RecommendationCSVImport() {
             <p className="font-semibold text-red-900">Import Error</p>
             <p className="text-sm text-red-700">{error}</p>
           </div>
+        </div>
+      )}
+
+      {sanityCheck && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start gap-2 mb-3">
+            <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-blue-900">Database Status</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="bg-white p-3 rounded border border-blue-200">
+              <p className="text-2xl font-bold text-gray-900">{sanityCheck.total}</p>
+              <p className="text-sm text-gray-600">Total Templates</p>
+            </div>
+            <div className="bg-white p-3 rounded border border-blue-200">
+              <p className="text-2xl font-bold text-blue-600">{sanityCheck.global}</p>
+              <p className="text-sm text-gray-600">Global Scope</p>
+            </div>
+            <div className="bg-white p-3 rounded border border-blue-200">
+              <p className="text-2xl font-bold text-green-600">{sanityCheck.active}</p>
+              <p className="text-sm text-gray-600">Active</p>
+            </div>
+          </div>
+
+          {sanityCheck.recentTemplates.length > 0 && (
+            <div className="mt-4 p-3 bg-white border border-blue-200 rounded">
+              <p className="font-semibold text-sm text-blue-900 mb-2">Recent Templates (Last 10):</p>
+              <div className="space-y-1 text-sm text-gray-700 max-h-40 overflow-y-auto">
+                {sanityCheck.recentTemplates.map((template) => (
+                  <div key={template.id} className="flex items-center gap-2 py-1 border-b border-gray-100 last:border-0">
+                    <span className={`w-2 h-2 rounded-full ${template.is_active ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                    <span className="font-medium">{template.hazard}</span>
+                    <span className="text-xs text-gray-500">({template.category})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -182,6 +287,26 @@ export default function RecommendationCSVImport() {
               <p className="text-sm text-gray-600">Skipped</p>
             </div>
           </div>
+
+          {result.dbCountAfter && (
+            <div className="mt-4 p-3 bg-white border border-green-200 rounded">
+              <p className="font-semibold text-sm text-green-900 mb-2">Database Verification:</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <p className="text-lg font-bold text-gray-900">{result.dbCountAfter.total}</p>
+                  <p className="text-xs text-gray-600">Total in DB</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-blue-600">{result.dbCountAfter.global}</p>
+                  <p className="text-xs text-gray-600">Global Scope</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-green-600">{result.dbCountAfter.active}</p>
+                  <p className="text-xs text-gray-600">Active</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {result.errors && result.errors.length > 0 && (
             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">

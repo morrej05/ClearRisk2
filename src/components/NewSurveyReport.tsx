@@ -15,6 +15,7 @@ import RatingRadio from './RatingRadio';
 import { getRecommendationForRating, shouldGenerateRecommendation } from '../utils/recommendationTemplates';
 import { ensureReferenceNumbers, getSurveyYear } from '../utils/recommendationReferenceNumber';
 import { handleLegacyTrigger, shouldTriggerRecommendation } from '../utils/legacyTriggers';
+import { reevaluateAllTriggers } from '../utils/recommendationTriggers';
 import SectionGrade from './SectionGrade';
 import { INDUSTRY_SECTORS } from '../utils/industrySectors';
 import { migrateSurveyRecommendations } from '../utils/migrateRecommendations';
@@ -1521,6 +1522,9 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
 
         if (error) throw error;
 
+        // Evaluate triggers for auto-generated recommendations
+        await reevaluateAllTriggers(currentSurveyId, formData);
+
         const now = new Date();
         const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         setLastSaved(timeString);
@@ -1541,6 +1545,9 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
 
         if (data) {
           setCurrentSurveyId(data.id);
+
+          // Evaluate triggers for auto-generated recommendations
+          await reevaluateAllTriggers(data.id, formData);
         }
 
         const now = new Date();

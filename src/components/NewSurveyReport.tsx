@@ -9,12 +9,14 @@ import ProgressBar from './ProgressBar';
 import StickySaveButton from './StickySaveButton';
 import DraftReportModal from './DraftReportModal';
 import RecommendationLibraryModal from './RecommendationLibraryModal';
+import SmartRecommendationsTable from './SmartRecommendationsTable';
 import { calculateOverallGrade, getRiskBandFromGrade, SectionGrades, getSectorWeightsFromDB, fetchSectorWeightings, SectorWeighting } from '../utils/riskScoring';
 import RatingRadio from './RatingRadio';
 import { getRecommendationForRating, shouldGenerateRecommendation } from '../utils/recommendationTemplates';
 import { ensureReferenceNumbers, getSurveyYear } from '../utils/recommendationReferenceNumber';
 import SectionGrade from './SectionGrade';
 import { INDUSTRY_SECTORS } from '../utils/industrySectors';
+import { migrateSurveyRecommendations } from '../utils/migrateRecommendations';
 
 interface Hazard {
   id: string;
@@ -293,6 +295,8 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
   ]);
 
   const [showLibraryModal, setShowLibraryModal] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationMessage, setMigrationMessage] = useState<string | null>(null);
 
   const [sumsInsured, setSumsInsured] = useState<SumsInsuredRow[]>([
     { id: crypto.randomUUID(), item: 'Buildings + Improvements', pd_value: '' },
@@ -1010,6 +1014,33 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
       }
       return r;
     }));
+  };
+
+  const handleMigrateRecommendations = async () => {
+    if (!surveyId) return;
+
+    setIsMigrating(true);
+    setMigrationMessage(null);
+
+    try {
+      const result = await migrateSurveyRecommendations(surveyId);
+
+      if (result.success) {
+        if (result.migratedCount > 0) {
+          setMigrationMessage(`Successfully migrated ${result.migratedCount} recommendation(s)`);
+          window.location.reload();
+        } else {
+          setMigrationMessage(result.error || 'No recommendations to migrate');
+        }
+      } else {
+        setMigrationMessage(`Migration failed: ${result.error}`);
+      }
+    } catch (err: any) {
+      setMigrationMessage(`Migration error: ${err.message}`);
+    } finally {
+      setIsMigrating(false);
+      setTimeout(() => setMigrationMessage(null), 5000);
+    }
   };
 
   const handleRecommendationImageUpload = async (commentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3711,6 +3742,55 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
             <h2 className="text-2xl font-semibold text-slate-900 mb-6 pb-3 border-b border-slate-200">
               Section {getSectionNumber(11)}: Recommendations
             </h2>
+
+            {surveyId ? (
+              <SmartRecommendationsTable surveyId={surveyId} readonly={isIssued} />
+            ) : (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  Save the survey first to manage recommendations using the smart table.
+                </p>
+              </div>
+            )}
+
+            {overallComments.length > 0 && overallComments.some(c => c.hazard || c.description) && (
+            <div className="mt-8 pt-8 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Legacy Recommendations</h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    These are old-style recommendations. Click migrate to move them to the new system.
+                  </p>
+                </div>
+                {surveyId && !isIssued && (
+                  <button
+                    onClick={handleMigrateRecommendations}
+                    disabled={isMigrating}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {isMigrating ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Migrating...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowLeft className="w-4 h-4 transform rotate-90" />
+                        Migrate to Smart Table
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              {migrationMessage && (
+                <div className={`mb-4 p-3 rounded-lg ${
+                  migrationMessage.includes('Success') || migrationMessage.includes('migrated')
+                    ? 'bg-green-50 border border-green-200 text-green-800'
+                    : 'bg-blue-50 border border-blue-200 text-blue-800'
+                }`}>
+                  <p className="text-sm">{migrationMessage}</p>
+                </div>
+              )}
             <div className="space-y-6">
               {overallComments.map((comment, index) => {
                 const year = new Date().getFullYear();
@@ -3971,6 +4051,8 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 </label>
               </div>
             </div>
+            </div>
+            )}
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">

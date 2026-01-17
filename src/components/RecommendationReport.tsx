@@ -68,46 +68,83 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
 
       setSurvey(data);
 
-      const overallComments = data.form_data?.overall_comments || data.form_data?.overallComments || [];
+      const { data: surveyRecommendations, error: recError } = await supabase
+        .from('survey_recommendations')
+        .select('*')
+        .eq('survey_id', surveyId)
+        .eq('include_in_report', true)
+        .order('sort_index', { ascending: true });
+
+      if (recError) {
+        console.error('Error fetching recommendations:', recError);
+      }
+
       const surveyYear = getSurveyYear(data.survey_date, data.issue_date);
 
-      const enrichedRecommendations = overallComments.map((rec: any) => {
-        let autoPriority: 'Critical' | 'High' | 'Medium' | 'Low' | undefined;
-
-        if (rec.driver_dimension) {
-          const dimensionToGradeKey: Record<string, string> = {
-            construction: 'construction',
-            fire_protection: 'fire_protection',
-            detection: 'fire_protection',
-            management: 'management',
-            special_hazards: 'hazards',
-            business_interruption: 'business_continuity',
-            natural_hazards: 'natural_hazards',
+      if (surveyRecommendations && surveyRecommendations.length > 0) {
+        const mappedRecommendations = surveyRecommendations.map((rec: any) => {
+          const priorityMap: Record<number, 'Critical' | 'High' | 'Medium' | 'Low'> = {
+            5: 'Critical',
+            4: 'High',
+            3: 'Medium',
+            2: 'Low',
+            1: 'Low'
           };
 
-          const gradeKey = dimensionToGradeKey[rec.driver_dimension];
-          if (gradeKey && data.form_data.sectionGrades) {
-            const grade = data.form_data.sectionGrades[gradeKey];
-            if (grade !== undefined && grade > 0) {
-              if (grade === 1) autoPriority = 'Critical';
-              else if (grade === 2) autoPriority = 'High';
-              else if (grade === 3) autoPriority = 'Medium';
-              else autoPriority = 'Low';
+          return {
+            id: rec.id,
+            hazard: rec.title_final,
+            description: rec.body_final,
+            client_response: '',
+            status: rec.status,
+            priority: priorityMap[rec.priority] || 'Medium',
+            updated_at: rec.updated_at,
+          };
+        });
+
+        const recsWithRefNumbers = ensureReferenceNumbers(mappedRecommendations, surveyYear);
+        setRecommendations(recsWithRefNumbers);
+      } else {
+        const overallComments = data.form_data?.overall_comments || data.form_data?.overallComments || [];
+
+        const enrichedRecommendations = overallComments.map((rec: any) => {
+          let autoPriority: 'Critical' | 'High' | 'Medium' | 'Low' | undefined;
+
+          if (rec.driver_dimension) {
+            const dimensionToGradeKey: Record<string, string> = {
+              construction: 'construction',
+              fire_protection: 'fire_protection',
+              detection: 'fire_protection',
+              management: 'management',
+              special_hazards: 'hazards',
+              business_interruption: 'business_continuity',
+              natural_hazards: 'natural_hazards',
+            };
+
+            const gradeKey = dimensionToGradeKey[rec.driver_dimension];
+            if (gradeKey && data.form_data.sectionGrades) {
+              const grade = data.form_data.sectionGrades[gradeKey];
+              if (grade !== undefined && grade > 0) {
+                if (grade === 1) autoPriority = 'Critical';
+                else if (grade === 2) autoPriority = 'High';
+                else if (grade === 3) autoPriority = 'Medium';
+                else autoPriority = 'Low';
+              }
             }
           }
-        }
 
-        const effectivePriority = rec.priority_override || autoPriority;
+          const effectivePriority = rec.priority_override || autoPriority;
 
-        return {
-          ...rec,
-          priority: effectivePriority,
-          autoPriority,
-        };
-      });
+          return {
+            ...rec,
+            priority: effectivePriority,
+            autoPriority,
+          };
+        });
 
-      const recsWithRefNumbers = ensureReferenceNumbers(enrichedRecommendations, surveyYear);
-      setRecommendations(recsWithRefNumbers);
+        const recsWithRefNumbers = ensureReferenceNumbers(enrichedRecommendations, surveyYear);
+        setRecommendations(recsWithRefNumbers);
+      }
     } catch (error) {
       console.error('Error fetching survey:', error);
       alert('Failed to load survey data.');

@@ -5,6 +5,7 @@ import { LogOut, ArrowLeft, Sliders, BookOpen, CreditCard, Users } from 'lucide-
 import SectorWeightings from '../components/SectorWeightings';
 import UserRoleManagement from '../components/UserRoleManagement';
 import RecommendationLibrary from '../components/RecommendationLibrary';
+import RecommendationCSVImport from '../components/RecommendationCSVImport';
 
 type SuperAdminView = 'sector-weightings' | 'user-management' | 'recommendation-library' | 'pricing-plans';
 
@@ -127,8 +128,11 @@ export default function SuperAdminDashboard() {
             {activeView === 'user-management' && <UserRoleManagement />}
 
             {activeView === 'recommendation-library' && (
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
-                <RecommendationLibrary />
+              <div className="space-y-6">
+                <RecommendationCSVImport />
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+                  <RecommendationLibrary />
+                </div>
               </div>
             )}
 

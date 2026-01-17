@@ -12,6 +12,7 @@ import { getSectorWeights, calculateOverallRiskScore, getRiskBand } from '../uti
 import RatingRadio from './RatingRadio';
 import RiskScoreCard from './RiskScoreCard';
 import { getRecommendationForRating, shouldGenerateRecommendation } from '../utils/recommendationTemplates';
+import { ensureReferenceNumbers, getSurveyYear } from '../utils/recommendationReferenceNumber';
 
 interface Hazard {
   id: string;
@@ -1514,12 +1515,16 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
         formData.country
       ].filter(Boolean).join(', ');
 
+      const surveyYear = getSurveyYear(formData.surveyDate, formData.issueDate);
+      const commentsWithRefNumbers = ensureReferenceNumbers(overallComments, surveyYear);
+      setOverallComments(commentsWithRefNumbers);
+
       const surveyData = {
         property_name: formData.propertyName,
         property_address: combinedAddress,
         company_name: formData.companyName,
         survey_date: formData.surveyDate,
-        form_data: { ...formData, hazards, overall_comments: overallComments, natural_hazards: naturalHazards, uploadedFiles },
+        form_data: { ...formData, hazards, overall_comments: commentsWithRefNumbers, natural_hazards: naturalHazards, uploadedFiles },
         latitude: latitude,
         longitude: longitude,
         user_id: user.id,
@@ -3849,21 +3854,29 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                             }
 
                             return (
-                              <select
-                                id={`priority-${comment.id}`}
-                                value={comment.priority_override || ''}
-                                onChange={(e) => updateOverallComment(comment.id, 'priority_override', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all bg-white"
-                              >
-                                <option value="">Auto ({autoPriority || 'None'})</option>
-                                <option value="Critical">Override: Critical</option>
-                                <option value="High">Override: High</option>
-                                <option value="Medium">Override: Medium</option>
-                                <option value="Low">Override: Low</option>
-                              </select>
+                              <>
+                                <select
+                                  id={`priority-${comment.id}`}
+                                  value={comment.priority_override || ''}
+                                  onChange={(e) => updateOverallComment(comment.id, 'priority_override', e.target.value)}
+                                  disabled={isIssued}
+                                  className={`w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all ${isIssued ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'}`}
+                                >
+                                  <option value="">Auto ({autoPriority || 'None'})</option>
+                                  <option value="Critical">Override: Critical</option>
+                                  <option value="High">Override: High</option>
+                                  <option value="Medium">Override: Medium</option>
+                                  <option value="Low">Override: Low</option>
+                                </select>
+                                {isIssued && (
+                                  <p className="text-xs text-amber-600 mt-1 font-medium">Issued report – editing locked</p>
+                                )}
+                              </>
                             );
                           })()}
-                          <p className="text-xs text-slate-500 mt-1">Auto-calculated from risk score, or manually override</p>
+                          {!isIssued && (
+                            <p className="text-xs text-slate-500 mt-1">Auto-calculated from risk score, or manually override</p>
+                          )}
                         </div>
                       </div>
 

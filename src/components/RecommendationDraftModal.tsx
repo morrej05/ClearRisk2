@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { AlertCircle, CheckCircle2, Clock, XCircle, Sparkles, Building2, X, Download, Loader2 } from 'lucide-react';
 import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/surveySummaryApi';
+import { ensureReferenceNumbers, getSurveyYear, sortByReferenceNumber } from '../utils/recommendationReferenceNumber';
 
 interface Recommendation {
   id: string;
@@ -11,8 +12,10 @@ interface Recommendation {
   client_response: string;
   status: string;
   priority?: 'Critical' | 'High' | 'Medium' | 'Low';
+  priority_override?: 'Critical' | 'High' | 'Medium' | 'Low';
   driver_dimension?: string;
   updated_at?: string;
+  ref_number?: string;
 }
 
 interface RecommendationDraftModalProps {
@@ -66,6 +69,8 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
       setSurvey(data);
 
       const overallComments = data.form_data?.overall_comments || data.form_data?.overallComments || [];
+      const surveyYear = getSurveyYear(data.survey_date, data.issue_date);
+
       const enrichedRecommendations = overallComments.map((rec: any) => {
         let autoPriority: 'Critical' | 'High' | 'Medium' | 'Low' | undefined;
 
@@ -97,7 +102,8 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
         };
       });
 
-      setRecommendations(enrichedRecommendations);
+      const recsWithRefNumbers = ensureReferenceNumbers(enrichedRecommendations, surveyYear);
+      setRecommendations(recsWithRefNumbers);
     } catch (error) {
       console.error('Error fetching survey:', error);
       alert('Failed to load survey data.');
@@ -204,11 +210,11 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
   };
 
   const groupedRecommendations = {
-    Critical: recommendations.filter(r => r.priority === 'Critical'),
-    High: recommendations.filter(r => r.priority === 'High'),
-    Medium: recommendations.filter(r => r.priority === 'Medium'),
-    Low: recommendations.filter(r => r.priority === 'Low'),
-    Unassigned: recommendations.filter(r => !r.priority),
+    Critical: sortByReferenceNumber(recommendations.filter(r => r.priority === 'Critical')),
+    High: sortByReferenceNumber(recommendations.filter(r => r.priority === 'High')),
+    Medium: sortByReferenceNumber(recommendations.filter(r => r.priority === 'Medium')),
+    Low: sortByReferenceNumber(recommendations.filter(r => r.priority === 'Low')),
+    Unassigned: sortByReferenceNumber(recommendations.filter(r => !r.priority)),
   };
 
   const statusSummary = recommendations.reduce((acc, rec) => {
@@ -480,14 +486,12 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
                           </h4>
 
                           <div className="space-y-4">
-                            {recs.map((rec, index) => {
-                              const refNumber = `R${String(index + 1).padStart(2, '0')}`;
-
+                            {recs.map((rec) => {
                               return (
                                 <div key={rec.id} className="border border-slate-200 rounded-lg p-6 bg-white hover:shadow-md transition-shadow">
                                   <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-3">
-                                      <span className="text-lg font-bold text-slate-900">{refNumber}</span>
+                                      <span className="text-lg font-bold text-slate-900">{rec.ref_number || '—'}</span>
                                       <span className={`px-3 py-1 text-xs font-semibold rounded-lg border ${getPriorityColor(rec.priority)}`}>
                                         {rec.priority}
                                       </span>
@@ -547,14 +551,12 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
                         </h4>
 
                         <div className="space-y-4">
-                          {groupedRecommendations.Unassigned.map((rec, index) => {
-                            const refNumber = `R${String(index + 1).padStart(2, '0')}`;
-
+                          {groupedRecommendations.Unassigned.map((rec) => {
                             return (
                               <div key={rec.id} className="border border-slate-200 rounded-lg p-6 bg-white">
                                 <div className="flex items-start justify-between mb-4">
                                   <div className="flex items-center gap-3">
-                                    <span className="text-lg font-bold text-slate-900">{refNumber}</span>
+                                    <span className="text-lg font-bold text-slate-900">{rec.ref_number || '—'}</span>
                                     {rec.status && (
                                       <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-lg">
                                         {getStatusIcon(rec.status)}

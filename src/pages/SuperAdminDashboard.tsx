@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, ArrowLeft, Sliders, BookOpen, CreditCard, Users } from 'lucide-react';
 import SectorWeightings from '../components/SectorWeightings';
 import UserRoleManagement from '../components/UserRoleManagement';
+import RecommendationLibrary from '../components/RecommendationLibrary';
 
 type SuperAdminView = 'sector-weightings' | 'user-management' | 'recommendation-library' | 'pricing-plans';
 
@@ -127,18 +128,7 @@ export default function SuperAdminDashboard() {
 
             {activeView === 'recommendation-library' && (
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
-                <div className="text-center py-12">
-                  <BookOpen className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                  <h2 className="text-2xl font-semibold text-slate-900 mb-2">
-                    Recommendation Library
-                  </h2>
-                  <p className="text-slate-600 max-w-md mx-auto">
-                    Manage standardized recommendations and templates that can be used across all surveys.
-                  </p>
-                  <div className="mt-6 inline-block px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800 font-medium">Coming Soon</p>
-                  </div>
-                </div>
+                <RecommendationLibrary />
               </div>
             )}
 

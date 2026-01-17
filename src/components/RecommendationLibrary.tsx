@@ -1,0 +1,552 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { Plus, Edit, Trash2, Save, X, AlertCircle, CheckCircle2, Search } from 'lucide-react';
+
+interface RecommendationTemplate {
+  id: string;
+  code: string | null;
+  title: string;
+  body: string;
+  category: string;
+  default_priority: number;
+  trigger_type: string;
+  trigger_section_key: string | null;
+  trigger_field_key: string | null;
+  trigger_value: string | null;
+  is_active: boolean;
+  scope: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const CATEGORIES = [
+  'Construction',
+  'Management Systems',
+  'Fire Protection & Detection',
+  'Special Hazards',
+  'Business Continuity'
+];
+
+const TRIGGER_TYPES = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'grade', label: 'Grade-Based' },
+  { value: 'presence', label: 'Presence-Based' }
+];
+
+export default function RecommendationLibrary() {
+  const [templates, setTemplates] = useState<RecommendationTemplate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    code: '',
+    title: '',
+    body: '',
+    category: 'Management Systems',
+    default_priority: 3,
+    trigger_type: 'manual',
+    trigger_section_key: '',
+    trigger_field_key: '',
+    trigger_value: '',
+    is_active: true,
+    scope: 'global'
+  });
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from('recommendation_templates')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('code', { ascending: true });
+
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (err: any) {
+      console.error('Error fetching templates:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    setError(null);
+    try {
+      const { error } = await supabase
+        .from('recommendation_templates')
+        .insert([{
+          ...formData,
+          code: formData.code || null,
+          trigger_section_key: formData.trigger_section_key || null,
+          trigger_field_key: formData.trigger_field_key || null,
+          trigger_value: formData.trigger_value || null,
+        }]);
+
+      if (error) throw error;
+
+      setSuccessMessage('Template created successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      setIsCreating(false);
+      resetForm();
+      fetchTemplates();
+    } catch (err: any) {
+      console.error('Error creating template:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleUpdate = async (id: string) => {
+    setError(null);
+    try {
+      const { error } = await supabase
+        .from('recommendation_templates')
+        .update({
+          ...formData,
+          code: formData.code || null,
+          trigger_section_key: formData.trigger_section_key || null,
+          trigger_field_key: formData.trigger_field_key || null,
+          trigger_value: formData.trigger_value || null,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSuccessMessage('Template updated successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      setEditingId(null);
+      resetForm();
+      fetchTemplates();
+    } catch (err: any) {
+      console.error('Error updating template:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) {
+      return;
+    }
+
+    setError(null);
+    try {
+      const { error } = await supabase
+        .from('recommendation_templates')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSuccessMessage('Template deleted successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      fetchTemplates();
+    } catch (err: any) {
+      console.error('Error deleting template:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleToggleActive = async (template: RecommendationTemplate) => {
+    setError(null);
+    try {
+      const { error } = await supabase
+        .from('recommendation_templates')
+        .update({ is_active: !template.is_active })
+        .eq('id', template.id);
+
+      if (error) throw error;
+
+      fetchTemplates();
+    } catch (err: any) {
+      console.error('Error toggling template:', err);
+      setError(err.message);
+    }
+  };
+
+  const startEdit = (template: RecommendationTemplate) => {
+    setEditingId(template.id);
+    setFormData({
+      code: template.code || '',
+      title: template.title,
+      body: template.body,
+      category: template.category,
+      default_priority: template.default_priority,
+      trigger_type: template.trigger_type,
+      trigger_section_key: template.trigger_section_key || '',
+      trigger_field_key: template.trigger_field_key || '',
+      trigger_value: template.trigger_value || '',
+      is_active: template.is_active,
+      scope: template.scope
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setIsCreating(false);
+    resetForm();
+    setError(null);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      code: '',
+      title: '',
+      body: '',
+      category: 'Management Systems',
+      default_priority: 3,
+      trigger_type: 'manual',
+      trigger_section_key: '',
+      trigger_field_key: '',
+      trigger_value: '',
+      is_active: true,
+      scope: 'global'
+    });
+  };
+
+  const filteredTemplates = templates.filter(template => {
+    const matchesSearch = searchQuery === '' ||
+      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.body.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (template.code && template.code.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesCategory = categoryFilter === 'all' || template.category === categoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-gray-500">Loading recommendation library...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Recommendation Library</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Manage global recommendation templates for all surveys
+          </p>
+        </div>
+        <button
+          onClick={() => setIsCreating(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          disabled={isCreating || editingId !== null}
+        >
+          <Plus className="w-4 h-4" />
+          New Template
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-red-800">{error}</div>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-green-800">{successMessage}</div>
+        </div>
+      )}
+
+      <div className="flex gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search templates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="all">All Categories</option>
+          {CATEGORIES.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+      </div>
+
+      {isCreating && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Template</h3>
+          <TemplateForm
+            formData={formData}
+            setFormData={setFormData}
+            onSave={handleCreate}
+            onCancel={cancelEdit}
+          />
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {filteredTemplates.map(template => (
+          <div
+            key={template.id}
+            className={`bg-white border rounded-lg p-6 shadow-sm ${
+              !template.is_active ? 'opacity-60' : ''
+            }`}
+          >
+            {editingId === template.id ? (
+              <TemplateForm
+                formData={formData}
+                setFormData={setFormData}
+                onSave={() => handleUpdate(template.id)}
+                onCancel={cancelEdit}
+              />
+            ) : (
+              <div>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      {template.code && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-mono rounded">
+                          {template.code}
+                        </span>
+                      )}
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                        {template.category}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Priority: {template.default_priority}/5
+                      </span>
+                      {!template.is_active && (
+                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
+                          Inactive
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">{template.title}</h3>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <button
+                      onClick={() => handleToggleActive(template)}
+                      className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                        template.is_active
+                          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                    >
+                      {template.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={() => startEdit(template)}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      disabled={editingId !== null || isCreating}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(template.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      disabled={editingId !== null || isCreating}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-gray-700 text-sm leading-relaxed">{template.body}</p>
+                {template.trigger_type !== 'manual' && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-500">
+                      <span className="font-medium">Trigger:</span> {template.trigger_type}
+                      {template.trigger_field_key && ` • Field: ${template.trigger_field_key}`}
+                      {template.trigger_value && ` • Value: ${template.trigger_value}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {filteredTemplates.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            No templates found matching your criteria
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface TemplateFormProps {
+  formData: any;
+  setFormData: (data: any) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormProps) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Code (Optional)
+          </label>
+          <input
+            type="text"
+            placeholder="e.g., MS-001"
+            value={formData.code}
+            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category *
+          </label>
+          <select
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            required
+          >
+            {CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Title *
+        </label>
+        <input
+          type="text"
+          placeholder="Short recommendation heading"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Body *
+        </label>
+        <textarea
+          placeholder="Generic, reusable recommendation text"
+          value={formData.body}
+          onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+          rows={4}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Default Priority
+          </label>
+          <select
+            value={formData.default_priority}
+            onChange={(e) => setFormData({ ...formData, default_priority: parseInt(e.target.value) })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {[1, 2, 3, 4, 5].map(p => (
+              <option key={p} value={p}>
+                {p} {p === 5 ? '(Critical)' : p === 1 ? '(Low)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Trigger Type
+          </label>
+          <select
+            value={formData.trigger_type}
+            onChange={(e) => setFormData({ ...formData, trigger_type: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {TRIGGER_TYPES.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {formData.trigger_type !== 'manual' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800 mb-3">
+            Trigger Configuration (Optional - for automated triggering)
+          </p>
+          <div className="space-y-3">
+            <input
+              type="text"
+              placeholder="Trigger Field Key (e.g., commitmentLossPrevention_rating)"
+              value={formData.trigger_field_key}
+              onChange={(e) => setFormData({ ...formData, trigger_field_key: e.target.value })}
+              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="text"
+              placeholder="Trigger Value (e.g., Poor, Inadequate)"
+              value={formData.trigger_value}
+              onChange={(e) => setFormData({ ...formData, trigger_value: e.target.value })}
+              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="is_active"
+          checked={formData.is_active}
+          onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        />
+        <label htmlFor="is_active" className="text-sm text-gray-700">
+          Active (available for use in surveys)
+        </label>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          <X className="w-4 h-4" />
+          Cancel
+        </button>
+        <button
+          onClick={onSave}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          disabled={!formData.title || !formData.body}
+        >
+          <Save className="w-4 h-4" />
+          Save Template
+        </button>
+      </div>
+    </div>
+  );
+}

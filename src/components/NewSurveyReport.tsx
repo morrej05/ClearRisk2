@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, FileText, Lock, MapPin, Plus, Trash2, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, BookOpen, CheckCircle2, FileText, Lock, MapPin, Plus, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateReport, generateSection, ReportSection, SectionId } from '../utils/reportGenerator';
 import ReportViewer from './ReportViewer';
@@ -8,6 +8,7 @@ import GpsMap from './GpsMap';
 import ProgressBar from './ProgressBar';
 import StickySaveButton from './StickySaveButton';
 import DraftReportModal from './DraftReportModal';
+import RecommendationLibraryModal from './RecommendationLibraryModal';
 import { calculateOverallGrade, getRiskBandFromGrade, SectionGrades, getSectorWeightsFromDB, fetchSectorWeightings, SectorWeighting } from '../utils/riskScoring';
 import RatingRadio from './RatingRadio';
 import { getRecommendationForRating, shouldGenerateRecommendation } from '../utils/recommendationTemplates';
@@ -290,6 +291,8 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
   const [overallComments, setOverallComments] = useState<OverallComment[]>([
     { id: crypto.randomUUID(), hazard: '', description: '', client_response: '', status: '' }
   ]);
+
+  const [showLibraryModal, setShowLibraryModal] = useState(false);
 
   const [sumsInsured, setSumsInsured] = useState<SumsInsuredRow[]>([
     { id: crypto.randomUUID(), item: 'Buildings + Improvements', pd_value: '' },
@@ -3933,14 +3936,24 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 );
               })}
 
-              <button
-                type="button"
-                onClick={addOverallComment}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
-              >
-                <Plus size={20} />
-                Add Another Recommendation
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={addOverallComment}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                  <Plus size={20} />
+                  Add Manual Recommendation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLibraryModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <BookOpen size={20} />
+                  Add from Library
+                </button>
+              </div>
 
               <div className="flex items-start pt-4">
                 <div className="flex items-center h-6">
@@ -4222,6 +4235,16 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
           inspectionDate={formData.inspectionDate}
           surveyorName={formData.surveyorName}
           recommendations={overallComments.map(c => ({ title: c.hazard, description: c.description }))}
+        />
+      )}
+
+      {showLibraryModal && surveyId && (
+        <RecommendationLibraryModal
+          surveyId={surveyId}
+          onClose={() => setShowLibraryModal(false)}
+          onRecommendationAdded={() => {
+            console.log('Recommendation added from library');
+          }}
         />
       )}
     </div>

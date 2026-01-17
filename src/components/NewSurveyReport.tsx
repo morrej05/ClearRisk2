@@ -37,6 +37,7 @@ interface OverallComment {
   sourceRatingField?: string;
   images?: string[];
   priority?: 'Critical' | 'High' | 'Medium' | 'Low';
+  priority_override?: 'Critical' | 'High' | 'Medium' | 'Low' | '';
   driver_dimension?: 'construction' | 'fire_protection' | 'detection' | 'management' | 'special_hazards' | 'business_interruption';
 }
 
@@ -3823,8 +3824,8 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Priority (Auto-calculated)
+                          <label htmlFor={`priority-${comment.id}`} className="block text-sm font-medium text-slate-700 mb-2">
+                            Priority
                           </label>
                           {(() => {
                             const dimensionScores = {
@@ -3836,40 +3837,33 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               business_interruption: formData.businessInterruptionScore,
                             };
 
-                            let priority: string | undefined;
+                            let autoPriority: string | undefined;
                             if (comment.driver_dimension) {
                               const score = dimensionScores[comment.driver_dimension as keyof typeof dimensionScores];
                               if (score !== undefined && score > 0) {
-                                if (score < 40) priority = 'Critical';
-                                else if (score < 55) priority = 'High';
-                                else if (score < 70) priority = 'Medium';
-                                else priority = 'Low';
+                                if (score < 40) autoPriority = 'Critical';
+                                else if (score < 55) autoPriority = 'High';
+                                else if (score < 70) autoPriority = 'Medium';
+                                else autoPriority = 'Low';
                               }
                             }
 
-                            const priorityColor = priority === 'Critical'
-                              ? 'bg-red-100 text-red-700 border-red-300'
-                              : priority === 'High'
-                              ? 'bg-orange-100 text-orange-700 border-orange-300'
-                              : priority === 'Medium'
-                              ? 'bg-amber-100 text-amber-700 border-amber-300'
-                              : priority === 'Low'
-                              ? 'bg-blue-100 text-blue-700 border-blue-300'
-                              : 'bg-slate-100 text-slate-600 border-slate-200';
-
                             return (
-                              <div className="flex items-center gap-2 h-[42px]">
-                                {priority ? (
-                                  <span className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold border ${priorityColor}`}>
-                                    {priority}
-                                  </span>
-                                ) : (
-                                  <span className="text-sm text-slate-400 italic">Select driver dimension to see priority</span>
-                                )}
-                              </div>
+                              <select
+                                id={`priority-${comment.id}`}
+                                value={comment.priority_override || ''}
+                                onChange={(e) => updateOverallComment(comment.id, 'priority_override', e.target.value)}
+                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all bg-white"
+                              >
+                                <option value="">Auto ({autoPriority || 'None'})</option>
+                                <option value="Critical">Override: Critical</option>
+                                <option value="High">Override: High</option>
+                                <option value="Medium">Override: Medium</option>
+                                <option value="Low">Override: Low</option>
+                              </select>
                             );
                           })()}
-                          <p className="text-xs text-slate-500 mt-1">Based on the selected dimension's risk score</p>
+                          <p className="text-xs text-slate-500 mt-1">Auto-calculated from risk score, or manually override</p>
                         </div>
                       </div>
 

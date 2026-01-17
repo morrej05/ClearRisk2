@@ -65,9 +65,9 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
 
       setSurvey(data);
 
-      const overallComments = data.form_data?.overallComments || [];
+      const overallComments = data.form_data?.overall_comments || data.form_data?.overallComments || [];
       const enrichedRecommendations = overallComments.map((rec: any) => {
-        let priority: 'Critical' | 'High' | 'Medium' | 'Low' | undefined;
+        let autoPriority: 'Critical' | 'High' | 'Medium' | 'Low' | undefined;
 
         if (rec.driver_dimension) {
           const dimensionScores = {
@@ -81,16 +81,19 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
 
           const score = dimensionScores[rec.driver_dimension as keyof typeof dimensionScores];
           if (score > 0) {
-            if (score < 40) priority = 'Critical';
-            else if (score < 55) priority = 'High';
-            else if (score < 70) priority = 'Medium';
-            else priority = 'Low';
+            if (score < 40) autoPriority = 'Critical';
+            else if (score < 55) autoPriority = 'High';
+            else if (score < 70) autoPriority = 'Medium';
+            else autoPriority = 'Low';
           }
         }
 
+        const effectivePriority = rec.priority_override || autoPriority;
+
         return {
           ...rec,
-          priority,
+          priority: effectivePriority,
+          autoPriority,
         };
       });
 

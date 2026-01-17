@@ -38,19 +38,24 @@ export default function UserManagement() {
 
       if (profilesError) throw profilesError;
 
-      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+
+      if (authError) {
+        console.warn('Admin API not accessible:', authError);
+      }
 
       const usersWithEmails = (profilesData || []).map(profile => {
         const authUser = authUsers?.users.find(u => u.id === profile.id);
         return {
           ...profile,
-          email: authUser?.email,
+          email: authUser?.email || 'Email unavailable',
         };
       });
 
       setUsers(usersWithEmails);
     } catch (error) {
       console.error('Error fetching users:', error);
+      alert('Failed to load users. Please check your permissions.');
     } finally {
       setIsLoading(false);
     }

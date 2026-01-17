@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AlertCircle, ArrowLeft, BookOpen, CheckCircle2, FileText, Lock, MapPin, Plus, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { generateReport, generateSection, ReportSection, SectionId } from '../utils/reportGenerator';
 import ReportViewer from './ReportViewer';
 import BuildingForm from './BuildingForm';
@@ -284,6 +285,8 @@ const generateReferenceNumber = (country: string): string => {
 };
 
 export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportProps) {
+  const { userRole } = useAuth();
+
   const [hazards, setHazards] = useState<Hazard[]>([
     { id: crypto.randomUUID(), title: '', description: '', rating: '' }
   ]);
@@ -488,6 +491,7 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
+  const [triggerNotification, setTriggerNotification] = useState<{ show: boolean; count: number }>({ show: false, count: 0 });
   const [currentSurveyId, setCurrentSurveyId] = useState<string | null>(null);
   const [isLoadingSurvey, setIsLoadingSurvey] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -1523,7 +1527,13 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
         if (error) throw error;
 
         // Evaluate triggers for auto-generated recommendations
-        await reevaluateAllTriggers(currentSurveyId, formData);
+        const triggerResult = await reevaluateAllTriggers(currentSurveyId, formData);
+
+        // Show notification for super admins
+        if (userRole === 'super_admin' && triggerResult.success) {
+          setTriggerNotification({ show: true, count: triggerResult.totalAdded });
+          setTimeout(() => setTriggerNotification({ show: false, count: 0 }), 5000);
+        }
 
         const now = new Date();
         const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -1547,7 +1557,13 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
           setCurrentSurveyId(data.id);
 
           // Evaluate triggers for auto-generated recommendations
-          await reevaluateAllTriggers(data.id, formData);
+          const triggerResult = await reevaluateAllTriggers(data.id, formData);
+
+          // Show notification for super admins
+          if (userRole === 'super_admin' && triggerResult.success) {
+            setTriggerNotification({ show: true, count: triggerResult.totalAdded });
+            setTimeout(() => setTriggerNotification({ show: false, count: 0 }), 5000);
+          }
         }
 
         const now = new Date();
@@ -4233,6 +4249,20 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   <div>
                     <p className="text-red-800 font-medium">Save failed</p>
                     <p className="text-red-700 text-sm mt-1">{saveErrorMessage}</p>
+                  </div>
+                </div>
+              )}
+
+              {triggerNotification.show && userRole === 'super_admin' && (
+                <div className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-300 rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-slate-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-slate-800 font-medium">Trigger evaluation complete</p>
+                    <p className="text-slate-700 text-sm mt-1">
+                      {triggerNotification.count === 0
+                        ? 'No new recommendations triggered'
+                        : `${triggerNotification.count} recommendation${triggerNotification.count !== 1 ? 's' : ''} triggered`}
+                    </p>
                   </div>
                 </div>
               )}

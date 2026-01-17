@@ -52,7 +52,7 @@ export default function RecommendationLibraryModal({
         .select('*')
         .eq('is_active', true)
         .order('category', { ascending: true })
-        .order('title', { ascending: true });
+        .order('hazard', { ascending: true });
 
       if (error) throw error;
       setTemplates(data || []);
@@ -126,7 +126,7 @@ export default function RecommendationLibraryModal({
       template.hazard.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (template.code && template.code.toLowerCase().includes(searchQuery.toLowerCase()));
+      template.category.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory = categoryFilter === 'all' || template.category === categoryFilter;
 

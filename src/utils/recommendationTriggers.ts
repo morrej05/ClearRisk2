@@ -40,7 +40,14 @@ export async function evaluateTriggers(
   ratingValue: string,
   fieldLabel?: string
 ): Promise<{ success: boolean; recommendationsAdded: number; error?: string }> {
+  let matchedCount = 0;
+  let addedCount = 0;
+  let errorMsg: string | undefined;
+
   try {
+    // Normalize rating value to lowercase for matching
+    const normalizedRating = ratingValue.toLowerCase().trim();
+
     // Look up triggers matching this field and rating
     const { data: triggers, error: triggerError } = await supabase
       .from('recommendation_triggers')
@@ -57,19 +64,44 @@ export async function evaluateTriggers(
       `)
       .eq('section_key', sectionKey)
       .eq('field_key', fieldKey)
-      .eq('rating_value', ratingValue)
+      .ilike('rating_value', normalizedRating)
       .eq('is_active', true);
 
     if (triggerError) {
       console.error('Error fetching triggers:', triggerError);
+      errorMsg = triggerError.message;
+
+      // Log evaluation attempt
+      await supabase.from('trigger_evaluation_log').insert({
+        survey_id: surveyId,
+        section_key: sectionKey,
+        field_key: fieldKey,
+        rating_value: ratingValue,
+        matched_trigger_count: 0,
+        recommendations_added: 0,
+        error_message: triggerError.message,
+        evaluation_context: { normalized_rating: normalizedRating, field_label: fieldLabel }
+      });
+
       return { success: false, recommendationsAdded: 0, error: triggerError.message };
     }
 
+    matchedCount = triggers?.length || 0;
+
     if (!triggers || triggers.length === 0) {
+      // Log evaluation attempt with no matches
+      await supabase.from('trigger_evaluation_log').insert({
+        survey_id: surveyId,
+        section_key: sectionKey,
+        field_key: fieldKey,
+        rating_value: ratingValue,
+        matched_trigger_count: 0,
+        recommendations_added: 0,
+        evaluation_context: { normalized_rating: normalizedRating, field_label: fieldLabel }
+      });
+
       return { success: true, recommendationsAdded: 0 };
     }
-
-    let addedCount = 0;
 
     // Process each trigger
     for (const trigger of triggers as RecommendationTrigger[]) {
@@ -120,9 +152,38 @@ export async function evaluateTriggers(
       addedCount++;
     }
 
+    // Log successful evaluation
+    await supabase.from('trigger_evaluation_log').insert({
+      survey_id: surveyId,
+      section_key: sectionKey,
+      field_key: fieldKey,
+      rating_value: ratingValue,
+      matched_trigger_count: matchedCount,
+      recommendations_added: addedCount,
+      evaluation_context: {
+        normalized_rating: normalizedRating,
+        field_label: fieldLabel,
+        trigger_ids: triggers.map(t => t.id)
+      }
+    });
+
     return { success: true, recommendationsAdded: addedCount };
   } catch (err: any) {
     console.error('Error evaluating triggers:', err);
+    errorMsg = err.message;
+
+    // Log failed evaluation
+    await supabase.from('trigger_evaluation_log').insert({
+      survey_id: surveyId,
+      section_key: sectionKey,
+      field_key: fieldKey,
+      rating_value: ratingValue,
+      matched_trigger_count: matchedCount,
+      recommendations_added: addedCount,
+      error_message: err.message,
+      evaluation_context: { field_label: fieldLabel }
+    });
+
     return { success: false, recommendationsAdded: 0, error: err.message };
   }
 }

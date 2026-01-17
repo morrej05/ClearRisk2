@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ArrowLeft, Sliders, BookOpen, CreditCard, Users } from 'lucide-react';
+import { LogOut, ArrowLeft, Sliders, BookOpen, CreditCard, Users, Bug } from 'lucide-react';
 import SectorWeightings from '../components/SectorWeightings';
 import UserRoleManagement from '../components/UserRoleManagement';
 import RecommendationLibrary from '../components/RecommendationLibrary';
 import RecommendationCSVImport from '../components/RecommendationCSVImport';
+import TriggerDebugger from '../components/TriggerDebugger';
 
-type SuperAdminView = 'sector-weightings' | 'user-management' | 'recommendation-library' | 'pricing-plans';
+type SuperAdminView = 'sector-weightings' | 'user-management' | 'recommendation-library' | 'trigger-debugger' | 'pricing-plans';
 
 export default function SuperAdminDashboard() {
   const { user, signOut } = useAuth();
@@ -107,6 +108,19 @@ export default function SuperAdminDashboard() {
                 </li>
                 <li>
                   <button
+                    onClick={() => setActiveView('trigger-debugger')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                      activeView === 'trigger-debugger'
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Bug className="w-4 h-4" />
+                    Trigger Debugger
+                  </button>
+                </li>
+                <li>
+                  <button
                     onClick={() => setActiveView('pricing-plans')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                       activeView === 'pricing-plans'
@@ -133,6 +147,12 @@ export default function SuperAdminDashboard() {
                 <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
                   <RecommendationLibrary />
                 </div>
+              </div>
+            )}
+
+            {activeView === 'trigger-debugger' && (
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+                <TriggerDebugger />
               </div>
             )}
 

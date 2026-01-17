@@ -72,6 +72,10 @@ export default function AdminDashboard() {
         .from('user_profiles')
         .select('id, name');
 
+      if (profilesError) {
+        console.warn('Unable to fetch user profiles for creator names:', profilesError);
+      }
+
       const profilesMap = new Map<string, string>();
       if (!profilesError && profilesData) {
         profilesData.forEach(profile => {
@@ -299,8 +303,24 @@ export default function AdminDashboard() {
     });
   };
 
-  if (userRole !== 'admin') {
-    return null;
+  if (userRole !== 'org_admin' && userRole !== 'super_admin') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-8 max-w-md w-full text-center">
+          <Shield className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Restricted</h1>
+          <p className="text-slate-600 mb-6">
+            You need organization admin or super admin privileges to access this page.
+          </p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-6 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

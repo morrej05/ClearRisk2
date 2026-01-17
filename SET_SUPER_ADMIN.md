@@ -1,76 +1,99 @@
-# Set Super Admin Role
+# Super Admin Management
 
-Use these SQL commands to check and set your account as a super_admin.
+## Current Status
 
-## Step 1: Check current users and their roles
+✅ **james.morrell1@gmail.com** has been promoted to super_admin
 
-Run this query to see all users and their current roles:
+Your account now has full platform access with super_admin privileges.
+
+## Access Super Admin Dashboard
+
+After signing in, you should now see:
+- ✅ Role: super_admin in the header
+- ✅ "Super Admin" button in the dashboard navigation
+- ✅ Access to `/super-admin` route
+
+### Super Admin Features
+
+The Super Admin dashboard includes:
+
+1. **Sector Weightings** - Configure industry-specific risk weightings
+2. **User Management** - View and manage user roles across the platform
+3. **Recommendation Library** (Coming Soon) - Manage standardized recommendations
+4. **Pricing & Plans** (Coming Soon) - Configure subscription settings
+
+## User Role Management
+
+As a super_admin, you can now manage user roles through the UI:
+
+1. Navigate to `/super-admin`
+2. Click "User Management" in the sidebar
+3. View all users with their current roles
+4. Change roles using the dropdown:
+   - **Super Admin**: Full platform access (use carefully!)
+   - **Org Admin**: Can manage users and all surveys
+   - **Surveyor**: Can create and edit own surveys only
+
+### Security Notes
+
+- Super admin role should be granted sparingly
+- Org admins have broad access within the organization
+- Role changes are immediate and require user to refresh
+
+## Manual Database Commands (If Needed)
+
+### Check All Users and Roles
 
 ```sql
 SELECT
-  id,
-  email,
-  role,
-  created_at
-FROM user_profiles
-ORDER BY created_at ASC;
+  au.email,
+  up.role,
+  up.name,
+  up.created_at
+FROM auth.users au
+LEFT JOIN user_profiles up ON au.id = up.id
+ORDER BY up.created_at ASC;
 ```
 
-## Step 2: Set your account as super_admin
-
-Replace `YOUR_EMAIL_HERE` with your actual email address:
-
-```sql
-UPDATE user_profiles
-SET role = 'super_admin'
-WHERE email = 'YOUR_EMAIL_HERE';
-```
-
-## Step 3: Verify the change
-
-Run this to confirm your role was updated:
-
-```sql
-SELECT email, role
-FROM user_profiles
-WHERE email = 'YOUR_EMAIL_HERE';
-```
-
-## Alternative: Set the first user as super_admin
-
-If you want to make the first created user a super_admin:
+### Promote Another User to Super Admin
 
 ```sql
 UPDATE user_profiles
 SET role = 'super_admin'
 WHERE id = (
-  SELECT id FROM user_profiles
-  ORDER BY created_at ASC
-  LIMIT 1
+  SELECT au.id FROM auth.users au
+  WHERE au.email = 'user@example.com'
 );
 ```
 
-## Verify super_admin access
+### Demote from Super Admin
 
-After setting the role, sign out and sign back in. You should now see:
-- Role displays correctly (not "Loading...")
-- "Super Admin" button in the dashboard navigation
-- Access to `/super-admin` route with Sector Weightings
+```sql
+UPDATE user_profiles
+SET role = 'org_admin'
+WHERE id = (
+  SELECT au.id FROM auth.users au
+  WHERE au.email = 'user@example.com'
+);
+```
 
 ## Troubleshooting
 
-If role still shows "Loading..." after setting super_admin:
+If you don't see super_admin features:
 
-1. Check browser console for errors (F12 → Console)
-2. Verify RLS policies allow self-read:
+1. **Sign out and sign back in** - Role is cached during session
+2. Check browser console (F12 → Console) for errors
+3. Verify your role in the database:
    ```sql
-   SELECT policyname, cmd, qual, with_check
+   SELECT up.role, au.email
+   FROM user_profiles up
+   JOIN auth.users au ON au.id = up.id
+   WHERE au.email = 'james.morrell1@gmail.com';
+   ```
+4. Check RLS policies are allowing self-read:
+   ```sql
+   SELECT policyname, cmd
    FROM pg_policies
    WHERE tablename = 'user_profiles'
    AND policyname LIKE '%own%';
-   ```
-3. Ensure auth.uid() matches your user_profiles.id:
-   ```sql
-   SELECT auth.uid() as current_user_id,
-          (SELECT id FROM user_profiles WHERE id = auth.uid()) as profile_exists;
    ```

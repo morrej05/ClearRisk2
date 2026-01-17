@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ArrowLeft, Sliders, BookOpen, CreditCard } from 'lucide-react';
+import { LogOut, ArrowLeft, Sliders, BookOpen, CreditCard, Users } from 'lucide-react';
 import SectorWeightings from '../components/SectorWeightings';
+import UserRoleManagement from '../components/UserRoleManagement';
 
-type SuperAdminView = 'sector-weightings' | 'recommendation-library' | 'pricing-plans';
+type SuperAdminView = 'sector-weightings' | 'user-management' | 'recommendation-library' | 'pricing-plans';
 
 export default function SuperAdminDashboard() {
   const { user, signOut } = useAuth();
@@ -78,6 +79,19 @@ export default function SuperAdminDashboard() {
                 </li>
                 <li>
                   <button
+                    onClick={() => setActiveView('user-management')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                      activeView === 'user-management'
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    User Management
+                  </button>
+                </li>
+                <li>
+                  <button
                     onClick={() => setActiveView('recommendation-library')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                       activeView === 'recommendation-library'
@@ -108,6 +122,8 @@ export default function SuperAdminDashboard() {
 
           <main className="flex-1">
             {activeView === 'sector-weightings' && <SectorWeightings />}
+
+            {activeView === 'user-management' && <UserRoleManagement />}
 
             {activeView === 'recommendation-library' && (
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">

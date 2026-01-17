@@ -53,7 +53,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const permissions = getRolePermissions(userRole);
-  const showDebug = userRole === 'super_admin' && searchParams.get('debug') === '1';
+  const showDebug = import.meta.env.DEV;
   const [showNewSurvey, setShowNewSurvey] = useState(false);
   const [showTextEditor, setShowTextEditor] = useState(false);
   const [showNewSurveyModal, setShowNewSurveyModal] = useState(false);

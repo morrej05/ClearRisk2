@@ -75,21 +75,25 @@ export default function RecommendationDraftModal({ surveyId, onClose, cachedSumm
         let autoPriority: 'Critical' | 'High' | 'Medium' | 'Low' | undefined;
 
         if (rec.driver_dimension) {
-          const dimensionScores = {
-            construction: data.form_data.constructionScore || 0,
-            fire_protection: data.form_data.fireProtectionScore || 0,
-            detection: data.form_data.detectionScore || 0,
-            management: data.form_data.managementScore || 0,
-            special_hazards: data.form_data.specialHazardsScore || 0,
-            business_interruption: data.form_data.businessInterruptionScore || 0,
+          const dimensionToGradeKey: Record<string, string> = {
+            construction: 'construction',
+            fire_protection: 'fire_protection',
+            detection: 'fire_protection',
+            management: 'management',
+            special_hazards: 'hazards',
+            business_interruption: 'business_continuity',
+            natural_hazards: 'natural_hazards',
           };
 
-          const score = dimensionScores[rec.driver_dimension as keyof typeof dimensionScores];
-          if (score > 0) {
-            if (score < 40) autoPriority = 'Critical';
-            else if (score < 55) autoPriority = 'High';
-            else if (score < 70) autoPriority = 'Medium';
-            else autoPriority = 'Low';
+          const gradeKey = dimensionToGradeKey[rec.driver_dimension];
+          if (gradeKey && data.form_data.sectionGrades) {
+            const grade = data.form_data.sectionGrades[gradeKey];
+            if (grade !== undefined && grade > 0) {
+              if (grade === 1) autoPriority = 'Critical';
+              else if (grade === 2) autoPriority = 'High';
+              else if (grade === 3) autoPriority = 'Medium';
+              else autoPriority = 'Low';
+            }
           }
         }
 

@@ -8,11 +8,11 @@ import GpsMap from './GpsMap';
 import ProgressBar from './ProgressBar';
 import StickySaveButton from './StickySaveButton';
 import DraftReportModal from './DraftReportModal';
-import { getSectorWeights, calculateOverallRiskScore, getRiskBand } from '../utils/riskScoring';
+import { calculateOverallGrade, getRiskBandFromGrade, SectionGrades } from '../utils/riskScoring';
 import RatingRadio from './RatingRadio';
-import RiskScoreCard from './RiskScoreCard';
 import { getRecommendationForRating, shouldGenerateRecommendation } from '../utils/recommendationTemplates';
 import { ensureReferenceNumbers, getSurveyYear } from '../utils/recommendationReferenceNumber';
+import SectionGrade from './SectionGrade';
 
 interface Hazard {
   id: string;
@@ -208,19 +208,8 @@ interface FormData {
   reviewerEmail: string;
   reportStatus: 'Draft' | 'Issue Ready';
   industrySector: string;
-  constructionScore: number;
-  fireProtectionScore: number;
-  detectionScore: number;
-  managementScore: number;
-  specialHazardsScore: number;
-  businessInterruptionScore: number;
-  wConstruction: number;
-  wProtection: number;
-  wDetection: number;
-  wManagement: number;
-  wHazards: number;
-  wBi: number;
-  overallRiskScore: number;
+  sectionGrades: SectionGrades;
+  overallGrade: number;
   riskBand: string;
 }
 
@@ -466,20 +455,22 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
     reviewerEmail: '',
     reportStatus: 'Draft',
     industrySector: '',
-    constructionScore: 0,
-    fireProtectionScore: 0,
-    detectionScore: 0,
-    managementScore: 0,
-    specialHazardsScore: 0,
-    businessInterruptionScore: 0,
-    wConstruction: 0.25,
-    wProtection: 0.25,
-    wDetection: 0.15,
-    wManagement: 0.15,
-    wHazards: 0.10,
-    wBi: 0.10,
-    overallRiskScore: 0,
-    riskBand: '',
+    sectionGrades: {
+      survey_info: 3,
+      property_details: 3,
+      construction: 3,
+      occupancy: 3,
+      management: 3,
+      fire_protection: 3,
+      business_continuity: 3,
+      loss_expectancy: 3,
+      hazards: 3,
+      natural_hazards: 3,
+      recommendations: 3,
+      attachments: 3,
+    },
+    overallGrade: 3,
+    riskBand: 'Medium',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -770,45 +761,17 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
   }, [formData.industrySector]);
 
   useEffect(() => {
-    const overallScore = calculateOverallRiskScore(
-      formData.constructionScore,
-      formData.fireProtectionScore,
-      formData.detectionScore,
-      formData.managementScore,
-      formData.specialHazardsScore,
-      formData.businessInterruptionScore,
-      {
-        construction: formData.wConstruction,
-        protection: formData.wProtection,
-        detection: formData.wDetection,
-        management: formData.wManagement,
-        hazards: formData.wHazards,
-        bi: formData.wBi,
-      }
-    );
-    const band = getRiskBand(overallScore);
+    const overallGrade = calculateOverallGrade(formData.sectionGrades);
+    const band = getRiskBandFromGrade(overallGrade);
 
-    if (overallScore !== formData.overallRiskScore || band !== formData.riskBand) {
+    if (overallGrade !== formData.overallGrade || band !== formData.riskBand) {
       setFormData(prev => ({
         ...prev,
-        overallRiskScore: overallScore,
+        overallGrade: overallGrade,
         riskBand: band,
       }));
     }
-  }, [
-    formData.constructionScore,
-    formData.fireProtectionScore,
-    formData.detectionScore,
-    formData.managementScore,
-    formData.specialHazardsScore,
-    formData.businessInterruptionScore,
-    formData.wConstruction,
-    formData.wProtection,
-    formData.wDetection,
-    formData.wManagement,
-    formData.wHazards,
-    formData.wBi,
-  ]);
+  }, [formData.sectionGrades]);
 
   const loadSurvey = async (id: string) => {
     setIsLoadingSurvey(true);
@@ -970,6 +933,16 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleSectionGradeChange = (sectionKey: keyof SectionGrades, value: number) => {
+    setFormData(prev => ({
+      ...prev,
+      sectionGrades: {
+        ...prev.sectionGrades,
+        [sectionKey]: value,
+      },
     }));
   };
 
@@ -2661,6 +2634,14 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   </div>
                 </div>
               </div>
+
+              <SectionGrade
+                sectionKey="management"
+                sectionTitle="Management Systems"
+                value={formData.sectionGrades.management || 3}
+                onChange={(value) => handleSectionGradeChange('management', value)}
+                disabled={isIssued}
+              />
             </div>
           </div>
 
@@ -2961,6 +2942,14 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   placeholder="Describe water supply and pressure across all buildings"
                 />
               </div>
+
+              <SectionGrade
+                sectionKey="fire_protection"
+                sectionTitle="Fire Protection / Detection"
+                value={formData.sectionGrades.fire_protection || 3}
+                onChange={(value) => handleSectionGradeChange('fire_protection', value)}
+                disabled={isIssued}
+              />
             </div>
           </div>
 
@@ -3081,6 +3070,14 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 <Plus className="w-5 h-5" />
                 Add Hazard
               </button>
+
+              <SectionGrade
+                sectionKey="hazards"
+                sectionTitle="Special Hazards"
+                value={formData.sectionGrades.hazards || 3}
+                onChange={(value) => handleSectionGradeChange('hazards', value)}
+                disabled={isIssued}
+              />
             </div>
           </div>
 
@@ -3142,6 +3139,14 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   />
                 </div>
               </div>
+
+              <SectionGrade
+                sectionKey="business_continuity"
+                sectionTitle="Business Continuity"
+                value={formData.sectionGrades.business_continuity || 3}
+                onChange={(value) => handleSectionGradeChange('business_continuity', value)}
+                disabled={isIssued}
+              />
             </div>
           </div>
 
@@ -3709,6 +3714,14 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 <Plus className="w-4 h-4 mr-2" />
                 Add Natural Hazard Section
               </button>
+
+              <SectionGrade
+                sectionKey="natural_hazards"
+                sectionTitle="Natural Hazards"
+                value={formData.sectionGrades.natural_hazards || 3}
+                onChange={(value) => handleSectionGradeChange('natural_hazards', value)}
+                disabled={isIssued}
+              />
             </div>
           </div>
 
@@ -3833,23 +3846,27 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                             Priority
                           </label>
                           {(() => {
-                            const dimensionScores = {
-                              construction: formData.constructionScore,
-                              fire_protection: formData.fireProtectionScore,
-                              detection: formData.detectionScore,
-                              management: formData.managementScore,
-                              special_hazards: formData.specialHazardsScore,
-                              business_interruption: formData.businessInterruptionScore,
+                            const dimensionToGradeKey: Record<string, keyof SectionGrades> = {
+                              construction: 'construction',
+                              fire_protection: 'fire_protection',
+                              detection: 'fire_protection',
+                              management: 'management',
+                              special_hazards: 'hazards',
+                              business_interruption: 'business_continuity',
+                              natural_hazards: 'natural_hazards',
                             };
 
                             let autoPriority: string | undefined;
                             if (comment.driver_dimension) {
-                              const score = dimensionScores[comment.driver_dimension as keyof typeof dimensionScores];
-                              if (score !== undefined && score > 0) {
-                                if (score < 40) autoPriority = 'Critical';
-                                else if (score < 55) autoPriority = 'High';
-                                else if (score < 70) autoPriority = 'Medium';
-                                else autoPriority = 'Low';
+                              const gradeKey = dimensionToGradeKey[comment.driver_dimension];
+                              if (gradeKey) {
+                                const grade = formData.sectionGrades[gradeKey];
+                                if (grade !== undefined && grade > 0) {
+                                  if (grade === 1) autoPriority = 'Critical';
+                                  else if (grade === 2) autoPriority = 'High';
+                                  else if (grade === 3) autoPriority = 'Medium';
+                                  else autoPriority = 'Low';
+                                }
                               }
                             }
 
@@ -3961,152 +3978,6 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   Allow ClearRisk to generate draft recommendations
                 </label>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-            <h2 className="text-2xl font-semibold text-slate-900 mb-6 pb-3 border-b border-slate-200">
-              Section {getSectionNumber(12)}: Risk Scoring
-            </h2>
-
-            <div className="space-y-6">
-              <p className="text-sm text-slate-600 mb-4">
-                Assign scores (0-100) for each risk dimension. These scores are combined using sector-specific weightings to calculate the overall risk score.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="constructionScore" className="block text-sm font-medium text-slate-700 mb-2">
-                    Construction & Combustibility Score (0-100)
-                  </label>
-                  <input
-                    type="number"
-                    id="constructionScore"
-                    name="constructionScore"
-                    min="0"
-                    max="100"
-                    value={formData.constructionScore}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                    placeholder="0-100"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="fireProtectionScore" className="block text-sm font-medium text-slate-700 mb-2">
-                    Fire Protection Score (0-100)
-                  </label>
-                  <input
-                    type="number"
-                    id="fireProtectionScore"
-                    name="fireProtectionScore"
-                    min="0"
-                    max="100"
-                    value={formData.fireProtectionScore}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                    placeholder="0-100"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="detectionScore" className="block text-sm font-medium text-slate-700 mb-2">
-                    Detection Systems Score (0-100)
-                  </label>
-                  <input
-                    type="number"
-                    id="detectionScore"
-                    name="detectionScore"
-                    min="0"
-                    max="100"
-                    value={formData.detectionScore}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                    placeholder="0-100"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="managementScore" className="block text-sm font-medium text-slate-700 mb-2">
-                    Management Systems Score (0-100)
-                  </label>
-                  <input
-                    type="number"
-                    id="managementScore"
-                    name="managementScore"
-                    min="0"
-                    max="100"
-                    value={formData.managementScore}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                    placeholder="0-100"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="specialHazardsScore" className="block text-sm font-medium text-slate-700 mb-2">
-                    Special Hazards Score (0-100)
-                  </label>
-                  <input
-                    type="number"
-                    id="specialHazardsScore"
-                    name="specialHazardsScore"
-                    min="0"
-                    max="100"
-                    value={formData.specialHazardsScore}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                    placeholder="0-100"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="businessInterruptionScore" className="block text-sm font-medium text-slate-700 mb-2">
-                    Business Interruption Score (0-100)
-                  </label>
-                  <input
-                    type="number"
-                    id="businessInterruptionScore"
-                    name="businessInterruptionScore"
-                    min="0"
-                    max="100"
-                    value={formData.businessInterruptionScore}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                    placeholder="0-100"
-                  />
-                </div>
-              </div>
-
-              {formData.industrySector && (
-                <div className="mt-8">
-                  <RiskScoreCard
-                    industrySector={formData.industrySector}
-                    overallRiskScore={formData.overallRiskScore}
-                    riskBand={formData.riskBand}
-                    constructionScore={formData.constructionScore}
-                    fireProtectionScore={formData.fireProtectionScore}
-                    detectionScore={formData.detectionScore}
-                    managementScore={formData.managementScore}
-                    specialHazardsScore={formData.specialHazardsScore}
-                    businessInterruptionScore={formData.businessInterruptionScore}
-                    wConstruction={formData.wConstruction}
-                    wProtection={formData.wProtection}
-                    wDetection={formData.wDetection}
-                    wManagement={formData.wManagement}
-                    wHazards={formData.wHazards}
-                    wBi={formData.wBi}
-                  />
-                </div>
-              )}
-
-              {!formData.industrySector && (
-                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-amber-800">
-                    Please select an <strong>Industry Sector</strong> in Section 1 to enable risk score calculation and view sector-specific weightings.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 

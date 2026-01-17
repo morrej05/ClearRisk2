@@ -176,6 +176,44 @@ export function getRiskBand(score: number): string {
   return 'Very Poor';
 }
 
+// Grade-based scoring (1-5 scale)
+export interface SectionGrades {
+  survey_info?: number;
+  property_details?: number;
+  construction?: number;
+  occupancy?: number;
+  management?: number;
+  fire_protection?: number;
+  business_continuity?: number;
+  loss_expectancy?: number;
+  hazards?: number;
+  natural_hazards?: number;
+  recommendations?: number;
+  attachments?: number;
+}
+
+export function calculateOverallGrade(sectionGrades: SectionGrades): number {
+  const grades = Object.values(sectionGrades).filter(g => g !== undefined && g > 0);
+  if (grades.length === 0) return 3; // Default to "Adequate"
+
+  const sum = grades.reduce((acc, grade) => acc + grade, 0);
+  return sum / grades.length;
+}
+
+export function getRiskBandFromGrade(overallGrade: number): string {
+  if (overallGrade < 2.0) return 'Critical';
+  if (overallGrade < 3.0) return 'High';
+  if (overallGrade < 4.0) return 'Medium';
+  return 'Low';
+}
+
+export function getGradePriorityLevel(grade: number): 'Critical' | 'High' | 'Medium' | 'Low' {
+  if (grade === 1) return 'Critical';
+  if (grade === 2) return 'High';
+  if (grade === 3) return 'Medium';
+  return 'Low';
+}
+
 export function getRiskBandColor(band: string): string {
   switch (band) {
     case 'Very Good':

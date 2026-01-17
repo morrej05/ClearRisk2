@@ -4,21 +4,12 @@ import { Plus, Edit, Trash2, Save, X, AlertCircle, CheckCircle2, Search } from '
 
 interface RecommendationTemplate {
   id: string;
-  code: string | null;
   hazard: string;
   description: string;
   action: string;
   client_response_prompt: string | null;
-  importance: number | null;
-  source_ref: string | null;
-  title: string;
-  body: string;
   category: string;
   default_priority: number;
-  trigger_type: string;
-  trigger_section_key: string | null;
-  trigger_field_key: string | null;
-  trigger_value: string | null;
   is_active: boolean;
   scope: string;
   created_at: string;
@@ -33,12 +24,6 @@ const CATEGORIES = [
   'Business Continuity'
 ];
 
-const TRIGGER_TYPES = [
-  { value: 'manual', label: 'Manual' },
-  { value: 'grade', label: 'Grade-Based' },
-  { value: 'presence', label: 'Presence-Based' }
-];
-
 export default function RecommendationLibrary() {
   const [templates, setTemplates] = useState<RecommendationTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,19 +35,12 @@ export default function RecommendationLibrary() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    code: '',
     hazard: '',
     description: '',
     action: '',
     client_response_prompt: '',
-    importance: null as number | null,
-    source_ref: '',
     category: 'Management Systems',
     default_priority: 3,
-    trigger_type: 'manual',
-    trigger_section_key: '',
-    trigger_field_key: '',
-    trigger_value: '',
     is_active: true,
     scope: 'global'
   });
@@ -96,13 +74,7 @@ export default function RecommendationLibrary() {
     try {
       const { error } = await supabase
         .from('recommendation_templates')
-        .insert([{
-          ...formData,
-          code: formData.code || null,
-          trigger_section_key: formData.trigger_section_key || null,
-          trigger_field_key: formData.trigger_field_key || null,
-          trigger_value: formData.trigger_value || null,
-        }]);
+        .insert([formData]);
 
       if (error) throw error;
 
@@ -122,13 +94,7 @@ export default function RecommendationLibrary() {
     try {
       const { error } = await supabase
         .from('recommendation_templates')
-        .update({
-          ...formData,
-          code: formData.code || null,
-          trigger_section_key: formData.trigger_section_key || null,
-          trigger_field_key: formData.trigger_field_key || null,
-          trigger_value: formData.trigger_value || null,
-        })
+        .update(formData)
         .eq('id', id);
 
       if (error) throw error;
@@ -187,19 +153,12 @@ export default function RecommendationLibrary() {
   const startEdit = (template: RecommendationTemplate) => {
     setEditingId(template.id);
     setFormData({
-      code: template.code || '',
       hazard: template.hazard,
       description: template.description,
       action: template.action,
       client_response_prompt: template.client_response_prompt || '',
-      importance: template.importance,
-      source_ref: template.source_ref || '',
       category: template.category,
       default_priority: template.default_priority,
-      trigger_type: template.trigger_type,
-      trigger_section_key: template.trigger_section_key || '',
-      trigger_field_key: template.trigger_field_key || '',
-      trigger_value: template.trigger_value || '',
       is_active: template.is_active,
       scope: template.scope
     });
@@ -214,19 +173,12 @@ export default function RecommendationLibrary() {
 
   const resetForm = () => {
     setFormData({
-      code: '',
       hazard: '',
       description: '',
       action: '',
       client_response_prompt: '',
-      importance: null,
-      source_ref: '',
       category: 'Management Systems',
       default_priority: 3,
-      trigger_type: 'manual',
-      trigger_section_key: '',
-      trigger_field_key: '',
-      trigger_value: '',
       is_active: true,
       scope: 'global'
     });
@@ -340,11 +292,6 @@ export default function RecommendationLibrary() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      {template.code && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-mono rounded">
-                          {template.code}
-                        </span>
-                      )}
                       <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
                         {template.category}
                       </span>
@@ -436,34 +383,20 @@ interface TemplateFormProps {
 function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormProps) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Code (Optional)
-          </label>
-          <input
-            type="text"
-            placeholder="e.g., MS-001"
-            value={formData.code}
-            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category *
-          </label>
-          <select
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-          >
-            {CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Category *
+        </label>
+        <select
+          value={formData.category}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          required
+        >
+          {CATEGORIES.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
       </div>
 
       <div>
@@ -523,73 +456,20 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Source Reference (Optional)
+          Default Priority
         </label>
-        <input
-          type="text"
-          placeholder="e.g., Endurance V1.13 item 1"
-          value={formData.source_ref}
-          onChange={(e) => setFormData({ ...formData, source_ref: e.target.value })}
+        <select
+          value={formData.default_priority}
+          onChange={(e) => setFormData({ ...formData, default_priority: parseInt(e.target.value) })}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+        >
+          {[1, 2, 3, 4, 5].map(p => (
+            <option key={p} value={p}>
+              {p} {p === 5 ? '(Critical)' : p === 1 ? '(Low)' : ''}
+            </option>
+          ))}
+        </select>
       </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Default Priority
-          </label>
-          <select
-            value={formData.default_priority}
-            onChange={(e) => setFormData({ ...formData, default_priority: parseInt(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {[1, 2, 3, 4, 5].map(p => (
-              <option key={p} value={p}>
-                {p} {p === 5 ? '(Critical)' : p === 1 ? '(Low)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Trigger Type
-          </label>
-          <select
-            value={formData.trigger_type}
-            onChange={(e) => setFormData({ ...formData, trigger_type: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {TRIGGER_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {formData.trigger_type !== 'manual' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800 mb-3">
-            Trigger Configuration (Optional - for automated triggering)
-          </p>
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Trigger Field Key (e.g., commitmentLossPrevention_rating)"
-              value={formData.trigger_field_key}
-              onChange={(e) => setFormData({ ...formData, trigger_field_key: e.target.value })}
-              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <input
-              type="text"
-              placeholder="Trigger Value (e.g., Poor, Inadequate)"
-              value={formData.trigger_value}
-              onChange={(e) => setFormData({ ...formData, trigger_value: e.target.value })}
-              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-      )}
 
       <div className="flex items-center gap-2">
         <input

@@ -172,6 +172,7 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
           description_final: 'Enter observation details here',
           action_final: 'Enter recommended action here',
           client_response: null,
+          category: 'Management Systems',
           priority: 3,
           status: 'open',
           source: 'manual',

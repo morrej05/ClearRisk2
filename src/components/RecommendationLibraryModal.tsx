@@ -4,13 +4,10 @@ import { X, Search, BookOpen, Plus, Check } from 'lucide-react';
 
 interface RecommendationTemplate {
   id: string;
-  code: string | null;
   hazard: string;
   description: string;
   action: string;
   client_response_prompt: string | null;
-  title: string;
-  body: string;
   category: string;
   default_priority: number;
   is_active: boolean;
@@ -94,6 +91,7 @@ export default function RecommendationLibraryModal({
           description_final: template.description,
           action_final: template.action,
           client_response: template.client_response_prompt || null,
+          category: template.category,
           priority: template.default_priority,
           status: 'open',
           source: 'library',
@@ -224,11 +222,9 @@ export default function RecommendationLibraryModal({
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
-                                  {template.code && (
-                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-mono rounded">
-                                      {template.code}
-                                    </span>
-                                  )}
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                                    {template.category}
+                                  </span>
                                   <span className="text-xs text-gray-500">
                                     Priority: {template.default_priority}/5
                                   </span>

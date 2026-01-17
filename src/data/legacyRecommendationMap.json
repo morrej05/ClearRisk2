@@ -1,0 +1,182 @@
+[
+  {
+    "field_key": "commitmentLossPrevention_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Loss Prevention Programme",
+    "observation": "Management commitment to loss prevention requires enhancement through a more formal and structured approach.",
+    "action_text": "Enhance management commitment to loss prevention by implementing a formal risk management programme with documented procedures, regular reviews, and clear accountability structures.",
+    "priority": 3
+  },
+  {
+    "field_key": "fireEquipmentTesting_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Fire Protection & Detection",
+    "hazard": "Fire Equipment Testing",
+    "observation": "Fire protection and detection equipment testing and maintenance programme requires improvement.",
+    "action_text": "Establish a comprehensive fire equipment testing and maintenance programme with documented schedules, qualified personnel, and regular third-party verification to ensure all systems remain operational.",
+    "priority": 4
+  },
+  {
+    "field_key": "controlHotWork_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Hot Work Controls",
+    "observation": "Hot work activities present ignition risks during maintenance and operational activities.",
+    "action_text": "Implement a formal hot work permit system with pre-work inspections, fire watch procedures, and post-work monitoring to reduce ignition risks during maintenance activities.",
+    "priority": 4
+  },
+  {
+    "field_key": "electricalMaintenance_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Electrical Maintenance",
+    "observation": "Electrical systems require enhanced maintenance to prevent failures that could lead to fire.",
+    "action_text": "Upgrade electrical maintenance programme to include thermal imaging surveys, regular testing by qualified electricians, and immediate remediation of identified defects to prevent electrical fires.",
+    "priority": 3
+  },
+  {
+    "field_key": "generalMaintenance_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "General Maintenance",
+    "observation": "General maintenance standards impact overall fire safety and property condition.",
+    "action_text": "Develop and implement a comprehensive maintenance programme with scheduled inspections, preventive maintenance tasks, and prompt repairs to maintain property condition and reduce fire risk.",
+    "priority": 3
+  },
+  {
+    "field_key": "smokingControls_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Smoking Controls",
+    "observation": "Smoking activities can create ignition risks if not properly controlled and managed.",
+    "action_text": "Strengthen smoking controls by designating safe smoking areas away from combustible materials, providing proper disposal receptacles, and enforcing no-smoking policies in high-risk zones.",
+    "priority": 3
+  },
+  {
+    "field_key": "fireSafetyHousekeeping_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Housekeeping Standards",
+    "observation": "Poor housekeeping can increase fire risk through accumulation of combustible materials and inadequate separation from ignition sources.",
+    "action_text": "Improve housekeeping standards to minimise combustible loading by implementing regular cleaning schedules, proper waste management, and clear storage procedures that maintain adequate separation from ignition sources.",
+    "priority": 3
+  },
+  {
+    "field_key": "selfInspections_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Self-Inspection Programme",
+    "observation": "Regular self-inspections are needed to proactively identify and address fire safety deficiencies.",
+    "action_text": "Establish a structured self-inspection programme with trained personnel, documented checklists, and corrective action tracking to identify and address fire safety deficiencies proactively.",
+    "priority": 3
+  },
+  {
+    "field_key": "changeManagement_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Change Management",
+    "observation": "Changes to operations, processes, or facilities can introduce new fire safety risks if not properly assessed.",
+    "action_text": "Implement a formal change management process requiring risk assessment for all operational, process, or facility changes to ensure fire safety implications are identified and mitigated before implementation.",
+    "priority": 3
+  },
+  {
+    "field_key": "contractorControls_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Contractor Controls",
+    "observation": "Contractor activities can introduce fire risks if not properly controlled and supervised.",
+    "action_text": "Strengthen contractor control procedures by requiring site inductions, hot work permits, supervision during high-risk activities, and verification of contractor insurance and qualifications.",
+    "priority": 3
+  },
+  {
+    "field_key": "impairmentHandling_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Fire Protection & Detection",
+    "hazard": "System Impairment Handling",
+    "observation": "Fire protection system impairments can significantly increase fire risk if not properly managed.",
+    "action_text": "Develop a formal impairment handling programme requiring notification to insurers, implementation of compensatory measures, expedited restoration timelines, and documented tracking of all system outages.",
+    "priority": 5
+  },
+  {
+    "field_key": "emergencyResponse_rating",
+    "section_key": "FP_09_Management",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Management Systems",
+    "hazard": "Emergency Response",
+    "observation": "Emergency response capability requires ongoing development and testing to ensure effectiveness.",
+    "action_text": "Enhance emergency response capability by developing site-specific emergency plans, conducting regular drills, training response teams, and establishing clear communication protocols with emergency services.",
+    "priority": 4
+  },
+  {
+    "field_key": "fireDetectionNotes_rating",
+    "section_key": "FP_06_FireProtection",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Fire Protection & Detection",
+    "hazard": "Fire Detection Coverage",
+    "observation": "Fire detection coverage should provide early warning across all occupied and high-risk areas.",
+    "action_text": "Upgrade fire detection coverage to ensure early warning across all occupied and high-risk areas, in line with recognised standards such as BS 5839 or equivalent, with appropriate detector types for the hazards present.",
+    "priority": 4
+  },
+  {
+    "field_key": "fireHydrantNotes_rating",
+    "section_key": "FP_07_FirefightingAccess",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Fire Protection & Detection",
+    "hazard": "Fire Hydrant Provision",
+    "observation": "Fire hydrant provision and accessibility impacts firefighting capability.",
+    "action_text": "Improve fire hydrant provision and accessibility by installing additional hydrants to achieve adequate coverage, ensuring clear access routes, implementing regular flow testing, and addressing any defects identified.",
+    "priority": 4
+  },
+  {
+    "field_key": "waterSupplyNotes_rating",
+    "section_key": "FP_07_FirefightingAccess",
+    "trigger_values": ["Poor", "Inadequate", "Unreliable"],
+    "category": "Fire Protection & Detection",
+    "hazard": "Water Supply for Firefighting",
+    "observation": "Water supply reliability is critical for effective firefighting operations.",
+    "action_text": "Enhance water supply reliability for firefighting by upgrading infrastructure, installing additional storage capacity, ensuring adequate flow rates and pressures, and implementing regular testing and maintenance.",
+    "priority": 4
+  },
+  {
+    "field_key": "fire_protection_adequacy",
+    "section_key": "FP_06_FireProtection",
+    "trigger_values": ["Inadequate", "Tolerable"],
+    "category": "Fire Protection & Detection",
+    "hazard": "Fire Protection System Adequacy",
+    "observation": "Fire protection systems should provide adequate coverage levels in line with the risk profile.",
+    "action_text": "Upgrade fire protection systems to achieve adequate coverage levels in line with the risk profile. Install or extend automatic sprinkler protection to cover high-value and high-risk areas, ensuring compliance with recognised standards.",
+    "priority": 5
+  },
+  {
+    "field_key": "water_supply_reliability",
+    "section_key": "FP_07_FirefightingAccess",
+    "trigger_values": ["Unreliable"],
+    "category": "Fire Protection & Detection",
+    "hazard": "Water Supply Reliability",
+    "observation": "Water supply reliability for firefighting requires improvement.",
+    "action_text": "Improve water supply reliability by upgrading mains connections, installing additional storage tanks or pumps, ensuring adequate flow rates and pressures for firefighting, and implementing regular flow testing and maintenance.",
+    "priority": 4
+  },
+  {
+    "field_key": "bcp_rating",
+    "section_key": "FP_11_Summary",
+    "trigger_values": ["Poor", "Inadequate"],
+    "category": "Business Continuity",
+    "hazard": "Business Continuity Planning",
+    "observation": "Business continuity planning ensures resilience and recovery capability following a fire incident.",
+    "action_text": "Develop and implement a comprehensive business continuity plan including alternative premises arrangements, data backup and recovery, supply chain continuity, and regular testing.",
+    "priority": 3
+  }
+]

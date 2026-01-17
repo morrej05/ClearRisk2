@@ -8,7 +8,7 @@ import GpsMap from './GpsMap';
 import ProgressBar from './ProgressBar';
 import StickySaveButton from './StickySaveButton';
 import DraftReportModal from './DraftReportModal';
-import { calculateOverallGrade, getRiskBandFromGrade, SectionGrades } from '../utils/riskScoring';
+import { calculateOverallGrade, getRiskBandFromGrade, SectionGrades, getSectorWeightsFromDB, fetchSectorWeightings, SectorWeighting } from '../utils/riskScoring';
 import RatingRadio from './RatingRadio';
 import { getRecommendationForRating, shouldGenerateRecommendation } from '../utils/recommendationTemplates';
 import { ensureReferenceNumbers, getSurveyYear } from '../utils/recommendationReferenceNumber';
@@ -487,9 +487,17 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
   const [surveyType, setSurveyType] = useState<'Full' | 'Abridged'>('Full');
   const [isIssued, setIsIssued] = useState(false);
   const [externalEditActive, setExternalEditActive] = useState(false);
+  const [sectorWeightings, setSectorWeightings] = useState<SectorWeighting[]>([]);
 
   const previousRatingsRef = useRef<Record<string, string>>({});
   const previousBuildingRatingsRef = useRef<Record<string, { adequacy: string; waterSupply: string }>>({});
+
+  useEffect(() => {
+    (async () => {
+      const weightings = await fetchSectorWeightings();
+      setSectorWeightings(weightings);
+    })();
+  }, []);
 
   // Auto-generate recommendations when ratings change to Poor or Inadequate
   useEffect(() => {
@@ -747,29 +755,31 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
 
   useEffect(() => {
     if (formData.industrySector) {
-      const weights = getSectorWeights(formData.industrySector);
-      setFormData(prev => {
-        if (
-          prev.wConstruction === weights.construction &&
-          prev.wProtection === weights.protection &&
-          prev.wDetection === weights.detection &&
-          prev.wManagement === weights.management &&
-          prev.wHazards === weights.hazards &&
-          prev.wBi === weights.bi
-        ) {
-          return prev;
-        }
+      (async () => {
+        const weights = await getSectorWeightsFromDB(formData.industrySector);
+        setFormData(prev => {
+          if (
+            prev.wConstruction === weights.construction &&
+            prev.wProtection === weights.protection &&
+            prev.wDetection === weights.detection &&
+            prev.wManagement === weights.management &&
+            prev.wHazards === weights.hazards &&
+            prev.wBi === weights.bi
+          ) {
+            return prev;
+          }
 
-        return {
-          ...prev,
-          wConstruction: weights.construction,
-          wProtection: weights.protection,
-          wDetection: weights.detection,
-          wManagement: weights.management,
-          wHazards: weights.hazards,
-          wBi: weights.bi,
-        };
-      });
+          return {
+            ...prev,
+            wConstruction: weights.construction,
+            wProtection: weights.protection,
+            wDetection: weights.detection,
+            wManagement: weights.management,
+            wHazards: weights.hazards,
+            wBi: weights.bi,
+          };
+        });
+      })();
     }
   }, [formData.industrySector]);
 
@@ -1838,16 +1848,21 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   }`}
                 >
                   <option value="">Select industry sector</option>
-                  <option value="Food & Beverage">Food & Beverage</option>
-                  <option value="Foundry / Metal">Foundry / Metal</option>
-                  <option value="Chemical / ATEX">Chemical / ATEX</option>
-                  <option value="Logistics / Warehouse">Logistics / Warehouse</option>
-                  <option value="Office / Commercial">Office / Commercial</option>
-                  <option value="General Industrial">General Industrial</option>
-                  <option value="Other">Other</option>
+                  {['Food & Beverage', 'Foundry / Metal', 'Chemical / ATEX', 'Logistics / Warehouse', 'Office / Commercial', 'General Industrial', 'Other'].map(sector => {
+                    const weighting = sectorWeightings.find(w => w.sector_name === sector);
+                    const isCustom = weighting?.is_custom || false;
+                    return (
+                      <option key={sector} value={sector}>
+                        {sector}{isCustom ? ' *' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
                 <p className="text-xs text-slate-500 mt-1.5 italic">
                   The selected sector adjusts risk score weightings to reflect typical loss drivers for this industry.
+                  {sectorWeightings.some(w => w.is_custom) && (
+                    <span className="block mt-1 text-blue-700">* Custom weightings configured by admin</span>
+                  )}
                 </p>
                 {formData.industrySector && (() => {
                   const sectorInfo: Record<string, { emphasis: string[] }> = {

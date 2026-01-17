@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase';
+
 export interface SectorWeights {
   construction: number;
   protection: number;
@@ -5,6 +7,17 @@ export interface SectorWeights {
   management: number;
   hazards: number;
   bi: number;
+}
+
+export interface SectorWeighting {
+  id: string;
+  sector_name: string;
+  is_custom: boolean;
+  construction: number;
+  management: number;
+  fire_protection: number;
+  special_hazards: number;
+  business_continuity: number;
 }
 
 export interface SectorInfo {
@@ -135,6 +148,111 @@ export const SECTOR_PROFILES: Record<string, SectorInfo> = {
     ],
   },
 };
+
+export async function fetchSectorWeightings(): Promise<SectorWeighting[]> {
+  try {
+    const { data, error } = await supabase
+      .from('sector_weightings')
+      .select('*')
+      .order('sector_name');
+
+    if (error) {
+      console.error('[SECTOR_CONFIG] Error fetching sector weightings:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('[SECTOR_CONFIG] Exception fetching sector weightings:', error);
+    return [];
+  }
+}
+
+export async function getSectorWeightsFromDB(industrySector: string): Promise<SectorWeights> {
+  try {
+    const { data: weighting, error } = await supabase
+      .from('sector_weightings')
+      .select('*')
+      .eq('sector_name', industrySector)
+      .maybeSingle();
+
+    if (error) {
+      console.error(`[SECTOR_CONFIG] Error fetching weights for "${industrySector}":`, error);
+      return getDefaultWeightsFromDB();
+    }
+
+    if (!weighting) {
+      console.warn(`[SECTOR_CONFIG] No weights found for "${industrySector}", using Default`);
+      return getDefaultWeightsFromDB();
+    }
+
+    if (!weighting.is_custom) {
+      return getDefaultWeightsFromDB();
+    }
+
+    return convertWeightingToSectorWeights(weighting);
+  } catch (error) {
+    console.error(`[SECTOR_CONFIG] Exception getting weights for "${industrySector}":`, error);
+    return getDefaultWeightsFromDB();
+  }
+}
+
+async function getDefaultWeightsFromDB(): Promise<SectorWeights> {
+  try {
+    const { data: defaultWeighting, error } = await supabase
+      .from('sector_weightings')
+      .select('*')
+      .eq('sector_name', 'Default')
+      .maybeSingle();
+
+    if (error || !defaultWeighting) {
+      console.warn('[SECTOR_CONFIG] Could not fetch Default weights, using hardcoded fallback');
+      return {
+        construction: 0.25,
+        protection: 0.25,
+        detection: 0.15,
+        management: 0.15,
+        hazards: 0.10,
+        bi: 0.10,
+      };
+    }
+
+    return convertWeightingToSectorWeights(defaultWeighting);
+  } catch (error) {
+    console.error('[SECTOR_CONFIG] Exception getting default weights:', error);
+    return {
+      construction: 0.25,
+      protection: 0.25,
+      detection: 0.15,
+      management: 0.15,
+      hazards: 0.10,
+      bi: 0.10,
+    };
+  }
+}
+
+function convertWeightingToSectorWeights(weighting: SectorWeighting): SectorWeights {
+  const detectionWeight = Math.round(weighting.fire_protection * 0.6);
+
+  const total =
+    weighting.construction +
+    weighting.management +
+    weighting.fire_protection +
+    weighting.special_hazards +
+    weighting.business_continuity +
+    detectionWeight;
+
+  const normalize = (value: number) => value / total;
+
+  return {
+    construction: normalize(weighting.construction),
+    protection: normalize(weighting.fire_protection),
+    detection: normalize(detectionWeight),
+    management: normalize(weighting.management),
+    hazards: normalize(weighting.special_hazards),
+    bi: normalize(weighting.business_continuity),
+  };
+}
 
 export function getSectorWeights(industrySector: string): SectorWeights {
   const profile = SECTOR_PROFILES[industrySector];

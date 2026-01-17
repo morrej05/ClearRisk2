@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, Users, ArrowLeft } from 'lucide-react';
+import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, Users, ArrowLeft, Sliders } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import UserManagement from '../components/UserManagement';
+import SectorWeightings from '../components/SectorWeightings';
 
 interface Survey {
   id: string;
@@ -26,7 +27,7 @@ interface Survey {
 export default function AdminDashboard() {
   const { signOut, user, userRole, refreshUserRole } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'users' | 'surveys'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'surveys' | 'weightings'>('users');
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [filteredSurveys, setFilteredSurveys] = useState<Survey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -355,6 +356,17 @@ export default function AdminDashboard() {
               <Shield className="w-4 h-4" />
               Survey Management
             </button>
+            <button
+              onClick={() => setActiveTab('weightings')}
+              className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${
+                activeTab === 'weightings'
+                  ? 'border-slate-900 text-slate-900'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              Sector Weightings
+            </button>
           </div>
         </div>
       </nav>
@@ -362,6 +374,8 @@ export default function AdminDashboard() {
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {activeTab === 'users' ? (
           <UserManagement />
+        ) : activeTab === 'weightings' ? (
+          <SectorWeightings />
         ) : (
           <div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">

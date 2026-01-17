@@ -5,6 +5,7 @@ import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, U
 import { supabase } from '../lib/supabase';
 import UserManagement from '../components/UserManagement';
 import SectorWeightings from '../components/SectorWeightings';
+import { INDUSTRY_SECTORS } from '../utils/industrySectors';
 
 interface Survey {
   id: string;
@@ -413,13 +414,9 @@ export default function AdminDashboard() {
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
               >
                 <option value="all">All Sectors</option>
-                <option value="Food & Beverage">Food & Beverage</option>
-                <option value="Foundry / Metal">Foundry / Metal</option>
-                <option value="Chemical / ATEX">Chemical / ATEX</option>
-                <option value="Logistics / Warehouse">Logistics / Warehouse</option>
-                <option value="Office / Commercial">Office / Commercial</option>
-                <option value="General Industrial">General Industrial</option>
-                <option value="Other">Other</option>
+                {INDUSTRY_SECTORS.map(sector => (
+                  <option key={sector} value={sector}>{sector}</option>
+                ))}
               </select>
             </div>
 

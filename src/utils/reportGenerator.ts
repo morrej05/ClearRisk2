@@ -52,7 +52,6 @@ interface Building {
 interface FormData {
   propertyName: string;
   propertyAddress: string;
-  propertyType: string;
   primaryOccupancy: string;
   discussionsOnSite: string;
   buildings: Building[];
@@ -218,7 +217,6 @@ export function generateSection(
     case 'SECTION_2':
       content = `Property Name: ${notProvided(formData.propertyName)}\n\n`;
       content += `Property Address: ${notProvided(formData.propertyAddress)}\n\n`;
-      content += `Property Type: ${notProvided(formData.propertyType)}\n\n`;
       content += `Primary Occupancy: ${notProvided(formData.primaryOccupancy)}\n\n`;
 
       if (formData.companySiteBackground) {
@@ -648,10 +646,6 @@ export function generateSection(
       }
 
       const riskFactors: string[] = [];
-
-      if (formData.propertyType) {
-        riskFactors.push(`The property is classified as ${formData.propertyType.toLowerCase()}, which presents typical risks associated with such occupancies.`);
-      }
 
       if (filledHazards.length > 0) {
         const highRisk = filledHazards.filter(h => h.rating === 'High').length;

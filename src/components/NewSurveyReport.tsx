@@ -13,6 +13,7 @@ import RatingRadio from './RatingRadio';
 import { getRecommendationForRating, shouldGenerateRecommendation } from '../utils/recommendationTemplates';
 import { ensureReferenceNumbers, getSurveyYear } from '../utils/recommendationReferenceNumber';
 import SectionGrade from './SectionGrade';
+import { INDUSTRY_SECTORS } from '../utils/industrySectors';
 
 interface Hazard {
   id: string;
@@ -145,7 +146,6 @@ interface FormData {
   townCity: string;
   postcode: string;
   country: string;
-  propertyType: string;
   primaryOccupancy: string;
   surveyorName: string;
   surveyorCompanyName: string;
@@ -392,7 +392,6 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
     townCity: '',
     postcode: '',
     country: 'United Kingdom',
-    propertyType: '',
     primaryOccupancy: '',
     surveyorName: '',
     surveyorCompanyName: '',
@@ -825,7 +824,6 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
           townCity: formDataFromDb.townCity || '',
           postcode: formDataFromDb.postcode || '',
           country: formDataFromDb.country || 'UK',
-          propertyType: formDataFromDb.propertyType || '',
           primaryOccupancy: formDataFromDb.primaryOccupancy || '',
           surveyorName: formDataFromDb.surveyorName || '',
           surveyorCompanyName: formDataFromDb.surveyorCompanyName || '',
@@ -1848,7 +1846,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   }`}
                 >
                   <option value="">Select industry sector</option>
-                  {['Food & Beverage', 'Foundry / Metal', 'Chemical / ATEX', 'Logistics / Warehouse', 'Office / Commercial', 'General Industrial', 'Other'].map(sector => {
+                  {INDUSTRY_SECTORS.map(sector => {
                     const weighting = sectorWeightings.find(w => w.sector_name === sector);
                     const isCustom = weighting?.is_custom || false;
                     return (
@@ -1861,32 +1859,9 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 <p className="text-xs text-slate-500 mt-1.5 italic">
                   The selected sector adjusts risk score weightings to reflect typical loss drivers for this industry.
                   {sectorWeightings.some(w => w.is_custom) && (
-                    <span className="block mt-1 text-blue-700">* Custom weightings configured by admin</span>
+                    <span className="block mt-1 text-blue-700">* indicates custom sector weightings are applied</span>
                   )}
                 </p>
-                {formData.industrySector && (() => {
-                  const sectorInfo: Record<string, { emphasis: string[] }> = {
-                    'Food & Beverage': { emphasis: ['Construction & Combustibility (High)', 'Fire Protection (High)', 'Detection Systems (Medium)'] },
-                    'Foundry / Metal': { emphasis: ['Management Systems (High)', 'Fire Protection (Medium)', 'Special Hazards (Medium)'] },
-                    'Chemical / ATEX': { emphasis: ['Fire Protection (High)', 'Special Hazards (High)', 'Management Systems (High)'] },
-                    'Logistics / Warehouse': { emphasis: ['Fire Protection (Very High)', 'Construction & Combustibility (High)', 'Detection Systems (Medium)'] },
-                    'Office / Commercial': { emphasis: ['Business Interruption (High)', 'Detection Systems (Medium)', 'Fire Protection (Medium)'] },
-                    'General Industrial': { emphasis: ['Construction & Combustibility (Medium)', 'Fire Protection (Medium)', 'Management Systems (Medium)'] },
-                    'Other': { emphasis: ['Construction & Combustibility (Medium)', 'Fire Protection (Medium)', 'All other factors equally weighted'] },
-                  };
-                  const info = sectorInfo[formData.industrySector];
-                  if (!info) return null;
-                  return (
-                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm font-medium text-blue-900 mb-1.5">This sector emphasises:</p>
-                      <ul className="text-xs text-blue-800 space-y-0.5">
-                        {(info.emphasis || []).map((item, idx) => (
-                          <li key={idx}>■ {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })()}
               </div>
 
               <div>
@@ -2267,76 +2242,20 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="propertyType" className="block text-sm font-medium text-slate-700 mb-2">
-                    Property Type *
-                  </label>
-                  <select
-                    id="propertyType"
-                    name="propertyType"
-                    required
-                    value={formData.propertyType}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all bg-white"
-                  >
-                    <option value="">Select property type</option>
-                    <option value="Aircraft Assembly">Aircraft Assembly</option>
-                    <option value="Aircraft Maintenance">Aircraft Maintenance</option>
-                    <option value="Aircraft Painting">Aircraft Painting</option>
-                    <option value="Aluminium">Aluminium</option>
-                    <option value="Auto Assembly">Auto Assembly</option>
-                    <option value="Auto Body">Auto Body</option>
-                    <option value="Auto Paint">Auto Paint</option>
-                    <option value="Auto Press">Auto Press</option>
-                    <option value="Chemical">Chemical</option>
-                    <option value="Data Centre">Data Centre</option>
-                    <option value="Electrical Equipment Assembly">Electrical Equipment Assembly</option>
-                    <option value="Expanded Plastics">Expanded Plastics</option>
-                    <option value="Food & Beverage">Food & Beverage</option>
-                    <option value="Foundry and Forge">Foundry and Forge</option>
-                    <option value="Glass Manufacturing">Glass Manufacturing</option>
-                    <option value="Hospital">Hospital</option>
-                    <option value="Hotel">Hotel</option>
-                    <option value="Machine shops">Machine shops</option>
-                    <option value="Mining">Mining</option>
-                    <option value="Mixed use">Mixed use</option>
-                    <option value="Office">Office</option>
-                    <option value="Other">Other</option>
-                    <option value="Paper">Paper</option>
-                    <option value="Pharmaceutical">Pharmaceutical</option>
-                    <option value="Power Generation">Power Generation</option>
-                    <option value="Printing">Printing</option>
-                    <option value="Retail">Retail</option>
-                    <option value="Residential">Residential</option>
-                    <option value="Semiconductor">Semiconductor</option>
-                    <option value="Sheet Metal Working">Sheet Metal Working</option>
-                    <option value="Ship Building">Ship Building</option>
-                    <option value="Steel Mill">Steel Mill</option>
-                    <option value="Textiles">Textiles</option>
-                    <option value="Unexpanded Plastics">Unexpanded Plastics</option>
-                    <option value="Vacant Plants">Vacant Plants</option>
-                    <option value="Warehouse - Ceiling sprinklers only">Warehouse - Ceiling sprinklers only</option>
-                    <option value="Waste Industry">Waste Industry</option>
-                    <option value="Woodworking">Woodworking</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="primaryOccupancy" className="block text-sm font-medium text-slate-700 mb-2">
-                    Primary Occupancy / Use *
-                  </label>
-                  <input
-                    type="text"
-                    id="primaryOccupancy"
-                    name="primaryOccupancy"
-                    required
-                    value={formData.primaryOccupancy}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all"
-                    placeholder="Enter primary occupancy or use"
-                  />
-                </div>
+              <div>
+                <label htmlFor="primaryOccupancy" className="block text-sm font-medium text-slate-700 mb-2">
+                  Primary Occupancy / Use *
+                </label>
+                <input
+                  type="text"
+                  id="primaryOccupancy"
+                  name="primaryOccupancy"
+                  required
+                  value={formData.primaryOccupancy}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all"
+                  placeholder="Enter primary occupancy or use"
+                />
               </div>
             </div>
           </div>

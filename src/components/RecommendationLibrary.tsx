@@ -5,6 +5,12 @@ import { Plus, Edit, Trash2, Save, X, AlertCircle, CheckCircle2, Search } from '
 interface RecommendationTemplate {
   id: string;
   code: string | null;
+  hazard: string;
+  description: string;
+  action: string;
+  client_response_prompt: string | null;
+  importance: number | null;
+  source_ref: string | null;
   title: string;
   body: string;
   category: string;
@@ -45,8 +51,12 @@ export default function RecommendationLibrary() {
 
   const [formData, setFormData] = useState({
     code: '',
-    title: '',
-    body: '',
+    hazard: '',
+    description: '',
+    action: '',
+    client_response_prompt: '',
+    importance: null as number | null,
+    source_ref: '',
     category: 'Management Systems',
     default_priority: 3,
     trigger_type: 'manual',
@@ -178,8 +188,12 @@ export default function RecommendationLibrary() {
     setEditingId(template.id);
     setFormData({
       code: template.code || '',
-      title: template.title,
-      body: template.body,
+      hazard: template.hazard,
+      description: template.description,
+      action: template.action,
+      client_response_prompt: template.client_response_prompt || '',
+      importance: template.importance,
+      source_ref: template.source_ref || '',
       category: template.category,
       default_priority: template.default_priority,
       trigger_type: template.trigger_type,
@@ -201,8 +215,12 @@ export default function RecommendationLibrary() {
   const resetForm = () => {
     setFormData({
       code: '',
-      title: '',
-      body: '',
+      hazard: '',
+      description: '',
+      action: '',
+      client_response_prompt: '',
+      importance: null,
+      source_ref: '',
       category: 'Management Systems',
       default_priority: 3,
       trigger_type: 'manual',
@@ -216,8 +234,9 @@ export default function RecommendationLibrary() {
 
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = searchQuery === '' ||
-      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.body.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.hazard.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (template.code && template.code.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory = categoryFilter === 'all' || template.category === categoryFilter;
@@ -338,7 +357,7 @@ export default function RecommendationLibrary() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">{template.title}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{template.hazard}</h3>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <button
@@ -367,7 +386,22 @@ export default function RecommendationLibrary() {
                     </button>
                   </div>
                 </div>
-                <p className="text-gray-700 text-sm leading-relaxed">{template.body}</p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Observation</p>
+                    <p className="text-gray-700 text-sm leading-relaxed">{template.description}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Recommended Action</p>
+                    <p className="text-gray-700 text-sm leading-relaxed">{template.action}</p>
+                  </div>
+                  {template.client_response_prompt && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Client Response Prompt</p>
+                      <p className="text-gray-500 text-sm italic">{template.client_response_prompt}</p>
+                    </div>
+                  )}
+                </div>
                 {template.trigger_type !== 'manual' && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <p className="text-xs text-gray-500">
@@ -434,13 +468,13 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Title *
+          Hazard / Identification *
         </label>
         <input
           type="text"
-          placeholder="Short recommendation heading"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          placeholder="e.g., Hot Work, DSEAR, Malicious Arson"
+          value={formData.hazard}
+          onChange={(e) => setFormData({ ...formData, hazard: e.target.value })}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           required
         />
@@ -448,15 +482,55 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Body *
+          Observation / Description *
         </label>
         <textarea
-          placeholder="Generic, reusable recommendation text"
-          value={formData.body}
-          onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-          rows={4}
+          placeholder="Describe the observation or current state"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Recommended Action *
+        </label>
+        <textarea
+          placeholder="Specify the recommended action to address the issue"
+          value={formData.action}
+          onChange={(e) => setFormData({ ...formData, action: e.target.value })}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Client Response Prompt (Optional)
+        </label>
+        <input
+          type="text"
+          placeholder="e.g., Site Response, Client Comments"
+          value={formData.client_response_prompt}
+          onChange={(e) => setFormData({ ...formData, client_response_prompt: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Source Reference (Optional)
+        </label>
+        <input
+          type="text"
+          placeholder="e.g., Endurance V1.13 item 1"
+          value={formData.source_ref}
+          onChange={(e) => setFormData({ ...formData, source_ref: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
       </div>
 

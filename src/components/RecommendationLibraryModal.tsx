@@ -5,6 +5,10 @@ import { X, Search, BookOpen, Plus, Check } from 'lucide-react';
 interface RecommendationTemplate {
   id: string;
   code: string | null;
+  hazard: string;
+  description: string;
+  action: string;
+  client_response_prompt: string | null;
   title: string;
   body: string;
   category: string;
@@ -68,16 +72,32 @@ export default function RecommendationLibraryModal({
     setError(null);
 
     try {
+      const { data: existingRecs, error: fetchError } = await supabase
+        .from('survey_recommendations')
+        .select('sort_index')
+        .eq('survey_id', surveyId)
+        .order('sort_index', { ascending: false })
+        .limit(1);
+
+      if (fetchError) throw fetchError;
+
+      const maxSortIndex = existingRecs && existingRecs.length > 0
+        ? existingRecs[0].sort_index
+        : -1;
+
       const { error } = await supabase
         .from('survey_recommendations')
         .insert([{
           survey_id: surveyId,
           template_id: template.id,
-          title_final: template.title,
-          body_final: template.body,
+          hazard: template.hazard,
+          description_final: template.description,
+          action_final: template.action,
+          client_response: template.client_response_prompt || null,
           priority: template.default_priority,
           status: 'open',
           source: 'library',
+          sort_index: maxSortIndex + 1,
           include_in_report: true
         }]);
 
@@ -105,8 +125,9 @@ export default function RecommendationLibraryModal({
 
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = searchQuery === '' ||
-      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.body.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.hazard.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (template.code && template.code.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory = categoryFilter === 'all' || template.category === categoryFilter;
@@ -212,12 +233,27 @@ export default function RecommendationLibraryModal({
                                     Priority: {template.default_priority}/5
                                   </span>
                                 </div>
-                                <h4 className="font-semibold text-gray-900 mb-1">
-                                  {template.title}
+                                <h4 className="font-semibold text-gray-900 mb-2">
+                                  {template.hazard}
                                 </h4>
-                                <p className="text-sm text-gray-700 leading-relaxed">
-                                  {template.body}
-                                </p>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-0.5">
+                                      Observation
+                                    </p>
+                                    <p className="text-sm text-gray-700 leading-relaxed">
+                                      {template.description}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-0.5">
+                                      Recommended Action
+                                    </p>
+                                    <p className="text-sm text-gray-700 leading-relaxed">
+                                      {template.action}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
                               <button
                                 onClick={() => handleAddRecommendation(template)}

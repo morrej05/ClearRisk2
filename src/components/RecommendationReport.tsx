@@ -93,9 +93,11 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
 
           return {
             id: rec.id,
-            hazard: rec.title_final,
-            description: rec.body_final,
-            client_response: '',
+            title: rec.hazard,
+            hazard: rec.hazard,
+            description: rec.description_final,
+            action: rec.action_final,
+            client_response: rec.client_response || '',
             status: rec.status,
             priority: priorityMap[rec.priority] || 'Medium',
             updated_at: rec.updated_at,
@@ -483,26 +485,29 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
                               </div>
 
                               <div className="space-y-3">
-                                {rec.title && (
-                                  <div>
-                                    <h4 className="text-base font-bold text-slate-900">{rec.title}</h4>
-                                  </div>
-                                )}
-                                <div>
-                                  <h4 className="text-sm font-semibold text-slate-700 mb-1">Recommendation</h4>
-                                  <p className="text-slate-900 leading-relaxed">{rec.description || '—'}</p>
-                                </div>
-
                                 {rec.hazard && (
                                   <div>
-                                    <h4 className="text-sm font-semibold text-slate-700 mb-1">Rationale / Hazard</h4>
-                                    <p className="text-slate-700 leading-relaxed text-sm">{rec.hazard}</p>
+                                    <h4 className="text-base font-bold text-slate-900">{rec.hazard}</h4>
+                                  </div>
+                                )}
+
+                                {rec.description && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-slate-700 mb-1">Observation</h4>
+                                    <p className="text-slate-900 leading-relaxed">{rec.description}</p>
+                                  </div>
+                                )}
+
+                                {rec.action && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-slate-700 mb-1">Recommended Action</h4>
+                                    <p className="text-slate-900 leading-relaxed">{rec.action}</p>
                                   </div>
                                 )}
 
                                 {rec.client_response && (
                                   <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
-                                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Client Response</h4>
+                                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Site Response</h4>
                                     <p className="text-blue-800 text-sm leading-relaxed">{rec.client_response}</p>
                                   </div>
                                 )}
@@ -552,21 +557,29 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
                             </div>
 
                             <div className="space-y-3">
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-700 mb-1">Recommendation</h4>
-                                <p className="text-slate-900 leading-relaxed">{rec.description || '—'}</p>
-                              </div>
-
                               {rec.hazard && (
                                 <div>
-                                  <h4 className="text-sm font-semibold text-slate-700 mb-1">Rationale / Hazard</h4>
-                                  <p className="text-slate-700 leading-relaxed text-sm">{rec.hazard}</p>
+                                  <h4 className="text-base font-bold text-slate-900">{rec.hazard}</h4>
+                                </div>
+                              )}
+
+                              {rec.description && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-slate-700 mb-1">Observation</h4>
+                                  <p className="text-slate-900 leading-relaxed">{rec.description}</p>
+                                </div>
+                              )}
+
+                              {rec.action && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-slate-700 mb-1">Recommended Action</h4>
+                                  <p className="text-slate-900 leading-relaxed">{rec.action}</p>
                                 </div>
                               )}
 
                               {rec.client_response && (
                                 <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
-                                  <h4 className="text-sm font-semibold text-blue-900 mb-1">Client Response</h4>
+                                  <h4 className="text-sm font-semibold text-blue-900 mb-1">Site Response</h4>
                                   <p className="text-blue-800 text-sm leading-relaxed">{rec.client_response}</p>
                                 </div>
                               )}

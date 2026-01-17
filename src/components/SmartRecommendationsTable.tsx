@@ -18,6 +18,10 @@ interface SurveyRecommendation {
   id: string;
   survey_id: string;
   template_id: string | null;
+  hazard: string;
+  description_final: string;
+  action_final: string;
+  client_response: string | null;
   title_final: string;
   body_final: string;
   priority: number;
@@ -66,7 +70,12 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
-  const [editingBody, setEditingBody] = useState({ title: '', body: '' });
+  const [editingBody, setEditingBody] = useState({
+    hazard: '',
+    description: '',
+    action: '',
+    clientResponse: ''
+  });
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
 
@@ -159,8 +168,10 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
         .from('survey_recommendations')
         .insert([{
           survey_id: surveyId,
-          title_final: 'New Recommendation',
-          body_final: 'Enter recommendation details here',
+          hazard: 'New Recommendation',
+          description_final: 'Enter observation details here',
+          action_final: 'Enter recommended action here',
+          client_response: null,
           priority: 3,
           status: 'open',
           source: 'manual',
@@ -222,7 +233,12 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
 
   const handleEditBody = (rec: SurveyRecommendation) => {
     setEditingBodyId(rec.id);
-    setEditingBody({ title: rec.title_final, body: rec.body_final });
+    setEditingBody({
+      hazard: rec.hazard,
+      description: rec.description_final,
+      action: rec.action_final,
+      clientResponse: rec.client_response || ''
+    });
   };
 
   const handleSaveBody = async () => {
@@ -232,8 +248,10 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
       const { error } = await supabase
         .from('survey_recommendations')
         .update({
-          title_final: editingBody.title,
-          body_final: editingBody.body
+          hazard: editingBody.hazard,
+          description_final: editingBody.description,
+          action_final: editingBody.action,
+          client_response: editingBody.clientResponse || null
         })
         .eq('id', editingBodyId);
 
@@ -508,24 +526,50 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title
+                  Hazard / Identification
                 </label>
                 <input
                   type="text"
-                  value={editingBody.title}
-                  onChange={(e) => setEditingBody({ ...editingBody, title: e.target.value })}
+                  value={editingBody.hazard}
+                  onChange={(e) => setEditingBody({ ...editingBody, hazard: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., Hot Work, DSEAR, Malicious Arson"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Body
+                  Observation / Description
                 </label>
                 <textarea
-                  value={editingBody.body}
-                  onChange={(e) => setEditingBody({ ...editingBody, body: e.target.value })}
-                  rows={12}
+                  value={editingBody.description}
+                  onChange={(e) => setEditingBody({ ...editingBody, description: e.target.value })}
+                  rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Describe the observation or current state"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Recommended Action
+                </label>
+                <textarea
+                  value={editingBody.action}
+                  onChange={(e) => setEditingBody({ ...editingBody, action: e.target.value })}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Specify the recommended action to address the issue"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Client Response / Site Response
+                </label>
+                <textarea
+                  value={editingBody.clientResponse}
+                  onChange={(e) => setEditingBody({ ...editingBody, clientResponse: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Client's response or comments (optional)"
                 />
               </div>
             </div>
@@ -618,9 +662,9 @@ function RecommendationRow({
         )}
       </td>
       <td className="px-4 py-3">
-        <div className="text-sm font-medium text-gray-900">{recommendation.title_final}</div>
+        <div className="text-sm font-medium text-gray-900">{recommendation.hazard}</div>
         <div className="text-xs text-gray-500 mt-0.5 truncate max-w-md">
-          {recommendation.body_final}
+          {recommendation.description_final || recommendation.action_final}
         </div>
       </td>
       <td className="px-4 py-3">

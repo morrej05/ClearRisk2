@@ -57,24 +57,36 @@ export default function AdminDashboard() {
   const fetchSurveys = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: surveysData, error: surveysError } = await supabase
         .from('survey_reports')
-        .select(`
-          *,
-          user_profiles!survey_reports_user_id_fkey(name)
-        `)
+        .select('id, property_name, property_address, company_name, framework_type, survey_type, report_status, issued, survey_date, issue_date, superseded_by_id, created_at, updated_at, user_id, form_data')
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (surveysError) {
+        console.error('Error fetching surveys:', surveysError);
+        throw surveysError;
+      }
 
-      const surveysWithCreator = data?.map((survey: any) => ({
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('id, name');
+
+      const profilesMap = new Map<string, string>();
+      if (!profilesError && profilesData) {
+        profilesData.forEach(profile => {
+          profilesMap.set(profile.id, profile.name || 'Unknown');
+        });
+      }
+
+      const surveysWithCreator = (surveysData || []).map((survey: any) => ({
         ...survey,
-        creator_name: survey.user_profiles?.name || 'Unknown',
-      })) || [];
+        creator_name: profilesMap.get(survey.user_id) || 'Unknown',
+      }));
 
       setSurveys(surveysWithCreator);
     } catch (error) {
       console.error('Error fetching surveys:', error);
+      alert('Failed to load surveys. Please refresh the page.');
     } finally {
       setIsLoading(false);
     }

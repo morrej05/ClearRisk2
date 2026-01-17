@@ -139,13 +139,41 @@ export const SECTOR_PROFILES: Record<string, SectorInfo> = {
 export function getSectorWeights(industrySector: string): SectorWeights {
   const profile = SECTOR_PROFILES[industrySector];
   if (!profile) {
+    console.warn(`[SECTOR_CONFIG] Unknown sector: "${industrySector}", falling back to "General Industrial"`);
     return SECTOR_PROFILES['General Industrial'].weights;
   }
   return profile.weights;
 }
 
+export const AVAILABLE_SECTORS = [
+  'Food & Beverage',
+  'Foundry / Metal',
+  'Chemical / ATEX',
+  'Logistics / Warehouse',
+  'Office / Commercial',
+  'General Industrial',
+  'Other',
+] as const;
+
+if (import.meta.env.DEV) {
+  const missingSectors = AVAILABLE_SECTORS.filter(sector => !SECTOR_PROFILES[sector]);
+  if (missingSectors.length > 0) {
+    console.error(
+      '[SECTOR_CONFIG] ERROR: The following sectors are in the dropdown but missing from SECTOR_PROFILES:',
+      missingSectors
+    );
+    console.error('[SECTOR_CONFIG] Available profiles:', Object.keys(SECTOR_PROFILES));
+  } else {
+    console.log('[SECTOR_CONFIG] ✓ All dropdown sectors have corresponding SECTOR_PROFILES');
+  }
+}
+
 export function getSectorInfo(industrySector: string): SectorInfo | null {
-  return SECTOR_PROFILES[industrySector] || null;
+  const info = SECTOR_PROFILES[industrySector];
+  if (!info && industrySector) {
+    console.warn(`[SECTOR_CONFIG] getSectorInfo: Unknown sector "${industrySector}"`);
+  }
+  return info || null;
 }
 
 export function calculateOverallRiskScore(

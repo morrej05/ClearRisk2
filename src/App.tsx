@@ -8,13 +8,15 @@ import AdminDashboard from './pages/AdminDashboard';
 import ExternalSurvey from './pages/ExternalSurvey';
 import ReportPreviewPage from './pages/ReportPreviewPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <ClientBrandingProvider>
-          <Routes>
+          <ErrorBoundary>
+            <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/external/:token" element={<ExternalSurvey />} />
@@ -44,6 +46,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </ErrorBoundary>
         </ClientBrandingProvider>
       </AuthProvider>
     </BrowserRouter>

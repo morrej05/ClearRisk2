@@ -748,15 +748,28 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
   useEffect(() => {
     if (formData.industrySector) {
       const weights = getSectorWeights(formData.industrySector);
-      setFormData(prev => ({
-        ...prev,
-        wConstruction: weights.construction,
-        wProtection: weights.protection,
-        wDetection: weights.detection,
-        wManagement: weights.management,
-        wHazards: weights.hazards,
-        wBi: weights.bi,
-      }));
+      setFormData(prev => {
+        if (
+          prev.wConstruction === weights.construction &&
+          prev.wProtection === weights.protection &&
+          prev.wDetection === weights.detection &&
+          prev.wManagement === weights.management &&
+          prev.wHazards === weights.hazards &&
+          prev.wBi === weights.bi
+        ) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          wConstruction: weights.construction,
+          wProtection: weights.protection,
+          wDetection: weights.detection,
+          wManagement: weights.management,
+          wHazards: weights.hazards,
+          wBi: weights.bi,
+        };
+      });
     }
   }, [formData.industrySector]);
 
@@ -764,14 +777,17 @@ export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportP
     const overallGrade = calculateOverallGrade(formData.sectionGrades);
     const band = getRiskBandFromGrade(overallGrade);
 
-    if (overallGrade !== formData.overallGrade || band !== formData.riskBand) {
+    const gradeChanged = Math.abs(overallGrade - formData.overallGrade) > 0.001;
+    const bandChanged = band !== formData.riskBand;
+
+    if (gradeChanged || bandChanged) {
       setFormData(prev => ({
         ...prev,
         overallGrade: overallGrade,
         riskBand: band,
       }));
     }
-  }, [formData.sectionGrades]);
+  }, [formData.sectionGrades, formData.overallGrade, formData.riskBand]);
 
   const loadSurvey = async (id: string) => {
     setIsLoadingSurvey(true);
@@ -1814,7 +1830,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   id="industrySector"
                   name="industrySector"
                   required
-                  value={formData.industrySector}
+                  value={formData.industrySector || ''}
                   onChange={handleInputChange}
                   disabled={isIssued}
                   className={`w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all ${
@@ -1834,7 +1850,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   The selected sector adjusts risk score weightings to reflect typical loss drivers for this industry.
                 </p>
                 {formData.industrySector && (() => {
-                  const sectorInfo = {
+                  const sectorInfo: Record<string, { emphasis: string[] }> = {
                     'Food & Beverage': { emphasis: ['Construction & Combustibility (High)', 'Fire Protection (High)', 'Detection Systems (Medium)'] },
                     'Foundry / Metal': { emphasis: ['Management Systems (High)', 'Fire Protection (Medium)', 'Special Hazards (Medium)'] },
                     'Chemical / ATEX': { emphasis: ['Fire Protection (High)', 'Special Hazards (High)', 'Management Systems (High)'] },
@@ -1843,17 +1859,18 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                     'General Industrial': { emphasis: ['Construction & Combustibility (Medium)', 'Fire Protection (Medium)', 'Management Systems (Medium)'] },
                     'Other': { emphasis: ['Construction & Combustibility (Medium)', 'Fire Protection (Medium)', 'All other factors equally weighted'] },
                   };
-                  const info = sectorInfo[formData.industrySector as keyof typeof sectorInfo];
-                  return info ? (
+                  const info = sectorInfo[formData.industrySector];
+                  if (!info) return null;
+                  return (
                     <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <p className="text-sm font-medium text-blue-900 mb-1.5">This sector emphasises:</p>
                       <ul className="text-xs text-blue-800 space-y-0.5">
-                        {info.emphasis.map((item, idx) => (
+                        {(info.emphasis || []).map((item, idx) => (
                           <li key={idx}>■ {item}</li>
                         ))}
                       </ul>
                     </div>
-                  ) : null;
+                  );
                 })()}
               </div>
 

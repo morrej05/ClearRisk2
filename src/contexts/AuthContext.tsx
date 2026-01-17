@@ -21,23 +21,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('id', userId)
-      .maybeSingle();
+  const ensureUserProfile = async (userId: string, userEmail: string): Promise<UserRole> => {
+    try {
+      const { data: profile, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (data && !error) {
-      setUserRole(data.role as UserRole);
-    } else {
-      setUserRole(null);
+      if (profile && !fetchError) {
+        return profile.role as UserRole;
+      }
+
+      if (!profile) {
+        console.warn('User profile not found, creating default profile for user:', userId);
+
+        const { data: newProfile, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: userId,
+            email: userEmail,
+            role: 'surveyor'
+          })
+          .select('role')
+          .single();
+
+        if (newProfile && !insertError) {
+          console.log('Created new user profile with role:', newProfile.role);
+          return newProfile.role as UserRole;
+        } else {
+          console.error('Failed to create user profile:', insertError);
+          throw new Error('Failed to create user profile');
+        }
+      }
+
+      throw new Error('Failed to fetch user profile');
+    } catch (err) {
+      console.error('Error in ensureUserProfile:', err);
+      throw err;
+    }
+  };
+
+  const fetchUserRole = async (userId: string, userEmail: string) => {
+    const timeoutId = setTimeout(() => {
+      console.error('Role fetch timeout after 5 seconds');
+      setUserRole('surveyor');
+      setLoading(false);
+    }, 5000);
+
+    try {
+      const role = await ensureUserProfile(userId, userEmail);
+      clearTimeout(timeoutId);
+      setUserRole(role);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error('Failed to fetch user role:', error);
+      setUserRole('surveyor');
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
     }
   };
 
   const refreshUserRole = async () => {
     if (user) {
-      await fetchUserRole(user.id);
+      setLoading(true);
+      await fetchUserRole(user.id, user.email || '');
     }
   };
 
@@ -45,18 +94,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserRole(session.user.id);
+        fetchUserRole(session.user.id, session.user.email || '');
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       (async () => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchUserRole(session.user.id);
+          setLoading(true);
+          await fetchUserRole(session.user.id, session.user.email || '');
         } else {
           setUserRole(null);
+          setLoading(false);
         }
       })();
     });

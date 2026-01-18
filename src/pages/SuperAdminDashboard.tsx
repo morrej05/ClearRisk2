@@ -163,11 +163,23 @@ export default function SuperAdminDashboard() {
                   <h2 className="text-2xl font-semibold text-slate-900 mb-2">
                     Pricing & Plans
                   </h2>
-                  <p className="text-slate-600 max-w-md mx-auto">
+                  <p className="text-slate-600 max-w-md mx-auto mb-6">
                     Configure pricing tiers, subscription plans, and billing settings for organizations.
                   </p>
-                  <div className="mt-6 inline-block px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="mt-6 inline-block px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg mb-6">
                     <p className="text-sm text-blue-800 font-medium">Coming Soon</p>
+                  </div>
+                  <div className="mt-8">
+                    <p className="text-slate-700 mb-4">
+                      In the meantime, you can manage subscription upgrades for your organization:
+                    </p>
+                    <button
+                      onClick={() => navigate('/upgrade')}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold shadow-sm"
+                    >
+                      <CreditCard className="w-5 h-5" />
+                      Go to Upgrade Page
+                    </button>
                   </div>
                 </div>
               </div>

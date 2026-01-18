@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, Users, ArrowLeft } from 'lucide-react';
+import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, Users, ArrowLeft, CreditCard } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import UserManagement from '../components/UserManagement';
 import { INDUSTRY_SECTORS } from '../utils/industrySectors';
@@ -363,6 +363,13 @@ export default function AdminDashboard() {
                   Platform Settings
                 </button>
               )}
+              <button
+                onClick={() => navigate('/upgrade')}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-4 h-4" />
+                Upgrade
+              </button>
               <button
                 onClick={() => navigate('/dashboard')}
                 className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"

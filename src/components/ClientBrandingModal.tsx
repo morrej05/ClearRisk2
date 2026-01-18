@@ -17,7 +17,7 @@ interface ClientBranding {
 
 export default function ClientBrandingModal({ isOpen, onClose, onBrandingUpdated }: ClientBrandingModalProps) {
   const { user } = useAuth();
-  const [companyName, setCompanyName] = useState('ClearRisk');
+  const [companyName, setCompanyName] = useState('EziRisk');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);

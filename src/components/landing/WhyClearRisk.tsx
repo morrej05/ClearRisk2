@@ -33,14 +33,14 @@ const benefits = [
 
 export default function WhyClearRisk() {
   return (
-    <section className="py-24 bg-slate-900 text-white">
+    <section className="py-24 bg-neutral-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Why ClearRisk
+            Why EziRisk
           </h2>
-          <p className="text-xl text-slate-300 max-w-3xl mx-auto">
-            The intelligent way to create professional survey reports
+          <p className="text-xl text-neutral-300 max-w-3xl mx-auto">
+            The professional way to create fire risk reports
           </p>
         </div>
 
@@ -50,24 +50,24 @@ export default function WhyClearRisk() {
             return (
               <div
                 key={index}
-                className="bg-slate-800/50 p-8 rounded-xl border border-slate-700 hover:border-slate-600 transition-all"
+                className="bg-neutral-800/50 p-8 rounded-xl border border-neutral-700 hover:border-neutral-600 transition-all"
               >
                 <div className="flex items-start gap-6">
-                  <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-6 h-6 text-slate-900" />
+                  <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-xl font-semibold mb-2">
                       {benefit.title}
                     </h3>
-                    <p className="text-slate-300 leading-relaxed mb-4">
+                    <p className="text-neutral-300 leading-relaxed mb-4">
                       {benefit.description}
                     </p>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-emerald-400">
+                      <span className="text-3xl font-bold text-success-400">
                         {benefit.stat}
                       </span>
-                      <span className="text-sm text-slate-400">
+                      <span className="text-sm text-neutral-400">
                         {benefit.statLabel}
                       </span>
                     </div>
@@ -78,10 +78,10 @@ export default function WhyClearRisk() {
           })}
         </div>
 
-        <div className="mt-16 p-8 bg-slate-800/50 rounded-xl border border-slate-700 text-center">
-          <p className="text-slate-300 text-lg max-w-3xl mx-auto">
-            ClearRisk doesn't replace your expertise—it amplifies it. You provide the data and insights,
-            we handle the time-consuming writing and formatting.
+        <div className="mt-16 p-8 bg-neutral-800/50 rounded-xl border border-neutral-700 text-center">
+          <p className="text-neutral-300 text-lg max-w-3xl mx-auto">
+            EziRisk doesn't replace your expertise—it amplifies it. You provide the data and insights,
+            we handle the structured reporting and professional formatting.
           </p>
         </div>
       </div>

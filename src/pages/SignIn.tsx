@@ -59,12 +59,12 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
-      <nav className="bg-white border-b border-slate-200">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 flex flex-col">
+      <nav className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link to="/" className="text-2xl font-bold text-slate-900">
-              ClearRisk
+            <Link to="/" className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+              <span>EziRisk</span>
             </Link>
           </div>
         </div>
@@ -73,11 +73,11 @@ export default function SignIn() {
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="max-w-md w-full space-y-8">
           <div>
-            <h2 className="text-center text-3xl font-bold text-slate-900">
+            <h2 className="text-center text-3xl font-bold text-neutral-900">
               {isSignUp ? 'Create your account' : 'Sign in to your account'}
             </h2>
-            <p className="mt-2 text-center text-sm text-slate-600">
-              {isSignUp ? 'Start creating professional survey reports' : 'Access your survey reports'}
+            <p className="mt-2 text-center text-sm text-neutral-600">
+              {isSignUp ? 'Start creating professional fire risk reports' : 'Access your fire risk reports'}
             </p>
           </div>
 

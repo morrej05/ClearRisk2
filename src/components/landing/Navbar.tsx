@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Shield } from 'lucide-react';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -33,36 +33,39 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           <Link
             to="/"
-            className={`text-2xl font-bold transition-colors ${
-              isScrolled ? 'text-slate-900' : 'text-white'
-            }`}
+            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
           >
-            ClearRisk
+            <Shield className={`w-7 h-7 ${isScrolled ? 'text-primary-600' : 'text-white'}`} />
+            <span className={`text-2xl font-bold transition-colors ${
+              isScrolled ? 'text-neutral-900' : 'text-white'
+            }`}>
+              EziRisk
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">
             <button
               onClick={() => scrollToSection('how-it-works')}
-              className={`text-sm font-medium transition-colors hover:text-slate-900 ${
-                isScrolled ? 'text-slate-700' : 'text-white hover:text-slate-100'
+              className={`text-sm font-medium transition-colors ${
+                isScrolled ? 'text-neutral-700 hover:text-neutral-900' : 'text-white hover:text-neutral-100'
               }`}
             >
               How it works
             </button>
             <button
               onClick={() => scrollToSection('who-its-for')}
-              className={`text-sm font-medium transition-colors hover:text-slate-900 ${
-                isScrolled ? 'text-slate-700' : 'text-white hover:text-slate-100'
+              className={`text-sm font-medium transition-colors ${
+                isScrolled ? 'text-neutral-700 hover:text-neutral-900' : 'text-white hover:text-neutral-100'
               }`}
             >
               Who it's for
             </button>
             <Link
               to="/signin"
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
                 isScrolled
-                  ? 'bg-slate-900 text-white hover:bg-slate-800'
-                  : 'bg-white text-slate-900 hover:bg-slate-100'
+                  ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm'
+                  : 'bg-white text-primary-600 hover:bg-neutral-50 shadow-lg'
               }`}
             >
               Sign in
@@ -72,7 +75,7 @@ export default function Navbar() {
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className={`md:hidden p-2 rounded-md ${
-              isScrolled ? 'text-slate-700' : 'text-white'
+              isScrolled ? 'text-neutral-700' : 'text-white'
             }`}
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -81,23 +84,23 @@ export default function Navbar() {
       </div>
 
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-slate-200">
+        <div className="md:hidden bg-white border-t border-neutral-200">
           <div className="px-4 py-4 space-y-3">
             <button
               onClick={() => scrollToSection('how-it-works')}
-              className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-md"
+              className="block w-full text-left px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 rounded-md"
             >
               How it works
             </button>
             <button
               onClick={() => scrollToSection('who-its-for')}
-              className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-md"
+              className="block w-full text-left px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 rounded-md"
             >
               Who it's for
             </button>
             <Link
               to="/signin"
-              className="block w-full text-center px-3 py-2 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 rounded-md"
+              className="block w-full text-center px-3 py-2 text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 rounded-lg"
             >
               Sign in
             </Link>

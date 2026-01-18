@@ -29,13 +29,13 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-24 bg-slate-50">
+    <section id="how-it-works" className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-4">
             How It Works
           </h2>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+          <p className="text-xl text-neutral-600 max-w-3xl mx-auto">
             From survey to finished report in four simple steps
           </p>
         </div>
@@ -45,22 +45,22 @@ export default function HowItWorks() {
             const Icon = step.icon;
             return (
               <div key={index} className="relative">
-                <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-shadow h-full">
-                  <div className="text-5xl font-bold text-slate-200 mb-4">
+                <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 hover:border-primary-300 hover:shadow-md transition-all h-full">
+                  <div className="text-5xl font-bold text-primary-100 mb-4">
                     {step.number}
                   </div>
-                  <div className="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center mb-4">
                     <Icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-3">
+                  <h3 className="text-xl font-semibold text-neutral-900 mb-3">
                     {step.title}
                   </h3>
-                  <p className="text-slate-600 leading-relaxed">
+                  <p className="text-neutral-600 leading-relaxed">
                     {step.description}
                   </p>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-1/2 -right-4 w-8 h-0.5 bg-slate-300 z-10"></div>
+                  <div className="hidden lg:block absolute top-1/2 -right-4 w-8 h-0.5 bg-primary-200 z-10"></div>
                 )}
               </div>
             );

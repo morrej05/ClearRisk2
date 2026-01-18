@@ -10,10 +10,11 @@ interface UserProfile {
   name: string | null;
   email?: string;
   created_at: string;
+  is_platform_admin: boolean;
 }
 
 export default function UserManagement() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isPlatformAdmin } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -138,6 +139,32 @@ export default function UserManagement() {
     }
   };
 
+  const handleTogglePlatformAdmin = async (userId: string, currentValue: boolean) => {
+    const platformAdminCount = users.filter(u => u.is_platform_admin).length;
+    const isRevokingPlatformAdmin = currentValue === true;
+
+    if (platformAdminCount === 1 && isRevokingPlatformAdmin) {
+      alert('At least one Platform Admin is required. Cannot remove the last Platform Admin.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ is_platform_admin: !currentValue })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setUsers(users.map(u =>
+        u.id === userId ? { ...u, is_platform_admin: !currentValue } : u
+      ));
+    } catch (error) {
+      console.error('Error updating platform admin status:', error);
+      alert('Failed to update Platform Admin status. Please try again.');
+    }
+  };
+
   const handleDeleteUser = async (userId: string, userEmail?: string) => {
     const adminCount = users.filter(u => u.role === 'admin').length;
     const userToDelete = users.find(u => u.id === userId);
@@ -173,7 +200,7 @@ export default function UserManagement() {
     switch (role) {
       case 'admin':
         return 'bg-red-100 text-red-700 border-red-300';
-      case 'editor':
+      case 'surveyor':
         return 'bg-blue-100 text-blue-700 border-blue-300';
       case 'viewer':
         return 'bg-slate-100 text-slate-700 border-slate-300';
@@ -233,6 +260,11 @@ export default function UserManagement() {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Role
               </th>
+              {isPlatformAdmin && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Platform Admin
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Created
               </th>
@@ -267,9 +299,9 @@ export default function UserManagement() {
                         onChange={(e) => setEditingRole(e.target.value as UserRole)}
                         className="text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-slate-500"
                       >
-                        <option value="admin">Admin</option>
-                        <option value="editor">Editor</option>
                         <option value="viewer">Viewer</option>
+                        <option value="surveyor">Surveyor</option>
+                        <option value="admin">Admin</option>
                       </select>
                       <button
                         onClick={() => handleUpdateRole(user.id, editingRole)}
@@ -305,6 +337,25 @@ export default function UserManagement() {
                     </div>
                   )}
                 </td>
+                {isPlatformAdmin && (
+                  <td className="px-6 py-4">
+                    {user.role === 'admin' ? (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={user.is_platform_admin}
+                          onChange={() => handleTogglePlatformAdmin(user.id, user.is_platform_admin)}
+                          className="w-4 h-4 text-slate-900 border-slate-300 rounded focus:ring-2 focus:ring-slate-500"
+                        />
+                        <span className="text-sm text-slate-700">
+                          {user.is_platform_admin ? 'Yes' : 'No'}
+                        </span>
+                      </label>
+                    ) : (
+                      <span className="text-sm text-slate-400">—</span>
+                    )}
+                  </td>
+                )}
                 <td className="px-6 py-4 text-sm text-slate-600">
                   {formatDate(user.created_at)}
                 </td>
@@ -384,7 +435,7 @@ export default function UserManagement() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 text-slate-900"
                 >
                   <option value="viewer">Viewer - Read-only access</option>
-                  <option value="editor">Editor - Can create and edit surveys</option>
+                  <option value="surveyor">Surveyor - Can create and edit surveys</option>
                   <option value="admin">Admin - Full access</option>
                 </select>
                 <p className="mt-1 text-xs text-slate-500">

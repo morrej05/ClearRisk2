@@ -337,12 +337,20 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center gap-4">
               {isPlatformAdmin && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200">
+                  <Shield className="w-4 h-4 text-slate-600" />
+                  <span className="text-xs font-medium text-slate-700">
+                    Platform Admin
+                  </span>
+                </div>
+              )}
+              {isPlatformAdmin && (
                 <button
                   onClick={() => navigate('/super-admin')}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   <Shield className="w-4 h-4" />
-                  Platform Admin
+                  Platform Settings
                 </button>
               )}
               <button

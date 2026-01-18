@@ -484,9 +484,16 @@ export default function Dashboard() {
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-end">
                 <span className="text-sm text-slate-600">{user?.email}</span>
-                <span className={`text-xs ${roleError ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
-                  Role: {userRole ? ROLE_LABELS[userRole as UserRole] : roleError ? 'Error' : 'Loading...'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs ${roleError ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
+                    Role: {userRole ? ROLE_LABELS[userRole as UserRole] : roleError ? 'Error' : 'Loading...'}
+                  </span>
+                  {isPlatformAdmin && (
+                    <span className="text-xs font-medium text-slate-700 px-2 py-0.5 bg-slate-100 rounded border border-slate-200">
+                      Platform Admin
+                    </span>
+                  )}
+                </div>
               </div>
               {isPlatformAdmin && (
                 <button
@@ -495,7 +502,7 @@ export default function Dashboard() {
                   title="Platform Admin Settings"
                 >
                   <Shield className="w-4 h-4" />
-                  Platform Admin
+                  Platform Settings
                 </button>
               )}
               {permissions.canAccessAdmin && (

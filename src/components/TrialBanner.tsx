@@ -1,16 +1,38 @@
 import { useNavigate } from 'react-router-dom';
 import { Zap, X } from 'lucide-react';
 import { useState } from 'react';
+import { SubscriptionPlan } from '../utils/permissions';
 
-interface TrialBannerProps {
+interface UpgradeBannerProps {
+  plan: SubscriptionPlan;
   feature?: string;
 }
 
-export default function TrialBanner({ feature = 'Smart Recommendations' }: TrialBannerProps) {
+export default function UpgradeBanner({ plan, feature = 'Smart Recommendations' }: UpgradeBannerProps) {
   const navigate = useNavigate();
   const [isDismissed, setIsDismissed] = useState(false);
 
   if (isDismissed) return null;
+
+  const getMessage = () => {
+    switch (plan) {
+      case 'free':
+        return {
+          title: "You're on Free Plan",
+          subtitle: `Upgrade to Professional for ${feature} and advanced features`,
+        };
+      case 'core':
+        return {
+          title: "You're on Core Plan",
+          subtitle: `Upgrade to Professional for ${feature} and 3 editor seats`,
+        };
+      default:
+        return null;
+    }
+  };
+
+  const message = getMessage();
+  if (!message) return null;
 
   return (
     <div className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700">
@@ -22,10 +44,7 @@ export default function TrialBanner({ feature = 'Smart Recommendations' }: Trial
             </div>
             <div className="flex-1">
               <p className="text-white text-sm font-medium">
-                You're on Trial — <span className="text-amber-400">{feature} requires Pro</span>
-              </p>
-              <p className="text-slate-300 text-xs mt-0.5">
-                Upgrade to unlock AI-powered recommendations and advanced features
+                {message.title} — <span className="text-amber-400">{message.subtitle}</span>
               </p>
             </div>
           </div>
@@ -34,7 +53,7 @@ export default function TrialBanner({ feature = 'Smart Recommendations' }: Trial
               onClick={() => navigate('/upgrade')}
               className="px-4 py-1.5 bg-white text-slate-900 text-sm font-medium rounded-lg hover:bg-slate-100 transition-colors"
             >
-              View Plans
+              Upgrade Now
             </button>
             <button
               onClick={() => setIsDismissed(true)}

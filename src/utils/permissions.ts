@@ -1,29 +1,80 @@
-export type UserRole = 'super_admin' | 'org_admin' | 'surveyor';
+export type UserRole = 'admin' | 'surveyor' | 'viewer';
 
-export type SubscriptionPlan = 'trial' | 'pro' | 'pro_fra';
+export type SubscriptionPlan = 'free' | 'core' | 'professional' | 'enterprise';
+
+export type DisciplineType = 'engineering' | 'assessment' | 'both';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  super_admin: 'Super Admin',
-  org_admin: 'Organization Admin',
+  admin: 'Admin',
   surveyor: 'Surveyor',
+  viewer: 'Viewer',
 };
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  super_admin: 'Platform-wide access including sector weightings, recommendation library, and all system settings',
-  org_admin: 'Organization management including user management, branding, and all survey operations',
-  surveyor: 'Can create, edit, and manage surveys and reports',
+  admin: 'Full access including user management, billing, and all survey operations',
+  surveyor: 'Can create, edit, and manage surveys within plan limits',
+  viewer: 'Read-only access to surveys and reports',
 };
 
 export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
-  trial: 'Trial',
-  pro: 'Pro',
-  pro_fra: 'Pro FRA',
+  free: 'Free',
+  core: 'Core',
+  professional: 'Professional',
+  enterprise: 'Enterprise',
 };
 
 export const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
-  trial: 'Basic survey editing and report export',
-  pro: 'Includes Smart Recommendations and advanced analytics',
-  pro_fra: 'Includes everything in Pro plus FRA (Fire Risk Assessment) module',
+  free: 'Basic features with limited functionality',
+  core: 'Essential features for small teams (1 editor)',
+  professional: 'Advanced features for growing teams (3 editors)',
+  enterprise: 'Complete solution with premium features (10 editors)',
+};
+
+export const DISCIPLINE_LABELS: Record<DisciplineType, string> = {
+  engineering: 'Fire Engineering',
+  assessment: 'Fire Risk Assessment',
+  both: 'Both Disciplines',
+};
+
+export interface PlanLimits {
+  maxEditors: number;
+  canSwitchDiscipline: boolean;
+  hasSmartRecommendations: boolean;
+  hasBoltOns: boolean;
+}
+
+export const getPlanLimits = (plan: SubscriptionPlan | null): PlanLimits => {
+  switch (plan) {
+    case 'core':
+      return {
+        maxEditors: 1,
+        canSwitchDiscipline: false,
+        hasSmartRecommendations: false,
+        hasBoltOns: false,
+      };
+    case 'professional':
+      return {
+        maxEditors: 3,
+        canSwitchDiscipline: false,
+        hasSmartRecommendations: true,
+        hasBoltOns: false,
+      };
+    case 'enterprise':
+      return {
+        maxEditors: 10,
+        canSwitchDiscipline: true,
+        hasSmartRecommendations: true,
+        hasBoltOns: true,
+      };
+    case 'free':
+    default:
+      return {
+        maxEditors: 999,
+        canSwitchDiscipline: false,
+        hasSmartRecommendations: false,
+        hasBoltOns: false,
+      };
+  }
 };
 
 export interface RolePermissions {
@@ -72,7 +123,7 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
   }
 
   switch (role) {
-    case 'super_admin':
+    case 'admin':
       return {
         canViewSurveys: true,
         canCreateSurveys: true,
@@ -90,28 +141,6 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
         canManageSectorWeightings: true,
         canManageRecommendationLibrary: true,
         canManagePlatformSettings: true,
-        canGenerateAISummary: true,
-        canExportReports: true,
-      };
-
-    case 'org_admin':
-      return {
-        canViewSurveys: true,
-        canCreateSurveys: true,
-        canEditSurveys: true,
-        canDeleteSurveys: true,
-        canIssueSurveys: true,
-        canResurvey: true,
-        canGenerateExternalLink: true,
-        canEditSurveyText: true,
-        canGeneratePortfolioSummary: true,
-        canManageUsers: true,
-        canManageBranding: true,
-        canAccessAdmin: true,
-        canAccessSuperAdmin: false,
-        canManageSectorWeightings: false,
-        canManageRecommendationLibrary: false,
-        canManagePlatformSettings: false,
         canGenerateAISummary: true,
         canExportReports: true,
       };
@@ -135,6 +164,28 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
         canManageRecommendationLibrary: false,
         canManagePlatformSettings: false,
         canGenerateAISummary: true,
+        canExportReports: true,
+      };
+
+    case 'viewer':
+      return {
+        canViewSurveys: true,
+        canCreateSurveys: false,
+        canEditSurveys: false,
+        canDeleteSurveys: false,
+        canIssueSurveys: false,
+        canResurvey: false,
+        canGenerateExternalLink: false,
+        canEditSurveyText: false,
+        canGeneratePortfolioSummary: false,
+        canManageUsers: false,
+        canManageBranding: false,
+        canAccessAdmin: false,
+        canAccessSuperAdmin: false,
+        canManageSectorWeightings: false,
+        canManageRecommendationLibrary: false,
+        canManagePlatformSettings: false,
+        canGenerateAISummary: false,
         canExportReports: true,
       };
 
@@ -174,21 +225,22 @@ export const getPlanFeatures = (plan: SubscriptionPlan | null): PlanFeatures => 
   }
 
   switch (plan) {
-    case 'trial':
+    case 'free':
+    case 'core':
       return {
         hasSmartRecommendations: false,
         hasFRAModule: false,
         hasAdvancedAnalytics: false,
       };
 
-    case 'pro':
+    case 'professional':
       return {
         hasSmartRecommendations: true,
         hasFRAModule: false,
         hasAdvancedAnalytics: true,
       };
 
-    case 'pro_fra':
+    case 'enterprise':
       return {
         hasSmartRecommendations: true,
         hasFRAModule: true,
@@ -214,4 +266,14 @@ export const canAccessSmartRecommendations = (plan: SubscriptionPlan | null): bo
 
 export const canAccessFRAModule = (plan: SubscriptionPlan | null): boolean => {
   return hasPlanFeature(plan, 'hasFRAModule');
+};
+
+export const canSwitchDiscipline = (plan: SubscriptionPlan | null): boolean => {
+  const limits = getPlanLimits(plan);
+  return limits.canSwitchDiscipline;
+};
+
+export const hasBoltOnAccess = (plan: SubscriptionPlan | null): boolean => {
+  const limits = getPlanLimits(plan);
+  return limits.hasBoltOns;
 };

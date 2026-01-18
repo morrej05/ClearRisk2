@@ -18,14 +18,14 @@ const ClientBrandingContext = createContext<ClientBrandingContextType | undefine
 export function ClientBrandingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [branding, setBranding] = useState<ClientBranding>({
-    companyName: 'ClearRisk',
+    companyName: 'EziRisk',
     logoUrl: null,
   });
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchBranding = async () => {
     if (!user) {
-      setBranding({ companyName: 'ClearRisk', logoUrl: null });
+      setBranding({ companyName: 'EziRisk', logoUrl: null });
       setIsLoading(false);
       return;
     }
@@ -45,11 +45,11 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
           logoUrl: data.logo_url,
         });
       } else {
-        setBranding({ companyName: 'ClearRisk', logoUrl: null });
+        setBranding({ companyName: 'EziRisk', logoUrl: null });
       }
     } catch (error) {
       console.error('Error fetching client branding:', error);
-      setBranding({ companyName: 'ClearRisk', logoUrl: null });
+      setBranding({ companyName: 'EziRisk', logoUrl: null });
     } finally {
       setIsLoading(false);
     }

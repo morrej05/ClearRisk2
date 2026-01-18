@@ -1,12 +1,16 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { UserRole, SubscriptionPlan } from '../utils/permissions';
+import { UserRole, SubscriptionPlan, DisciplineType } from '../utils/permissions';
 
 interface AuthContextType {
   user: User | null;
   userRole: UserRole | null;
   userPlan: SubscriptionPlan | null;
+  disciplineType: DisciplineType | null;
+  boltOns: string[];
+  maxEditors: number;
+  activeEditors: number;
   roleError: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -22,17 +26,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [userPlan, setUserPlan] = useState<SubscriptionPlan | null>(null);
+  const [disciplineType, setDisciplineType] = useState<DisciplineType | null>(null);
+  const [boltOns, setBoltOns] = useState<string[]>([]);
+  const [maxEditors, setMaxEditors] = useState<number>(999);
+  const [activeEditors, setActiveEditors] = useState<number>(1);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserRole = async (userId: string, userEmail: string) => {
     try {
       setRoleError(null);
-      console.log('[AuthContext] Fetching role and plan for user:', userId, userEmail);
+      console.log('[AuthContext] Fetching user profile for:', userId, userEmail);
 
       const { data: profile, error: fetchError } = await supabase
         .from('user_profiles')
-        .select('role, plan')
+        .select('role, plan, discipline_type, bolt_ons, max_editors, active_editors')
         .eq('id', userId)
         .maybeSingle();
 
@@ -40,10 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (fetchError) {
         const errorMsg = `Database error: ${fetchError.message} (Code: ${fetchError.code})`;
-        console.error('[AuthContext] Role fetch error:', errorMsg, fetchError);
+        console.error('[AuthContext] Profile fetch error:', errorMsg, fetchError);
         setRoleError(errorMsg);
         setUserRole(null);
         setUserPlan(null);
+        setDisciplineType(null);
+        setBoltOns([]);
+        setMaxEditors(999);
+        setActiveEditors(1);
         setLoading(false);
         return;
       }
@@ -54,20 +66,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRoleError(errorMsg);
         setUserRole(null);
         setUserPlan(null);
+        setDisciplineType(null);
+        setBoltOns([]);
+        setMaxEditors(999);
+        setActiveEditors(1);
         setLoading(false);
         return;
       }
 
-      console.log('[AuthContext] Successfully fetched role and plan:', profile.role, profile.plan);
+      console.log('[AuthContext] Successfully fetched profile:', profile);
       setUserRole(profile.role as UserRole);
       setUserPlan(profile.plan as SubscriptionPlan);
+      setDisciplineType(profile.discipline_type as DisciplineType);
+      setBoltOns(Array.isArray(profile.bolt_ons) ? profile.bolt_ons : []);
+      setMaxEditors(profile.max_editors || 999);
+      setActiveEditors(profile.active_editors || 1);
       setRoleError(null);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error fetching role';
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error fetching profile';
       console.error('[AuthContext] Exception in fetchUserRole:', error);
       setRoleError(errorMsg);
       setUserRole(null);
       setUserPlan(null);
+      setDisciplineType(null);
+      setBoltOns([]);
+      setMaxEditors(999);
+      setActiveEditors(1);
     } finally {
       setLoading(false);
     }
@@ -101,9 +125,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(true);
           await fetchUserRole(session.user.id, session.user.email || '');
         } else {
-          console.log('[AuthContext] Clearing role and plan state on sign out');
+          console.log('[AuthContext] Clearing profile state on sign out');
           setUserRole(null);
           setUserPlan(null);
+          setDisciplineType(null);
+          setBoltOns([]);
+          setMaxEditors(999);
+          setActiveEditors(1);
           setRoleError(null);
           setLoading(false);
         }
@@ -141,7 +169,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userRole, userPlan, roleError, loading, signIn, signUp, signOut, resetPassword, refreshUserRole }}>
+    <AuthContext.Provider value={{
+      user,
+      userRole,
+      userPlan,
+      disciplineType,
+      boltOns,
+      maxEditors,
+      activeEditors,
+      roleError,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      resetPassword,
+      refreshUserRole
+    }}>
       {children}
     </AuthContext.Provider>
   );

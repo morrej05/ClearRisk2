@@ -26,7 +26,7 @@
 CREATE TABLE IF NOT EXISTS client_branding (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  company_name text NOT NULL DEFAULT 'ClearRisk',
+  company_name text NOT NULL DEFAULT 'EziRisk',
   logo_url text,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),

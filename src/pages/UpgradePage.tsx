@@ -1,80 +1,171 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Check, Zap, Lock } from 'lucide-react';
+import { ArrowLeft, Check, Zap, Lock, Users } from 'lucide-react';
 import { PLAN_LABELS } from '../utils/permissions';
+
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 
 export default function UpgradePage() {
   const { user, userPlan } = useAuth();
   const navigate = useNavigate();
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const plans = [
     {
-      id: 'trial',
-      name: 'Trial',
-      price: 'Free',
-      description: 'Get started with basic survey features',
+      id: 'free',
+      name: 'Free',
+      priceMonthly: 0,
+      priceAnnual: 0,
+      description: 'Basic features with limited functionality',
       features: [
         'Create and edit surveys',
         'Generate PDF reports',
         'Basic export functionality',
         'Email support',
+        'Unlimited viewers',
       ],
       limitations: [
         'No Smart Recommendations',
         'No FRA module',
         'No advanced analytics',
+        'No custom branding',
       ],
+      editors: 'Unlimited',
       cta: 'Current Plan',
-      ctaDisabled: true,
+      showCheckout: false,
       highlighted: false,
     },
     {
-      id: 'pro',
-      name: 'Pro',
-      price: 'Contact Sales',
-      description: 'Advanced features for professional risk assessment',
+      id: 'core',
+      name: 'Core',
+      priceMonthly: 49,
+      priceAnnual: 490,
+      stripePriceIdMonthly: 'price_core_monthly',
+      stripePriceIdAnnual: 'price_core_annual',
+      description: 'Essential features for small teams',
       features: [
-        'Everything in Trial',
-        'AI-powered Smart Recommendations',
-        'Advanced analytics dashboard',
-        'Priority support',
-        'Custom branding',
-        'Unlimited surveys',
+        'Everything in Free',
+        '1 editor seat',
+        'Unlimited viewers',
+        'Priority email support',
+        'Basic branding',
+        'Export to PDF',
       ],
       limitations: [
-        'FRA module not included',
+        'No Smart Recommendations',
+        'No FRA module',
+        'Limited to 1 editor',
       ],
-      cta: 'Upgrade to Pro',
-      ctaDisabled: true,
+      editors: '1 Editor',
+      cta: 'Upgrade to Core',
+      showCheckout: true,
+      highlighted: false,
+    },
+    {
+      id: 'professional',
+      name: 'Professional',
+      priceMonthly: 149,
+      priceAnnual: 1490,
+      stripePriceIdMonthly: 'price_professional_monthly',
+      stripePriceIdAnnual: 'price_professional_annual',
+      description: 'Advanced features for growing teams',
+      features: [
+        'Everything in Core',
+        '3 editor seats',
+        'AI-powered Smart Recommendations',
+        'Advanced analytics dashboard',
+        'Custom branding',
+        'Priority support',
+        'FRA module access',
+      ],
+      limitations: [],
+      editors: '3 Editors',
+      cta: 'Upgrade to Professional',
+      showCheckout: true,
       highlighted: true,
     },
     {
-      id: 'pro_fra',
-      name: 'Pro FRA',
-      price: 'Contact Sales',
-      description: 'Complete solution with Fire Risk Assessment module',
+      id: 'enterprise',
+      name: 'Enterprise',
+      priceMonthly: null,
+      priceAnnual: null,
+      description: 'Complete solution with premium features',
       features: [
-        'Everything in Pro',
-        'Fire Risk Assessment (FRA) module',
-        'ATEX / DSEAR frameworks',
+        'Everything in Professional',
+        '10 editor seats',
+        'Both disciplines (Engineering + Assessment)',
+        'All bolt-ons included',
         'Dedicated account manager',
         'Custom integrations',
         'Advanced compliance reporting',
+        'SLA guarantee',
       ],
       limitations: [],
-      cta: 'Upgrade to Pro FRA',
-      ctaDisabled: true,
+      editors: '10 Editors',
+      cta: 'Contact Sales',
+      showCheckout: false,
       highlighted: false,
     },
   ];
 
-  const handleUpgrade = (planId: string) => {
-    alert('Billing integration coming soon. Please contact sales for upgrade options.');
+  const handleUpgrade = async (plan: typeof plans[0]) => {
+    if (!plan.showCheckout || !user) {
+      window.location.href = 'mailto:sales@ezirisk.com';
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const priceId = billingCycle === 'monthly'
+        ? plan.stripePriceIdMonthly
+        : plan.stripePriceIdAnnual;
+
+      const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${STRIPE_PUBLISHABLE_KEY}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          'price': priceId || '',
+          'success_url': `${window.location.origin}/dashboard?upgrade=success`,
+          'cancel_url': `${window.location.origin}/upgrade`,
+          'client_reference_id': user.id,
+          'mode': 'subscription',
+        }),
+      });
+
+      const session = await response.json();
+
+      if (session.url) {
+        window.location.href = session.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Unable to start checkout. Please contact support.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const getCurrentPlanLabel = () => {
     if (!userPlan) return 'Loading...';
     return PLAN_LABELS[userPlan] || 'Unknown';
+  };
+
+  const getPrice = (plan: typeof plans[0]) => {
+    if (plan.priceMonthly === 0) return 'Free';
+    if (plan.priceMonthly === null) return 'Custom';
+
+    const price = billingCycle === 'monthly' ? plan.priceMonthly : plan.priceAnnual;
+    const period = billingCycle === 'monthly' ? '/mo' : '/yr';
+
+    return `$${price}${period}`;
   };
 
   return (
@@ -100,16 +191,39 @@ export default function UpgradePage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-slate-900 mb-3">
             Choose the Perfect Plan for Your Needs
           </h2>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Unlock powerful features with our Pro plans. Billing integration coming soon.
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-6">
+            Self-serve upgrade to Core or Professional. Contact us for Enterprise.
           </p>
+
+          <div className="inline-flex items-center gap-2 bg-white rounded-lg p-1 border border-slate-200">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                billingCycle === 'monthly'
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingCycle('annual')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                billingCycle === 'annual'
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              Annual <span className="text-green-600 ml-1">Save 17%</span>
+            </button>
+          </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid md:grid-cols-4 gap-6 mb-12">
           {plans.map((plan) => {
             const isCurrentPlan = plan.id === userPlan;
 
@@ -118,45 +232,49 @@ export default function UpgradePage() {
                 key={plan.id}
                 className={`bg-white rounded-lg shadow-sm border-2 transition-all ${
                   plan.highlighted
-                    ? 'border-slate-900 shadow-lg scale-105'
+                    ? 'border-slate-900 shadow-lg scale-105 md:col-span-1'
                     : 'border-slate-200'
-                } ${isCurrentPlan ? 'ring-2 ring-slate-400' : ''}`}
+                } ${isCurrentPlan ? 'ring-2 ring-green-500' : ''}`}
               >
                 {plan.highlighted && (
                   <div className="bg-slate-900 text-white text-center py-2 rounded-t-lg">
                     <div className="flex items-center justify-center gap-2">
                       <Zap className="w-4 h-4" />
-                      <span className="text-sm font-semibold">MOST POPULAR</span>
+                      <span className="text-xs font-semibold">MOST POPULAR</span>
                     </div>
                   </div>
                 )}
 
                 <div className="p-6">
-                  <h3 className="text-2xl font-bold text-slate-900 mb-2">{plan.name}</h3>
+                  <h3 className="text-xl font-bold text-slate-900 mb-1">{plan.name}</h3>
+                  <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
+                    <Users className="w-4 h-4" />
+                    <span>{plan.editors}</span>
+                  </div>
                   <div className="text-3xl font-bold text-slate-900 mb-2">
-                    {plan.price}
+                    {getPrice(plan)}
                   </div>
                   <p className="text-slate-600 text-sm mb-6">{plan.description}</p>
 
                   <button
-                    onClick={() => handleUpgrade(plan.id)}
-                    disabled={plan.ctaDisabled || isCurrentPlan}
-                    className={`w-full py-3 px-4 rounded-lg font-medium transition-colors mb-6 ${
+                    onClick={() => handleUpgrade(plan)}
+                    disabled={isCurrentPlan || isProcessing}
+                    className={`w-full py-2.5 px-4 rounded-lg font-medium transition-colors mb-6 ${
                       isCurrentPlan
-                        ? 'bg-slate-100 text-slate-600 cursor-default'
+                        ? 'bg-green-50 text-green-700 border border-green-200 cursor-default'
                         : plan.highlighted
                         ? 'bg-slate-900 text-white hover:bg-slate-800'
                         : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
-                    } ${plan.ctaDisabled && !isCurrentPlan ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } ${isProcessing ? 'opacity-50 cursor-wait' : ''}`}
                   >
-                    {isCurrentPlan ? 'Current Plan' : plan.cta}
+                    {isCurrentPlan ? 'Current Plan' : isProcessing ? 'Processing...' : plan.cta}
                   </button>
 
-                  <div className="space-y-3 mb-6">
+                  <div className="space-y-2.5 mb-6">
                     {plan.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-slate-700">{feature}</span>
+                      <div key={idx} className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                        <span className="text-xs text-slate-700">{feature}</span>
                       </div>
                     ))}
                   </div>
@@ -165,8 +283,8 @@ export default function UpgradePage() {
                     <div className="pt-4 border-t border-slate-200">
                       <div className="space-y-2">
                         {plan.limitations.map((limitation, idx) => (
-                          <div key={idx} className="flex items-start gap-3">
-                            <Lock className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                          <div key={idx} className="flex items-start gap-2">
+                            <Lock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
                             <span className="text-xs text-slate-500">{limitation}</span>
                           </div>
                         ))}
@@ -180,22 +298,16 @@ export default function UpgradePage() {
         </div>
 
         <div className="bg-slate-900 text-white rounded-lg p-8 text-center">
-          <h3 className="text-2xl font-bold mb-3">Need a Custom Solution?</h3>
+          <h3 className="text-2xl font-bold mb-3">Need Enterprise?</h3>
           <p className="text-slate-300 mb-6 max-w-2xl mx-auto">
-            Contact our sales team for enterprise pricing, custom integrations, and dedicated support.
+            Contact our sales team for enterprise pricing, 10 editor seats, both disciplines, custom integrations, and dedicated support.
           </p>
           <button
-            onClick={() => alert('Contact: sales@clearrisk.com')}
+            onClick={() => window.location.href = 'mailto:sales@ezirisk.com'}
             className="px-8 py-3 bg-white text-slate-900 font-medium rounded-lg hover:bg-slate-100 transition-colors"
           >
             Contact Sales
           </button>
-        </div>
-
-        <div className="mt-8 text-center">
-          <p className="text-sm text-slate-500">
-            Billing integration with Stripe coming soon. All features are currently available for testing.
-          </p>
         </div>
       </main>
     </div>

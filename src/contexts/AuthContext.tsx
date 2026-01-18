@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserRole, SubscriptionPlan, DisciplineType } from '../utils/permissions';
+import { Organisation, UserRole as EntitlementUserRole } from '../utils/entitlements';
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +13,8 @@ interface AuthContextType {
   maxEditors: number;
   activeEditors: number;
   isPlatformAdmin: boolean;
+  canEdit: boolean;
+  organisation: Organisation | null;
   roleError: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -32,6 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [maxEditors, setMaxEditors] = useState<number>(999);
   const [activeEditors, setActiveEditors] = useState<number>(1);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean>(false);
+  const [canEdit, setCanEdit] = useState<boolean>(false);
+  const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data: profile, error: fetchError } = await supabase
         .from('user_profiles')
-        .select('role, plan, discipline_type, bolt_ons, max_editors, active_editors, is_platform_admin')
+        .select('role, plan, discipline_type, bolt_ons, max_editors, active_editors, is_platform_admin, can_edit, organisation_id, organisations(*)')
         .eq('id', userId)
         .maybeSingle();
 
@@ -59,6 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMaxEditors(999);
         setActiveEditors(1);
         setIsPlatformAdmin(false);
+        setCanEdit(false);
+        setOrganisation(null);
         setLoading(false);
         return;
       }
@@ -74,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMaxEditors(999);
         setActiveEditors(1);
         setIsPlatformAdmin(false);
+        setCanEdit(false);
+        setOrganisation(null);
         setLoading(false);
         return;
       }
@@ -86,6 +95,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setMaxEditors(profile.max_editors || 999);
       setActiveEditors(profile.active_editors || 1);
       setIsPlatformAdmin(profile.is_platform_admin || false);
+      setCanEdit(profile.can_edit || false);
+
+      if (profile.organisations) {
+        const org = profile.organisations as any;
+        setOrganisation({
+          id: org.id,
+          name: org.name,
+          plan_type: org.plan_type,
+          discipline_type: org.discipline_type,
+          enabled_addons: Array.isArray(org.enabled_addons) ? org.enabled_addons : [],
+          max_editors: org.max_editors || 0,
+          subscription_status: org.subscription_status || 'inactive',
+          stripe_customer_id: org.stripe_customer_id,
+          stripe_subscription_id: org.stripe_subscription_id,
+          billing_cycle: org.billing_cycle,
+          created_at: org.created_at,
+          updated_at: org.updated_at,
+        });
+      } else {
+        setOrganisation(null);
+      }
+
       setRoleError(null);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error fetching profile';
@@ -98,6 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setMaxEditors(999);
       setActiveEditors(1);
       setIsPlatformAdmin(false);
+      setCanEdit(false);
+      setOrganisation(null);
     } finally {
       setLoading(false);
     }
@@ -139,6 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setMaxEditors(999);
           setActiveEditors(1);
           setIsPlatformAdmin(false);
+          setCanEdit(false);
+          setOrganisation(null);
           setRoleError(null);
           setLoading(false);
         }
@@ -185,6 +220,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       maxEditors,
       activeEditors,
       isPlatformAdmin,
+      canEdit,
+      organisation,
       roleError,
       loading,
       signIn,

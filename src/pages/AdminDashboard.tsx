@@ -5,6 +5,7 @@ import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, U
 import { supabase } from '../lib/supabase';
 import UserManagement from '../components/UserManagement';
 import { INDUSTRY_SECTORS } from '../utils/industrySectors';
+import { getPlanDisplayName, getSubscriptionStatusDisplayName } from '../utils/entitlements';
 
 interface Survey {
   id: string;
@@ -25,7 +26,7 @@ interface Survey {
 }
 
 export default function AdminDashboard() {
-  const { signOut, user, userRole, isPlatformAdmin, refreshUserRole } = useAuth();
+  const { signOut, user, userRole, isPlatformAdmin, organisation, refreshUserRole } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'users' | 'surveys'>('surveys');
   const [surveys, setSurveys] = useState<Survey[]>([]);
@@ -336,14 +337,23 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {isPlatformAdmin && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200">
-                  <Shield className="w-4 h-4 text-slate-600" />
-                  <span className="text-xs font-medium text-slate-700">
-                    Platform Admin
-                  </span>
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-2">
+                  {isPlatformAdmin && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200">
+                      <Shield className="w-4 h-4 text-slate-600" />
+                      <span className="text-xs font-medium text-slate-700">
+                        Platform Admin
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
+                {userRole === 'admin' && organisation && (
+                  <div className="text-xs text-slate-500 font-mono">
+                    Role: {userRole} | Platform Admin: {isPlatformAdmin ? 'true' : 'false'} | Plan: {getPlanDisplayName(organisation.plan_type)} | Sub: {getSubscriptionStatusDisplayName(organisation.subscription_status)}
+                  </div>
+                )}
+              </div>
               {isPlatformAdmin && (
                 <button
                   onClick={() => navigate('/super-admin')}

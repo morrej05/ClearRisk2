@@ -90,7 +90,6 @@ export interface RolePermissions {
   canManageUsers: boolean;
   canManageBranding: boolean;
   canAccessAdmin: boolean;
-  canAccessSuperAdmin: boolean;
   canManageSectorWeightings: boolean;
   canManageRecommendationLibrary: boolean;
   canManagePlatformSettings: boolean;
@@ -113,7 +112,6 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
       canManageUsers: false,
       canManageBranding: false,
       canAccessAdmin: false,
-      canAccessSuperAdmin: false,
       canManageSectorWeightings: false,
       canManageRecommendationLibrary: false,
       canManagePlatformSettings: false,
@@ -137,7 +135,6 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
         canManageUsers: true,
         canManageBranding: true,
         canAccessAdmin: true,
-        canAccessSuperAdmin: true,
         canManageSectorWeightings: true,
         canManageRecommendationLibrary: true,
         canManagePlatformSettings: true,
@@ -159,7 +156,6 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
         canManageUsers: false,
         canManageBranding: false,
         canAccessAdmin: false,
-        canAccessSuperAdmin: false,
         canManageSectorWeightings: false,
         canManageRecommendationLibrary: false,
         canManagePlatformSettings: false,
@@ -181,7 +177,6 @@ export const getRolePermissions = (role: UserRole | null): RolePermissions => {
         canManageUsers: false,
         canManageBranding: false,
         canAccessAdmin: false,
-        canAccessSuperAdmin: false,
         canManageSectorWeightings: false,
         canManageRecommendationLibrary: false,
         canManagePlatformSettings: false,

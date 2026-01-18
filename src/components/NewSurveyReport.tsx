@@ -286,7 +286,7 @@ const generateReferenceNumber = (country: string): string => {
 };
 
 export default function NewSurveyReport({ surveyId, onCancel }: NewSurveyReportProps) {
-  const { userRole, userPlan } = useAuth();
+  const { userRole, userPlan, isPlatformAdmin } = useAuth();
 
   const [hazards, setHazards] = useState<Hazard[]>([
     { id: crypto.randomUUID(), title: '', description: '', rating: '' }
@@ -1531,7 +1531,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
         const triggerResult = await reevaluateAllTriggers(currentSurveyId, formData);
 
         // Show notification for super admins
-        if (userRole === 'super_admin' && triggerResult.success) {
+        if (isPlatformAdmin && triggerResult.success) {
           setTriggerNotification({ show: true, count: triggerResult.totalAdded });
           setTimeout(() => setTriggerNotification({ show: false, count: 0 }), 5000);
         }
@@ -1561,7 +1561,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
           const triggerResult = await reevaluateAllTriggers(data.id, formData);
 
           // Show notification for super admins
-          if (userRole === 'super_admin' && triggerResult.success) {
+          if (isPlatformAdmin && triggerResult.success) {
             setTriggerNotification({ show: true, count: triggerResult.totalAdded });
             setTimeout(() => setTriggerNotification({ show: false, count: 0 }), 5000);
           }
@@ -4270,7 +4270,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 </div>
               )}
 
-              {triggerNotification.show && userRole === 'super_admin' && (
+              {triggerNotification.show && isPlatformAdmin && (
                 <div className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-300 rounded-lg">
                   <CheckCircle2 className="w-5 h-5 text-slate-600 flex-shrink-0 mt-0.5" />
                   <div>

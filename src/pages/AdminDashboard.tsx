@@ -25,7 +25,7 @@ interface Survey {
 }
 
 export default function AdminDashboard() {
-  const { signOut, user, userRole, refreshUserRole } = useAuth();
+  const { signOut, user, userRole, isPlatformAdmin, refreshUserRole } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'users' | 'surveys'>('surveys');
   const [surveys, setSurveys] = useState<Survey[]>([]);
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
-    if (userRole !== 'org_admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       navigate('/dashboard');
       return;
     }
@@ -303,14 +303,14 @@ export default function AdminDashboard() {
     });
   };
 
-  if (userRole !== 'org_admin' && userRole !== 'super_admin') {
+  if (userRole !== 'admin') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-8 max-w-md w-full text-center">
           <Shield className="w-16 h-16 text-slate-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Restricted</h1>
           <p className="text-slate-600 mb-6">
-            You need organization admin or super admin privileges to access this page.
+            You need admin privileges to access this page.
           </p>
           <button
             onClick={() => navigate('/dashboard')}
@@ -336,13 +336,13 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {userRole === 'super_admin' && (
+              {isPlatformAdmin && (
                 <button
                   onClick={() => navigate('/super-admin')}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   <Shield className="w-4 h-4" />
-                  Super Admin
+                  Platform Admin
                 </button>
               )}
               <button

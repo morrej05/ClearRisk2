@@ -49,7 +49,7 @@ interface PortfolioMetrics {
 }
 
 export default function Dashboard() {
-  const { signOut, user, userRole, userPlan, roleError } = useAuth();
+  const { signOut, user, userRole, userPlan, isPlatformAdmin, roleError } = useAuth();
   const { branding: clientBranding, refreshBranding } = useClientBranding();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -488,14 +488,14 @@ export default function Dashboard() {
                   Role: {userRole ? ROLE_LABELS[userRole as UserRole] : roleError ? 'Error' : 'Loading...'}
                 </span>
               </div>
-              {permissions.canAccessSuperAdmin && (
+              {isPlatformAdmin && (
                 <button
                   onClick={() => navigate('/super-admin')}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors"
-                  title="Super Admin Settings"
+                  title="Platform Admin Settings"
                 >
                   <Shield className="w-4 h-4" />
-                  Super Admin
+                  Platform Admin
                 </button>
               )}
               {permissions.canAccessAdmin && (

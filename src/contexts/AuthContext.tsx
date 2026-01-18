@@ -11,6 +11,7 @@ interface AuthContextType {
   boltOns: string[];
   maxEditors: number;
   activeEditors: number;
+  isPlatformAdmin: boolean;
   roleError: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [boltOns, setBoltOns] = useState<string[]>([]);
   const [maxEditors, setMaxEditors] = useState<number>(999);
   const [activeEditors, setActiveEditors] = useState<number>(1);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean>(false);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data: profile, error: fetchError } = await supabase
         .from('user_profiles')
-        .select('role, plan, discipline_type, bolt_ons, max_editors, active_editors')
+        .select('role, plan, discipline_type, bolt_ons, max_editors, active_editors, is_platform_admin')
         .eq('id', userId)
         .maybeSingle();
 
@@ -56,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBoltOns([]);
         setMaxEditors(999);
         setActiveEditors(1);
+        setIsPlatformAdmin(false);
         setLoading(false);
         return;
       }
@@ -70,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBoltOns([]);
         setMaxEditors(999);
         setActiveEditors(1);
+        setIsPlatformAdmin(false);
         setLoading(false);
         return;
       }
@@ -81,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBoltOns(Array.isArray(profile.bolt_ons) ? profile.bolt_ons : []);
       setMaxEditors(profile.max_editors || 999);
       setActiveEditors(profile.active_editors || 1);
+      setIsPlatformAdmin(profile.is_platform_admin || false);
       setRoleError(null);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error fetching profile';
@@ -92,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBoltOns([]);
       setMaxEditors(999);
       setActiveEditors(1);
+      setIsPlatformAdmin(false);
     } finally {
       setLoading(false);
     }
@@ -132,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setBoltOns([]);
           setMaxEditors(999);
           setActiveEditors(1);
+          setIsPlatformAdmin(false);
           setRoleError(null);
           setLoading(false);
         }
@@ -177,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       boltOns,
       maxEditors,
       activeEditors,
+      isPlatformAdmin,
       roleError,
       loading,
       signIn,

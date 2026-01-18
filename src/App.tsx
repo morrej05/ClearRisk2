@@ -11,7 +11,7 @@ import ExternalSurvey from './pages/ExternalSurvey';
 import ReportPreviewPage from './pages/ReportPreviewPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
-import SuperAdminRoute from './components/SuperAdminRoute';
+import PlatformAdminRoute from './components/SuperAdminRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
@@ -59,9 +59,9 @@ function App() {
           <Route
             path="/super-admin"
             element={
-              <SuperAdminRoute>
+              <PlatformAdminRoute>
                 <SuperAdminDashboard />
-              </SuperAdminRoute>
+              </PlatformAdminRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -2,12 +2,12 @@ import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-interface SuperAdminRouteProps {
+interface PlatformAdminRouteProps {
   children: ReactNode;
 }
 
-export default function SuperAdminRoute({ children }: SuperAdminRouteProps) {
-  const { user, userRole, loading } = useAuth();
+export default function PlatformAdminRoute({ children }: PlatformAdminRouteProps) {
+  const { user, userRole, isPlatformAdmin, loading } = useAuth();
 
   if (loading) {
     return (
@@ -24,7 +24,7 @@ export default function SuperAdminRoute({ children }: SuperAdminRouteProps) {
     return <Navigate to="/signin" replace />;
   }
 
-  if (userRole !== 'super_admin') {
+  if (userRole !== 'admin' || !isPlatformAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { FileText, Sparkles, Building2, Calendar } from 'lucide-react';
+import ReportCoverPage from './reports/ReportCoverPage';
 
 interface SurveyReportProps {
   surveyId: string;
@@ -114,6 +115,17 @@ export default function SurveyReport({ surveyId, embedded = false, aiSummary }: 
 
   const reportContent = (
     <>
+      <ReportCoverPage
+        reportType="survey"
+        clientLogoUrl={clientBranding.logoUrl}
+        inspectionDate={survey.survey_date}
+        siteName={survey.property_name}
+        surveyorName={formData.reviewerName}
+        clientName={survey.company_name}
+        clientAddress={survey.property_address}
+        isDraft={!survey.issued}
+      />
+
       <div className="px-8 py-6 border-b border-slate-200">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">

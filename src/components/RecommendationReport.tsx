@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { AlertCircle, CheckCircle2, Clock, XCircle, Sparkles, Building2 } from 'lucide-react';
 import { ensureReferenceNumbers, getSurveyYear, sortByReferenceNumber } from '../utils/recommendationReferenceNumber';
+import ReportCoverPage from './reports/ReportCoverPage';
 
 interface Recommendation {
   id: string;
@@ -269,8 +270,21 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
 
   if (!survey) return null;
 
+  const formData = survey?.form_data || {};
+
   const reportContent = (
     <>
+      <ReportCoverPage
+        reportType="recommendation"
+        clientLogoUrl={clientBranding.logoUrl}
+        inspectionDate={survey.survey_date}
+        siteName={survey.property_name}
+        surveyorName={formData.reviewerName}
+        clientName={survey.company_name}
+        clientAddress={survey.property_address}
+        isDraft={!survey.issued}
+      />
+
       {!embedded && (
         <div className="bg-slate-900 text-white px-8 py-6 rounded-t-lg">
           <div className="flex justify-between items-start">
@@ -408,43 +422,60 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-white border border-slate-200 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-slate-600 mb-3">Priority Breakdown</h3>
-                    <div className="space-y-2">
-                      {Object.entries(prioritySummary).map(([priority, count]) => (
-                        <div key={priority} className="flex items-center justify-between">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded border ${getPriorityColor(priority)}`}>
-                            {priority}
-                          </span>
-                          <span className="text-lg font-bold text-slate-900">{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {recommendations.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-slate-200">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 border-b border-slate-200">
+                            Ref
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 border-b border-slate-200">
+                            Category
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 border-b border-slate-200">
+                            Recommendation
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 border-b border-slate-200">
+                            Priority
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortByReferenceNumber(recommendations).map((rec, index) => {
+                          const truncatedDesc = rec.description
+                            ? rec.description.length > 200
+                              ? rec.description.substring(0, 200) + '...'
+                              : rec.description
+                            : rec.hazard || '—';
 
-                  <div className="bg-white border border-slate-200 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-slate-600 mb-3">Status Overview</h3>
-                    <div className="space-y-2">
-                      {Object.entries(statusSummary).map(([status, count]) => (
-                        <div key={status} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(status)}
-                            <span className="text-sm text-slate-700">{status || 'Not Started'}</span>
-                          </div>
-                          <span className="text-lg font-bold text-slate-900">{count}</span>
-                        </div>
-                      ))}
-                    </div>
+                          return (
+                            <tr key={rec.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                              <td className="px-4 py-3 text-sm text-slate-900 border-b border-slate-200 whitespace-nowrap font-medium">
+                                {rec.ref_number || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-200">
+                                {getDimensionLabel(rec.driver_dimension)}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-200">
+                                {truncatedDesc}
+                              </td>
+                              <td className="px-4 py-3 text-sm border-b border-slate-200">
+                                <span className={`inline-block px-2 py-1 text-xs font-semibold rounded border ${getPriorityColor(rec.priority)}`}>
+                                  {rec.priority || 'N/A'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mt-4">
-                  <h3 className="text-sm font-medium text-slate-600 mb-2">Top Risk Drivers</h3>
-                  <p className="text-sm text-slate-700">
-                    {getTopRiskDrivers()}
-                  </p>
-                </div>
+                ) : (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 text-center">
+                    <p className="text-slate-600">No recommendations recorded for this survey.</p>
+                  </div>
+                )}
               </section>
 
               <section>

@@ -672,7 +672,7 @@ export function generateSection(
     case 'SECTION_14':
       // Status-based disclaimer
       if (formData.reportStatus === 'Draft') {
-        content += `This draft report has been prepared using ClearRisk as a report drafting and summarisation tool. The content is provided for review and refinement and should not be relied upon without professional verification. Final responsibility for interpretation and implementation of recommendations remains with the competent professional and duty holder.\n\n`;
+        content += `This draft report has been prepared using EziRisk as a report drafting and summarisation tool. The content is provided for review and refinement and should not be relied upon without professional verification. Final responsibility for interpretation and implementation of recommendations remains with the competent professional and duty holder.\n\n`;
       } else if (formData.reportStatus === 'Internally Reviewed') {
         content += `This report has been internally reviewed for structure, consistency and completeness. It remains a professional opinion based on information available at the time of the survey. Final responsibility for interpretation and implementation of recommendations remains with the competent professional and duty holder.\n\n`;
       } else {

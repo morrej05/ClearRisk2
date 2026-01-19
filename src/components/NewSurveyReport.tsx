@@ -1761,7 +1761,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
 
       <div className="max-w-4xl mx-auto px-4 py-12 pb-32">
         <div className="mb-12 text-center">
-          <h1 className="text-5xl font-bold text-slate-900 mb-3">ClearRisk - Survey Report Input Form</h1>
+          <h1 className="text-5xl font-bold text-slate-900 mb-3">EziRisk - Survey Report Input Form</h1>
           <p className="text-lg text-slate-600">Structured input to generate a professional draft survey report.</p>
         </div>
 
@@ -4027,7 +4027,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   />
                 </div>
                 <label htmlFor="allowGenerateDraftRecommendations" className="ml-3 text-sm font-medium text-slate-700">
-                  Allow ClearRisk to generate draft recommendations
+                  Allow EziRisk to generate draft recommendations
                 </label>
               </div>
             </div>
@@ -4213,7 +4213,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 <div className="text-sm text-slate-700 leading-relaxed">
                   {formData.reportStatus === 'Draft' && (
                     <p>
-                      This draft report has been prepared using ClearRisk as a report drafting and summarisation tool.
+                      This draft report has been prepared using EziRisk as a report drafting and summarisation tool.
                       The content is provided for review and refinement and should not be relied upon without professional verification.
                       Final responsibility for interpretation and implementation of recommendations remains with the competent professional and duty holder.
                     </p>

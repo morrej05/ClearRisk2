@@ -9,6 +9,11 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UpgradeSubscription from './pages/UpgradeSubscription';
 import ExternalSurvey from './pages/ExternalSurvey';
 import ReportPreviewPage from './pages/ReportPreviewPage';
+import AssessmentsList from './pages/AssessmentsList';
+import NewAssessment from './pages/NewAssessment';
+import AssessmentEditor from './pages/AssessmentEditor';
+import AssessmentReportPage from './pages/AssessmentReportPage';
+import AssessmentRecommendationReportPage from './pages/AssessmentRecommendationReportPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import PlatformAdminRoute from './components/SuperAdminRoute';
@@ -62,6 +67,46 @@ function App() {
               <PlatformAdminRoute>
                 <SuperAdminDashboard />
               </PlatformAdminRoute>
+            }
+          />
+          <Route
+            path="/assessments"
+            element={
+              <ProtectedRoute>
+                <AssessmentsList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/assessments/new"
+            element={
+              <ProtectedRoute>
+                <NewAssessment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/assessments/:id"
+            element={
+              <ProtectedRoute>
+                <AssessmentEditor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/assessments/:id/report"
+            element={
+              <ProtectedRoute>
+                <AssessmentReportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/assessments/:id/recommendations"
+            element={
+              <ProtectedRoute>
+                <AssessmentRecommendationReportPage />
+              </ProtectedRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

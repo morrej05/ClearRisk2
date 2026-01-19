@@ -127,6 +127,17 @@ export function canIssueSurveys(user: User, org: Organisation): boolean {
   return canEdit(user, org);
 }
 
+export function canAccessPillarB(user: User, org: Organisation): boolean {
+  if (isPlatformAdmin(user)) {
+    return true;
+  }
+
+  const isProfessionalOrEnterprise = org.plan_type === 'professional' || org.plan_type === 'enterprise';
+  const isActive = org.subscription_status === 'active' || org.plan_type === 'enterprise';
+
+  return isProfessionalOrEnterprise && isActive;
+}
+
 export function getPlanDisplayName(plan: PlanType): string {
   switch (plan) {
     case 'free':

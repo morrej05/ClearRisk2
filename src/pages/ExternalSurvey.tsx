@@ -458,7 +458,7 @@ export default function ExternalSurvey() {
                   <span className="text-white font-bold text-lg">CR</span>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-slate-900">ClearRisk</h1>
+                  <h1 className="text-xl font-bold text-slate-900">EziRisk</h1>
                   <p className="text-xs text-slate-500">External Survey Contribution</p>
                 </div>
               </div>
@@ -481,7 +481,7 @@ export default function ExternalSurvey() {
           <div className="mt-3 flex items-start">
             <CheckCircle2 className="w-5 h-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-slate-600">
-              You've been invited to contribute to a ClearRisk survey. No login or subscription is required.
+              You've been invited to contribute to an EziRisk survey. No login or subscription is required.
             </p>
           </div>
         </div>

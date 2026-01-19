@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users, X } from 'lucide-react';
+import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users, X, ClipboardList } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
 import NewSurveyModal from '../components/NewSurveyModal';
 import ExternalLinkModal from '../components/ExternalLinkModal';
@@ -15,6 +15,7 @@ import TrialBanner from '../components/TrialBanner';
 import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 import { ROLE_LABELS, getRolePermissions, UserRole } from '../utils/permissions';
+import { canAccessPillarB } from '../utils/entitlements';
 
 interface Survey {
   id: string;
@@ -49,12 +50,21 @@ interface PortfolioMetrics {
 }
 
 export default function Dashboard() {
-  const { signOut, user, userRole, userPlan, isPlatformAdmin, roleError } = useAuth();
+  const { signOut, user, userRole, userPlan, isPlatformAdmin, roleError, organisation } = useAuth();
   const { branding: clientBranding, refreshBranding } = useClientBranding();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const permissions = getRolePermissions(userRole);
   const showDebug = import.meta.env.DEV;
+
+  const userHasPillarBAccess = organisation && user
+    ? canAccessPillarB({
+        id: user.id,
+        role: userRole as any,
+        is_platform_admin: isPlatformAdmin,
+        can_edit: true
+      }, organisation)
+    : false;
   const [showNewSurvey, setShowNewSurvey] = useState(false);
   const [showTextEditor, setShowTextEditor] = useState(false);
   const [showNewSurveyModal, setShowNewSurveyModal] = useState(false);
@@ -526,6 +536,21 @@ export default function Dashboard() {
                 </button>
               )}
               <button
+                onClick={() => {
+                  if (userHasPillarBAccess) {
+                    navigate('/assessments');
+                  } else {
+                    navigate('/upgrade');
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+                title={userHasPillarBAccess ? "Regulated Assessments" : "Upgrade to access Assessments"}
+              >
+                <ClipboardList className="w-4 h-4" />
+                Assessments
+                {!userHasPillarBAccess && <Lock className="w-3 h-3 text-slate-500" />}
+              </button>
+              <button
                 onClick={handleSignOut}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
               >
@@ -580,6 +605,51 @@ export default function Dashboard() {
                   View-Only Access
                 </div>
               )}
+            </div>
+
+            <div className="mb-6 bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl shadow-sm p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <ClipboardList className="w-6 h-6 text-slate-900" />
+                    <h2 className="text-xl font-bold text-slate-900">Regulated Assessments</h2>
+                    {!userHasPillarBAccess && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                        Professional
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-slate-700 mb-4">
+                    Create Fire Risk Assessments, Fire Strategies, DSEAR and Wildfire assessments
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (userHasPillarBAccess) {
+                        navigate('/assessments/new');
+                      } else {
+                        navigate('/upgrade');
+                      }
+                    }}
+                    className={`flex items-center gap-2 px-5 py-2.5 font-medium rounded-lg transition-colors shadow-sm ${
+                      userHasPillarBAccess
+                        ? 'bg-slate-900 text-white hover:bg-slate-800'
+                        : 'bg-white border-2 border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {userHasPillarBAccess ? (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        New Assessment
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        Upgrade to Access
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
 
             {surveys.length > 0 && portfolioMetrics.scoredReports > 0 && (

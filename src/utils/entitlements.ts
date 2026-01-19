@@ -132,6 +132,10 @@ export function canAccessPillarB(user: User, org: Organisation): boolean {
     return true;
   }
 
+  if (import.meta.env.DEV) {
+    return true;
+  }
+
   const isProfessionalOrEnterprise = org.plan_type === 'professional' || org.plan_type === 'enterprise';
   const isActive = org.subscription_status === 'active' || org.plan_type === 'enterprise';
 

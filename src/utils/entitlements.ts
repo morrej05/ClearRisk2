@@ -135,17 +135,23 @@ export function canAccessPillarB(user: User, org: Organisation): boolean {
   const planId = (org as any)?.plan_id ?? org?.plan_type ?? (org as any)?.plan ?? '';
   const planStr = planId.toString().trim().toLowerCase();
 
-  const hasAccess =
-    planStr === 'team' ||
-    planStr === 'consultancy' ||
-    planStr === 'professional' ||
-    planStr === 'pro' ||
-    planStr === 'professional_plan' ||
-    planStr === 'pro_plan' ||
-    planStr === 'enterprise';
+  const validPlans = [
+    'solo',
+    'team',
+    'consultancy',
+    'free',
+    'core',
+    'professional',
+    'pro',
+    'professional_plan',
+    'pro_plan',
+    'enterprise'
+  ];
+
+  const hasAccess = validPlans.includes(planStr) && planStr !== '';
 
   if (import.meta.env.DEV) {
-    console.log('[PillarB] org plan_id:', planStr, 'hasAccess:', hasAccess, 'raw org:', org);
+    console.log('[PillarB/Assessments] org plan_id:', planStr, 'hasAccess:', hasAccess, 'raw org:', org);
   }
 
   return hasAccess;

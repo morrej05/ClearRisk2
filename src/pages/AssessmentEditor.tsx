@@ -215,25 +215,22 @@ export default function AssessmentEditor() {
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg border border-neutral-200 p-8">
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
-              <Lock className="w-8 h-8 text-amber-600" />
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <Lock className="w-8 h-8 text-red-600" />
             </div>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 mb-3 text-center">
-            Professional Feature
+            Account Setup Required
           </h2>
           <p className="text-neutral-600 mb-6 text-center">
-            Upgrade to Professional to access regulated assessments.
+            Unable to load your organisation details. Please try signing out and back in, or contact support if the issue persists.
           </p>
           <button
-            onClick={() => navigate('/upgrade')}
-            className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold mb-4"
+            onClick={() => navigate('/dashboard')}
+            className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold"
           >
-            Upgrade to Professional
+            Back to Dashboard
           </button>
-          <p className="text-xs text-neutral-500 text-center">
-            Already upgraded? Try refreshing the page or signing out and back in to sync your plan status.
-          </p>
         </div>
       </div>
     );

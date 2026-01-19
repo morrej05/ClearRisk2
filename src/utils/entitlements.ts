@@ -7,6 +7,7 @@ export interface Organisation {
   id: string;
   name: string;
   plan_type: PlanType;
+  plan_id?: string;
   discipline_type: DisciplineType;
   enabled_addons: string[];
   max_editors: number;
@@ -132,9 +133,11 @@ export function canAccessPillarB(user: User, org: Organisation): boolean {
     return true;
   }
 
-  const planId = (org as any)?.plan_id ?? org?.plan_type ?? (org as any)?.plan ?? '';
+  // Check for plan_id first (new field), fallback to plan_type (old field)
+  const planId = org?.plan_id ?? org?.plan_type ?? (org as any)?.plan ?? '';
   const planStr = planId.toString().trim().toLowerCase();
 
+  // All valid plans can access assessments
   const validPlans = [
     'solo',
     'team',
@@ -151,7 +154,15 @@ export function canAccessPillarB(user: User, org: Organisation): boolean {
   const hasAccess = validPlans.includes(planStr) && planStr !== '';
 
   if (import.meta.env.DEV) {
-    console.log('[PillarB/Assessments] org plan_id:', planStr, 'hasAccess:', hasAccess, 'raw org:', org);
+    console.log('[PillarB/Assessments] 🔑 Access check:', {
+      userId: user.id,
+      orgId: org?.id,
+      plan_id: org?.plan_id,
+      plan_type: org?.plan_type,
+      resolved: planStr,
+      hasAccess,
+      isPlatformAdmin: isPlatformAdmin(user)
+    });
   }
 
   return hasAccess;

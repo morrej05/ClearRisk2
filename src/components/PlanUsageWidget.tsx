@@ -65,6 +65,18 @@ export default function PlanUsageWidget() {
       <h3 className="text-lg font-semibold text-slate-900 mb-4">Plan & Usage</h3>
 
       <div className="space-y-4">
+        {import.meta.env.DEV && (
+          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+            <div className="text-xs font-semibold text-blue-900 mb-2">🔧 Dev Diagnostics</div>
+            <div className="text-xs font-mono text-blue-800 space-y-1">
+              <div>Org loaded: <span className="font-bold text-green-700">✓ Yes</span></div>
+              <div>Org ID: {tenant.id.substring(0, 8)}...</div>
+              <div>Plan ID: <span className="font-bold">{tenant.plan_id}</span></div>
+              <div>Status: {tenant.subscription_status || 'N/A'}</div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
           <div className="text-sm font-medium text-slate-600 mb-1">Current Plan</div>
           <div className="text-xl font-bold text-slate-900">{tenant.plan.name}</div>

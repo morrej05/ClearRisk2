@@ -21,10 +21,6 @@ export default function NewAssessment() {
     assessment_date: new Date().toISOString().split('T')[0],
   });
 
-  const hasAccess = user && userProfile && organisation
-    ? canAccessPillarB(userProfile, organisation)
-    : false;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -70,26 +66,26 @@ export default function NewAssessment() {
     }
   };
 
-  if (!hasAccess) {
+  if (!user || !organisation) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg border border-neutral-200 p-8">
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <Lock className="w-8 h-8 text-red-600" />
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-300 border-t-blue-600"></div>
             </div>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 mb-3 text-center">
-            Account Setup Required
+            Setting Up Your Account
           </h2>
           <p className="text-neutral-600 mb-6 text-center">
-            Unable to load your organisation details. Please try signing out and back in, or contact support if the issue persists.
+            Please wait while we prepare your organisation. This should only take a moment.
           </p>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => window.location.reload()}
             className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold"
           >
-            Back to Dashboard
+            Refresh Page
           </button>
         </div>
       </div>

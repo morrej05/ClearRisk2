@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserRole = async (userId: string, userEmail: string) => {
     try {
       setRoleError(null);
-      console.log('[AuthContext] Fetching user profile for:', userId, userEmail);
+      console.log('[AuthContext] 🔍 Fetching user profile for:', userId, userEmail);
 
       const { data: profile, error: fetchError } = await supabase
         .from('user_profiles')
@@ -51,11 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
 
-      console.log('[AuthContext] Profile fetch result:', { profile, error: fetchError });
+      console.log('[AuthContext] 📦 Profile fetch result:', { profile, error: fetchError });
 
       if (fetchError) {
         const errorMsg = `Database error: ${fetchError.message} (Code: ${fetchError.code})`;
-        console.error('[AuthContext] Profile fetch error:', errorMsg, fetchError);
+        console.error('[AuthContext] ❌ Profile fetch error:', errorMsg, fetchError);
         setRoleError(errorMsg);
         setUserRole(null);
         setUserPlan(null);
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!profile) {
-        console.warn('[AuthContext] User profile not found for:', userId);
+        console.warn('[AuthContext] ⚠️ User profile not found for:', userId);
         const errorMsg = 'User profile not found. Please contact support.';
         setRoleError(errorMsg);
         setUserRole(null);
@@ -87,40 +87,114 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      console.log('[AuthContext] Successfully fetched profile:', profile);
-      setUserRole(profile.role as UserRole);
-      setUserPlan(profile.plan as SubscriptionPlan);
-      setDisciplineType(profile.discipline_type as DisciplineType);
-      setBoltOns(Array.isArray(profile.bolt_ons) ? profile.bolt_ons : []);
-      setMaxEditors(profile.max_editors || 999);
-      setActiveEditors(profile.active_editors || 1);
-      setIsPlatformAdmin(profile.is_platform_admin || false);
-      setCanEdit(profile.can_edit || false);
+      console.log('[AuthContext] ✅ Successfully fetched profile:', profile);
 
-      if (profile.organisations) {
+      // Check if organisation is missing and auto-create
+      if (!profile.organisation_id || !profile.organisations) {
+        console.log('[AuthContext] 🏥 Organisation missing - auto-healing...');
+        try {
+          const { data: newOrgId, error: rpcError } = await supabase.rpc('ensure_org_for_user', { user_id: userId });
+
+          if (rpcError) {
+            console.error('[AuthContext] ❌ Failed to create organisation:', rpcError);
+            throw rpcError;
+          }
+
+          console.log('[AuthContext] ✅ Organisation created:', newOrgId);
+
+          // Re-fetch profile with new organisation
+          const { data: updatedProfile, error: refetchError } = await supabase
+            .from('user_profiles')
+            .select('role, plan, discipline_type, bolt_ons, max_editors, active_editors, is_platform_admin, can_edit, organisation_id, organisations(*)')
+            .eq('id', userId)
+            .maybeSingle();
+
+          if (refetchError || !updatedProfile) {
+            console.error('[AuthContext] ❌ Failed to refetch profile:', refetchError);
+            throw new Error('Failed to load organisation after creation');
+          }
+
+          console.log('[AuthContext] ✅ Profile refetched with organisation:', updatedProfile);
+
+          // Use the updated profile
+          setUserRole(updatedProfile.role as UserRole);
+          setUserPlan(updatedProfile.plan as SubscriptionPlan);
+          setDisciplineType(updatedProfile.discipline_type as DisciplineType);
+          setBoltOns(Array.isArray(updatedProfile.bolt_ons) ? updatedProfile.bolt_ons : []);
+          setMaxEditors(updatedProfile.max_editors || 999);
+          setActiveEditors(updatedProfile.active_editors || 1);
+          setIsPlatformAdmin(updatedProfile.is_platform_admin || false);
+          setCanEdit(updatedProfile.can_edit || false);
+
+          if (updatedProfile.organisations) {
+            const org = updatedProfile.organisations as any;
+            const orgData = {
+              id: org.id,
+              name: org.name,
+              plan_type: org.plan_type || org.plan_id || 'solo',
+              plan_id: org.plan_id || org.plan_type || 'solo',
+              discipline_type: org.discipline_type,
+              enabled_addons: Array.isArray(org.enabled_addons) ? org.enabled_addons : [],
+              max_editors: org.max_editors || 0,
+              subscription_status: org.subscription_status || 'active',
+              stripe_customer_id: org.stripe_customer_id,
+              stripe_subscription_id: org.stripe_subscription_id,
+              billing_cycle: org.billing_cycle,
+              created_at: org.created_at,
+              updated_at: org.updated_at,
+            };
+            console.log('[AuthContext] 🏢 Organisation loaded:', {
+              id: orgData.id,
+              name: orgData.name,
+              plan_id: orgData.plan_id,
+              plan_type: orgData.plan_type
+            });
+            setOrganisation(orgData);
+          }
+        } catch (autoHealError) {
+          console.error('[AuthContext] ❌ Auto-heal failed:', autoHealError);
+          setRoleError('Failed to create organisation. Please contact support.');
+        }
+      } else {
+        // Organisation exists, use it
+        setUserRole(profile.role as UserRole);
+        setUserPlan(profile.plan as SubscriptionPlan);
+        setDisciplineType(profile.discipline_type as DisciplineType);
+        setBoltOns(Array.isArray(profile.bolt_ons) ? profile.bolt_ons : []);
+        setMaxEditors(profile.max_editors || 999);
+        setActiveEditors(profile.active_editors || 1);
+        setIsPlatformAdmin(profile.is_platform_admin || false);
+        setCanEdit(profile.can_edit || false);
+
         const org = profile.organisations as any;
-        setOrganisation({
+        const orgData = {
           id: org.id,
           name: org.name,
-          plan_type: org.plan_type,
+          plan_type: org.plan_type || org.plan_id || 'solo',
+          plan_id: org.plan_id || org.plan_type || 'solo',
           discipline_type: org.discipline_type,
           enabled_addons: Array.isArray(org.enabled_addons) ? org.enabled_addons : [],
           max_editors: org.max_editors || 0,
-          subscription_status: org.subscription_status || 'inactive',
+          subscription_status: org.subscription_status || 'active',
           stripe_customer_id: org.stripe_customer_id,
           stripe_subscription_id: org.stripe_subscription_id,
           billing_cycle: org.billing_cycle,
           created_at: org.created_at,
           updated_at: org.updated_at,
+        };
+        console.log('[AuthContext] 🏢 Organisation loaded:', {
+          id: orgData.id,
+          name: orgData.name,
+          plan_id: orgData.plan_id,
+          plan_type: orgData.plan_type
         });
-      } else {
-        setOrganisation(null);
+        setOrganisation(orgData);
       }
 
       setRoleError(null);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error fetching profile';
-      console.error('[AuthContext] Exception in fetchUserRole:', error);
+      console.error('[AuthContext] ❌ Exception in fetchUserRole:', error);
       setRoleError(errorMsg);
       setUserRole(null);
       setUserPlan(null);

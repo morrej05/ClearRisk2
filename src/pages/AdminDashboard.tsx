@@ -34,6 +34,7 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
 
   // Filter states
   const [companyFilter, setCompanyFilter] = useState('');
@@ -43,6 +44,16 @@ export default function AdminDashboard() {
   const [issuedFilter, setIssuedFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'survey_date' | 'issue_date' | 'company_name' | 'updated_at'>('updated_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('upgrade') === 'success') {
+      setUpgradeSuccess(true);
+      refreshUserRole();
+      window.history.replaceState({}, '', '/admin');
+      setTimeout(() => setUpgradeSuccess(false), 5000);
+    }
+  }, []);
 
   useEffect(() => {
     if (userRole !== 'admin') {
@@ -413,6 +424,16 @@ export default function AdminDashboard() {
           </div>
         </div>
       </nav>
+
+      {upgradeSuccess && (
+        <div className="max-w-[1600px] mx-auto px-6 pt-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-sm text-green-800 font-medium">
+              Subscription upgraded successfully! Your new plan features are now available.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {activeTab === 'users' ? (

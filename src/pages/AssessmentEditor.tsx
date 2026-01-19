@@ -227,10 +227,13 @@ export default function AssessmentEditor() {
           </p>
           <button
             onClick={() => navigate('/upgrade')}
-            className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold"
+            className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold mb-4"
           >
             Upgrade to Professional
           </button>
+          <p className="text-xs text-neutral-500 text-center">
+            Already upgraded? Try refreshing the page or signing out and back in to sync your plan status.
+          </p>
         </div>
       </div>
     );

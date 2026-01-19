@@ -139,10 +139,23 @@ export function canAccessPillarB(user: User, org: Organisation): boolean {
     }
   }
 
-  const isProfessionalOrEnterprise = org.plan_type === 'professional' || org.plan_type === 'enterprise';
-  const isActive = org.subscription_status === 'active' || org.plan_type === 'enterprise';
+  const plan = (org?.plan_type ?? (org as any)?.plan ?? (org as any)?.subscription_plan ?? (org as any)?.tier ?? '')
+    .toString()
+    .trim()
+    .toLowerCase();
 
-  return isProfessionalOrEnterprise && isActive;
+  const isPro =
+    plan === 'professional' ||
+    plan === 'pro' ||
+    plan === 'professional_plan' ||
+    plan === 'pro_plan' ||
+    plan === 'enterprise';
+
+  if (import.meta.env.DEV) {
+    console.log('[PillarB] org plan resolved:', plan, 'isPro:', isPro, 'raw org:', org);
+  }
+
+  return isPro;
 }
 
 export function getPlanDisplayName(plan: PlanType): string {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useClientBranding } from '../contexts/ClientBrandingContext';
+import { useTenant } from '../hooks/useTenant';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users, X, ClipboardList } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
@@ -16,7 +17,7 @@ import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 import { ROLE_LABELS, getRolePermissions, UserRole } from '../utils/permissions';
 import { canAccessPillarB } from '../utils/entitlements';
-import { isDevForceProEnabled, setDevForcePro } from '../utils/devFlags';
+import { toggleDevForcePro } from '../utils/devFlags';
 
 interface Survey {
   id: string;
@@ -51,8 +52,9 @@ interface PortfolioMetrics {
 }
 
 export default function Dashboard() {
-  const { signOut, user, userRole, userPlan, isPlatformAdmin, roleError, organisation } = useAuth();
+  const { signOut, user, userRole, userPlan, isPlatformAdmin, roleError, organisation, refreshUserRole } = useAuth();
   const { branding: clientBranding, refreshBranding } = useClientBranding();
+  const { tenant, refetch: refetchTenant } = useTenant();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const permissions = getRolePermissions(userRole);
@@ -91,7 +93,6 @@ export default function Dashboard() {
   const [surveySummaryCache, setSurveySummaryCache] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [showBrandingModal, setShowBrandingModal] = useState(false);
-  const [devForcePro, setDevForceProState] = useState(isDevForceProEnabled());
 
   useEffect(() => {
     fetchSurveys();
@@ -468,11 +469,17 @@ export default function Dashboard() {
     refreshBranding();
   };
 
-  const handleToggleDevForcePro = () => {
-    const newValue = !devForcePro;
-    setDevForcePro(newValue);
-    setDevForceProState(newValue);
-    window.location.reload();
+  const handleToggleDevForcePro = async () => {
+    if (!organisation?.id || !tenant) return;
+
+    try {
+      await toggleDevForcePro(organisation.id, tenant.plan_id);
+      await refreshUserRole();
+      await refetchTenant();
+    } catch (error) {
+      console.error('[Dashboard] Error toggling dev force pro:', error);
+      alert('Failed to toggle plan. Please try again.');
+    }
   };
 
   return (
@@ -505,16 +512,16 @@ export default function Dashboard() {
                 <label className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={devForcePro}
+                    checked={tenant?.plan_id === 'team'}
                     onChange={handleToggleDevForcePro}
                     className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                   />
                   <span className="text-xs font-medium text-amber-900">
-                    DEV: Force Pro
+                    DEV: Toggle Team Plan
                   </span>
-                  {devForcePro && (
+                  {tenant?.plan_id === 'team' && (
                     <span className="px-1.5 py-0.5 bg-amber-200 text-amber-900 text-xs font-bold rounded">
-                      PRO
+                      TEAM
                     </span>
                   )}
                 </label>

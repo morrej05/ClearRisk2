@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, Eye, Edit, Trash2, RefreshCw, Lock, Filter, Download, Shield, Users, ArrowLeft, CreditCard } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import UserManagement from '../components/UserManagement';
+import PlanUsageWidget from '../components/PlanUsageWidget';
 import { INDUSTRY_SECTORS } from '../utils/industrySectors';
 import { getPlanDisplayName, getSubscriptionStatusDisplayName } from '../utils/entitlements';
 
@@ -437,7 +438,14 @@ export default function AdminDashboard() {
 
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {activeTab === 'users' ? (
-          <UserManagement />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <UserManagement />
+            </div>
+            <div>
+              <PlanUsageWidget />
+            </div>
+          </div>
         ) : (
           <div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">

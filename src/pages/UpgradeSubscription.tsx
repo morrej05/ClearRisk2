@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTenant } from '../hooks/useTenant';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Loader2, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PLAN_FEATURES, getPlanDisplayName } from '../utils/entitlements';
 import { PRICING, getDefaultRegion, formatPrice } from '../config/pricing';
-import { isDevForceProEnabled, setDevForcePro } from '../utils/devFlags';
+import { toggleDevForcePro } from '../utils/devFlags';
 
 export default function UpgradeSubscription() {
-  const { user, userRole, organisation } = useAuth();
+  const { user, userRole, organisation, refreshUserRole } = useAuth();
+  const { tenant, refetch: refetchTenant } = useTenant();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [devForcePro, setDevForceProState] = useState(isDevForceProEnabled());
   const region = getDefaultRegion();
   const pricing = PRICING[region];
 
@@ -21,11 +22,17 @@ export default function UpgradeSubscription() {
     return null;
   }
 
-  const handleToggleDevForcePro = () => {
-    const newValue = !devForcePro;
-    setDevForcePro(newValue);
-    setDevForceProState(newValue);
-    window.location.reload();
+  const handleToggleDevForcePro = async () => {
+    if (!organisation?.id || !tenant) return;
+
+    try {
+      await toggleDevForcePro(organisation.id, tenant.plan_id);
+      await refreshUserRole();
+      await refetchTenant();
+    } catch (error) {
+      console.error('[UpgradeSubscription] Error toggling plan:', error);
+      alert('Failed to toggle plan. Please try again.');
+    }
   };
 
   const handleUpgrade = async (priceId: string) => {
@@ -98,20 +105,20 @@ export default function UpgradeSubscription() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {import.meta.env.DEV && (
+              {import.meta.env.DEV && tenant && (
                 <label className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={devForcePro}
+                    checked={tenant.plan_id === 'team'}
                     onChange={handleToggleDevForcePro}
                     className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                   />
                   <span className="text-xs font-medium text-amber-900">
-                    DEV: Force Professional
+                    DEV: Toggle Team Plan
                   </span>
-                  {devForcePro && (
+                  {tenant.plan_id === 'team' && (
                     <span className="px-1.5 py-0.5 bg-amber-200 text-amber-900 text-xs font-bold rounded">
-                      PRO
+                      TEAM
                     </span>
                   )}
                 </label>

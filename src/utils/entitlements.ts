@@ -132,45 +132,39 @@ export function canAccessPillarB(user: User, org: Organisation): boolean {
     return true;
   }
 
-  if (import.meta.env.DEV) {
-    const { isDevForceProEnabled } = require('./devFlags');
-    if (isDevForceProEnabled()) {
-      return true;
-    }
-  }
+  const planId = (org as any)?.plan_id ?? org?.plan_type ?? (org as any)?.plan ?? '';
+  const planStr = planId.toString().trim().toLowerCase();
 
-  const plan = (org?.plan_type ?? (org as any)?.plan ?? (org as any)?.subscription_plan ?? (org as any)?.tier ?? '')
-    .toString()
-    .trim()
-    .toLowerCase();
-
-  const isPro =
-    plan === 'professional' ||
-    plan === 'pro' ||
-    plan === 'professional_plan' ||
-    plan === 'pro_plan' ||
-    plan === 'enterprise';
+  const hasAccess =
+    planStr === 'team' ||
+    planStr === 'consultancy' ||
+    planStr === 'professional' ||
+    planStr === 'pro' ||
+    planStr === 'professional_plan' ||
+    planStr === 'pro_plan' ||
+    planStr === 'enterprise';
 
   if (import.meta.env.DEV) {
-    console.log('[PillarB] org plan resolved:', plan, 'isPro:', isPro, 'raw org:', org);
+    console.log('[PillarB] org plan_id:', planStr, 'hasAccess:', hasAccess, 'raw org:', org);
   }
 
-  return isPro;
+  return hasAccess;
 }
 
-export function getPlanDisplayName(plan: PlanType): string {
-  switch (plan) {
-    case 'free':
-      return 'Free';
-    case 'core':
-      return 'Core';
-    case 'professional':
-      return 'Professional';
-    case 'enterprise':
-      return 'Enterprise';
-    default:
-      return 'Unknown';
+export function getPlanDisplayName(plan: PlanType | string): string {
+  const planStr = plan.toString().toLowerCase();
+
+  if (planStr === 'solo' || planStr === 'free') {
+    return 'Solo';
   }
+  if (planStr === 'team' || planStr === 'professional' || planStr === 'pro' || planStr === 'core') {
+    return 'Team';
+  }
+  if (planStr === 'consultancy' || planStr === 'enterprise') {
+    return 'Consultancy';
+  }
+
+  return 'Solo';
 }
 
 export function getSubscriptionStatusDisplayName(status: SubscriptionStatus): string {
@@ -189,37 +183,61 @@ export function getSubscriptionStatusDisplayName(status: SubscriptionStatus): st
 }
 
 export const PLAN_FEATURES = {
-  free: {
-    name: 'Free',
-    maxEditors: 0,
+  solo: {
+    name: 'Solo',
+    maxEditors: 1,
     proFeatures: false,
     addons: false,
     disciplineSwitching: false,
-    description: 'View-only access'
+    description: '1 user, basic features'
   },
-  core: {
-    name: 'Core',
-    maxEditors: 1,
-    proFeatures: false,
-    addons: true,
-    disciplineSwitching: false,
-    description: '1 editor, basic features'
-  },
-  professional: {
-    name: 'Professional',
-    maxEditors: 3,
+  team: {
+    name: 'Team',
+    maxEditors: 5,
     proFeatures: true,
     addons: true,
     disciplineSwitching: false,
-    description: '3 editors, AI features'
+    description: '5 users, AI features'
   },
-  enterprise: {
-    name: 'Enterprise',
-    maxEditors: 10,
+  consultancy: {
+    name: 'Consultancy',
+    maxEditors: 999,
     proFeatures: true,
     addons: true,
     disciplineSwitching: true,
-    description: 'Unlimited features'
+    description: 'Unlimited users and features'
+  },
+  free: {
+    name: 'Solo',
+    maxEditors: 1,
+    proFeatures: false,
+    addons: false,
+    disciplineSwitching: false,
+    description: '1 user, basic features'
+  },
+  core: {
+    name: 'Solo',
+    maxEditors: 1,
+    proFeatures: false,
+    addons: false,
+    disciplineSwitching: false,
+    description: '1 user, basic features'
+  },
+  professional: {
+    name: 'Team',
+    maxEditors: 5,
+    proFeatures: true,
+    addons: true,
+    disciplineSwitching: false,
+    description: '5 users, AI features'
+  },
+  enterprise: {
+    name: 'Consultancy',
+    maxEditors: 999,
+    proFeatures: true,
+    addons: true,
+    disciplineSwitching: true,
+    description: 'Unlimited users and features'
   }
 };
 

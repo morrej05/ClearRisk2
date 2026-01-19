@@ -1,16 +1,27 @@
-export function isDevForceProEnabled(): boolean {
-  if (!import.meta.env.DEV) return false;
-  return localStorage.getItem('DEV_FORCE_PRO') === 'true';
-}
+import { supabase } from '../lib/supabase';
 
-export function setDevForcePro(enabled: boolean): void {
+export async function setDevForcePro(organisationId: string, enabled: boolean): Promise<void> {
   if (!import.meta.env.DEV) return;
-  localStorage.setItem('DEV_FORCE_PRO', enabled ? 'true' : 'false');
-  window.dispatchEvent(new Event('storage'));
+
+  const targetPlanId = enabled ? 'team' : 'solo';
+
+  const { error } = await supabase
+    .from('organisations')
+    .update({ plan_id: targetPlanId })
+    .eq('id', organisationId);
+
+  if (error) {
+    console.error('[devFlags] Error updating plan:', error);
+    throw error;
+  }
+
+  console.log('[devFlags] Updated plan to:', targetPlanId);
 }
 
-export function toggleDevForcePro(): boolean {
-  const newValue = !isDevForceProEnabled();
-  setDevForcePro(newValue);
-  return newValue;
+export async function toggleDevForcePro(organisationId: string, currentPlanId: string): Promise<boolean> {
+  if (!import.meta.env.DEV) return false;
+
+  const newEnabled = currentPlanId !== 'team';
+  await setDevForcePro(organisationId, newEnabled);
+  return newEnabled;
 }

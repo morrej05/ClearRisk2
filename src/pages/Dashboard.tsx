@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation';
 import { ROLE_LABELS, getRolePermissions, UserRole } from '../utils/permissions';
 import { canAccessPillarB } from '../utils/entitlements';
+import { isDevForceProEnabled, setDevForcePro } from '../utils/devFlags';
 
 interface Survey {
   id: string;
@@ -90,6 +91,7 @@ export default function Dashboard() {
   const [surveySummaryCache, setSurveySummaryCache] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [showBrandingModal, setShowBrandingModal] = useState(false);
+  const [devForcePro, setDevForceProState] = useState(isDevForceProEnabled());
 
   useEffect(() => {
     fetchSurveys();
@@ -466,6 +468,13 @@ export default function Dashboard() {
     refreshBranding();
   };
 
+  const handleToggleDevForcePro = () => {
+    const newValue = !devForcePro;
+    setDevForcePro(newValue);
+    setDevForceProState(newValue);
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       {userPlan === 'trial' && <TrialBanner />}
@@ -492,6 +501,24 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {import.meta.env.DEV && (
+                <label className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={devForcePro}
+                    onChange={handleToggleDevForcePro}
+                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-xs font-medium text-amber-900">
+                    DEV: Force Pro
+                  </span>
+                  {devForcePro && (
+                    <span className="px-1.5 py-0.5 bg-amber-200 text-amber-900 text-xs font-bold rounded">
+                      PRO
+                    </span>
+                  )}
+                </label>
+              )}
               <div className="flex flex-col items-end">
                 <span className="text-sm text-slate-600">{user?.email}</span>
                 <div className="flex items-center gap-2">

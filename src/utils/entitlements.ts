@@ -133,7 +133,10 @@ export function canAccessPillarB(user: User, org: Organisation): boolean {
   }
 
   if (import.meta.env.DEV) {
-    return true;
+    const { isDevForceProEnabled } = require('./devFlags');
+    if (isDevForceProEnabled()) {
+      return true;
+    }
   }
 
   const isProfessionalOrEnterprise = org.plan_type === 'professional' || org.plan_type === 'enterprise';

@@ -4,17 +4,29 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Loader2, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PLAN_FEATURES, getPlanDisplayName } from '../utils/entitlements';
+import { PRICING, getDefaultRegion, formatPrice } from '../config/pricing';
+import { isDevForceProEnabled, setDevForcePro } from '../utils/devFlags';
 
 export default function UpgradeSubscription() {
   const { user, userRole, organisation } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [devForcePro, setDevForceProState] = useState(isDevForceProEnabled());
+  const region = getDefaultRegion();
+  const pricing = PRICING[region];
 
   if (userRole !== 'admin') {
     navigate('/dashboard');
     return null;
   }
+
+  const handleToggleDevForcePro = () => {
+    const newValue = !devForcePro;
+    setDevForcePro(newValue);
+    setDevForceProState(newValue);
+    window.location.reload();
+  };
 
   const handleUpgrade = async (priceId: string) => {
     if (!organisation) {
@@ -85,13 +97,33 @@ export default function UpgradeSubscription() {
                 <p className="text-sm text-neutral-600">Choose your plan</p>
               </div>
             </div>
-            <button
-              onClick={() => navigate('/admin')}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Admin
-            </button>
+            <div className="flex items-center gap-4">
+              {import.meta.env.DEV && (
+                <label className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={devForcePro}
+                    onChange={handleToggleDevForcePro}
+                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-xs font-medium text-amber-900">
+                    DEV: Force Professional
+                  </span>
+                  {devForcePro && (
+                    <span className="px-1.5 py-0.5 bg-amber-200 text-amber-900 text-xs font-bold rounded">
+                      PRO
+                    </span>
+                  )}
+                </label>
+              )}
+              <button
+                onClick={() => navigate('/admin')}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Admin
+              </button>
+            </div>
           </div>
         </div>
       </nav>
@@ -154,7 +186,9 @@ export default function UpgradeSubscription() {
 
             <div className="space-y-3">
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-3xl font-bold text-neutral-900">$99</span>
+                <span className="text-3xl font-bold text-neutral-900">
+                  {formatPrice(region, pricing.core.monthly)}
+                </span>
                 <span className="text-neutral-600">/month</span>
               </div>
               <button
@@ -173,9 +207,11 @@ export default function UpgradeSubscription() {
               </button>
 
               <div className="flex items-baseline gap-2 mb-2 mt-6">
-                <span className="text-3xl font-bold text-neutral-900">$990</span>
+                <span className="text-3xl font-bold text-neutral-900">
+                  {formatPrice(region, pricing.core.annual)}
+                </span>
                 <span className="text-neutral-600">/year</span>
-                <span className="text-sm text-success-600 font-medium">Save 17%</span>
+                <span className="text-sm text-success-600 font-medium">2 months free</span>
               </div>
               <button
                 onClick={() => handleUpgrade(coreAnnualPrice)}
@@ -225,7 +261,9 @@ export default function UpgradeSubscription() {
 
             <div className="space-y-3">
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-3xl font-bold text-neutral-900">$299</span>
+                <span className="text-3xl font-bold text-neutral-900">
+                  {formatPrice(region, pricing.professional.monthly)}
+                </span>
                 <span className="text-neutral-600">/month</span>
               </div>
               <button
@@ -244,9 +282,11 @@ export default function UpgradeSubscription() {
               </button>
 
               <div className="flex items-baseline gap-2 mb-2 mt-6">
-                <span className="text-3xl font-bold text-neutral-900">$2,990</span>
+                <span className="text-3xl font-bold text-neutral-900">
+                  {formatPrice(region, pricing.professional.annual)}
+                </span>
                 <span className="text-neutral-600">/year</span>
-                <span className="text-sm text-success-600 font-medium">Save 17%</span>
+                <span className="text-sm text-success-600 font-medium">2 months free</span>
               </div>
               <button
                 onClick={() => handleUpgrade(proAnnualPrice)}

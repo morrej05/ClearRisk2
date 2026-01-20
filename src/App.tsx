@@ -4,6 +4,11 @@ import { ClientBrandingProvider } from './contexts/ClientBrandingContext';
 import LandingPage from './pages/LandingPage';
 import SignIn from './pages/SignIn';
 import Dashboard from './pages/Dashboard';
+import CommonDashboard from './pages/CommonDashboard';
+import FireSafetyDashboard from './pages/dashboard/FireSafetyDashboard';
+import ExplosionDashboard from './pages/dashboard/ExplosionDashboard';
+import ActionsDashboard from './pages/dashboard/ActionsDashboard';
+import DocumentOverview from './pages/documents/DocumentOverview';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UpgradeSubscription from './pages/UpgradeSubscription';
@@ -30,6 +35,46 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/common-dashboard"
+            element={
+              <ProtectedRoute>
+                <CommonDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/fire"
+            element={
+              <ProtectedRoute>
+                <FireSafetyDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/explosion"
+            element={
+              <ProtectedRoute>
+                <ExplosionDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/actions"
+            element={
+              <ProtectedRoute>
+                <ActionsDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents/:id"
+            element={
+              <ProtectedRoute>
+                <DocumentOverview />
               </ProtectedRoute>
             }
           />

@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, AlertTriangle, Upload, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { uploadEvidenceFile, createAttachmentRow } from '../../lib/supabase/attachments';
 
 interface AddActionModalProps {
   documentId: string;
@@ -32,6 +33,10 @@ export default function AddActionModal({
 }: AddActionModalProps) {
   const { organisation, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAttachmentPrompt, setShowAttachmentPrompt] = useState(false);
+  const [createdActionId, setCreatedActionId] = useState<string | null>(null);
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     recommendedAction: defaultAction,
@@ -170,8 +175,9 @@ export default function AddActionModal({
 
       if (ratingError) throw ratingError;
 
+      setCreatedActionId(action.id);
+      setShowAttachmentPrompt(true);
       onActionCreated();
-      onClose();
     } catch (error) {
       console.error('Error creating action:', error);
       alert('Failed to create action. Please try again.');
@@ -179,6 +185,97 @@ export default function AddActionModal({
       setIsSubmitting(false);
     }
   };
+
+  const handleAttachmentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !organisation?.id || !createdActionId) return;
+
+    setIsUploadingAttachments(true);
+    try {
+      for (const file of Array.from(files)) {
+        const uploadResult = await uploadEvidenceFile(file, organisation.id, documentId);
+        await createAttachmentRow({
+          organisation_id: organisation.id,
+          document_id: documentId,
+          file_path: uploadResult.file_path,
+          file_name: uploadResult.file_name,
+          file_type: uploadResult.file_type,
+          file_size_bytes: uploadResult.file_size_bytes,
+          action_id: createdActionId,
+          module_instance_id: moduleInstanceId,
+        });
+      }
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      alert(`${files.length} file(s) attached successfully!`);
+    } catch (error) {
+      console.error('Error uploading attachments:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to upload attachments: ${errorMessage}`);
+    } finally {
+      setIsUploadingAttachments(false);
+    }
+  };
+
+  const handleFinish = () => {
+    onClose();
+  };
+
+  if (showAttachmentPrompt) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="bg-green-50 border-b border-green-200 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <h2 className="text-xl font-bold text-green-900">Action Created!</h2>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <p className="text-neutral-700 mb-4">
+              Would you like to attach evidence or photos to this action?
+            </p>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+              onChange={handleAttachmentUpload}
+              className="hidden"
+            />
+
+            <div className="space-y-3">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingAttachments}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                {isUploadingAttachments ? 'Uploading...' : 'Attach Files'}
+              </button>
+
+              <button
+                onClick={handleFinish}
+                disabled={isUploadingAttachments}
+                className="w-full px-4 py-3 border-2 border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+              >
+                Skip for Now
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-500 mt-4 text-center">
+              You can also attach files later from the Evidence tab
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">

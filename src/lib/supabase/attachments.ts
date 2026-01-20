@@ -33,6 +33,11 @@ export interface CreateAttachmentData {
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
 
+export interface AttachmentWithLinks extends Attachment {
+  module_name?: string;
+  action_summary?: string;
+}
+
 export async function listAttachments(documentId: string): Promise<Attachment[]> {
   const { data, error } = await supabase
     .from('attachments')
@@ -46,6 +51,33 @@ export async function listAttachments(documentId: string): Promise<Attachment[]>
   }
 
   return data || [];
+}
+
+export async function listAttachmentsWithLinks(documentId: string): Promise<AttachmentWithLinks[]> {
+  const { data, error } = await supabase
+    .from('attachments')
+    .select(`
+      *,
+      module_instances!attachments_module_instance_id_fkey (
+        module_key
+      ),
+      actions!attachments_action_id_fkey (
+        summary
+      )
+    `)
+    .eq('document_id', documentId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error listing attachments with links:', error);
+    throw error;
+  }
+
+  return (data || []).map((item: any) => ({
+    ...item,
+    module_name: item.module_instances?.module_key || undefined,
+    action_summary: item.actions?.summary || undefined,
+  }));
 }
 
 export async function getAttachment(id: string): Promise<Attachment | null> {

@@ -3,6 +3,8 @@ import { AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import A1DocumentControlForm from './forms/A1DocumentControlForm';
+import A4ManagementControlsForm from './forms/A4ManagementControlsForm';
+import A5EmergencyArrangementsForm from './forms/A5EmergencyArrangementsForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
 
@@ -58,6 +60,26 @@ export default function ModuleRenderer({
     );
   }
 
+  if (moduleInstance.module_key === 'A4_MANAGEMENT_CONTROLS') {
+    return (
+      <A4ManagementControlsForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'A5_EMERGENCY_ARRANGEMENTS') {
+    return (
+      <A5EmergencyArrangementsForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
   return <PlaceholderModuleForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
 }
 
@@ -74,8 +96,7 @@ function PlaceholderModuleForm({
     setIsSaving(true);
 
     try {
-      const completedAt =
-        outcome && outcome !== 'info_gap' ? new Date().toISOString() : null;
+      const completedAt = outcome ? new Date().toISOString() : null;
 
       const { error } = await supabase
         .from('module_instances')

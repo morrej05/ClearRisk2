@@ -8,6 +8,9 @@ interface AddActionModalProps {
   moduleInstanceId: string;
   onClose: () => void;
   onActionCreated: () => void;
+  defaultAction?: string;
+  defaultLikelihood?: number;
+  defaultImpact?: number;
 }
 
 const TIMESCALE_OPTIONS = [
@@ -23,14 +26,17 @@ export default function AddActionModal({
   moduleInstanceId,
   onClose,
   onActionCreated,
+  defaultAction = '',
+  defaultLikelihood = 3,
+  defaultImpact = 3,
 }: AddActionModalProps) {
   const { organisation, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    recommendedAction: '',
-    likelihood: 3,
-    impact: 3,
+    recommendedAction: defaultAction,
+    likelihood: defaultLikelihood,
+    impact: defaultImpact,
     timescale: 'next_review',
     overrideJustification: '',
     targetDate: '',

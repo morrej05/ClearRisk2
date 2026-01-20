@@ -187,8 +187,10 @@ export default function DocumentWorkspace() {
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 mt-0.5">
-                    {module.completed_at ? (
+                    {module.outcome && module.outcome !== 'info_gap' ? (
                       <CheckCircle className="w-5 h-5 text-green-600" />
+                    ) : module.outcome === 'info_gap' ? (
+                      <AlertCircle className="w-5 h-5 text-blue-600" />
                     ) : (
                       <div className="w-5 h-5 rounded-full border-2 border-neutral-300" />
                     )}
@@ -198,17 +200,24 @@ export default function DocumentWorkspace() {
                       {getModuleName(module.module_key)}
                     </p>
                     {module.outcome && (
-                      <span
-                        className={`inline-flex px-2 py-0.5 text-xs font-medium rounded border ${getOutcomeColor(
-                          module.outcome
-                        )}`}
-                      >
-                        {module.outcome === 'compliant' && 'Compliant'}
-                        {module.outcome === 'minor_def' && 'Minor Def'}
-                        {module.outcome === 'material_def' && 'Material Def'}
-                        {module.outcome === 'info_gap' && 'Info Gap'}
-                        {module.outcome === 'na' && 'N/A'}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className={`inline-flex px-2 py-0.5 text-xs font-medium rounded border ${getOutcomeColor(
+                            module.outcome
+                          )}`}
+                        >
+                          {module.outcome === 'compliant' && 'Compliant'}
+                          {module.outcome === 'minor_def' && 'Minor Def'}
+                          {module.outcome === 'material_def' && 'Material Def'}
+                          {module.outcome === 'info_gap' && 'Info Gap'}
+                          {module.outcome === 'na' && 'N/A'}
+                        </span>
+                        {module.outcome === 'info_gap' && (
+                          <span className="text-xs text-blue-600 font-medium">
+                            Completed with gaps
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

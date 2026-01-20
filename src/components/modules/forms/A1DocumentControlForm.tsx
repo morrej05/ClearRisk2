@@ -109,8 +109,7 @@ export default function A1DocumentControlForm({
 
       if (docError) throw docError;
 
-      const completedAt =
-        outcome && outcome !== 'info_gap' ? new Date().toISOString() : null;
+      const completedAt = outcome ? new Date().toISOString() : null;
 
       const { error: moduleError } = await supabase
         .from('module_instances')

@@ -27,13 +27,42 @@ interface Action {
   likelihood: number;
   impact: number;
   priority_score: number;
+  priority_band: string;
   status: string;
   module_instance_id: string;
+  target_date: string | null;
+  created_at: string;
 }
 
 interface ModuleSummary {
   module_key: string;
   outcome: string | null;
+}
+
+function sortActionsByPriority(actions: Action[]): Action[] {
+  const priorityMap: Record<string, number> = {
+    P1: 1,
+    P2: 2,
+    P3: 3,
+    P4: 4,
+  };
+
+  return [...actions].sort((a, b) => {
+    const aPriority = priorityMap[a.priority_band] || 999;
+    const bPriority = priorityMap[b.priority_band] || 999;
+
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
+    if (a.target_date && b.target_date) {
+      return new Date(a.target_date).getTime() - new Date(b.target_date).getTime();
+    }
+    if (a.target_date && !b.target_date) return -1;
+    if (!a.target_date && b.target_date) return 1;
+
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
 }
 
 export default function FRA4SignificantFindingsForm({
@@ -86,11 +115,12 @@ export default function FRA4SignificantFindingsForm({
         .select('*')
         .in('module_instance_id', moduleIds)
         .neq('status', 'completed')
-        .order('priority_score', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (actionsError) throw actionsError;
 
-      setActions(actionsData || []);
+      const sortedActions = sortActionsByPriority(actionsData || []);
+      setActions(sortedActions);
     } catch (error) {
       console.error('Error loading actions:', error);
     } finally {
@@ -99,8 +129,8 @@ export default function FRA4SignificantFindingsForm({
   };
 
   const getSuggestedRating = (): { rating: string; reason: string } => {
-    const p1Actions = actions.filter((a) => a.priority_score >= 20);
-    const p2Actions = actions.filter((a) => a.priority_score >= 12 && a.priority_score < 20);
+    const p1Actions = actions.filter((a) => a.priority_band === 'P1');
+    const p2Actions = actions.filter((a) => a.priority_band === 'P2');
 
     const materialDefCount = modules.filter((m) => m.outcome === 'material_def').length;
 

@@ -33,7 +33,6 @@ interface Action {
   action: string;
   likelihood: number;
   impact: number;
-  priority_score: number;
   priority_band: string;
   status: string;
   owner: string | null;
@@ -704,7 +703,8 @@ function drawActionRegister(
       color: rgb(1, 1, 1),
     });
 
-    page.drawText(`L${action.likelihood} × I${action.impact} = ${action.priority_score}`, {
+    const priorityScore = action.likelihood * action.impact;
+    page.drawText(`L${action.likelihood} × I${action.impact} = ${priorityScore}`, {
       x: MARGIN + 35,
       y: yPosition,
       size: 9,

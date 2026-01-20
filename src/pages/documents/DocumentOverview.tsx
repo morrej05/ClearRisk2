@@ -33,6 +33,40 @@ interface ModuleInstance {
   updated_at: string;
 }
 
+interface Action {
+  id: string;
+  priority_band: string;
+  target_date: string | null;
+  created_at: string;
+  [key: string]: any;
+}
+
+function sortActionsByPriority(actions: Action[]): Action[] {
+  const priorityMap: Record<string, number> = {
+    P1: 1,
+    P2: 2,
+    P3: 3,
+    P4: 4,
+  };
+
+  return [...actions].sort((a, b) => {
+    const aPriority = priorityMap[a.priority_band] || 999;
+    const bPriority = priorityMap[b.priority_band] || 999;
+
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
+    if (a.target_date && b.target_date) {
+      return new Date(a.target_date).getTime() - new Date(b.target_date).getTime();
+    }
+    if (a.target_date && !b.target_date) return -1;
+    if (!a.target_date && b.target_date) return 1;
+
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+}
+
 export default function DocumentOverview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -192,14 +226,16 @@ export default function DocumentOverview() {
         .select('*')
         .eq('document_id', id)
         .eq('organisation_id', organisation.id)
-        .order('priority_score', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (actionsError) throw actionsError;
+
+      const sortedActions = sortActionsByPriority(actions || []);
 
       const pdfBytes = await buildFraPdf({
         document,
         moduleInstances: moduleInstances || [],
-        actions: actions || [],
+        actions: sortedActions,
         organisation: { id: organisation.id, name: organisation.name },
       });
 

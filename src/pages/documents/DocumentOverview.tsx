@@ -213,6 +213,9 @@ export default function DocumentOverview() {
 
     setIsGeneratingPdf(true);
     try {
+      console.log('[PDF] Starting PDF generation for document:', id);
+
+      // Fetch module instances
       const { data: moduleInstances, error: moduleError } = await supabase
         .from('module_instances')
         .select('*')
@@ -220,22 +223,79 @@ export default function DocumentOverview() {
         .eq('organisation_id', organisation.id);
 
       if (moduleError) throw moduleError;
+      console.log('[PDF] Fetched', moduleInstances?.length || 0, 'module instances');
 
+      // Fetch actions with user profile names
       const { data: actions, error: actionsError } = await supabase
         .from('actions')
-        .select('*')
+        .select(`
+          id,
+          recommended_action,
+          priority_band,
+          status,
+          owner_user_id,
+          target_date,
+          module_instance_id,
+          created_at
+        `)
         .eq('document_id', id)
         .eq('organisation_id', organisation.id)
         .order('created_at', { ascending: true });
 
       if (actionsError) throw actionsError;
+      console.log('[PDF] Fetched', actions?.length || 0, 'actions');
 
-      const sortedActions = sortActionsByPriority(actions || []);
+      // Fetch action ratings
+      const actionIds = (actions || []).map(a => a.id);
+      let actionRatings = [];
+      if (actionIds.length > 0) {
+        const { data: ratings, error: ratingsError } = await supabase
+          .from('action_ratings')
+          .select('action_id, likelihood, impact, score, rated_at')
+          .in('action_id', actionIds)
+          .order('rated_at', { ascending: false });
+
+        if (ratingsError) {
+          console.warn('[PDF] Failed to fetch action ratings:', ratingsError);
+        } else {
+          actionRatings = ratings || [];
+          console.log('[PDF] Fetched', actionRatings.length, 'action ratings');
+        }
+      }
+
+      // Fetch user profiles for owner display names
+      const ownerUserIds = (actions || [])
+        .map(a => a.owner_user_id)
+        .filter(id => id != null);
+      const uniqueOwnerIds = [...new Set(ownerUserIds)];
+
+      const userNameMap = new Map<string, string>();
+      if (uniqueOwnerIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('user_id, name')
+          .in('user_id', uniqueOwnerIds);
+
+        if (profilesError) {
+          console.warn('[PDF] Failed to fetch user profiles:', profilesError);
+        } else {
+          (profiles || []).forEach(p => {
+            if (p.name) userNameMap.set(p.user_id, p.name);
+          });
+        }
+      }
+
+      // Enrich actions with owner display names
+      const enrichedActions = (actions || []).map(action => ({
+        ...action,
+        owner_display_name: action.owner_user_id ? userNameMap.get(action.owner_user_id) : null,
+      }));
 
       const pdfBytes = await buildFraPdf({
         document,
         moduleInstances: moduleInstances || [],
-        actions: sortedActions,
+        actions: enrichedActions,
+        actionRatings,
         organisation: { id: organisation.id, name: organisation.name },
       });
 
@@ -248,9 +308,11 @@ export default function DocumentOverview() {
       const filename = `FRA_${siteName}_${dateStr}_v${document.version}.pdf`;
 
       saveAs(blob, filename);
+      console.log('[PDF] PDF generated successfully:', filename);
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      console.error('[PDF] Error generating PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to generate PDF: ${errorMessage}\n\nPlease check the console for details and try again.`);
     } finally {
       setIsGeneratingPdf(false);
     }

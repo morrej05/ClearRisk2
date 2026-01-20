@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
+import { getModuleName } from '../modules/moduleCatalog';
 
 interface Document {
   id: string;
@@ -30,14 +31,22 @@ interface ModuleInstance {
 
 interface Action {
   id: string;
-  action: string;
-  likelihood: number;
-  impact: number;
+  recommended_action: string;
   priority_band: string;
   status: string;
-  owner: string | null;
+  owner_user_id: string | null;
+  owner_display_name?: string;
   target_date: string | null;
   module_instance_id: string;
+  created_at: string;
+}
+
+interface ActionRating {
+  action_id: string;
+  likelihood: number;
+  impact: number;
+  score: number;
+  rated_at: string;
 }
 
 interface Organisation {
@@ -49,6 +58,7 @@ interface BuildPdfOptions {
   document: Document;
   moduleInstances: ModuleInstance[];
   actions: Action[];
+  actionRatings: ActionRating[];
   organisation: Organisation;
 }
 
@@ -63,32 +73,29 @@ const MODULE_ORDER = [
   'FRA_5_EXTERNAL_FIRE_SPREAD',
 ];
 
-const MODULE_NAMES: Record<string, string> = {
-  A1_DOC_CONTROL: 'Document Control & Governance',
-  A4_MANAGEMENT_CONTROLS: 'Management Systems & Controls',
-  A5_EMERGENCY_ARRANGEMENTS: 'Emergency Arrangements',
-  FRA_1_HAZARDS: 'Fire Hazards & Ignition Sources',
-  FRA_2_ESCAPE_ASIS: 'Means of Escape',
-  FRA_3_PROTECTION_ASIS: 'Fire Protection Measures',
-  FRA_4_SIGNIFICANT_FINDINGS: 'Significant Findings Summary',
-  FRA_5_EXTERNAL_FIRE_SPREAD: 'External Fire Spread',
-};
-
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const MARGIN = 50;
 const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
 
 export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array> {
-  const { document, moduleInstances, actions, organisation } = options;
+  const { document, moduleInstances, actions, actionRatings, organisation } = options;
+
+  console.log('[PDF] Building PDF with:', {
+    modules: moduleInstances.length,
+    actions: actions.length,
+    ratings: actionRatings.length,
+  });
 
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   const isDraft = document.status !== 'issued';
+  const totalPages: PDFPage[] = [];
 
   let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  totalPages.push(page);
   let yPosition = PAGE_HEIGHT - MARGIN;
 
   if (isDraft) {
@@ -101,26 +108,42 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   const fra4Module = sortedModules.find((m) => m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS');
 
   if (fra4Module) {
-    page = addNewPage(pdfDoc, isDraft);
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
     yPosition = PAGE_HEIGHT - MARGIN;
-    yPosition = drawExecutiveSummary(page, fra4Module, actions, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft);
+    yPosition = drawExecutiveSummary(page, fra4Module, actions, actionRatings, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
   for (const module of sortedModules) {
     if (module.module_key === 'FRA_4_SIGNIFICANT_FINDINGS') continue;
 
-    page = addNewPage(pdfDoc, isDraft);
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
     yPosition = PAGE_HEIGHT - MARGIN;
-    yPosition = drawModuleSummary(page, module, font, fontBold, yPosition, pdfDoc, isDraft);
+    yPosition = drawModuleSummary(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
-  page = addNewPage(pdfDoc, isDraft);
+  const result1 = addNewPage(pdfDoc, isDraft, totalPages);
+  page = result1.page;
   yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawActionRegister(page, actions, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft);
+  yPosition = drawActionRegister(page, actions, actionRatings, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
-  page = addNewPage(pdfDoc, isDraft);
+  const result2 = addNewPage(pdfDoc, isDraft, totalPages);
+  page = result2.page;
   yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawAssumptionsAndLimitations(page, document, fra4Module, font, fontBold, yPosition, pdfDoc, isDraft);
+  yPosition = drawAssumptionsAndLimitations(page, document, fra4Module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+  // Add page numbers and footers to all pages except cover
+  const today = new Date().toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  const footerText = `FRA Report — ${document.title} — v${document.version} — Generated ${today}`;
+
+  for (let i = 1; i < totalPages.length; i++) {
+    drawFooter(totalPages[i], footerText, i, totalPages.length - 1, font);
+  }
 
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
@@ -153,12 +176,33 @@ function drawDraftWatermark(page: PDFPage) {
   });
 }
 
-function addNewPage(pdfDoc: PDFDocument, isDraft: boolean): PDFPage {
+function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PDFPage[]): { page: PDFPage } {
   const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  totalPages.push(page);
   if (isDraft) {
     drawDraftWatermark(page);
   }
-  return page;
+  return { page };
+}
+
+function drawFooter(page: PDFPage, text: string, pageNum: number, totalPages: number, font: any) {
+  page.drawText(text, {
+    x: MARGIN,
+    y: MARGIN - 30,
+    size: 8,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  const pageText = `Page ${pageNum} of ${totalPages}`;
+  const pageTextWidth = font.widthOfTextAtSize(pageText, 8);
+  page.drawText(pageText, {
+    x: PAGE_WIDTH - MARGIN - pageTextWidth,
+    y: MARGIN - 30,
+    size: 8,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
 }
 
 function drawCoverPage(
@@ -221,12 +265,13 @@ function drawCoverPage(
   yPosition -= 30;
   const infoItems = [
     ['Organisation:', organisation.name],
+    ['Document Type:', 'Fire Risk Assessment (FRA)'],
     ['Assessment Date:', formatDate(document.assessment_date)],
-    ['Assessor:', document.assessor_name || '—'],
-    ['Role:', document.assessor_role || '—'],
-    ['Responsible Person:', document.responsible_person || '—'],
+    ['Assessor:', document.assessor_name || 'Not recorded'],
+    ['Assessor Role:', document.assessor_role || 'Not recorded'],
+    ['Responsible Person:', document.responsible_person || 'Not recorded'],
     ['Version:', `v${document.version}`],
-    ['Document Type:', document.document_type],
+    ['Status:', document.status.toUpperCase()],
   ];
 
   for (const [label, value] of infoItems) {
@@ -259,16 +304,41 @@ function drawCoverPage(
   return yPosition;
 }
 
+function computeFallbackRating(actions: Action[], actionRatings: ActionRating[], moduleInstances: ModuleInstance[]): string {
+  // Get open/in_progress actions
+  const openActions = actions.filter((a) => a.status === 'open' || a.status === 'in_progress');
+  const p1Actions = openActions.filter((a) => a.priority_band === 'P1').length;
+  const p2Actions = openActions.filter((a) => a.priority_band === 'P2').length;
+
+  // Count module outcomes
+  const materialDefCount = moduleInstances.filter((m) => m.outcome === 'material_def').length;
+  const minorDefCount = moduleInstances.filter((m) => m.outcome === 'minor_def').length;
+
+  // Fallback logic
+  if (p1Actions > 0) {
+    return 'intolerable';
+  }
+  if (p2Actions >= 3 || materialDefCount > 0) {
+    return 'high';
+  }
+  if (p2Actions > 0 || minorDefCount >= 2) {
+    return 'medium';
+  }
+  return 'low';
+}
+
 function drawExecutiveSummary(
   page: PDFPage,
   fra4Module: ModuleInstance,
   actions: Action[],
+  actionRatings: ActionRating[],
   moduleInstances: ModuleInstance[],
   font: any,
   fontBold: any,
   yPosition: number,
   pdfDoc: PDFDocument,
-  isDraft: boolean
+  isDraft: boolean,
+  totalPages: PDFPage[]
 ): number {
   yPosition -= 20;
   page.drawText('EXECUTIVE SUMMARY', {
@@ -281,7 +351,15 @@ function drawExecutiveSummary(
 
   yPosition -= 30;
 
-  const overallRating = fra4Module.data.overall_risk_rating || 'unknown';
+  // Use FRA-4 overall_risk_rating if present, otherwise compute fallback
+  let overallRating = fra4Module.data.overall_risk_rating;
+  if (!overallRating || overallRating === 'unknown' || !overallRating.trim()) {
+    overallRating = computeFallbackRating(actions, actionRatings, moduleInstances);
+    console.log('[PDF] Using fallback risk rating:', overallRating);
+  } else {
+    console.log('[PDF] Using FRA-4 stored risk rating:', overallRating);
+  }
+
   const ratingLabel = overallRating.toUpperCase();
   const ratingColor = getRatingColor(overallRating);
 
@@ -311,7 +389,7 @@ function drawExecutiveSummary(
 
   yPosition -= 45;
 
-  const openActions = actions.filter((a) => a.status !== 'completed');
+  const openActions = actions.filter((a) => a.status === 'open' || a.status === 'in_progress');
   const p1Actions = openActions.filter((a) => a.priority_band === 'P1').length;
   const p2Actions = openActions.filter((a) => a.priority_band === 'P2').length;
 
@@ -385,7 +463,8 @@ function drawExecutiveSummary(
     yPosition -= 30;
 
     if (yPosition < 200) {
-      page = addNewPage(pdfDoc, isDraft);
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
       yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
@@ -401,7 +480,8 @@ function drawExecutiveSummary(
     const summaryLines = wrapText(fra4Module.data.executive_summary, CONTENT_WIDTH, 11, font);
     for (const line of summaryLines) {
       if (yPosition < MARGIN + 50) {
-        page = addNewPage(pdfDoc, isDraft);
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
       page.drawText(line, {
@@ -419,7 +499,8 @@ function drawExecutiveSummary(
     yPosition -= 20;
 
     if (yPosition < 200) {
-      page = addNewPage(pdfDoc, isDraft);
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
       yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
@@ -435,7 +516,8 @@ function drawExecutiveSummary(
     const reviewLines = wrapText(fra4Module.data.review_recommendation, CONTENT_WIDTH, 11, font);
     for (const line of reviewLines) {
       if (yPosition < MARGIN + 50) {
-        page = addNewPage(pdfDoc, isDraft);
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
       page.drawText(line, {
@@ -455,13 +537,15 @@ function drawExecutiveSummary(
 function drawModuleSummary(
   page: PDFPage,
   module: ModuleInstance,
+  document: Document,
   font: any,
   fontBold: any,
   yPosition: number,
   pdfDoc: PDFDocument,
-  isDraft: boolean
+  isDraft: boolean,
+  totalPages: PDFPage[]
 ): number {
-  const moduleName = MODULE_NAMES[module.module_key] || module.module_key;
+  const moduleName = getModuleName(module.module_key);
 
   yPosition -= 20;
   page.drawText(moduleName, {
@@ -517,7 +601,8 @@ function drawModuleSummary(
     const notesLines = wrapText(module.assessor_notes, CONTENT_WIDTH, 10, font);
     for (const line of notesLines) {
       if (yPosition < MARGIN + 50) {
-        page = addNewPage(pdfDoc, isDraft);
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
       page.drawText(line, {
@@ -532,113 +617,222 @@ function drawModuleSummary(
     yPosition -= 10;
   }
 
-  yPosition = drawModuleKeyFields(page, module, font, fontBold, yPosition, pdfDoc, isDraft);
+  yPosition = drawModuleKeyDetails(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   return yPosition;
 }
 
-function drawModuleKeyFields(
+function safeArray(value: any): string[] {
+  if (Array.isArray(value)) return value.filter(v => v != null);
+  if (typeof value === 'string') return [value];
+  return [];
+}
+
+function drawModuleKeyDetails(
   page: PDFPage,
   module: ModuleInstance,
+  document: Document,
   font: any,
   fontBold: any,
   yPosition: number,
   pdfDoc: PDFDocument,
-  isDraft: boolean
+  isDraft: boolean,
+  totalPages: PDFPage[]
 ): number {
   const data = module.data || {};
+  const keyDetails: Array<[string, string]> = [];
 
   switch (module.module_key) {
-    case 'FRA_1_HAZARDS':
-      if (data.ignition_sources?.length > 0) {
-        yPosition = drawKeyField(page, 'Ignition Sources', data.ignition_sources.join(', '), font, fontBold, yPosition, pdfDoc, isDraft);
+    case 'A1_DOC_CONTROL':
+      if (document.responsible_person) keyDetails.push(['Responsible Person', document.responsible_person]);
+      if (document.assessor_name) keyDetails.push(['Assessor Name', document.assessor_name]);
+      if (document.assessor_role) keyDetails.push(['Assessor Role', document.assessor_role]);
+      if (document.assessment_date) keyDetails.push(['Assessment Date', formatDate(document.assessment_date)]);
+      if (document.review_date) keyDetails.push(['Review Date', formatDate(document.review_date)]);
+      if (document.scope_description) {
+        const truncated = document.scope_description.length > 200
+          ? document.scope_description.substring(0, 200) + '...'
+          : document.scope_description;
+        keyDetails.push(['Scope', truncated]);
       }
-      if (data.fuel_sources?.length > 0) {
-        yPosition = drawKeyField(page, 'Fuel Sources', data.fuel_sources.join(', '), font, fontBold, yPosition, pdfDoc, isDraft);
+      if (document.limitations_assumptions) {
+        const truncated = document.limitations_assumptions.length > 200
+          ? document.limitations_assumptions.substring(0, 200) + '...'
+          : document.limitations_assumptions;
+        keyDetails.push(['Limitations', truncated]);
       }
-      if (data.arson_risk && data.arson_risk !== 'unknown') {
-        yPosition = drawKeyField(page, 'Arson Risk', data.arson_risk, font, fontBold, yPosition, pdfDoc, isDraft);
-      }
-      break;
-
-    case 'FRA_5_EXTERNAL_FIRE_SPREAD':
-      if (data.building_height_relevant) {
-        yPosition = drawKeyField(page, 'Building Height', `${data.building_height_relevant}m`, font, fontBold, yPosition, pdfDoc, isDraft);
-      }
-      if (data.pas9980_or_equivalent_appraisal) {
-        yPosition = drawKeyField(page, 'PAS 9980 Appraisal', data.pas9980_or_equivalent_appraisal.replace(/_/g, ' '), font, fontBold, yPosition, pdfDoc, isDraft);
+      if (document.standards_selected && document.standards_selected.length > 0) {
+        keyDetails.push(['Standards Selected', document.standards_selected.join(', ')]);
       }
       break;
 
     case 'A4_MANAGEMENT_CONTROLS':
-      if (data.fire_safety_policy) {
-        yPosition = drawKeyField(page, 'Fire Safety Policy', data.fire_safety_policy, font, fontBold, yPosition, pdfDoc, isDraft);
-      }
+      if (data.responsibilities_defined) keyDetails.push(['Responsibilities Defined', data.responsibilities_defined]);
+      if (data.fire_safety_policy) keyDetails.push(['Fire Policy Exists', data.fire_safety_policy]);
+      if (data.training_induction) keyDetails.push(['Induction Training', data.training_induction]);
+      if (data.training_refresher) keyDetails.push(['Refresher Training', data.training_refresher]);
+      if (data.ptw_hot_work) keyDetails.push(['PTW Hot Work', data.ptw_hot_work]);
+      if (data.testing_records) keyDetails.push(['Testing Records Available', data.testing_records]);
+      if (data.housekeeping_rating) keyDetails.push(['Housekeeping Rating', data.housekeeping_rating]);
+      if (data.change_management_exists) keyDetails.push(['Change Management Exists', data.change_management_exists]);
       break;
 
     case 'A5_EMERGENCY_ARRANGEMENTS':
-      if (data.evacuation_strategy) {
-        yPosition = drawKeyField(page, 'Evacuation Strategy', data.evacuation_strategy, font, fontBold, yPosition, pdfDoc, isDraft);
+      if (data.emergency_plan_exists) keyDetails.push(['Emergency Plan Exists', data.emergency_plan_exists]);
+      if (data.assembly_points_defined) keyDetails.push(['Assembly Points Defined', data.assembly_points_defined]);
+      if (data.drill_frequency) keyDetails.push(['Drill Frequency', data.drill_frequency]);
+      if (data.peeps_in_place) keyDetails.push(['PEEPs in Place', data.peeps_in_place]);
+      if (data.utilities_isolation_known) keyDetails.push(['Utilities Isolation Known', data.utilities_isolation_known]);
+      if (data.emergency_services_info) keyDetails.push(['Emergency Services Info', data.emergency_services_info]);
+      break;
+
+    case 'FRA_1_HAZARDS':
+      if (data.ignition_sources && safeArray(data.ignition_sources).length > 0) {
+        keyDetails.push(['Ignition Sources', safeArray(data.ignition_sources).join(', ')]);
       }
+      if (data.fuel_sources && safeArray(data.fuel_sources).length > 0) {
+        keyDetails.push(['Fuel Sources', safeArray(data.fuel_sources).join(', ')]);
+      }
+      if (data.oxygen_enrichment) keyDetails.push(['Oxygen Enrichment', data.oxygen_enrichment]);
+      if (data.high_risk_activities && safeArray(data.high_risk_activities).length > 0) {
+        keyDetails.push(['High-Risk Activities', safeArray(data.high_risk_activities).join(', ')]);
+      }
+      if (data.arson_risk) keyDetails.push(['Arson Risk', data.arson_risk]);
+      if (data.housekeeping_fire_load) keyDetails.push(['Housekeeping Fire Load', data.housekeeping_fire_load]);
+      break;
+
+    case 'FRA_2_ESCAPE_ASIS':
+      if (data.escape_strategy) keyDetails.push(['Escape Strategy', data.escape_strategy]);
+      if (data.travel_distances_compliant) keyDetails.push(['Travel Distances Compliant', data.travel_distances_compliant]);
+      if (data.final_exits_adequate) keyDetails.push(['Final Exits Adequate', data.final_exits_adequate]);
+      if (data.stair_protection_status) keyDetails.push(['Stair Protection Status', data.stair_protection_status]);
+      if (data.signage_adequacy) keyDetails.push(['Signage Adequacy', data.signage_adequacy]);
+      if (data.disabled_egress_adequacy) keyDetails.push(['Disabled Egress Adequacy', data.disabled_egress_adequacy]);
+      break;
+
+    case 'FRA_3_PROTECTION_ASIS':
+      if (data.alarm_present) keyDetails.push(['Alarm Present', data.alarm_present]);
+      if (data.alarm_category) keyDetails.push(['Alarm Category', data.alarm_category]);
+      if (data.alarm_testing_evidence) keyDetails.push(['Alarm Testing Evidence', data.alarm_testing_evidence]);
+      if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
+      if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
+      if (data.fire_doors_condition) keyDetails.push(['Fire Doors Condition', data.fire_doors_condition]);
+      if (data.compartmentation_condition) keyDetails.push(['Compartmentation Condition', data.compartmentation_condition]);
+      if (data.fire_stopping_confidence) keyDetails.push(['Fire Stopping Confidence', data.fire_stopping_confidence]);
+      if (data.extinguishers_present) keyDetails.push(['Extinguishers Present', data.extinguishers_present]);
+      if (data.extinguishers_servicing) keyDetails.push(['Extinguishers Servicing', data.extinguishers_servicing]);
+      break;
+
+    case 'FRA_5_EXTERNAL_FIRE_SPREAD':
+      if (data.building_height_m) {
+        const heightText = `${data.building_height_m}m${data.building_height_m >= 18 ? ' (≥18m)' : ''}`;
+        keyDetails.push(['Building Height', heightText]);
+      }
+      if (data.cladding_present) keyDetails.push(['Cladding Present', data.cladding_present]);
+      if (data.insulation_combustibility_known) keyDetails.push(['Insulation Combustibility Known', data.insulation_combustibility_known]);
+      if (data.cavity_barriers_status) keyDetails.push(['Cavity Barriers Status', data.cavity_barriers_status]);
+      if (data.pas9980_or_equivalent_appraisal) keyDetails.push(['PAS9980 Appraisal Status', data.pas9980_or_equivalent_appraisal]);
+      if (data.interim_measures) {
+        const truncated = data.interim_measures.length > 150
+          ? data.interim_measures.substring(0, 150) + '...'
+          : data.interim_measures;
+        keyDetails.push(['Interim Measures', truncated]);
+      }
+      break;
+
+    case 'FRA_4_SIGNIFICANT_FINDINGS':
+      if (data.overall_risk_rating) keyDetails.push(['Overall Risk Rating', data.overall_risk_rating.toUpperCase()]);
+      if (data.executive_summary) {
+        const truncated = data.executive_summary.length > 200
+          ? data.executive_summary.substring(0, 200) + '...'
+          : data.executive_summary;
+        keyDetails.push(['Executive Summary', truncated]);
+      }
+      if (data.key_assumptions) {
+        const truncated = data.key_assumptions.length > 200
+          ? data.key_assumptions.substring(0, 200) + '...'
+          : data.key_assumptions;
+        keyDetails.push(['Key Assumptions', truncated]);
+      }
+      if (data.review_recommendation) {
+        const truncated = data.review_recommendation.length > 200
+          ? data.review_recommendation.substring(0, 200) + '...'
+          : data.review_recommendation;
+        keyDetails.push(['Review Recommendation', truncated]);
+      }
+      if (data.override_justification) keyDetails.push(['Override Justification', data.override_justification]);
       break;
   }
 
-  return yPosition;
-}
-
-function drawKeyField(
-  page: PDFPage,
-  label: string,
-  value: string,
-  font: any,
-  fontBold: any,
-  yPosition: number,
-  pdfDoc: PDFDocument,
-  isDraft: boolean
-): number {
-  if (yPosition < MARGIN + 100) {
-    page = addNewPage(pdfDoc, isDraft);
-    yPosition = PAGE_HEIGHT - MARGIN - 20;
-  }
-
-  page.drawText(`${label}:`, {
-    x: MARGIN,
-    y: yPosition,
-    size: 10,
-    font: fontBold,
-    color: rgb(0.3, 0.3, 0.3),
-  });
-
-  yPosition -= 14;
-  const valueLines = wrapText(value, CONTENT_WIDTH - 20, 10, font);
-  for (const line of valueLines) {
-    if (yPosition < MARGIN + 50) {
-      page = addNewPage(pdfDoc, isDraft);
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
-    }
-    page.drawText(line, {
-      x: MARGIN + 10,
+  if (keyDetails.length === 0) {
+    page.drawText('No structured details recorded in this module.', {
+      x: MARGIN,
       y: yPosition,
       size: 10,
       font,
-      color: rgb(0.2, 0.2, 0.2),
+      color: rgb(0.5, 0.5, 0.5),
     });
-    yPosition -= 14;
+    return yPosition - 20;
   }
 
-  yPosition -= 5;
+  page.drawText('Key Details:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 11,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+  yPosition -= 18;
+
+  for (const [label, value] of keyDetails) {
+    if (yPosition < MARGIN + 80) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText(`${label}:`, {
+      x: MARGIN + 5,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    yPosition -= 14;
+    const valueLines = wrapText(value, CONTENT_WIDTH - 30, 10, font);
+    for (const line of valueLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN + 15,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+    yPosition -= 5;
+  }
+
   return yPosition;
 }
 
 function drawActionRegister(
   page: PDFPage,
   actions: Action[],
+  actionRatings: ActionRating[],
   moduleInstances: ModuleInstance[],
   font: any,
   fontBold: any,
   yPosition: number,
   pdfDoc: PDFDocument,
-  isDraft: boolean
+  isDraft: boolean,
+  totalPages: PDFPage[]
 ): number {
   yPosition -= 20;
   page.drawText('ACTION REGISTER', {
@@ -651,23 +845,34 @@ function drawActionRegister(
 
   yPosition -= 30;
 
+  // Build rating map (latest per action)
+  const ratingMap = new Map<string, ActionRating>();
+  for (const rating of actionRatings) {
+    const existing = ratingMap.get(rating.action_id);
+    if (!existing || new Date(rating.rated_at) > new Date(existing.rated_at)) {
+      ratingMap.set(rating.action_id, rating);
+    }
+  }
+
+  // Sort actions: open/in_progress first, then by priority, then by target_date, then by created_at desc
   const sortedActions = [...actions].sort((a, b) => {
-    if (a.status === 'completed' && b.status !== 'completed') return 1;
-    if (a.status !== 'completed' && b.status === 'completed') return -1;
+    const aComplete = a.status === 'complete';
+    const bComplete = b.status === 'complete';
+    if (aComplete !== bComplete) return aComplete ? 1 : -1;
 
     const priorityOrder = ['P1', 'P2', 'P3', 'P4'];
-    const aPriority = priorityOrder.indexOf(a.priority_band);
-    const bPriority = priorityOrder.indexOf(b.priority_band);
-
+    const aPriority = priorityOrder.indexOf(a.priority_band || 'P4');
+    const bPriority = priorityOrder.indexOf(b.priority_band || 'P4');
     if (aPriority !== bPriority) return aPriority - bPriority;
 
     if (a.target_date && b.target_date) {
-      return new Date(a.target_date).getTime() - new Date(b.target_date).getTime();
+      const dateCompare = new Date(a.target_date).getTime() - new Date(b.target_date).getTime();
+      if (dateCompare !== 0) return dateCompare;
     }
-    if (a.target_date) return -1;
-    if (b.target_date) return 1;
+    if (a.target_date && !b.target_date) return -1;
+    if (!a.target_date && b.target_date) return 1;
 
-    return 0;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   if (sortedActions.length === 0) {
@@ -682,17 +887,18 @@ function drawActionRegister(
   }
 
   for (const action of sortedActions) {
-    if (!action.action || typeof action.action !== 'string') {
-      console.warn('[PDF] Action missing text field:', {
+    if (!action.recommended_action || typeof action.recommended_action !== 'string') {
+      console.warn('[PDF] Action missing recommended_action:', {
         id: action.id,
-        action: action.action,
+        recommended_action: action.recommended_action,
         priority_band: action.priority_band,
         status: action.status,
       });
     }
 
     if (yPosition < MARGIN + 120) {
-      page = addNewPage(pdfDoc, isDraft);
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
       yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
@@ -713,24 +919,34 @@ function drawActionRegister(
       color: rgb(1, 1, 1),
     });
 
-    const likelihood = action.likelihood || 1;
-    const impact = action.impact || 1;
-    const priorityScore = likelihood * impact;
-    page.drawText(`L${likelihood} × I${impact} = ${priorityScore}`, {
-      x: MARGIN + 35,
-      y: yPosition,
-      size: 9,
-      font,
-      color: rgb(0.4, 0.4, 0.4),
-    });
+    // Get latest rating
+    const rating = ratingMap.get(action.id);
+    if (rating) {
+      page.drawText(`L${rating.likelihood} × I${rating.impact} = ${rating.score}`, {
+        x: MARGIN + 35,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+    } else {
+      page.drawText('(Rating not set)', {
+        x: MARGIN + 35,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.6, 0.6, 0.6),
+      });
+    }
 
     yPosition -= 18;
 
-    const actionText = action.action || '(No action text provided)';
+    const actionText = action.recommended_action || '(No action text provided)';
     const actionLines = wrapText(actionText, CONTENT_WIDTH - 10, 10, font);
     for (const line of actionLines) {
       if (yPosition < MARGIN + 50) {
-        page = addNewPage(pdfDoc, isDraft);
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
       page.drawText(line, {
@@ -744,7 +960,7 @@ function drawActionRegister(
     }
 
     const metaInfo: string[] = [];
-    const owner = action.owner || '(Unassigned)';
+    const owner = action.owner_display_name || '(Unassigned)';
     metaInfo.push(`Owner: ${owner}`);
     if (action.target_date) {
       metaInfo.push(`Target: ${formatDate(action.target_date)}`);
@@ -783,7 +999,8 @@ function drawAssumptionsAndLimitations(
   fontBold: any,
   yPosition: number,
   pdfDoc: PDFDocument,
-  isDraft: boolean
+  isDraft: boolean,
+  totalPages: PDFPage[]
 ): number {
   yPosition -= 20;
   page.drawText('ASSUMPTIONS & LIMITATIONS', {
@@ -823,7 +1040,8 @@ function drawAssumptionsAndLimitations(
     const limitationLines = wrapText(document.limitations_assumptions!, CONTENT_WIDTH, 10, font);
     for (const line of limitationLines) {
       if (yPosition < MARGIN + 50) {
-        page = addNewPage(pdfDoc, isDraft);
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
       page.drawText(line, {
@@ -840,7 +1058,8 @@ function drawAssumptionsAndLimitations(
 
   if (hasFra4Assumptions) {
     if (yPosition < MARGIN + 100) {
-      page = addNewPage(pdfDoc, isDraft);
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
       yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
@@ -856,7 +1075,8 @@ function drawAssumptionsAndLimitations(
     const assumptionLines = wrapText(fra4Module!.data.key_assumptions, CONTENT_WIDTH, 10, font);
     for (const line of assumptionLines) {
       if (yPosition < MARGIN + 50) {
-        page = addNewPage(pdfDoc, isDraft);
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
       page.drawText(line, {
@@ -874,7 +1094,8 @@ function drawAssumptionsAndLimitations(
     yPosition -= 20;
 
     if (yPosition < MARGIN + 100) {
-      page = addNewPage(pdfDoc, isDraft);
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
       yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
@@ -890,7 +1111,8 @@ function drawAssumptionsAndLimitations(
     const scopeLines = wrapText(document.scope_description, CONTENT_WIDTH, 10, font);
     for (const line of scopeLines) {
       if (yPosition < MARGIN + 50) {
-        page = addNewPage(pdfDoc, isDraft);
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
       page.drawText(line, {
@@ -947,7 +1169,7 @@ function formatDate(dateString: string | null): string {
 }
 
 function getRatingColor(rating: string): { r: number; g: number; b: number } {
-  switch (rating) {
+  switch (rating.toLowerCase()) {
     case 'low':
       return rgb(0.13, 0.55, 0.13);
     case 'medium':

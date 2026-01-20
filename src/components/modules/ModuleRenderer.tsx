@@ -5,6 +5,8 @@ import { getModuleName } from '../../lib/modules/moduleCatalog';
 import A1DocumentControlForm from './forms/A1DocumentControlForm';
 import A4ManagementControlsForm from './forms/A4ManagementControlsForm';
 import A5EmergencyArrangementsForm from './forms/A5EmergencyArrangementsForm';
+import FRA2MeansOfEscapeForm from './forms/FRA2MeansOfEscapeForm';
+import FRA3FireProtectionForm from './forms/FRA3FireProtectionForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
 
@@ -73,6 +75,26 @@ export default function ModuleRenderer({
   if (moduleInstance.module_key === 'A5_EMERGENCY_ARRANGEMENTS') {
     return (
       <A5EmergencyArrangementsForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FRA_2_ESCAPE_ASIS') {
+    return (
+      <FRA2MeansOfEscapeForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FRA_3_PROTECTION_ASIS') {
+    return (
+      <FRA3FireProtectionForm
         moduleInstance={moduleInstance}
         document={document}
         onSaved={onSaved}

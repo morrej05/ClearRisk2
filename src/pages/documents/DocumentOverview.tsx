@@ -5,6 +5,7 @@ import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, F
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
+import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { saveAs } from 'file-saver';
 
 interface Document {
@@ -291,13 +292,17 @@ export default function DocumentOverview() {
         owner_display_name: action.owner_user_id ? userNameMap.get(action.owner_user_id) : null,
       }));
 
-      const pdfBytes = await buildFraPdf({
+      const pdfOptions = {
         document,
         moduleInstances: moduleInstances || [],
         actions: enrichedActions,
         actionRatings,
         organisation: { id: organisation.id, name: organisation.name },
-      });
+      };
+
+      const pdfBytes = document.document_type === 'FSD'
+        ? await buildFsdPdf(pdfOptions)
+        : await buildFraPdf(pdfOptions);
 
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const siteName = document.title
@@ -305,7 +310,8 @@ export default function DocumentOverview() {
         .replace(/_+/g, '_')
         .toLowerCase();
       const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
-      const filename = `FRA_${siteName}_${dateStr}_v${document.version}.pdf`;
+      const docType = document.document_type || 'FRA';
+      const filename = `${docType}_${siteName}_${dateStr}_v${document.version}.pdf`;
 
       saveAs(blob, filename);
       console.log('[PDF] PDF generated successfully:', filename);

@@ -20,6 +20,7 @@ import FSD5ActiveFireSystemsDesignForm from './forms/FSD5ActiveFireSystemsDesign
 import FSD6FireServiceAccessForm from './forms/FSD6FireServiceAccessForm';
 import FSD7DrawingsIndexForm from './forms/FSD7DrawingsIndexForm';
 import FSD8SmokeControlForm from './forms/FSD8SmokeControlForm';
+import FSD9ConstructionPhaseFireSafetyForm from './forms/FSD9ConstructionPhaseFireSafetyForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
 
@@ -238,6 +239,16 @@ export default function ModuleRenderer({
   if (moduleInstance.module_key === 'FSD_8_SMOKE_CONTROL') {
     return (
       <FSD8SmokeControlForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FSD_9_CONSTRUCTION_PHASE') {
+    return (
+      <FSD9ConstructionPhaseFireSafetyForm
         moduleInstance={moduleInstance}
         document={document}
         onSaved={onSaved}

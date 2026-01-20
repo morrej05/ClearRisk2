@@ -1,0 +1,743 @@
+import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
+import { getModuleName } from '../modules/moduleCatalog';
+import {
+  PAGE_WIDTH,
+  PAGE_HEIGHT,
+  MARGIN,
+  CONTENT_WIDTH,
+  sanitizePdfText,
+  wrapText,
+  formatDate,
+  getOutcomeColor,
+  getOutcomeLabel,
+  getPriorityColor,
+  addNewPage,
+  drawFooter,
+} from './pdfUtils';
+
+interface Document {
+  id: string;
+  document_type: string;
+  title: string;
+  status: string;
+  version: number;
+  assessment_date: string;
+  review_date: string | null;
+  assessor_name: string | null;
+  assessor_role: string | null;
+  responsible_person: string | null;
+  scope_description: string | null;
+  limitations_assumptions: string | null;
+  standards_selected: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+interface ModuleInstance {
+  id: string;
+  module_key: string;
+  outcome: string | null;
+  assessor_notes: string;
+  data: Record<string, any>;
+  completed_at: string | null;
+  updated_at: string;
+}
+
+interface Action {
+  id: string;
+  recommended_action: string;
+  priority_band: string;
+  status: string;
+  owner_user_id: string | null;
+  owner_display_name?: string;
+  target_date: string | null;
+  module_instance_id: string;
+  created_at: string;
+}
+
+interface ActionRating {
+  action_id: string;
+  likelihood: number;
+  impact: number;
+  score: number;
+  rated_at: string;
+}
+
+interface Organisation {
+  id: string;
+  name: string;
+}
+
+interface BuildFsdPdfOptions {
+  document: Document;
+  moduleInstances: ModuleInstance[];
+  actions: Action[];
+  actionRatings: ActionRating[];
+  organisation: Organisation;
+}
+
+const MODULE_ORDER = [
+  'A1_DOC_CONTROL',
+  'FSD_1_REG_BASIS',
+  'FSD_2_EVAC_STRATEGY',
+  'A2_BUILDING_PROFILE',
+  'A3_PERSONS_AT_RISK',
+  'FSD_3_ESCAPE_DESIGN',
+  'FSD_4_PASSIVE_PROTECTION',
+  'FSD_5_ACTIVE_SYSTEMS',
+  'FSD_6_FRS_ACCESS',
+  'FSD_7_DRAWINGS',
+  'FSD_8_SMOKE_CONTROL',
+  'FSD_9_CONSTRUCTION_PHASE',
+];
+
+export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Array> {
+  const { document, moduleInstances, actions, actionRatings, organisation } = options;
+
+  console.log('[FSD PDF] Building PDF with:', {
+    modules: moduleInstances.length,
+    actions: actions.length,
+    ratings: actionRatings.length,
+  });
+
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const isDraft = document.status === 'draft';
+  const totalPages: PDFPage[] = [];
+
+  let { page } = addNewPage(pdfDoc, isDraft, totalPages);
+  drawCoverPage(page, document, organisation, font, fontBold);
+
+  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+  drawExecutiveSummary(page, document, moduleInstances, actions, font, fontBold);
+
+  const sortedModules = sortModules(moduleInstances);
+  for (const moduleInstance of sortedModules) {
+    ({ page } = drawModuleSummary(page, moduleInstance, pdfDoc, isDraft, totalPages, font, fontBold));
+  }
+
+  if (actions.length > 0) {
+    ({ page } = drawActionRegister(page, actions, actionRatings, moduleInstances, pdfDoc, isDraft, totalPages, font, fontBold));
+  }
+
+  ({ page } = drawAssumptionsAndLimitations(page, document, moduleInstances, pdfDoc, isDraft, totalPages, font, fontBold));
+
+  for (let i = 0; i < totalPages.length; i++) {
+    drawFooter(
+      totalPages[i],
+      `${sanitizePdfText(document.title)} - Fire Strategy Document`,
+      i + 1,
+      totalPages.length,
+      font
+    );
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  console.log('[FSD PDF] PDF generated successfully');
+  return pdfBytes;
+}
+
+function sortModules(moduleInstances: ModuleInstance[]): ModuleInstance[] {
+  return [...moduleInstances].sort((a, b) => {
+    const aIndex = MODULE_ORDER.indexOf(a.module_key);
+    const bIndex = MODULE_ORDER.indexOf(b.module_key);
+
+    if (aIndex === -1 && bIndex === -1) return 0;
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+
+    return aIndex - bIndex;
+  });
+}
+
+function drawCoverPage(
+  page: PDFPage,
+  document: Document,
+  organisation: Organisation,
+  font: any,
+  fontBold: any
+) {
+  let yPosition = PAGE_HEIGHT - 150;
+
+  page.drawText(sanitizePdfText(organisation.name), {
+    x: MARGIN,
+    y: yPosition,
+    size: 14,
+    font,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+  yPosition -= 60;
+
+  page.drawText('Fire Strategy Document', {
+    x: MARGIN,
+    y: yPosition,
+    size: 24,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+  yPosition -= 40;
+
+  const titleLines = wrapText(document.title, CONTENT_WIDTH, 18, fontBold);
+  for (const line of titleLines) {
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 18,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 24;
+  }
+  yPosition -= 20;
+
+  const leftCol = MARGIN;
+  const rightCol = MARGIN + 180;
+
+  const fields = [
+    ['Status:', document.status === 'draft' ? 'DRAFT' : 'Final'],
+    ['Version:', `v${document.version}`],
+    ['Assessment Date:', formatDate(document.assessment_date)],
+    ['Review Date:', formatDate(document.review_date)],
+    ['Assessor:', sanitizePdfText(document.assessor_name || '-')],
+    ['Role:', sanitizePdfText(document.assessor_role || '-')],
+    ['Responsible Person:', sanitizePdfText(document.responsible_person || '-')],
+  ];
+
+  for (const [label, value] of fields) {
+    page.drawText(sanitizePdfText(label), {
+      x: leftCol,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    page.drawText(sanitizePdfText(value), {
+      x: rightCol,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 18;
+  }
+
+  yPosition = 150;
+  page.drawText('Generated on ' + formatDate(new Date().toISOString()), {
+    x: MARGIN,
+    y: yPosition,
+    size: 9,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+}
+
+function drawExecutiveSummary(
+  page: PDFPage,
+  document: Document,
+  moduleInstances: ModuleInstance[],
+  actions: Action[],
+  font: any,
+  fontBold: any
+) {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('Executive Summary', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+  yPosition -= 30;
+
+  const fsd1 = moduleInstances.find((m) => m.module_key === 'FSD_1_REG_BASIS');
+  const fsd2 = moduleInstances.find((m) => m.module_key === 'FSD_2_EVAC_STRATEGY');
+  const a2 = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
+
+  page.drawText('Strategy Framework', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 18;
+
+  const framework = fsd1?.data?.regulatory_framework_selected || 'Not specified';
+  const frameworkLines = wrapText(`Framework: ${framework}`, CONTENT_WIDTH, 10, font);
+  for (const line of frameworkLines) {
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 14;
+  }
+  yPosition -= 10;
+
+  page.drawText('Building Overview', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 18;
+
+  if (a2) {
+    const height = a2.data.building_height_m ? `${a2.data.building_height_m}m` : 'Not specified';
+    const storeys = a2.data.number_of_storeys || 'Not specified';
+    const use = a2.data.primary_use || 'Not specified';
+
+    const buildingInfo = `Height: ${height}, Storeys: ${storeys}, Use: ${use}`;
+    const buildingLines = wrapText(buildingInfo, CONTENT_WIDTH, 10, font);
+    for (const line of buildingLines) {
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+  }
+  yPosition -= 10;
+
+  page.drawText('Evacuation Strategy', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 18;
+
+  const evacStrategy = fsd2?.data?.evacuation_strategy_type || 'Not specified';
+  const evacLines = wrapText(`Strategy: ${evacStrategy}`, CONTENT_WIDTH, 10, font);
+  for (const line of evacLines) {
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 14;
+  }
+  yPosition -= 10;
+
+  page.drawText('Actions Summary', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 18;
+
+  const p1Count = actions.filter((a) => a.priority_band === 'P1').length;
+  const p2Count = actions.filter((a) => a.priority_band === 'P2').length;
+  const p3Count = actions.filter((a) => a.priority_band === 'P3').length;
+  const p4Count = actions.filter((a) => a.priority_band === 'P4').length;
+
+  page.drawText(sanitizePdfText(`Total Actions: ${actions.length} (P1: ${p1Count}, P2: ${p2Count}, P3: ${p3Count}, P4: ${p4Count})`), {
+    x: MARGIN,
+    y: yPosition,
+    size: 10,
+    font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+}
+
+function drawModuleSummary(
+  page: PDFPage,
+  moduleInstance: ModuleInstance,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): { page: PDFPage } {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  if (yPosition < MARGIN + 150) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+
+  const moduleName = getModuleName(moduleInstance.module_key);
+  page.drawText(sanitizePdfText(moduleName), {
+    x: MARGIN,
+    y: yPosition,
+    size: 14,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+  yPosition -= 25;
+
+  const outcome = moduleInstance.outcome || 'pending';
+  const outcomeLabel = getOutcomeLabel(outcome);
+  const outcomeColor = getOutcomeColor(outcome);
+
+  page.drawRectangle({
+    x: MARGIN,
+    y: yPosition - 12,
+    width: 120,
+    height: 16,
+    color: outcomeColor,
+  });
+
+  page.drawText(sanitizePdfText(`Outcome: ${outcomeLabel}`), {
+    x: MARGIN + 5,
+    y: yPosition - 10,
+    size: 9,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
+  yPosition -= 30;
+
+  if (moduleInstance.assessor_notes && moduleInstance.assessor_notes.trim()) {
+    page.drawText('Assessor Notes:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 16;
+
+    const notesLines = wrapText(moduleInstance.assessor_notes, CONTENT_WIDTH, 9, font);
+    for (const line of notesLines) {
+      if (yPosition < MARGIN + 40) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 12;
+    }
+    yPosition -= 10;
+  }
+
+  yPosition = drawModuleKeyDetails(page, moduleInstance, yPosition, pdfDoc, isDraft, totalPages, font, fontBold);
+  yPosition -= 15;
+
+  return { page };
+}
+
+function drawModuleKeyDetails(
+  page: PDFPage,
+  moduleInstance: ModuleInstance,
+  startY: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): number {
+  let yPosition = startY;
+  const data = moduleInstance.data;
+
+  if (!data || Object.keys(data).length === 0) {
+    return yPosition;
+  }
+
+  page.drawText('Key Details:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 10,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 16;
+
+  const details: string[] = [];
+
+  switch (moduleInstance.module_key) {
+    case 'A2_BUILDING_PROFILE':
+      if (data.building_height_m) details.push(`Height: ${data.building_height_m}m`);
+      if (data.number_of_storeys) details.push(`Storeys: ${data.number_of_storeys}`);
+      if (data.total_floor_area_sqm) details.push(`Area: ${data.total_floor_area_sqm} sqm`);
+      if (data.primary_use) details.push(`Use: ${data.primary_use}`);
+      if (data.frame_type) details.push(`Frame: ${data.frame_type}`);
+      break;
+
+    case 'A3_PERSONS_AT_RISK':
+      if (data.max_occupancy) details.push(`Max Occupancy: ${data.max_occupancy}`);
+      if (data.normal_occupancy) details.push(`Normal Occupancy: ${data.normal_occupancy}`);
+      if (data.vulnerable_groups_present === 'yes') {
+        details.push('Vulnerable groups present');
+      }
+      break;
+
+    case 'FSD_1_REG_BASIS':
+      if (data.regulatory_framework_selected) details.push(`Framework: ${data.regulatory_framework_selected}`);
+      if (data.fire_safety_objectives) details.push(`Objectives: ${data.fire_safety_objectives}`);
+      if (data.deviations_from_guidance && Array.isArray(data.deviations_from_guidance)) {
+        details.push(`Deviations: ${data.deviations_from_guidance.length} noted`);
+      }
+      break;
+
+    case 'FSD_2_EVAC_STRATEGY':
+      if (data.evacuation_strategy_type) details.push(`Strategy: ${data.evacuation_strategy_type}`);
+      if (data.alarm_communication_method) details.push(`Alarm: ${data.alarm_communication_method}`);
+      break;
+
+    case 'FSD_3_ESCAPE_DESIGN':
+      if (data.travel_distance_basis) details.push(`Travel basis: ${data.travel_distance_basis}`);
+      if (data.exit_capacity_calculation_done) details.push(`Exit calcs: ${data.exit_capacity_calculation_done}`);
+      if (data.stairs_strategy) details.push(`Stairs: ${data.stairs_strategy}`);
+      break;
+
+    case 'FSD_4_PASSIVE_PROTECTION':
+      if (data.fire_resistance_standard) details.push(`FR Standard: ${data.fire_resistance_standard}`);
+      if (data.compartmentation_strategy) details.push(`Compartmentation: ${data.compartmentation_strategy}`);
+      break;
+
+    case 'FSD_5_ACTIVE_SYSTEMS':
+      if (data.detection_alarm_design_category) details.push(`Detection: ${data.detection_alarm_design_category}`);
+      if (data.sprinkler_provision) details.push(`Sprinklers: ${data.sprinkler_provision}`);
+      if (data.sprinkler_standard && data.sprinkler_provision === 'yes') {
+        details.push(`Sprinkler std: ${data.sprinkler_standard}`);
+      }
+      break;
+
+    case 'FSD_6_FRS_ACCESS':
+      if (data.water_supplies_hydrants) details.push(`Hydrants: ${data.water_supplies_hydrants}`);
+      if (data.dry_riser) details.push(`Dry riser: ${data.dry_riser}`);
+      if (data.wet_riser) details.push(`Wet riser: ${data.wet_riser}`);
+      break;
+
+    case 'FSD_7_DRAWINGS':
+      if (data.drawings_checklist) {
+        const checked = Object.values(data.drawings_checklist).filter(Boolean).length;
+        const total = Object.keys(data.drawings_checklist).length;
+        details.push(`Drawings: ${checked}/${total} types provided`);
+      }
+      break;
+
+    case 'FSD_8_SMOKE_CONTROL':
+      if (data.smoke_control_present) details.push(`Smoke control: ${data.smoke_control_present}`);
+      if (data.system_type && data.smoke_control_present === 'yes') {
+        details.push(`Type: ${data.system_type}`);
+      }
+      break;
+
+    case 'FSD_9_CONSTRUCTION_PHASE':
+      if (data.construction_phase_applicable) details.push(`Applicable: ${data.construction_phase_applicable}`);
+      if (data.fire_plan_exists && data.construction_phase_applicable === 'yes') {
+        details.push(`Fire plan: ${data.fire_plan_exists}`);
+      }
+      break;
+  }
+
+  for (const detail of details) {
+    if (yPosition < MARGIN + 40) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    const lines = wrapText(detail, CONTENT_WIDTH - 10, 9, font);
+    for (const line of lines) {
+      page.drawText(`• ${line}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPosition -= 12;
+    }
+  }
+
+  return yPosition;
+}
+
+function drawActionRegister(
+  page: PDFPage,
+  actions: Action[],
+  actionRatings: ActionRating[],
+  moduleInstances: ModuleInstance[],
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): { page: PDFPage } {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  if (yPosition < MARGIN + 200) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+
+  page.drawText('Action Register', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+  yPosition -= 30;
+
+  const colX1 = MARGIN;
+  const colX2 = MARGIN + 320;
+  const colX3 = MARGIN + 395;
+  const colX4 = MARGIN + 445;
+  const rowHeight = 14;
+
+  page.drawText('#', { x: colX1, y: yPosition, size: 8, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText('Action', { x: colX1 + 15, y: yPosition, size: 8, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText('Priority', { x: colX2, y: yPosition, size: 8, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText('Status', { x: colX3, y: yPosition, size: 8, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText('Target', { x: colX4, y: yPosition, size: 8, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  yPosition -= rowHeight + 2;
+
+  page.drawLine({
+    start: { x: MARGIN, y: yPosition + 2 },
+    end: { x: PAGE_WIDTH - MARGIN, y: yPosition + 2 },
+    thickness: 0.5,
+    color: rgb(0.7, 0.7, 0.7),
+  });
+  yPosition -= 4;
+
+  const sortedActions = [...actions].sort((a, b) => {
+    const priorityOrder = { P1: 0, P2: 1, P3: 2, P4: 3 };
+    return (priorityOrder[a.priority_band as keyof typeof priorityOrder] || 4) -
+           (priorityOrder[b.priority_band as keyof typeof priorityOrder] || 4);
+  });
+
+  sortedActions.forEach((action, index) => {
+    if (yPosition < MARGIN + 60) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    const actionLines = wrapText(action.recommended_action, 300, 7, font);
+    const firstLine = actionLines[0] || '';
+
+    page.drawText(`${index + 1}`, {
+      x: colX1,
+      y: yPosition,
+      size: 7,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    page.drawText(firstLine, {
+      x: colX1 + 15,
+      y: yPosition,
+      size: 7,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    const priorityColor = getPriorityColor(action.priority_band);
+    page.drawRectangle({
+      x: colX2,
+      y: yPosition - 2,
+      width: 30,
+      height: 10,
+      color: priorityColor,
+    });
+    page.drawText(sanitizePdfText(action.priority_band), {
+      x: colX2 + 5,
+      y: yPosition,
+      size: 7,
+      font: fontBold,
+      color: rgb(1, 1, 1),
+    });
+
+    page.drawText(sanitizePdfText(action.status), {
+      x: colX3,
+      y: yPosition,
+      size: 7,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    page.drawText(formatDate(action.target_date), {
+      x: colX4,
+      y: yPosition,
+      size: 7,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    yPosition -= rowHeight;
+  });
+
+  return { page };
+}
+
+function drawAssumptionsAndLimitations(
+  page: PDFPage,
+  document: Document,
+  moduleInstances: ModuleInstance[],
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): { page: PDFPage } {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  if (yPosition < MARGIN + 150) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+
+  page.drawText('Assumptions & Limitations', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+  yPosition -= 30;
+
+  if (document.limitations_assumptions && document.limitations_assumptions.trim()) {
+    const lines = wrapText(document.limitations_assumptions, CONTENT_WIDTH, 10, font);
+    for (const line of lines) {
+      if (yPosition < MARGIN + 40) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+  } else {
+    page.drawText('No specific assumptions or limitations documented.', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+  }
+
+  return { page };
+}

@@ -17,7 +17,7 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
   },
   A3_PERSONS_AT_RISK: {
     name: 'A3 - Occupancy & Persons at Risk',
-    docTypes: ['FRA'],
+    docTypes: ['FRA', 'FSD', 'DSEAR'],
     order: 3,
   },
   A4_MANAGEMENT_CONTROLS: {

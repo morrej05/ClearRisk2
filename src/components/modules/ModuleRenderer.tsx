@@ -3,6 +3,8 @@ import { AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import A1DocumentControlForm from './forms/A1DocumentControlForm';
+import A2BuildingProfileForm from './forms/A2BuildingProfileForm';
+import A3PersonsAtRiskForm from './forms/A3PersonsAtRiskForm';
 import A4ManagementControlsForm from './forms/A4ManagementControlsForm';
 import A5EmergencyArrangementsForm from './forms/A5EmergencyArrangementsForm';
 import FRA1FireHazardsForm from './forms/FRA1FireHazardsForm';
@@ -10,6 +12,9 @@ import FRA2MeansOfEscapeForm from './forms/FRA2MeansOfEscapeForm';
 import FRA3FireProtectionForm from './forms/FRA3FireProtectionForm';
 import FRA4SignificantFindingsForm from './forms/FRA4SignificantFindingsForm';
 import FRA5ExternalFireSpreadForm from './forms/FRA5ExternalFireSpreadForm';
+import FSD1RegulatoryBasisForm from './forms/FSD1RegulatoryBasisForm';
+import FSD2EvacuationStrategyForm from './forms/FSD2EvacuationStrategyForm';
+import FSD4PassiveFireProtectionForm from './forms/FSD4PassiveFireProtectionForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
 
@@ -62,6 +67,26 @@ export default function ModuleRenderer({
           />
         </div>
       </>
+    );
+  }
+
+  if (moduleInstance.module_key === 'A2_BUILDING_PROFILE') {
+    return (
+      <A2BuildingProfileForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'A3_PERSONS_AT_RISK') {
+    return (
+      <A3PersonsAtRiskForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
     );
   }
 
@@ -128,6 +153,36 @@ export default function ModuleRenderer({
   if (moduleInstance.module_key === 'FRA_5_EXTERNAL_FIRE_SPREAD') {
     return (
       <FRA5ExternalFireSpreadForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FSD_1_REG_BASIS') {
+    return (
+      <FSD1RegulatoryBasisForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FSD_2_EVAC_STRATEGY') {
+    return (
+      <FSD2EvacuationStrategyForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FSD_4_PASSIVE_PROTECTION') {
+    return (
+      <FSD4PassiveFireProtectionForm
         moduleInstance={moduleInstance}
         document={document}
         onSaved={onSaved}

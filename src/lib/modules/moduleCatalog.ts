@@ -105,43 +105,43 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     docTypes: ['FSD'],
     order: 28,
   },
-  DSEAR_1_SUBSTANCES_REGISTER: {
-    name: 'DSEAR-1 - Substances Register',
+  DSEAR_1_DANGEROUS_SUBSTANCES: {
+    name: 'DSEAR-1 - Dangerous Substances Register',
     docTypes: ['DSEAR'],
     order: 30,
   },
   DSEAR_2_PROCESS_RELEASES: {
-    name: 'DSEAR-2 - Process & Release Sources',
+    name: 'DSEAR-2 - Process & Release Assessment',
     docTypes: ['DSEAR'],
     order: 31,
   },
-  DSEAR_3_HAC_ZONING: {
+  DSEAR_3_HAZARDOUS_AREA_CLASSIFICATION: {
     name: 'DSEAR-3 - Hazardous Area Classification',
     docTypes: ['DSEAR'],
     order: 32,
   },
-  DSEAR_4_IGNITION_CONTROL: {
+  DSEAR_4_IGNITION_SOURCES: {
     name: 'DSEAR-4 - Ignition Source Control',
     docTypes: ['DSEAR'],
     order: 33,
   },
-  DSEAR_5_MITIGATION: {
-    name: 'DSEAR-5 - Mitigation Measures',
+  DSEAR_5_EXPLOSION_PROTECTION: {
+    name: 'DSEAR-5 - Explosion Protection & Mitigation',
     docTypes: ['DSEAR'],
     order: 34,
   },
-  DSEAR_6_RISK_TABLE: {
+  DSEAR_6_RISK_ASSESSMENT: {
     name: 'DSEAR-6 - Risk Assessment Table',
     docTypes: ['DSEAR'],
     order: 35,
   },
-  DSEAR_10_HIERARCHY_SUBSTITUTION: {
-    name: 'DSEAR-10 - Hierarchy of Control & Substitution',
+  DSEAR_10_HIERARCHY_OF_CONTROL: {
+    name: 'DSEAR-10 - Hierarchy of Control',
     docTypes: ['DSEAR'],
     order: 36,
   },
   DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE: {
-    name: 'DSEAR-11 - Emergency Response Plan',
+    name: 'DSEAR-11 - Explosion Emergency Response',
     docTypes: ['DSEAR'],
     order: 37,
   },

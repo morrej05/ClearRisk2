@@ -21,6 +21,14 @@ import FSD6FireServiceAccessForm from './forms/FSD6FireServiceAccessForm';
 import FSD7DrawingsIndexForm from './forms/FSD7DrawingsIndexForm';
 import FSD8SmokeControlForm from './forms/FSD8SmokeControlForm';
 import FSD9ConstructionPhaseFireSafetyForm from './forms/FSD9ConstructionPhaseFireSafetyForm';
+import DSEAR1DangerousSubstancesForm from './forms/DSEAR1DangerousSubstancesForm';
+import DSEAR2ProcessReleasesForm from './forms/DSEAR2ProcessReleasesForm';
+import DSEAR3HazardousAreaClassificationForm from './forms/DSEAR3HazardousAreaClassificationForm';
+import DSEAR4IgnitionSourcesForm from './forms/DSEAR4IgnitionSourcesForm';
+import DSEAR5ExplosionProtectionForm from './forms/DSEAR5ExplosionProtectionForm';
+import DSEAR6RiskAssessmentTableForm from './forms/DSEAR6RiskAssessmentTableForm';
+import DSEAR10HierarchyControlForm from './forms/DSEAR10HierarchyControlForm';
+import DSEAR11ExplosionEmergencyResponseForm from './forms/DSEAR11ExplosionEmergencyResponseForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
 
@@ -254,6 +262,38 @@ export default function ModuleRenderer({
         onSaved={onSaved}
       />
     );
+  }
+
+  if (moduleInstance.module_key === 'DSEAR_1_DANGEROUS_SUBSTANCES') {
+    return <DSEAR1DangerousSubstancesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'DSEAR_2_PROCESS_RELEASES') {
+    return <DSEAR2ProcessReleasesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'DSEAR_3_HAZARDOUS_AREA_CLASSIFICATION') {
+    return <DSEAR3HazardousAreaClassificationForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'DSEAR_4_IGNITION_SOURCES') {
+    return <DSEAR4IgnitionSourcesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'DSEAR_5_EXPLOSION_PROTECTION') {
+    return <DSEAR5ExplosionProtectionForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'DSEAR_6_RISK_ASSESSMENT') {
+    return <DSEAR6RiskAssessmentTableForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'DSEAR_10_HIERARCHY_OF_CONTROL') {
+    return <DSEAR10HierarchyControlForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE') {
+    return <DSEAR11ExplosionEmergencyResponseForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }
 
   return <PlaceholderModuleForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;

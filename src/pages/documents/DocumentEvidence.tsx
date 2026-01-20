@@ -79,7 +79,7 @@ export default function DocumentEvidence() {
     } catch (error) {
       console.error('Error fetching document:', error);
       alert('Failed to load document.');
-      navigate(-1);
+      navigate('/common-dashboard');
     }
   };
 

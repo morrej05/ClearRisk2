@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -72,12 +72,27 @@ function sortActionsByPriority(actions: Action[]): Action[] {
 export default function DocumentOverview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { organisation } = useAuth();
   const [document, setDocument] = useState<Document | null>(null);
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const getDashboardRoute = () => {
+    const fromParam = searchParams.get('from');
+    if (fromParam) {
+      return fromParam;
+    }
+
+    if (document?.document_type === 'DSEAR') {
+      return '/dashboard/explosion';
+    } else if (document?.document_type === 'FRA' || document?.document_type === 'FSD') {
+      return '/dashboard/fire';
+    }
+    return '/common-dashboard';
+  };
 
   useEffect(() => {
     if (id && organisation?.id) {
@@ -103,7 +118,7 @@ export default function DocumentOverview() {
     } catch (error) {
       console.error('Error fetching document:', error);
       alert('Failed to load document. It may not exist or you may not have access.');
-      navigate(-1);
+      navigate('/common-dashboard');
     }
   };
 
@@ -351,11 +366,11 @@ export default function DocumentOverview() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(getDashboardRoute())}
             className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 font-medium transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back
+            Back to Dashboard
           </button>
         </div>
 

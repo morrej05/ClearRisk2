@@ -180,7 +180,7 @@ export default function FireSafetyDashboard() {
                     <tr
                       key={doc.id}
                       className="hover:bg-neutral-50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/documents/${doc.id}`)}
+                      onClick={() => navigate(`/documents/${doc.id}?from=/dashboard/fire`)}
                     >
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-neutral-900">{doc.title}</div>
@@ -210,7 +210,7 @@ export default function FireSafetyDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() => navigate(`/documents/${doc.id}`)}
+                            onClick={() => navigate(`/documents/${doc.id}?from=/dashboard/fire`)}
                             className="text-blue-600 hover:text-blue-900 transition-colors"
                             title="Open Document"
                           >

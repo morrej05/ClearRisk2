@@ -4,6 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
+import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
+import { saveAs } from 'file-saver';
 
 interface Document {
   id: string;
@@ -39,6 +41,7 @@ export default function DocumentOverview() {
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     if (id && organisation?.id) {
@@ -171,6 +174,52 @@ export default function DocumentOverview() {
     });
   };
 
+  const handleGeneratePdf = async () => {
+    if (!id || !document || !organisation) return;
+
+    setIsGeneratingPdf(true);
+    try {
+      const { data: moduleInstances, error: moduleError } = await supabase
+        .from('module_instances')
+        .select('*')
+        .eq('document_id', id)
+        .eq('organisation_id', organisation.id);
+
+      if (moduleError) throw moduleError;
+
+      const { data: actions, error: actionsError } = await supabase
+        .from('actions')
+        .select('*')
+        .eq('document_id', id)
+        .eq('organisation_id', organisation.id)
+        .order('priority_score', { ascending: false });
+
+      if (actionsError) throw actionsError;
+
+      const pdfBytes = await buildFraPdf({
+        document,
+        moduleInstances: moduleInstances || [],
+        actions: actions || [],
+        organisation: { id: organisation.id, name: organisation.name },
+      });
+
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const siteName = document.title
+        .replace(/[^a-z0-9]/gi, '_')
+        .replace(/_+/g, '_')
+        .toLowerCase();
+      const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
+      const filename = `FRA_${siteName}_${dateStr}_v${document.version}.pdf`;
+
+      saveAs(blob, filename);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const completedModules = modules.filter((m) => m.completed_at !== null).length;
   const totalModules = modules.length;
   const completionPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
@@ -226,12 +275,25 @@ export default function DocumentOverview() {
                 Open Workspace
               </button>
               <button
-                disabled
-                className="px-4 py-2 bg-neutral-100 text-neutral-400 rounded-lg font-medium cursor-not-allowed flex items-center gap-2"
-                title="Coming in Phase 4"
+                onClick={handleGeneratePdf}
+                disabled={isGeneratingPdf}
+                className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${
+                  isGeneratingPdf
+                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
-                <FileDown className="w-4 h-4" />
-                Export PDF
+                {isGeneratingPdf ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-4 h-4" />
+                    Generate PDF
+                  </>
+                )}
               </button>
             </div>
           </div>

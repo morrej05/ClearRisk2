@@ -94,6 +94,12 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     expected: '! test [OK] [X] - "quotes" *',
   });
 
+  console.log('[PDF] £ symbol test:', {
+    input: '£100',
+    output: sanitizePdfText('£100'),
+    expected: '£100',
+  });
+
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -360,17 +366,39 @@ function drawExecutiveSummary(
 
   yPosition -= 30;
 
-  // Use FRA-4 overall_risk_rating if present, otherwise compute fallback
-  let overallRating = fra4Module.data.overall_risk_rating;
-  if (!overallRating || overallRating === 'unknown' || !overallRating.trim()) {
-    overallRating = computeFallbackRating(actions, actionRatings, moduleInstances);
-    console.log('[PDF] Using fallback risk rating:', overallRating);
-  } else {
-    console.log('[PDF] Using FRA-4 stored risk rating:', overallRating);
-  }
+  // Determine stored rating from FRA-4 and compute fallback
+  const storedRating = fra4Module.data.overall_risk_rating;
+  const storedOverrideJustification = fra4Module.data.override_justification;
+  const fallbackRating = computeFallbackRating(actions, actionRatings, moduleInstances);
 
-  const ratingLabel = overallRating.toUpperCase();
-  const ratingColor = getRatingColor(overallRating);
+  const openActions = actions.filter((a) => a.status === 'open' || a.status === 'in_progress');
+  const p1OpenCount = openActions.filter((a) => a.priority_band === 'P1').length;
+
+  // Debug logging
+  console.log('[PDF] Rating Analysis:', {
+    storedRating,
+    fallbackRating,
+    p1OpenCount,
+    overrideJustificationPresent: !!storedOverrideJustification,
+  });
+
+  // Determine primary rating: use stored if present, else fallback
+  let primaryRating = storedRating && storedRating !== 'unknown' && storedRating.trim()
+    ? storedRating
+    : fallbackRating;
+
+  // Check for override scenario: stored rating conflicts with P1-derived INTOLERABLE
+  const isOverride =
+    storedRating &&
+    storedRating !== 'unknown' &&
+    storedRating.trim() &&
+    fallbackRating.toLowerCase() === 'intolerable' &&
+    storedRating.toLowerCase() !== 'intolerable';
+
+  const ratingLabel = isOverride
+    ? `${primaryRating.toUpperCase()} (OVERRIDDEN)`
+    : primaryRating.toUpperCase();
+  const ratingColor = getRatingColor(primaryRating);
 
   page.drawText('Overall Fire Risk Rating:', {
     x: MARGIN,
@@ -384,7 +412,7 @@ function drawExecutiveSummary(
   page.drawRectangle({
     x: MARGIN,
     y: yPosition - 5,
-    width: 150,
+    width: isOverride ? 250 : 150,
     height: 30,
     color: ratingColor,
   });
@@ -396,10 +424,54 @@ function drawExecutiveSummary(
     color: rgb(1, 1, 1),
   });
 
-  yPosition -= 45;
+  yPosition -= 40;
 
-  const openActions = actions.filter((a) => a.status === 'open' || a.status === 'in_progress');
-  const p1Actions = openActions.filter((a) => a.priority_band === 'P1').length;
+  // Show override details if applicable
+  if (isOverride) {
+    const justificationText = storedOverrideJustification && storedOverrideJustification.trim()
+      ? storedOverrideJustification
+      : '(Not provided - please record justification in FRA-4)';
+
+    page.drawText('Override justification:', {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    yPosition -= 15;
+    const justificationLines = wrapText(justificationText, CONTENT_WIDTH - 20, 10, font);
+    for (const line of justificationLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = checkPageBreak(yPosition, pdfDoc, totalPages, isDraft, font);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN + 15,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 5;
+    page.drawText(`System suggested rating: ${fallbackRating.toUpperCase()} (based on open P1 actions)`, {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 9,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+
+    yPosition -= 25;
+  } else {
+    yPosition -= 5;
+  }
+
   const p2Actions = openActions.filter((a) => a.priority_band === 'P2').length;
 
   page.drawText('Priority Actions Summary:', {
@@ -411,7 +483,7 @@ function drawExecutiveSummary(
   });
 
   yPosition -= 22;
-  page.drawText(`P1 (Immediate): ${p1Actions}`, {
+  page.drawText(`P1 (Immediate): ${p1OpenCount}`, {
     x: MARGIN + 10,
     y: yPosition,
     size: 11,
@@ -1352,7 +1424,6 @@ function sanitizePdfText(input: unknown): string {
     .replace(/≤/g, '<=')
     .replace(/≥/g, '>=')
     .replace(/≠/g, '!=')
-    .replace(/£/g, 'GBP')
     .replace(/€/g, 'EUR')
     .replace(/¢/g, 'c')
     .replace(/™/g, '(TM)')

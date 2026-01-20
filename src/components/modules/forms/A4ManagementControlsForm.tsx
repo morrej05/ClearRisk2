@@ -4,6 +4,8 @@ import { supabase } from '../../../lib/supabase';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
+import InfoGapQuickActions from '../InfoGapQuickActions';
+import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
 
 interface Document {
   id: string;
@@ -727,6 +729,27 @@ export default function A4ManagementControlsForm({
         onSave={handleSave}
         isSaving={isSaving}
       />
+
+      {(() => {
+        const infoGapDetection = detectInfoGaps('A4_MANAGEMENT_CONTROLS', formData, outcome);
+        return infoGapDetection.hasInfoGap ? (
+          <div className="mt-6">
+            <InfoGapQuickActions
+              detection={infoGapDetection}
+              moduleKey="A4_MANAGEMENT_CONTROLS"
+              onCreateAction={(actionText, defaultL, defaultI) => {
+                setQuickActionTemplate({
+                  action: actionText,
+                  likelihood: defaultL,
+                  impact: defaultI,
+                });
+                setShowActionModal(true);
+              }}
+              showCreateButtons={true}
+            />
+          </div>
+        ) : null;
+      })()}
 
       <ModuleActions
         documentId={document.id}

@@ -2,6 +2,8 @@ export interface InfoGapQuickAction {
   action: string;
   reason: string;
   priority: 'P2' | 'P3';
+  defaultLikelihood?: number;
+  defaultImpact?: number;
 }
 
 export interface InfoGapDetection {
@@ -45,12 +47,24 @@ export function detectInfoGaps(
       break;
 
     case 'A4_MANAGEMENT_CONTROLS':
+      if (moduleData.testing_records === 'unknown' || !moduleData.testing_records) {
+        reasons.push('Testing records availability unknown');
+        quickActions.push({
+          action: 'Obtain fire safety inspection/testing records (alarm, emergency lighting, doors, extinguishers) and establish logbook.',
+          reason: 'Demonstrates ongoing system maintenance and compliance',
+          priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 3,
+        });
+      }
       if (moduleData.fire_safety_policy === 'unknown' || !moduleData.fire_safety_policy) {
         reasons.push('Fire safety policy status unknown');
         quickActions.push({
           action: 'Verify existence of fire safety policy and management procedures',
           reason: 'Essential for demonstrating management commitment',
           priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 3,
         });
       }
       if (moduleData.training_induction === 'unknown' || !moduleData.training_induction) {
@@ -59,41 +73,31 @@ export function detectInfoGaps(
           action: 'Obtain fire safety training records and verify induction procedures',
           reason: 'Trained staff are critical to fire safety management',
           priority: 'P2',
-        });
-      }
-      if (moduleData.testing_records === 'unknown' || !moduleData.testing_records) {
-        reasons.push('Testing records availability unknown');
-        quickActions.push({
-          action: 'Request and review fire safety equipment testing/maintenance records',
-          reason: 'Demonstrates ongoing system maintenance and compliance',
-          priority: 'P3',
+          defaultLikelihood: 4,
+          defaultImpact: 3,
         });
       }
       break;
 
     case 'A5_EMERGENCY_ARRANGEMENTS':
-      if (moduleData.emergency_plan_exists === 'unknown' || !moduleData.emergency_plan_exists) {
-        reasons.push('Emergency plan status unknown');
+      if (moduleData.emergency_plan_exists === 'unknown' || !moduleData.emergency_plan_exists || moduleData.drill_frequency === 'unknown' || !moduleData.drill_frequency) {
+        reasons.push('Emergency plan or drill records status unknown');
         quickActions.push({
-          action: 'Verify existence of emergency evacuation plan and procedures',
+          action: 'Obtain emergency plan and fire drill records; confirm drill frequency and competence.',
           reason: 'Legal requirement and critical for life safety',
           priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 3,
         });
       }
       if (moduleData.peeps_in_place === 'unknown' || !moduleData.peeps_in_place) {
         reasons.push('PEEPs status unknown');
         quickActions.push({
-          action: 'Confirm whether Personal Emergency Evacuation Plans (PEEPs) exist for vulnerable persons',
+          action: 'Confirm PEEP process and records for persons requiring assistance; implement where absent.',
           reason: 'Legal duty to ensure all persons can evacuate safely',
           priority: 'P2',
-        });
-      }
-      if (moduleData.drill_frequency === 'unknown' || !moduleData.drill_frequency) {
-        reasons.push('Fire drill frequency unknown');
-        quickActions.push({
-          action: 'Obtain fire drill records and confirm frequency of evacuations',
-          reason: 'Regular drills essential for emergency preparedness',
-          priority: 'P3',
+          defaultLikelihood: 4,
+          defaultImpact: 5,
         });
       }
       break;
@@ -156,41 +160,51 @@ export function detectInfoGaps(
       if (moduleData.alarm_present === 'unknown' || !moduleData.alarm_present) {
         reasons.push('Fire alarm system presence unknown');
         quickActions.push({
-          action: 'Confirm fire alarm system installation and obtain system certificates',
+          action: 'Verify fire alarm installation, category and coverage; obtain certificates and test records.',
           reason: 'Alarm system is primary means of warning occupants',
           priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 4,
         });
       }
       if (moduleData.alarm_present === 'yes' && (!moduleData.alarm_category || moduleData.alarm_category === 'unknown')) {
         reasons.push('Fire alarm category not identified');
         quickActions.push({
-          action: 'Identify fire alarm category (L1-L5/M) from commissioning certificates',
+          action: 'Verify fire alarm installation, category and coverage; obtain certificates and test records.',
           reason: 'Category defines level of protection provided',
           priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 4,
+        });
+      }
+      if (moduleData.alarm_testing_evidence === 'unknown' || moduleData.alarm_testing_evidence === 'partial') {
+        reasons.push('Alarm testing evidence incomplete');
+        quickActions.push({
+          action: 'Obtain evidence of alarm testing regime and implement logbook if missing.',
+          reason: 'Regular testing is essential for system reliability',
+          priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 3,
         });
       }
       if (moduleData.emergency_lighting_present === 'unknown' || !moduleData.emergency_lighting_present) {
         reasons.push('Emergency lighting presence unknown');
         quickActions.push({
-          action: 'Survey building for emergency lighting installation and obtain test certificates',
+          action: 'Verify emergency lighting provision and testing records (monthly/annual); document results.',
           reason: 'Emergency lighting enables safe evacuation in power failure',
           priority: 'P2',
-        });
-      }
-      if (moduleData.compartmentation_condition === 'unknown' || !moduleData.compartmentation_condition) {
-        reasons.push('Compartmentation condition unknown');
-        quickActions.push({
-          action: 'Commission compartmentation survey to verify fire resistance of walls, floors, and penetrations',
-          reason: 'Compartmentation prevents fire spread and supports stay-put strategies',
-          priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 3,
         });
       }
       if (moduleData.fire_stopping_confidence === 'low' || moduleData.fire_stopping_confidence === 'unknown') {
         reasons.push('Fire stopping integrity uncertain');
         quickActions.push({
-          action: 'Arrange intrusive survey of fire stopping at service penetrations and construction joints',
+          action: 'Commission fire-stopping verification survey (intrusive where necessary) and remediate defects.',
           reason: 'Fire stopping breaches can compromise compartmentation',
           priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 4,
         });
       }
       break;

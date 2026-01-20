@@ -4,7 +4,7 @@ import { InfoGapDetection } from '../../utils/infoGapQuickActions';
 interface InfoGapQuickActionsProps {
   detection: InfoGapDetection;
   moduleKey: string;
-  onCreateAction?: (actionText: string, priority: 'P2' | 'P3') => void;
+  onCreateAction?: (actionText: string, defaultL: number, defaultI: number) => void;
   showCreateButtons?: boolean;
 }
 
@@ -71,7 +71,11 @@ export default function InfoGapQuickActions({
                   </div>
                   {showCreateButtons && onCreateAction && (
                     <button
-                      onClick={() => onCreateAction(quickAction.action, quickAction.priority)}
+                      onClick={() => onCreateAction(
+                        quickAction.action,
+                        quickAction.defaultLikelihood || 4,
+                        quickAction.defaultImpact || 3
+                      )}
                       className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors flex-shrink-0"
                       title="Add this action to the action register"
                     >

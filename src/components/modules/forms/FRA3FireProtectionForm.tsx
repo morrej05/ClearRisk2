@@ -4,6 +4,8 @@ import { supabase } from '../../../lib/supabase';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
+import InfoGapQuickActions from '../InfoGapQuickActions';
+import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
 
 interface Document {
   id: string;
@@ -614,6 +616,27 @@ export default function FRA3FireProtectionForm({
         onSave={handleSave}
         isSaving={isSaving}
       />
+
+      {(() => {
+        const infoGapDetection = detectInfoGaps('FRA_3_PROTECTION_ASIS', formData, outcome);
+        return infoGapDetection.hasInfoGap ? (
+          <div className="mt-6">
+            <InfoGapQuickActions
+              detection={infoGapDetection}
+              moduleKey="FRA_3_PROTECTION_ASIS"
+              onCreateAction={(actionText, defaultL, defaultI) => {
+                setQuickActionTemplate({
+                  action: actionText,
+                  likelihood: defaultL,
+                  impact: defaultI,
+                });
+                setShowActionModal(true);
+              }}
+              showCreateButtons={true}
+            />
+          </div>
+        ) : null;
+      })()}
 
       <ModuleActions
         documentId={document.id}

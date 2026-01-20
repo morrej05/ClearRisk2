@@ -40,7 +40,27 @@ export function isPlatformAdmin(user: User): boolean {
   return user.role === 'admin' && user.is_platform_admin === true;
 }
 
+export function getPlanTier(org: Organisation): 'free' | 'solo' | 'core' | 'professional' | 'enterprise' {
+  const planId = org?.plan_id ?? org?.plan_type ?? '';
+  const planStr = planId.toString().trim().toLowerCase();
+
+  if (planStr === 'solo' || planStr === 'free') return 'solo';
+  if (planStr === 'core') return 'core';
+  if (planStr === 'professional' || planStr === 'pro' || planStr === 'team') return 'professional';
+  if (planStr === 'enterprise' || planStr === 'consultancy') return 'enterprise';
+
+  return 'free';
+}
+
+export function isPaidActive(org: Organisation): boolean {
+  return org.subscription_status === 'active' || org.subscription_status === 'trialing';
+}
+
 export function canEdit(user: User, org: Organisation): boolean {
+  if (isPlatformAdmin(user)) {
+    return true;
+  }
+
   if (user.role === 'viewer') {
     return false;
   }
@@ -49,28 +69,56 @@ export function canEdit(user: User, org: Organisation): boolean {
     return false;
   }
 
-  const isActiveSubscription = org.subscription_status === 'active' || org.plan_type === 'enterprise';
+  const tier = getPlanTier(org);
+  const isActiveSubscription = isPaidActive(org) || tier === 'enterprise';
 
   return isActiveSubscription;
 }
 
-export function canAccessProFeatures(org: Organisation): boolean {
-  const isProOrEnterprise = org.plan_type === 'professional' || org.plan_type === 'enterprise';
-  const isActive = org.subscription_status === 'active' || org.plan_type === 'enterprise';
+export function canAccessProFeatures(user: User, org: Organisation): boolean {
+  if (isPlatformAdmin(user)) {
+    return true;
+  }
+
+  const tier = getPlanTier(org);
+  const isProOrEnterprise = tier === 'professional' || tier === 'enterprise';
+  const isActive = isPaidActive(org) || tier === 'enterprise';
 
   return isProOrEnterprise && isActive;
 }
 
-export function hasAddon(org: Organisation, addonKey: string): boolean {
-  if (org.plan_type === 'enterprise') {
+export function canAccessExplosionSafety(user: User, org: Organisation): boolean {
+  if (isPlatformAdmin(user)) {
+    return true;
+  }
+
+  const tier = getPlanTier(org);
+  const isProOrEnterprise = tier === 'professional' || tier === 'enterprise';
+  const isActive = isPaidActive(org) || tier === 'enterprise';
+
+  return isProOrEnterprise && isActive;
+}
+
+export function hasAddon(user: User, org: Organisation, addonKey: string): boolean {
+  if (isPlatformAdmin(user)) {
+    return true;
+  }
+
+  const tier = getPlanTier(org);
+  if (tier === 'enterprise') {
     return true;
   }
 
   return org.enabled_addons.includes(addonKey);
 }
 
-export function canSwitchDiscipline(org: Organisation): boolean {
-  return org.plan_type === 'enterprise' && org.discipline_type === 'both';
+export function canSwitchDiscipline(user: User, org: Organisation): boolean {
+  if (isPlatformAdmin(user)) {
+    return true;
+  }
+
+  const tier = getPlanTier(org);
+  return tier === 'enterprise' && org.discipline_type === 'both';
 }
 
 export function canAccessAdmin(user: User): boolean {
@@ -90,7 +138,33 @@ export function canExportData(org: Organisation): boolean {
 }
 
 export function isSubscriptionActive(org: Organisation): boolean {
-  return org.subscription_status === 'active' || org.plan_type === 'enterprise';
+  return isPaidActive(org) || getPlanTier(org) === 'enterprise';
+}
+
+export function shouldShowUpgradePrompts(user: User, org: Organisation): boolean {
+  if (isPlatformAdmin(user)) {
+    return false;
+  }
+
+  const tier = getPlanTier(org);
+  if (tier === 'professional' || tier === 'enterprise') {
+    return false;
+  }
+
+  return true;
+}
+
+export function needsActiveSubscription(user: User, org: Organisation): boolean {
+  if (isPlatformAdmin(user)) {
+    return false;
+  }
+
+  const tier = getPlanTier(org);
+  if (tier === 'enterprise') {
+    return false;
+  }
+
+  return !isPaidActive(org);
 }
 
 export function getMaxEditors(plan: PlanType): number {

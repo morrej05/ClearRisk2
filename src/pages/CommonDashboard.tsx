@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { LogOut, TrendingUp, Flame, Zap, ClipboardList, Shield, Palette, Building2, Lock } from 'lucide-react';
 import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { getRolePermissions } from '../utils/permissions';
+import { canAccessExplosionSafety, shouldShowUpgradePrompts, getPlanTier, getSubscriptionStatusDisplayName } from '../utils/entitlements';
 import { useState } from 'react';
 import ClientBrandingModal from '../components/ClientBrandingModal';
 
@@ -79,7 +80,17 @@ export default function CommonDashboard() {
   const permissions = getRolePermissions(userRole);
   const [showBrandingModal, setShowBrandingModal] = useState(false);
 
-  const isProUser = userPlan === 'team' || userPlan === 'enterprise';
+  const userObj = user && organisation ? {
+    id: user.id,
+    role: userRole,
+    is_platform_admin: isPlatformAdmin,
+    can_edit: true
+  } : null;
+
+  const canAccessExplosion = userObj && organisation ? canAccessExplosionSafety(userObj, organisation) : false;
+  const showUpgradePrompts = userObj && organisation ? shouldShowUpgradePrompts(userObj, organisation) : false;
+  const planTier = organisation ? getPlanTier(organisation) : 'free';
+  const subscriptionStatus = organisation ? getSubscriptionStatusDisplayName(organisation.subscription_status) : 'Unknown';
 
   const handleSignOut = async () => {
     await signOut();
@@ -118,11 +129,23 @@ export default function CommonDashboard() {
               <div className="flex flex-col items-end">
                 <span className="text-sm text-neutral-600">{user?.email}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-neutral-500">
-                    Plan: {userPlan || 'Loading...'}
-                  </span>
+                  {isPlatformAdmin ? (
+                    <span className="text-xs text-neutral-500">
+                      Admin Override Enabled
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-xs text-neutral-500">
+                        Tier: {planTier}
+                      </span>
+                      <span className="text-xs text-neutral-400">|</span>
+                      <span className="text-xs text-neutral-500">
+                        Status: {subscriptionStatus}
+                      </span>
+                    </>
+                  )}
                   {isPlatformAdmin && (
-                    <span className="text-xs font-medium text-neutral-700 px-2 py-0.5 bg-neutral-100 rounded border border-neutral-200">
+                    <span className="text-xs font-medium text-blue-700 px-2 py-0.5 bg-blue-50 rounded border border-blue-200">
                       Platform Admin
                     </span>
                   )}
@@ -195,9 +218,9 @@ export default function CommonDashboard() {
             title="Explosion Safety"
             description="DSEAR & ATEX assessments"
             icon={<Zap className="w-6 h-6" />}
-            onClick={() => isProUser ? navigate('/dashboard/explosion') : navigate('/upgrade')}
-            disabled={!isProUser}
-            badge={!isProUser ? 'PRO' : undefined}
+            onClick={() => canAccessExplosion ? navigate('/dashboard/explosion') : navigate('/upgrade')}
+            disabled={!canAccessExplosion}
+            badge={!canAccessExplosion && showUpgradePrompts ? 'PRO' : undefined}
           />
 
           <DashboardTile

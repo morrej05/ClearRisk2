@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, Plus, Eye, Trash2, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { canAccessExplosionSafety } from '../../utils/entitlements';
 import CreateDocumentModal from '../../components/documents/CreateDocumentModal';
 
 interface Document {
@@ -18,21 +19,28 @@ interface Document {
 
 export default function ExplosionDashboard() {
   const navigate = useNavigate();
-  const { organisation, userPlan } = useAuth();
+  const { organisation, user, userRole, isPlatformAdmin } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const isProUser = userPlan === 'team' || userPlan === 'enterprise';
+  const userObj = user && organisation ? {
+    id: user.id,
+    role: userRole,
+    is_platform_admin: isPlatformAdmin,
+    can_edit: true
+  } : null;
+
+  const hasExplosionAccess = userObj && organisation ? canAccessExplosionSafety(userObj, organisation) : false;
 
   useEffect(() => {
-    if (organisation?.id && isProUser) {
+    if (organisation?.id && hasExplosionAccess) {
       fetchDocuments();
     } else {
       setIsLoading(false);
     }
-  }, [organisation?.id, isProUser]);
+  }, [organisation?.id, hasExplosionAccess]);
 
   const fetchDocuments = async () => {
     if (!organisation?.id) return;
@@ -99,7 +107,7 @@ export default function ExplosionDashboard() {
     });
   };
 
-  if (!isProUser) {
+  if (!hasExplosionAccess) {
     return (
       <div className="min-h-screen bg-neutral-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

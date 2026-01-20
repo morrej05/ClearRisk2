@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { getModuleName } from '../../lib/modules/moduleCatalog';
 
 interface Document {
   id: string;
@@ -30,37 +31,6 @@ interface ModuleInstance {
   updated_at: string;
 }
 
-const MODULE_NAMES: Record<string, string> = {
-  A1_DOC_CONTROL: 'A1 - Document Control & Governance',
-  A2_BUILDING_PROFILE: 'A2 - Building Profile',
-  A3_PERSONS_AT_RISK: 'A3 - Occupancy & Persons at Risk',
-  A4_MANAGEMENT_CONTROLS: 'A4 - Management Systems',
-  A5_EMERGENCY_ARRANGEMENTS: 'A5 - Emergency Arrangements',
-  A7_REVIEW_ASSURANCE: 'A7 - Review & Assurance',
-  FRA_1_HAZARDS: 'FRA-1 - Hazards & Ignition Sources',
-  FRA_2_ESCAPE_ASIS: 'FRA-2 - Means of Escape (As-Is)',
-  FRA_3_PROTECTION_ASIS: 'FRA-3 - Fire Protection (As-Is)',
-  FRA_5_EXTERNAL_FIRE_SPREAD: 'FRA-5 - External Fire Spread',
-  FRA_4_SIGNIFICANT_FINDINGS: 'FRA-4 - Significant Findings (Summary)',
-  FSD_1_REG_BASIS: 'FSD-1 - Regulatory Basis',
-  FSD_2_EVAC_STRATEGY: 'FSD-2 - Evacuation Strategy',
-  FSD_3_ESCAPE_DESIGN: 'FSD-3 - Escape Design',
-  FSD_4_PASSIVE_PROTECTION: 'FSD-4 - Passive Fire Protection',
-  FSD_5_ACTIVE_SYSTEMS: 'FSD-5 - Active Fire Systems',
-  FSD_6_FRS_ACCESS: 'FSD-6 - Fire & Rescue Service Access',
-  FSD_7_DRAWINGS: 'FSD-7 - Drawings & Schedules',
-  FSD_8_SMOKE_CONTROL: 'FSD-8 - Smoke Control',
-  FSD_9_CONSTRUCTION_PHASE: 'FSD-9 - Construction Phase',
-  DSEAR_1_SUBSTANCES_REGISTER: 'DSEAR-1 - Substances Register',
-  DSEAR_2_PROCESS_RELEASES: 'DSEAR-2 - Process & Release Sources',
-  DSEAR_3_HAC_ZONING: 'DSEAR-3 - Hazardous Area Classification',
-  DSEAR_4_IGNITION_CONTROL: 'DSEAR-4 - Ignition Source Control',
-  DSEAR_5_MITIGATION: 'DSEAR-5 - Mitigation Measures',
-  DSEAR_6_RISK_TABLE: 'DSEAR-6 - Risk Assessment Table',
-  DSEAR_10_HIERARCHY_SUBSTITUTION: 'DSEAR-10 - Hierarchy of Control & Substitution',
-  DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE: 'DSEAR-11 - Emergency Response Plan',
-};
-
 export default function DocumentOverview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -68,11 +38,13 @@ export default function DocumentOverview() {
   const [document, setDocument] = useState<Document | null>(null);
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
 
   useEffect(() => {
     if (id && organisation?.id) {
       fetchDocument();
       fetchModules();
+      fetchActionCounts();
     }
   }, [id, organisation?.id]);
 
@@ -114,6 +86,32 @@ export default function DocumentOverview() {
       console.error('Error fetching modules:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchActionCounts = async () => {
+    if (!id || !organisation?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('actions')
+        .select('priority_band, status')
+        .eq('document_id', id)
+        .eq('organisation_id', organisation.id)
+        .eq('status', 'open');
+
+      if (error) throw error;
+
+      const counts = { P1: 0, P2: 0, P3: 0, P4: 0 };
+      (data || []).forEach((action) => {
+        if (action.priority_band && action.priority_band in counts) {
+          counts[action.priority_band as keyof typeof counts]++;
+        }
+      });
+
+      setActionCounts(counts);
+    } catch (error) {
+      console.error('Error fetching action counts:', error);
     }
   };
 
@@ -177,6 +175,10 @@ export default function DocumentOverview() {
   const totalModules = modules.length;
   const completionPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 
+  const infoGapModules = modules.filter((m) => m.outcome === 'info_gap').length;
+  const materialDefModules = modules.filter((m) => m.outcome === 'material_def').length;
+  const totalOpenActions = actionCounts.P1 + actionCounts.P2 + actionCounts.P3 + actionCounts.P4;
+
   if (!document) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -217,10 +219,10 @@ export default function DocumentOverview() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                disabled
-                className="px-4 py-2 bg-neutral-100 text-neutral-400 rounded-lg font-medium cursor-not-allowed"
-                title="Coming in Phase 3"
+                onClick={() => navigate(`/documents/${id}/workspace`)}
+                className="px-4 py-2 bg-neutral-900 text-white rounded-lg font-medium hover:bg-neutral-800 transition-colors flex items-center gap-2"
               >
+                <Edit3 className="w-4 h-4" />
                 Open Workspace
               </button>
               <button
@@ -289,18 +291,93 @@ export default function DocumentOverview() {
           )}
         </div>
 
-        <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-neutral-900">Module Progress</h2>
-            <span className="text-sm font-medium text-neutral-600">
-              {completedModules} of {totalModules} completed ({completionPercentage}%)
-            </span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-neutral-500 uppercase">Module Progress</h3>
+            </div>
+            <div className="mb-3">
+              <div className="flex items-end justify-between mb-1">
+                <span className="text-3xl font-bold text-neutral-900">{completionPercentage}%</span>
+                <span className="text-sm text-neutral-600">
+                  {completedModules}/{totalModules}
+                </span>
+              </div>
+              <div className="w-full bg-neutral-200 rounded-full h-2">
+                <div
+                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${completionPercentage}%` }}
+                />
+              </div>
+            </div>
+            {(infoGapModules > 0 || materialDefModules > 0) && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {materialDefModules > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded">
+                    <AlertCircle className="w-3 h-3" />
+                    {materialDefModules} Material Def
+                  </span>
+                )}
+                {infoGapModules > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded">
+                    <AlertCircle className="w-3 h-3" />
+                    {infoGapModules} Info Gap
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-          <div className="w-full bg-neutral-200 rounded-full h-2">
-            <div
-              className="bg-green-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${completionPercentage}%` }}
-            />
+
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-neutral-500 uppercase">Open Actions</h3>
+            </div>
+            <div className="mb-3">
+              <div className="text-3xl font-bold text-neutral-900 mb-1">{totalOpenActions}</div>
+              <div className="text-sm text-neutral-600">Total open actions</div>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              <div className="text-center">
+                <div className="text-lg font-bold text-red-700">{actionCounts.P1}</div>
+                <div className="text-xs text-neutral-500">P1</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-orange-700">{actionCounts.P2}</div>
+                <div className="text-xs text-neutral-500">P2</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-amber-700">{actionCounts.P3}</div>
+                <div className="text-xs text-neutral-500">P3</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-blue-700">{actionCounts.P4}</div>
+                <div className="text-xs text-neutral-500">P4</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-neutral-500 uppercase">Document Status</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-600">Status:</span>
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(document.status)}`}>
+                  {document.status}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-600">Version:</span>
+                <span className="text-sm font-medium text-neutral-900">v{document.version}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-600">Type:</span>
+                <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                  {document.document_type}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -327,9 +404,7 @@ export default function DocumentOverview() {
                 <div
                   key={module.id}
                   className="px-6 py-4 hover:bg-neutral-50 transition-colors cursor-pointer"
-                  onClick={() => {
-                    alert('Module workspace coming in Phase 3!');
-                  }}
+                  onClick={() => navigate(`/documents/${id}/workspace?m=${module.id}`)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">
@@ -342,7 +417,7 @@ export default function DocumentOverview() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-neutral-900">
-                          {MODULE_NAMES[module.module_key] || module.module_key}
+                          {getModuleName(module.module_key)}
                         </p>
                         {module.completed_at && (
                           <p className="text-xs text-neutral-500 mt-0.5">

@@ -9,6 +9,7 @@ import FireSafetyDashboard from './pages/dashboard/FireSafetyDashboard';
 import ExplosionDashboard from './pages/dashboard/ExplosionDashboard';
 import ActionsDashboard from './pages/dashboard/ActionsDashboard';
 import DocumentOverview from './pages/documents/DocumentOverview';
+import DocumentWorkspace from './pages/documents/DocumentWorkspace';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UpgradeSubscription from './pages/UpgradeSubscription';
@@ -75,6 +76,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DocumentOverview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents/:id/workspace"
+            element={
+              <ProtectedRoute>
+                <DocumentWorkspace />
               </ProtectedRoute>
             }
           />

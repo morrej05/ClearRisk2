@@ -14,7 +14,12 @@ import FRA4SignificantFindingsForm from './forms/FRA4SignificantFindingsForm';
 import FRA5ExternalFireSpreadForm from './forms/FRA5ExternalFireSpreadForm';
 import FSD1RegulatoryBasisForm from './forms/FSD1RegulatoryBasisForm';
 import FSD2EvacuationStrategyForm from './forms/FSD2EvacuationStrategyForm';
+import FSD3MeansOfEscapeDesignForm from './forms/FSD3MeansOfEscapeDesignForm';
 import FSD4PassiveFireProtectionForm from './forms/FSD4PassiveFireProtectionForm';
+import FSD5ActiveFireSystemsDesignForm from './forms/FSD5ActiveFireSystemsDesignForm';
+import FSD6FireServiceAccessForm from './forms/FSD6FireServiceAccessForm';
+import FSD7DrawingsIndexForm from './forms/FSD7DrawingsIndexForm';
+import FSD8SmokeControlForm from './forms/FSD8SmokeControlForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
 
@@ -180,9 +185,59 @@ export default function ModuleRenderer({
     );
   }
 
+  if (moduleInstance.module_key === 'FSD_3_ESCAPE_DESIGN') {
+    return (
+      <FSD3MeansOfEscapeDesignForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
   if (moduleInstance.module_key === 'FSD_4_PASSIVE_PROTECTION') {
     return (
       <FSD4PassiveFireProtectionForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FSD_5_ACTIVE_SYSTEMS') {
+    return (
+      <FSD5ActiveFireSystemsDesignForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FSD_6_FRS_ACCESS') {
+    return (
+      <FSD6FireServiceAccessForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FSD_7_DRAWINGS') {
+    return (
+      <FSD7DrawingsIndexForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FSD_8_SMOKE_CONTROL') {
+    return (
+      <FSD8SmokeControlForm
         moduleInstance={moduleInstance}
         document={document}
         onSaved={onSaved}

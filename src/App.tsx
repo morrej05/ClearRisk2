@@ -10,6 +10,7 @@ import ExplosionDashboard from './pages/dashboard/ExplosionDashboard';
 import ActionsDashboard from './pages/dashboard/ActionsDashboard';
 import DocumentOverview from './pages/documents/DocumentOverview';
 import DocumentWorkspace from './pages/documents/DocumentWorkspace';
+import DocumentEvidence from './pages/documents/DocumentEvidence';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UpgradeSubscription from './pages/UpgradeSubscription';
@@ -88,6 +89,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DocumentWorkspace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents/:id/evidence"
+            element={
+              <ProtectedRoute>
+                <DocumentEvidence />
               </ProtectedRoute>
             }
           />

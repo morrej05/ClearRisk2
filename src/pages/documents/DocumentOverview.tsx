@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
@@ -383,6 +383,13 @@ export default function DocumentOverview() {
               >
                 <Edit3 className="w-4 h-4" />
                 Open Workspace
+              </button>
+              <button
+                onClick={() => navigate(`/documents/${id}/evidence`)}
+                className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors flex items-center gap-2"
+              >
+                <Image className="w-4 h-4" />
+                Evidence
               </button>
               <button
                 onClick={handleGeneratePdf}

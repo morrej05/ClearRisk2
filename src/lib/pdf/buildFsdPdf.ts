@@ -1,5 +1,6 @@
 import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
 import { getModuleName } from '../modules/moduleCatalog';
+import { listAttachments, type Attachment } from '../supabase/attachments';
 import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
@@ -100,6 +101,14 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
     ratings: actionRatings.length,
   });
 
+  let attachments: Attachment[] = [];
+  try {
+    attachments = await listAttachments(document.id);
+    console.log('[FSD PDF] Fetched', attachments.length, 'attachments');
+  } catch (error) {
+    console.warn('[FSD PDF] Failed to fetch attachments:', error);
+  }
+
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -120,6 +129,10 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
 
   if (actions.length > 0) {
     ({ page } = drawActionRegister(page, actions, actionRatings, moduleInstances, pdfDoc, isDraft, totalPages, font, fontBold));
+  }
+
+  if (attachments.length > 0) {
+    ({ page } = drawAttachmentsIndex(page, attachments, moduleInstances, actions, pdfDoc, isDraft, totalPages, font, fontBold));
   }
 
   ({ page } = drawAssumptionsAndLimitations(page, document, moduleInstances, pdfDoc, isDraft, totalPages, font, fontBold));
@@ -737,6 +750,133 @@ function drawAssumptionsAndLimitations(
       font,
       color: rgb(0.5, 0.5, 0.5),
     });
+  }
+
+  return { page };
+}
+
+function drawAttachmentsIndex(
+  page: PDFPage,
+  attachments: Attachment[],
+  moduleInstances: ModuleInstance[],
+  actions: Action[],
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): { page: PDFPage } {
+  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('ATTACHMENTS & EVIDENCE INDEX', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  if (attachments.length === 0) {
+    page.drawText('No attachments recorded.', {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    return { page };
+  }
+
+  for (let i = 0; i < attachments.length; i++) {
+    const attachment = attachments[i];
+
+    if (yPosition < MARGIN + 100) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    const refNum = `E-${String(i + 1).padStart(3, '0')}`;
+
+    page.drawText(`${refNum} ${sanitizePdfText(attachment.file_name)}`, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 14;
+
+    if (attachment.caption) {
+      const captionLines = wrapText(attachment.caption, CONTENT_WIDTH - 20, 9, font);
+      for (const line of captionLines) {
+        if (yPosition < MARGIN + 50) {
+          ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+        page.drawText(line, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPosition -= 12;
+      }
+    }
+
+    const linkedTo: string[] = [];
+
+    if (attachment.module_instance_id) {
+      const module = moduleInstances.find((m) => m.id === attachment.module_instance_id);
+      if (module) {
+        linkedTo.push(`Module: ${getModuleName(module.module_key)}`);
+      }
+    }
+
+    if (attachment.action_id) {
+      const action = actions.find((a) => a.id === attachment.action_id);
+      if (action) {
+        linkedTo.push(`Action: [${action.priority_band}] ${action.recommended_action.substring(0, 40)}...`);
+      }
+    }
+
+    if (linkedTo.length > 0) {
+      page.drawText(`Linked to: ${sanitizePdfText(linkedTo.join(', '))}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 8,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      yPosition -= 12;
+    }
+
+    const uploadDate = formatDate(attachment.taken_at || attachment.created_at);
+    const fileSize = attachment.file_size_bytes
+      ? `${Math.round(attachment.file_size_bytes / 1024)} KB`
+      : '';
+
+    page.drawText(`Uploaded: ${uploadDate}${fileSize ? ` | Size: ${fileSize}` : ''}`, {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 8,
+      font,
+      color: rgb(0.6, 0.6, 0.6),
+    });
+
+    yPosition -= 20;
+
+    page.drawLine({
+      start: { x: MARGIN, y: yPosition },
+      end: { x: PAGE_WIDTH - MARGIN, y: yPosition },
+      thickness: 0.5,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+
+    yPosition -= 15;
   }
 
   return { page };

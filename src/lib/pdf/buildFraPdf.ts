@@ -88,6 +88,12 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     ratings: actionRatings.length,
   });
 
+  console.log('[PDF] Sanitization test:', {
+    input: '⚠ test ✅ ❌ — "quotes" •',
+    output: sanitizePdfText('⚠ test ✅ ❌ — "quotes" •'),
+    expected: '! test [OK] [X] - "quotes" *',
+  });
+
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -187,7 +193,8 @@ function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PDFPage[]
 }
 
 function drawFooter(page: PDFPage, text: string, pageNum: number, totalPages: number, font: any) {
-  page.drawText(text, {
+  const sanitizedText = sanitizePdfText(text);
+  page.drawText(sanitizedText, {
     x: MARGIN,
     y: MARGIN - 30,
     size: 8,
@@ -195,7 +202,7 @@ function drawFooter(page: PDFPage, text: string, pageNum: number, totalPages: nu
     color: rgb(0.5, 0.5, 0.5),
   });
 
-  const pageText = `Page ${pageNum} of ${totalPages}`;
+  const pageText = sanitizePdfText(`Page ${pageNum} of ${totalPages}`);
   const pageTextWidth = font.widthOfTextAtSize(pageText, 8);
   page.drawText(pageText, {
     x: PAGE_WIDTH - MARGIN - pageTextWidth,
@@ -247,8 +254,9 @@ function drawCoverPage(
     height: 25,
     color: statusColor,
   });
-  page.drawText(document.status.toUpperCase(), {
-    x: centerX - font.widthOfTextAtSize(document.status.toUpperCase(), 12) / 2,
+  const statusText = sanitizePdfText(document.status.toUpperCase());
+  page.drawText(statusText, {
+    x: centerX - font.widthOfTextAtSize(statusText, 12) / 2,
     y: yPosition,
     size: 12,
     font: fontBold,
@@ -276,14 +284,14 @@ function drawCoverPage(
   ];
 
   for (const [label, value] of infoItems) {
-    page.drawText(label, {
+    page.drawText(sanitizePdfText(label), {
       x: MARGIN + 20,
       y: yPosition,
       size: 11,
       font: fontBold,
       color: rgb(0.3, 0.3, 0.3),
     });
-    page.drawText(value, {
+    page.drawText(sanitizePdfText(value), {
       x: MARGIN + 180,
       y: yPosition,
       size: 11,
@@ -851,8 +859,8 @@ function drawInfoGapQuickActions(
 
   yPosition -= 20;
 
-  // Title section with warning icon (using triangle)
-  page.drawText('⚠', {
+  // Title section with warning icon (using exclamation mark instead of Unicode warning)
+  page.drawText(sanitizePdfText('⚠'), {
     x: MARGIN,
     y: yPosition,
     size: 14,
@@ -860,7 +868,7 @@ function drawInfoGapQuickActions(
     color: rgb(0.9, 0.6, 0),
   });
 
-  page.drawText('Information Gaps Detected', {
+  page.drawText(sanitizePdfText('Information Gaps Detected'), {
     x: MARGIN + 20,
     y: yPosition,
     size: 12,
@@ -879,7 +887,7 @@ function drawInfoGapQuickActions(
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
 
-      page.drawText('•', {
+      page.drawText(sanitizePdfText('•'), {
         x: MARGIN + 5,
         y: yPosition,
         size: 10,
@@ -1323,8 +1331,41 @@ function drawAssumptionsAndLimitations(
   return yPosition;
 }
 
+function sanitizePdfText(input: unknown): string {
+  const s = (input ?? '').toString();
+
+  let sanitized = s
+    .replace(/⚠/g, '!')
+    .replace(/✅/g, '[OK]')
+    .replace(/❌/g, '[X]')
+    .replace(/✓/g, '[OK]')
+    .replace(/✗/g, '[X]')
+    .replace(/[""]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/—/g, '-')
+    .replace(/–/g, '-')
+    .replace(/…/g, '...')
+    .replace(/•/g, '*')
+    .replace(/°/g, ' deg')
+    .replace(/×/g, 'x')
+    .replace(/÷/g, '/')
+    .replace(/≤/g, '<=')
+    .replace(/≥/g, '>=')
+    .replace(/≠/g, '!=')
+    .replace(/£/g, 'GBP')
+    .replace(/€/g, 'EUR')
+    .replace(/¢/g, 'c')
+    .replace(/™/g, '(TM)')
+    .replace(/®/g, '(R)')
+    .replace(/©/g, '(C)');
+
+  sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
+
+  return sanitized;
+}
+
 function wrapText(text: unknown, maxWidth: number, fontSize: number, font: any): string[] {
-  const safe = (text ?? '').toString().trim();
+  const safe = sanitizePdfText(text).trim();
 
   if (!safe) {
     return [''];
@@ -1354,7 +1395,7 @@ function wrapText(text: unknown, maxWidth: number, fontSize: number, font: any):
 }
 
 function formatDate(dateString: string | null): string {
-  if (!dateString) return '—';
+  if (!dateString) return '-';
   return new Date(dateString).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',

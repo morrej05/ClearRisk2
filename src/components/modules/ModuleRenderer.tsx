@@ -5,8 +5,11 @@ import { getModuleName } from '../../lib/modules/moduleCatalog';
 import A1DocumentControlForm from './forms/A1DocumentControlForm';
 import A4ManagementControlsForm from './forms/A4ManagementControlsForm';
 import A5EmergencyArrangementsForm from './forms/A5EmergencyArrangementsForm';
+import FRA1FireHazardsForm from './forms/FRA1FireHazardsForm';
 import FRA2MeansOfEscapeForm from './forms/FRA2MeansOfEscapeForm';
 import FRA3FireProtectionForm from './forms/FRA3FireProtectionForm';
+import FRA4SignificantFindingsForm from './forms/FRA4SignificantFindingsForm';
+import FRA5ExternalFireSpreadForm from './forms/FRA5ExternalFireSpreadForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
 
@@ -82,6 +85,16 @@ export default function ModuleRenderer({
     );
   }
 
+  if (moduleInstance.module_key === 'FRA_1_HAZARDS') {
+    return (
+      <FRA1FireHazardsForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
   if (moduleInstance.module_key === 'FRA_2_ESCAPE_ASIS') {
     return (
       <FRA2MeansOfEscapeForm
@@ -95,6 +108,26 @@ export default function ModuleRenderer({
   if (moduleInstance.module_key === 'FRA_3_PROTECTION_ASIS') {
     return (
       <FRA3FireProtectionForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FRA_4_SIGNIFICANT_FINDINGS') {
+    return (
+      <FRA4SignificantFindingsForm
+        moduleInstance={moduleInstance}
+        document={document}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  if (moduleInstance.module_key === 'FRA_5_EXTERNAL_FIRE_SPREAD') {
+    return (
+      <FRA5ExternalFireSpreadForm
         moduleInstance={moduleInstance}
         document={document}
         onSaved={onSaved}

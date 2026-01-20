@@ -181,7 +181,7 @@ export default function CommonDashboard() {
             title="Risk Engineering"
             description="Property risk surveys and assessments"
             icon={<TrendingUp className="w-6 h-6" />}
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/legacy-dashboard')}
           />
 
           <DashboardTile

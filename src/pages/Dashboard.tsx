@@ -581,6 +581,28 @@ export default function Dashboard() {
         </div>
       </nav>
 
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 border-b border-blue-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">New Dashboard Available</h3>
+                <p className="text-blue-100 text-sm">Access all your risk assessment modules from one place</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/common-dashboard')}
+              className="px-6 py-2.5 bg-white text-blue-700 font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
+            >
+              Go to Common Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {roleError && (
           <div className="mb-6 bg-red-50 border-2 border-red-300 rounded-lg p-4">

@@ -33,6 +33,10 @@ function App() {
           <Route path="/external/:token" element={<ExternalSurvey />} />
           <Route
             path="/dashboard"
+            element={<Navigate to="/common-dashboard" replace />}
+          />
+          <Route
+            path="/legacy-dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard />

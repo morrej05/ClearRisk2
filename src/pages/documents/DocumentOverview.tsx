@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
+import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { saveAs } from 'file-saver';
 
 interface Document {
@@ -300,9 +301,14 @@ export default function DocumentOverview() {
         organisation: { id: organisation.id, name: organisation.name },
       };
 
-      const pdfBytes = document.document_type === 'FSD'
-        ? await buildFsdPdf(pdfOptions)
-        : await buildFraPdf(pdfOptions);
+      let pdfBytes;
+      if (document.document_type === 'FSD') {
+        pdfBytes = await buildFsdPdf(pdfOptions);
+      } else if (document.document_type === 'DSEAR') {
+        pdfBytes = await buildDsearPdf(pdfOptions);
+      } else {
+        pdfBytes = await buildFraPdf(pdfOptions);
+      }
 
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const siteName = document.title

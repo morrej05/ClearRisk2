@@ -682,12 +682,22 @@ function drawActionRegister(
   }
 
   for (const action of sortedActions) {
+    if (!action.action || typeof action.action !== 'string') {
+      console.warn('[PDF] Action missing text field:', {
+        id: action.id,
+        action: action.action,
+        priority_band: action.priority_band,
+        status: action.status,
+      });
+    }
+
     if (yPosition < MARGIN + 120) {
       page = addNewPage(pdfDoc, isDraft);
       yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
-    const priorityColor = getPriorityColor(action.priority_band);
+    const priorityBand = action.priority_band || 'P4';
+    const priorityColor = getPriorityColor(priorityBand);
     page.drawRectangle({
       x: MARGIN,
       y: yPosition - 3,
@@ -695,7 +705,7 @@ function drawActionRegister(
       height: 16,
       color: priorityColor,
     });
-    page.drawText(action.priority_band, {
+    page.drawText(priorityBand, {
       x: MARGIN + 4,
       y: yPosition,
       size: 9,
@@ -703,8 +713,10 @@ function drawActionRegister(
       color: rgb(1, 1, 1),
     });
 
-    const priorityScore = action.likelihood * action.impact;
-    page.drawText(`L${action.likelihood} × I${action.impact} = ${priorityScore}`, {
+    const likelihood = action.likelihood || 1;
+    const impact = action.impact || 1;
+    const priorityScore = likelihood * impact;
+    page.drawText(`L${likelihood} × I${impact} = ${priorityScore}`, {
       x: MARGIN + 35,
       y: yPosition,
       size: 9,
@@ -714,7 +726,8 @@ function drawActionRegister(
 
     yPosition -= 18;
 
-    const actionLines = wrapText(action.action, CONTENT_WIDTH - 10, 10, font);
+    const actionText = action.action || '(No action text provided)';
+    const actionLines = wrapText(actionText, CONTENT_WIDTH - 10, 10, font);
     for (const line of actionLines) {
       if (yPosition < MARGIN + 50) {
         page = addNewPage(pdfDoc, isDraft);
@@ -731,9 +744,13 @@ function drawActionRegister(
     }
 
     const metaInfo: string[] = [];
-    if (action.owner) metaInfo.push(`Owner: ${action.owner}`);
-    if (action.target_date) metaInfo.push(`Target: ${formatDate(action.target_date)}`);
-    metaInfo.push(`Status: ${action.status}`);
+    const owner = action.owner || '(Unassigned)';
+    metaInfo.push(`Owner: ${owner}`);
+    if (action.target_date) {
+      metaInfo.push(`Target: ${formatDate(action.target_date)}`);
+    }
+    const status = action.status || 'open';
+    metaInfo.push(`Status: ${status}`);
 
     page.drawText(metaInfo.join(' | '), {
       x: MARGIN + 5,
@@ -890,8 +907,14 @@ function drawAssumptionsAndLimitations(
   return yPosition;
 }
 
-function wrapText(text: string, maxWidth: number, fontSize: number, font: any): string[] {
-  const words = text.split(' ');
+function wrapText(text: unknown, maxWidth: number, fontSize: number, font: any): string[] {
+  const safe = (text ?? '').toString().trim();
+
+  if (!safe) {
+    return [''];
+  }
+
+  const words = safe.split(' ');
   const lines: string[] = [];
   let currentLine = '';
 

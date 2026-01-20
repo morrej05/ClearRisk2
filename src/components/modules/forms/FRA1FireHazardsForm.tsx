@@ -4,6 +4,8 @@ import { supabase } from '../../../lib/supabase';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
+import InfoGapQuickActions from '../InfoGapQuickActions';
+import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
 
 interface Document {
   id: string;
@@ -146,6 +148,18 @@ export default function FRA1FireHazardsForm({
 
   const suggestedOutcome = getSuggestedOutcome();
 
+  // Detect info gaps
+  const infoGapDetection = detectInfoGaps('FRA_1_HAZARDS', formData, outcome);
+
+  const handleCreateQuickAction = (actionText: string, priority: 'P2' | 'P3') => {
+    setQuickActionTemplate({
+      action: actionText,
+      likelihood: priority === 'P2' ? 4 : 3,
+      impact: priority === 'P2' ? 3 : 2,
+    });
+    setShowActionModal(true);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
 
@@ -215,6 +229,15 @@ export default function FRA1FireHazardsForm({
           <p className="text-xs text-amber-700 mt-1">{suggestedOutcome.reason}</p>
         </div>
       )}
+
+      <div className="mb-6">
+        <InfoGapQuickActions
+          detection={infoGapDetection}
+          moduleKey="FRA_1_HAZARDS"
+          onCreateAction={handleCreateQuickAction}
+          showCreateButtons={true}
+        />
+      </div>
 
       <div className="space-y-6">
         <div className="bg-white rounded-lg border border-neutral-200 p-6">

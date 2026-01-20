@@ -1,5 +1,6 @@
 import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
 import { getModuleName } from '../modules/moduleCatalog';
+import { detectInfoGaps } from '../../utils/infoGapQuickActions';
 
 interface Document {
   id: string;
@@ -619,6 +620,9 @@ function drawModuleSummary(
 
   yPosition = drawModuleKeyDetails(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
+  // Draw info gap quick actions if detected
+  yPosition = drawInfoGapQuickActions(page, module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
   return yPosition;
 }
 
@@ -819,6 +823,196 @@ function drawModuleKeyDetails(
     yPosition -= 5;
   }
 
+  return yPosition;
+}
+
+function drawInfoGapQuickActions(
+  page: PDFPage,
+  module: ModuleInstance,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  const detection = detectInfoGaps(module.module_key, module.data, module.outcome);
+
+  if (!detection.hasInfoGap) {
+    return yPosition;
+  }
+
+  // Check if we need a new page
+  if (yPosition < MARGIN + 200) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+
+  yPosition -= 20;
+
+  // Title section with warning icon (using triangle)
+  page.drawText('⚠', {
+    x: MARGIN,
+    y: yPosition,
+    size: 14,
+    font,
+    color: rgb(0.9, 0.6, 0),
+  });
+
+  page.drawText('Information Gaps Detected', {
+    x: MARGIN + 20,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0.9, 0.6, 0),
+  });
+
+  yPosition -= 25;
+
+  // Reasons
+  if (detection.reasons.length > 0) {
+    for (const reason of detection.reasons) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      page.drawText('•', {
+        x: MARGIN + 5,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.6, 0.4, 0),
+      });
+
+      const reasonLines = wrapText(reason, CONTENT_WIDTH - 25, 10, font);
+      for (const line of reasonLines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+        page.drawText(line, {
+          x: MARGIN + 15,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.5, 0.3, 0),
+        });
+        yPosition -= 14;
+      }
+    }
+    yPosition -= 10;
+  }
+
+  // Quick Actions
+  if (detection.quickActions.length > 0) {
+    if (yPosition < MARGIN + 100) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText('Recommended Actions to Resolve:', {
+      x: MARGIN + 5,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0.9, 0.6, 0),
+    });
+
+    yPosition -= 20;
+
+    for (const quickAction of detection.quickActions) {
+      if (yPosition < MARGIN + 100) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      // Priority badge
+      const priorityColor = quickAction.priority === 'P2' ? rgb(0.9, 0.5, 0.13) : rgb(0.85, 0.65, 0.13);
+      page.drawRectangle({
+        x: MARGIN + 10,
+        y: yPosition - 3,
+        width: 25,
+        height: 14,
+        color: priorityColor,
+      });
+      page.drawText(quickAction.priority, {
+        x: MARGIN + 13,
+        y: yPosition,
+        size: 8,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+      });
+
+      yPosition -= 18;
+
+      // Action text
+      const actionLines = wrapText(quickAction.action, CONTENT_WIDTH - 30, 10, font);
+      for (const line of actionLines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+        page.drawText(line, {
+          x: MARGIN + 15,
+          y: yPosition,
+          size: 10,
+          font: fontBold,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 14;
+      }
+
+      // Reason (why)
+      const reasonText = `Why: ${quickAction.reason}`;
+      const reasonLines = wrapText(reasonText, CONTENT_WIDTH - 30, 9, font);
+      for (const line of reasonLines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+        page.drawText(line, {
+          x: MARGIN + 15,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        yPosition -= 13;
+      }
+
+      yPosition -= 10;
+    }
+
+    // Tip at the bottom
+    yPosition -= 5;
+    const tipText = 'Tip: Address these information gaps to improve assessment completeness and reduce risk uncertainty.';
+    const tipLines = wrapText(tipText, CONTENT_WIDTH - 20, 8, font);
+    for (const line of tipLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 8,
+        font,
+        color: rgb(0.6, 0.4, 0),
+      });
+      yPosition -= 12;
+    }
+  }
+
+  yPosition -= 15;
   return yPosition;
 }
 

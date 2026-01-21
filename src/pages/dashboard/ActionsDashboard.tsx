@@ -76,7 +76,7 @@ export default function ActionsDashboard() {
           *,
           document:documents(id, title, document_type),
           module_instance:module_instances(id, module_key, outcome),
-          owner:user_profiles!owner_user_id(id, name)
+          owner:user_profiles(id, name)
         `)
         .eq('organisation_id', organisation.id);
 

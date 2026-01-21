@@ -240,7 +240,24 @@ export function getPublicUrl(filePath: string): string {
   return data.publicUrl;
 }
 
-export async function getSignedUrl(filePath: string, expiresIn: number = 3600): Promise<string> {
+export async function getSignedUrl(filePath: string | any, expiresIn: number = 3600): Promise<string> {
+  // Defensive guard: if an object was accidentally passed, try to extract file_path
+  if (typeof filePath === 'object' && filePath !== null) {
+    console.error('Object passed to getSignedUrl instead of string:', filePath);
+    if ('file_path' in filePath && typeof filePath.file_path === 'string') {
+      console.warn('Extracting file_path from object - this should be fixed at the call site');
+      filePath = filePath.file_path;
+    } else {
+      throw new Error('Invalid attachment object passed to getSignedUrl - missing file_path');
+    }
+  }
+
+  // Ensure we have a valid string path
+  if (typeof filePath !== 'string' || !filePath) {
+    console.error('Invalid file path passed to getSignedUrl:', filePath);
+    throw new Error(`getSignedUrl expects a string file path, received: ${typeof filePath}`);
+  }
+
   const { data, error } = await supabase.storage
     .from('evidence')
     .createSignedUrl(filePath, expiresIn);

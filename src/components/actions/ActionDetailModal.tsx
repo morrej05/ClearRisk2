@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft, Download, Trash2 } from 'lucide-react';
+import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft, Download, Trash2, Eye } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { uploadEvidenceFile, createAttachmentRow } from '../../lib/supabase/attachments';
+import { uploadEvidenceFile, createAttachmentRow, getSignedUrl } from '../../lib/supabase/attachments';
 
 interface ActionDetailModalProps {
   action: {
@@ -67,6 +67,8 @@ export default function ActionDetailModal({
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [documentStatus, setDocumentStatus] = useState<string>('draft');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
 
   useEffect(() => {
     fetchAttachments();
@@ -299,6 +301,17 @@ export default function ActionDetailModal({
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handlePreview = async (attachment: Attachment) => {
+    try {
+      const url = await getSignedUrl(attachment.file_path, 3600);
+      setPreviewUrl(url);
+      setPreviewAttachment(attachment);
+    } catch (error) {
+      console.error('Error generating preview URL:', error);
+      alert('Failed to load preview.');
+    }
   };
 
   const handleDownload = async (attachment: Attachment) => {
@@ -544,14 +557,24 @@ export default function ActionDetailModal({
                           {attachment.caption}
                         </p>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(attachment)}
-                        className="inline-flex items-center gap-1 mt-2 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
-                      >
-                        <Download className="w-3 h-3" />
-                        Download
-                      </button>
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => handlePreview(attachment)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200 transition-colors"
+                        >
+                          <Eye className="w-3 h-3" />
+                          Preview
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(attachment)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <Download className="w-3 h-3" />
+                          Download
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -595,6 +618,66 @@ export default function ActionDetailModal({
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewUrl && previewAttachment && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 z-[60] flex items-center justify-center p-4"
+          onClick={() => {
+            setPreviewUrl(null);
+            setPreviewAttachment(null);
+          }}
+        >
+          <div className="relative max-w-6xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-white">
+                <p className="font-medium">{previewAttachment.file_name}</p>
+                <p className="text-sm text-neutral-300">
+                  {formatFileSize(previewAttachment.file_size_bytes)}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setPreviewUrl(null);
+                  setPreviewAttachment(null);
+                }}
+                className="text-white hover:text-neutral-300 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div
+              className="flex-1 flex items-center justify-center overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {previewAttachment.file_type.startsWith('image/') ? (
+                <img
+                  src={previewUrl}
+                  alt={previewAttachment.file_name}
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              ) : previewAttachment.file_type === 'application/pdf' ? (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-[80vh] bg-white rounded-lg"
+                  title={previewAttachment.file_name}
+                />
+              ) : (
+                <div className="text-center text-white">
+                  <Paperclip className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg mb-2">Preview not available for this file type</p>
+                  <button
+                    onClick={() => handleDownload(previewAttachment)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors font-medium"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download to view
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

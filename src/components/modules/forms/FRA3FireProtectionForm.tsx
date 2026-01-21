@@ -41,6 +41,7 @@ export default function FRA3FireProtectionForm({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
+  const [actionsRefreshKey, setActionsRefreshKey] = useState(0);
 
   const [formData, setFormData] = useState({
     fire_alarm_present: moduleInstance.data.fire_alarm_present || 'unknown',
@@ -640,6 +641,7 @@ export default function FRA3FireProtectionForm({
       })()}
 
       <ModuleActions
+        key={actionsRefreshKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}
       />
@@ -655,6 +657,7 @@ export default function FRA3FireProtectionForm({
           onActionCreated={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);
+            setActionsRefreshKey((prev) => prev + 1);
           }}
           defaultAction={quickActionTemplate?.action}
           defaultLikelihood={quickActionTemplate?.likelihood}

@@ -74,6 +74,7 @@ export default function FRA1FireHazardsForm({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
+  const [actionsRefreshKey, setActionsRefreshKey] = useState(0);
 
   const [formData, setFormData] = useState({
     ignition_sources: moduleInstance.data.ignition_sources || [],
@@ -582,6 +583,7 @@ export default function FRA1FireHazardsForm({
       />
 
       <ModuleActions
+        key={actionsRefreshKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}
       />
@@ -597,6 +599,7 @@ export default function FRA1FireHazardsForm({
           onActionCreated={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);
+            setActionsRefreshKey((prev) => prev + 1);
           }}
           defaultAction={quickActionTemplate?.action}
           defaultLikelihood={quickActionTemplate?.likelihood}

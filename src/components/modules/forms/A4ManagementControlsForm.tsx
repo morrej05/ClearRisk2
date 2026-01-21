@@ -41,6 +41,7 @@ export default function A4ManagementControlsForm({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
+  const [actionsRefreshKey, setActionsRefreshKey] = useState(0);
 
   const [formData, setFormData] = useState({
     responsibilities_defined: moduleInstance.data.responsibilities_defined || 'unknown',
@@ -753,6 +754,7 @@ export default function A4ManagementControlsForm({
       })()}
 
       <ModuleActions
+        key={actionsRefreshKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}
       />
@@ -768,6 +770,7 @@ export default function A4ManagementControlsForm({
           onActionCreated={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);
+            setActionsRefreshKey((prev) => prev + 1);
           }}
           defaultAction={quickActionTemplate?.action}
           defaultLikelihood={quickActionTemplate?.likelihood}

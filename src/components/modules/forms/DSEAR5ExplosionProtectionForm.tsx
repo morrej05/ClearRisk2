@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 
 interface ModuleInstance {
   id: string;
@@ -67,20 +68,22 @@ export default function DSEAR5ExplosionProtectionForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const payload = sanitizeModuleInstancePayload({
+        data: {
+          prevention_measures: preventionMeasures,
+          explosion_venting: explosionVenting,
+          suppression_systems: suppressionSystems,
+          explosion_isolation: explosionIsolation,
+          segregation_distance_controls: segregationControls
+        },
+        outcome,
+        assessor_notes: assessorNotes,
+        updated_at: new Date().toISOString(),
+      });
+
       const { error } = await supabase
         .from('module_instances')
-        .update({
-          data: {
-            prevention_measures: preventionMeasures,
-            explosion_venting: explosionVenting,
-            suppression_systems: suppressionSystems,
-            explosion_isolation: explosionIsolation,
-            segregation_distance_controls: segregationControls
-          },
-          outcome,
-          assessor_notes: assessorNotes,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('id', moduleInstance.id);
 
       if (error) throw error;

@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 
 interface Document {
   id: string;
@@ -95,14 +96,16 @@ export default function FSD4PassiveFireProtectionForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error} = await supabase
+      const payload = sanitizeModuleInstancePayload({
+        data: formData,
+        outcome,
+        assessor_notes: assessorNotes,
+        updated_at: new Date().toISOString(),
+      });
+
+      const { error } = await supabase
         .from('module_instances')
-        .update({
-          data: formData,
-          outcome,
-          assessor_notes: assessorNotes,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('id', moduleInstance.id);
 
       if (error) throw error;

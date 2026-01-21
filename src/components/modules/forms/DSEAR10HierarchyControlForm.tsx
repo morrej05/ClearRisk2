@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -30,7 +31,8 @@ export default function DSEAR10HierarchyControlForm({ moduleInstance, document, 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase.from('module_instances').update({ data: { substitution_considered: substitutionConsidered, elimination_possible: eliminationPossible, engineering_controls: engineeringControls, administrative_controls: administrativeControls, PPE_controls: ppeControls, justification_for_retained_risk: justification }, outcome, assessor_notes: assessorNotes, updated_at: new Date().toISOString() }).eq('id', moduleInstance.id);
+      const payload = sanitizeModuleInstancePayload({ data: { substitution_considered: substitutionConsidered, elimination_possible: eliminationPossible, engineering_controls: engineeringControls, administrative_controls: administrativeControls, PPE_controls: ppeControls, justification_for_retained_risk: justification }, outcome, assessor_notes: assessorNotes, updated_at: new Date().toISOString() });
+      const { error } = await supabase.from('module_instances').update(payload).eq('id', moduleInstance.id);
       if (error) throw error;
       setLastSaved(new Date().toLocaleTimeString());
       onSaved();

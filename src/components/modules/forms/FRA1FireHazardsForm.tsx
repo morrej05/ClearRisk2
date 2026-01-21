@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Flame, CheckCircle, Plus } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
@@ -166,14 +167,16 @@ export default function FRA1FireHazardsForm({
     try {
       const completedAt = outcome ? new Date().toISOString() : null;
 
+      const payload = sanitizeModuleInstancePayload({
+        outcome,
+        assessor_notes: assessorNotes,
+        data: formData,
+        completed_at: completedAt,
+      });
+
       const { error } = await supabase
         .from('module_instances')
-        .update({
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          data: formData,
-          completed_at: completedAt,
-        })
+        .update(payload)
         .eq('id', moduleInstance.id);
 
       if (error) throw error;

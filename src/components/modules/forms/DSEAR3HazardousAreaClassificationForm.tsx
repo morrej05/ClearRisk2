@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 
 interface Zone {
   zone_type: string;
@@ -92,14 +93,16 @@ export default function DSEAR3HazardousAreaClassificationForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const payload = sanitizeModuleInstancePayload({
+        data: { zones, drawings_reference: drawingsReference },
+        outcome,
+        assessor_notes: assessorNotes,
+        updated_at: new Date().toISOString(),
+      });
+
       const { error } = await supabase
         .from('module_instances')
-        .update({
-          data: { zones, drawings_reference: drawingsReference },
-          outcome,
-          assessor_notes: assessorNotes,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('id', moduleInstance.id);
 
       if (error) throw error;

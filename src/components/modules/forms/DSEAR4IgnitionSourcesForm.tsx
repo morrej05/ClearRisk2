@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 
 interface ModuleInstance {
   id: string;
@@ -73,21 +74,23 @@ export default function DSEAR4IgnitionSourcesForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const payload = sanitizeModuleInstancePayload({
+        data: {
+          ignition_sources_assessed: ignitionSourcesAssessed,
+          ATEX_equipment_required: ATEXRequired,
+          ATEX_equipment_present: ATEXPresent,
+          static_control_measures: staticControls,
+          hot_work_controls: hotWorkControls,
+          inspection_testing_regime: inspectionRegime
+        },
+        outcome,
+        assessor_notes: assessorNotes,
+        updated_at: new Date().toISOString(),
+      });
+
       const { error } = await supabase
         .from('module_instances')
-        .update({
-          data: {
-            ignition_sources_assessed: ignitionSourcesAssessed,
-            ATEX_equipment_required: ATEXRequired,
-            ATEX_equipment_present: ATEXPresent,
-            static_control_measures: staticControls,
-            hot_work_controls: hotWorkControls,
-            inspection_testing_regime: inspectionRegime
-          },
-          outcome,
-          assessor_notes: assessorNotes,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('id', moduleInstance.id);
 
       if (error) throw error;

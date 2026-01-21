@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -29,7 +30,8 @@ export default function DSEAR11ExplosionEmergencyResponseForm({ moduleInstance, 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase.from('module_instances').update({ data: { explosion_scenarios_considered: scenarios, emergency_shutdown_procedures: shutdownProcs, isolation_arrangements: isolation, emergency_services_information: emergencyInfo, drills_and_training: drills }, outcome, assessor_notes: assessorNotes, updated_at: new Date().toISOString() }).eq('id', moduleInstance.id);
+      const payload = sanitizeModuleInstancePayload({ data: { explosion_scenarios_considered: scenarios, emergency_shutdown_procedures: shutdownProcs, isolation_arrangements: isolation, emergency_services_information: emergencyInfo, drills_and_training: drills }, outcome, assessor_notes: assessorNotes, updated_at: new Date().toISOString() });
+      const { error } = await supabase.from('module_instances').update(payload).eq('id', moduleInstance.id);
       if (error) throw error;
       setLastSaved(new Date().toLocaleTimeString());
       onSaved();

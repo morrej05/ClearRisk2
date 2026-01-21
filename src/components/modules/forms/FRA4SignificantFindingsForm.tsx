@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FileText, CheckCircle, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import OutcomePanel from '../OutcomePanel';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 
 interface Document {
   id: string;
@@ -173,16 +174,16 @@ export default function FRA4SignificantFindingsForm({
     setIsSaving(true);
 
     try {
-      const completedAt = outcome ? new Date().toISOString() : null;
+      const payload = sanitizeModuleInstancePayload({
+        data: formData,
+        outcome,
+        assessor_notes: assessorNotes,
+        updated_at: new Date().toISOString(),
+      });
 
       const { error } = await supabase
         .from('module_instances')
-        .update({
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          data: formData,
-          completed_at: completedAt,
-        })
+        .update(payload)
         .eq('id', moduleInstance.id);
 
       if (error) throw error;

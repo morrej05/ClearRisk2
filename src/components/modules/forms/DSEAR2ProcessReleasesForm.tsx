@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -93,14 +94,16 @@ export default function DSEAR2ProcessReleasesForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const payload = sanitizeModuleInstancePayload({
+        data: { process_descriptions: processes },
+        outcome,
+        assessor_notes: assessorNotes,
+        updated_at: new Date().toISOString(),
+      });
+
       const { error } = await supabase
         .from('module_instances')
-        .update({
-          data: { process_descriptions: processes },
-          outcome,
-          assessor_notes: assessorNotes,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('id', moduleInstance.id);
 
       if (error) throw error;

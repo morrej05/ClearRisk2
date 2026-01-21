@@ -6,6 +6,7 @@ import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
 import InfoGapQuickActions from '../InfoGapQuickActions';
 import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
+import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 
 interface Document {
   id: string;
@@ -121,24 +122,17 @@ export default function A4ManagementControlsForm({
     setIsSaving(true);
 
     try {
-      const completedAt = outcome ? new Date().toISOString() : null;
+      const payload = sanitizeModuleInstancePayload({
+        data: formData,
+        outcome,
+        assessor_notes: assessorNotes,
+        updated_at: new Date().toISOString(),
+      });
 
-      const payload: any = {
-          data: formData,
-          assessor_notes: assessorNotes,
-          updated_at: new Date().toISOString(),
-        };
-        
-        // Only include outcome if it's a non-empty string
-        const cleanOutcome = String(outcome ?? '').trim();
-        if (cleanOutcome !== '') {
-          payload.outcome = cleanOutcome;
-        }
-        
-        const { error } = await supabase
-          .from('module_instances')
-          .update(payload)
-          .eq('id', moduleInstance.id);
+      const { error } = await supabase
+        .from('module_instances')
+        .update(payload)
+        .eq('id', moduleInstance.id);
 
       if (error) throw error;
 

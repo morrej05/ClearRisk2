@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Paperclip, Download, Trash2, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { getSignedUrl } from '../../lib/supabase/attachments';
 
 interface EvidencePanelProps {
   actionId: string;
@@ -22,6 +23,7 @@ interface Attachment {
 export default function EvidencePanel({ actionId, onClose }: EvidencePanelProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchAttachments();
@@ -38,6 +40,26 @@ export default function EvidencePanel({ actionId, onClose }: EvidencePanelProps)
 
       if (error) throw error;
       setAttachments(data || []);
+
+      const imageAttachments = (data || []).filter(att => att.file_type.startsWith('image/')).slice(0, 10);
+      const urlPromises = imageAttachments.map(async (att) => {
+        try {
+          const url = await getSignedUrl(att.file_path, 3600);
+          return { id: att.id, url };
+        } catch (error) {
+          console.error('Error generating thumbnail URL:', error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(urlPromises);
+      const urlMap: Record<string, string> = {};
+      results.forEach(result => {
+        if (result) {
+          urlMap[result.id] = result.url;
+        }
+      });
+      setThumbnailUrls(urlMap);
     } catch (error) {
       console.error('Error fetching attachments:', error);
     } finally {
@@ -131,6 +153,15 @@ export default function EvidencePanel({ actionId, onClose }: EvidencePanelProps)
                   key={attachment.id}
                   className="border border-neutral-200 rounded-lg p-4 hover:border-neutral-300 transition-colors"
                 >
+                  {isImage(attachment.file_type) && thumbnailUrls[attachment.id] && (
+                    <div className="mb-3">
+                      <img
+                        src={thumbnailUrls[attachment.id]}
+                        alt={attachment.file_name}
+                        className="w-full max-h-32 object-cover rounded-lg border border-neutral-200"
+                      />
+                    </div>
+                  )}
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
                       {isImage(attachment.file_type) ? (

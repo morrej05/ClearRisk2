@@ -53,6 +53,7 @@ export default function DocumentEvidence() {
   const [linkActionId, setLinkActionId] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id && organisation?.id) {
@@ -90,6 +91,26 @@ export default function DocumentEvidence() {
     try {
       const data = await listAttachments(id);
       setAttachments(data);
+
+      const imageAttachments = data.filter(att => att.file_type.startsWith('image/')).slice(0, 10);
+      const urlPromises = imageAttachments.map(async (att) => {
+        try {
+          const url = await getSignedUrl(att.file_path, 3600);
+          return { id: att.id, url };
+        } catch (error) {
+          console.error('Error generating thumbnail URL:', error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(urlPromises);
+      const urlMap: Record<string, string> = {};
+      results.forEach(result => {
+        if (result) {
+          urlMap[result.id] = result.url;
+        }
+      });
+      setThumbnailUrls(urlMap);
     } catch (error) {
       console.error('Error fetching attachments:', error);
     } finally {
@@ -404,12 +425,27 @@ export default function DocumentEvidence() {
                     </div>
 
                     {attachment.file_type.startsWith('image/') && (
-                      <button
-                        onClick={() => handlePreview(attachment)}
-                        className="w-full mb-3 bg-neutral-100 rounded-lg aspect-video flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors"
-                      >
-                        Click to preview
-                      </button>
+                      <div className="mb-3">
+                        {thumbnailUrls[attachment.id] ? (
+                          <button
+                            onClick={() => handlePreview(attachment)}
+                            className="w-full"
+                          >
+                            <img
+                              src={thumbnailUrls[attachment.id]}
+                              alt={attachment.file_name}
+                              className="w-full max-h-32 object-cover rounded-lg border border-neutral-200 hover:border-neutral-400 transition-colors"
+                            />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handlePreview(attachment)}
+                            className="w-full bg-neutral-100 rounded-lg aspect-video flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors"
+                          >
+                            Click to preview
+                          </button>
+                        )}
+                      </div>
                     )}
 
                     <h3 className="font-medium text-sm text-neutral-900 mb-1 truncate" title={attachment.file_name}>

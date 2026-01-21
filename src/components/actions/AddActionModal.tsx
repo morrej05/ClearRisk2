@@ -12,6 +12,7 @@ interface AddActionModalProps {
   defaultAction?: string;
   defaultLikelihood?: number;
   defaultImpact?: number;
+  source?: 'manual' | 'info_gap' | 'recommendation' | 'system';
 }
 
 const TIMESCALE_OPTIONS = [
@@ -30,6 +31,7 @@ export default function AddActionModal({
   defaultAction = '',
   defaultLikelihood = 3,
   defaultImpact = 3,
+  source = 'manual',
 }: AddActionModalProps) {
   const { organisation, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,6 +151,7 @@ export default function AddActionModal({
         override_justification: isTimescaleOverride
           ? formData.overrideJustification.trim()
           : null,
+        source: source,
       };
 
       const { data: action, error: actionError } = await supabase

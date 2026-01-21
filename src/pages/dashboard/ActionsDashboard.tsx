@@ -19,6 +19,7 @@ interface Action {
   target_date: string | null;
   owner_user_id: string | null;
   updated_at: string;
+  source: string | null;
   document: {
     id: string;
     title: string;
@@ -52,6 +53,7 @@ export default function ActionsDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [documentTypeFilter, setDocumentTypeFilter] = useState<string>('all');
+  const [infoGapFilter, setInfoGapFilter] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<'priority' | 'target_date'>('priority');
 
   const [summaryMetrics, setSummaryMetrics] = useState<SummaryMetrics>({
@@ -65,7 +67,7 @@ export default function ActionsDashboard() {
     if (organisation?.id) {
       fetchActions();
     }
-  }, [organisation?.id, statusFilter, priorityFilter, documentTypeFilter]);
+  }, [organisation?.id, statusFilter, priorityFilter, documentTypeFilter, infoGapFilter]);
 
   const fetchActions = async () => {
     if (!organisation?.id) return;
@@ -128,9 +130,13 @@ export default function ActionsDashboard() {
       let filtered = actionsWithAttachments;
 
       if (documentTypeFilter !== 'all') {
-        filtered = actionsWithAttachments.filter(
+        filtered = filtered.filter(
           (action) => action.document?.document_type === documentTypeFilter
         );
+      }
+
+      if (infoGapFilter) {
+        filtered = filtered.filter((action) => isInfoGap(action));
       }
 
       const sorted = sortActions(filtered);
@@ -198,7 +204,7 @@ export default function ActionsDashboard() {
   };
 
   const isInfoGap = (action: Action) => {
-    return action.module_instance?.outcome === 'info_gap';
+    return action.source === 'info_gap' || action.module_instance?.outcome === 'info_gap';
   };
 
   const getPriorityColor = (priority: string | null) => {
@@ -250,6 +256,7 @@ export default function ActionsDashboard() {
     setStatusFilter('all');
     setPriorityFilter([]);
     setDocumentTypeFilter('all');
+    setInfoGapFilter(false);
   };
 
   const togglePriorityFilter = (priority: string) => {
@@ -276,7 +283,8 @@ export default function ActionsDashboard() {
   const hasActiveFilters =
     statusFilter !== 'all' ||
     priorityFilter.length > 0 ||
-    documentTypeFilter !== 'all';
+    documentTypeFilter !== 'all' ||
+    infoGapFilter;
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -432,6 +440,21 @@ export default function ActionsDashboard() {
                 </select>
               </div>
 
+              <div className="flex flex-col gap-1 justify-end">
+                <label className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={infoGapFilter}
+                    onChange={(e) => setInfoGapFilter(e.target.checked)}
+                    className="w-4 h-4 text-amber-600 border-neutral-300 rounded focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                    Info gap only
+                  </span>
+                </label>
+              </div>
+
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-neutral-700 opacity-0">Clear</label>
                 <button
@@ -519,8 +542,8 @@ export default function ActionsDashboard() {
                         </div>
                         {isInfoGap(action) && (
                           <div className="flex items-center gap-1 mt-1">
-                            <AlertCircle className="w-3 h-3 text-blue-600" />
-                            <span className="text-xs text-blue-600 font-medium">Info gap</span>
+                            <AlertCircle className="w-3 h-3 text-amber-600" />
+                            <span className="text-xs text-amber-700 font-medium">⚠ Info gap</span>
                           </div>
                         )}
                       </td>

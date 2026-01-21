@@ -14,6 +14,7 @@ interface ActionDetailModalProps {
     target_date: string | null;
     owner_user_id: string | null;
     updated_at: string;
+    source: string | null;
     document: {
       id: string;
       title: string;
@@ -288,7 +289,7 @@ export default function ActionDetailModal({
     action.status !== 'complete' &&
     action.target_date < new Date().toISOString().split('T')[0];
 
-  const isInfoGap = action.module_instance?.outcome === 'info_gap';
+  const isInfoGap = action.source === 'info_gap' || action.module_instance?.outcome === 'info_gap';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -309,9 +310,9 @@ export default function ActionDetailModal({
                   {action.priority_band || 'No Priority'}
                 </span>
                 {isInfoGap && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded border border-blue-300">
+                  <div className="flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded border border-amber-300">
                     <AlertCircle className="w-3 h-3" />
-                    <span className="text-xs font-medium">Info Gap</span>
+                    <span className="text-xs font-medium">⚠ Info gap</span>
                   </div>
                 )}
                 {isOverdue && (

@@ -30,6 +30,7 @@ interface QuickActionTemplate {
   action: string;
   likelihood: number;
   impact: number;
+  source?: 'manual' | 'info_gap' | 'recommendation' | 'system';
 }
 
 const IGNITION_OPTIONS = [
@@ -157,6 +158,7 @@ export default function FRA1FireHazardsForm({
       action: actionText,
       likelihood: priority === 'P2' ? 4 : 3,
       impact: priority === 'P2' ? 3 : 2,
+      source: 'info_gap',
     });
     setShowActionModal(true);
   };
@@ -599,6 +601,7 @@ export default function FRA1FireHazardsForm({
           defaultAction={quickActionTemplate?.action}
           defaultLikelihood={quickActionTemplate?.likelihood}
           defaultImpact={quickActionTemplate?.impact}
+          source={quickActionTemplate?.source}
         />
       )}
     </div>

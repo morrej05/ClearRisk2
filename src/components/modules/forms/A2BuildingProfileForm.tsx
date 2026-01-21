@@ -29,6 +29,11 @@ interface QuickActionTemplate {
   likelihood: number;
   impact: number;
 }
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
+
+  // 🔁 Force ModuleActions to reload after creating an action
+  const [actionsReloadKey, setActionsReloadKey] = useState(0);
 
 export default function A2BuildingProfileForm({
   moduleInstance,
@@ -483,7 +488,8 @@ const suggestedOutcome = !String(outcome ?? '').trim() ? getSuggestedOutcome() :
         isSaving={isSaving}
       />
 
-      <ModuleActions
+            <ModuleActions
+        key={actionsReloadKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}
       />
@@ -496,10 +502,14 @@ const suggestedOutcome = !String(outcome ?? '').trim() ? getSuggestedOutcome() :
             setShowActionModal(false);
             setQuickActionTemplate(null);
           }}
-          onActionCreated={() => {
+                    onActionCreated={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);
+
+            // 🔁 refresh “Actions from this module” immediately
+            setActionsReloadKey((k) => k + 1);
           }}
+
           defaultAction={quickActionTemplate?.action}
           defaultLikelihood={quickActionTemplate?.likelihood}
           defaultImpact={quickActionTemplate?.impact}

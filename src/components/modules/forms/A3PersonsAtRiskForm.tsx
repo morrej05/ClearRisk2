@@ -96,15 +96,22 @@ export default function A3PersonsAtRiskForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('module_instances')
-        .update({
+      const payload: any = {
           data: formData,
-          outcome,
           assessor_notes: assessorNotes,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', moduleInstance.id);
+        };
+        
+        // Only include outcome if it's a non-empty string
+        const cleanOutcome = String(outcome ?? '').trim();
+        if (cleanOutcome !== '') {
+          payload.outcome = cleanOutcome;
+        }
+        
+        const { error } = await supabase
+          .from('module_instances')
+          .update(payload)
+          .eq('id', moduleInstance.id);
 
       if (error) throw error;
 

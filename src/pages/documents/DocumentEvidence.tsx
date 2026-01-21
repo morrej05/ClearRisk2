@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, Upload, Image, FileText, Trash2, Edit2, Link2, X, Download } from 'lucide-react';
+import { ArrowLeft, Upload, Image, FileText, Trash2, Edit2, Link2, X, Download, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import {
@@ -12,6 +12,7 @@ import {
   updateAttachmentCaption,
   updateAttachmentLinks,
   getSignedUrl,
+  isValidAttachment,
   type Attachment,
 } from '../../lib/supabase/attachments';
 
@@ -409,7 +410,8 @@ export default function DocumentEvidence() {
                         </button>
                         <button
                           onClick={() => handleDownload(attachment)}
-                          className="p-1 text-neutral-500 hover:text-neutral-900 transition-colors"
+                          disabled={!isValidAttachment(attachment)}
+                          className="p-1 text-neutral-500 hover:text-neutral-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Download"
                         >
                           <Download className="w-4 h-4" />
@@ -429,7 +431,8 @@ export default function DocumentEvidence() {
                         {thumbnailUrls[attachment.id] ? (
                           <button
                             onClick={() => handlePreview(attachment)}
-                            className="w-full"
+                            disabled={!isValidAttachment(attachment)}
+                            className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <img
                               src={thumbnailUrls[attachment.id]}
@@ -440,9 +443,10 @@ export default function DocumentEvidence() {
                         ) : (
                           <button
                             onClick={() => handlePreview(attachment)}
-                            className="w-full bg-neutral-100 rounded-lg aspect-video flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors"
+                            disabled={!isValidAttachment(attachment)}
+                            className="w-full bg-neutral-100 rounded-lg aspect-video flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Click to preview
+                            {isValidAttachment(attachment) ? 'Click to preview' : 'Preview unavailable'}
                           </button>
                         )}
                       </div>
@@ -451,6 +455,13 @@ export default function DocumentEvidence() {
                     <h3 className="font-medium text-sm text-neutral-900 mb-1 truncate" title={attachment.file_name}>
                       {attachment.file_name}
                     </h3>
+
+                    {!isValidAttachment(attachment) && (
+                      <div className="flex items-center gap-1 mb-2 px-2 py-1 bg-amber-50 rounded border border-amber-200">
+                        <AlertCircle className="w-3 h-3 text-amber-600 flex-shrink-0" />
+                        <span className="text-xs text-amber-700 font-medium">Bad file reference</span>
+                      </div>
+                    )}
 
                     {attachment.caption && (
                       <p className="text-xs text-neutral-600 mb-2 line-clamp-2">{attachment.caption}</p>

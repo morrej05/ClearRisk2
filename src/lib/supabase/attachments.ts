@@ -197,6 +197,20 @@ export function sanitizeFilename(filename: string): string {
     .substring(0, 200);
 }
 
+export function extractFilePath(input: any): string | null {
+  if (typeof input === 'string') {
+    return input.trim() || null;
+  }
+
+  if (typeof input === 'object' && input !== null) {
+    if ('file_path' in input && typeof input.file_path === 'string') {
+      return input.file_path.trim() || null;
+    }
+  }
+
+  return null;
+}
+
 export async function uploadEvidenceFile(
   file: File,
   organisationId: string,
@@ -240,22 +254,16 @@ export function getPublicUrl(filePath: string): string {
   return data.publicUrl;
 }
 
-export async function getSignedUrl(filePath: string | any, expiresIn: number = 3600): Promise<string> {
-  // Defensive guard: if an object was accidentally passed, try to extract file_path
-  if (typeof filePath === 'object' && filePath !== null) {
-    console.error('Object passed to getSignedUrl instead of string:', filePath);
-    if ('file_path' in filePath && typeof filePath.file_path === 'string') {
-      console.warn('Extracting file_path from object - this should be fixed at the call site');
-      filePath = filePath.file_path;
-    } else {
-      throw new Error('Invalid attachment object passed to getSignedUrl - missing file_path');
-    }
+export async function getSignedUrl(input: string | any, expiresIn: number = 3600): Promise<string> {
+  const filePath = extractFilePath(input);
+
+  if (!filePath) {
+    console.error('Invalid file path passed to getSignedUrl:', input);
+    throw new Error(`Invalid attachment file_path (expected string). Received: ${JSON.stringify(input)}`);
   }
 
-  // Ensure we have a valid string path
-  if (typeof filePath !== 'string' || !filePath) {
-    console.error('Invalid file path passed to getSignedUrl:', filePath);
-    throw new Error(`getSignedUrl expects a string file path, received: ${typeof filePath}`);
+  if (typeof input === 'object') {
+    console.warn('Object passed to getSignedUrl - extracting file_path. Call site should pass string directly:', input);
   }
 
   const { data, error } = await supabase.storage
@@ -268,6 +276,53 @@ export async function getSignedUrl(filePath: string | any, expiresIn: number = 3
   }
 
   return data.signedUrl;
+}
+
+export interface PreviewResult {
+  ok: boolean;
+  url?: string;
+  fileType?: string;
+  error?: string;
+}
+
+export async function openAttachmentPreview(attachmentOrPath: any, expiresIn: number = 3600): Promise<PreviewResult> {
+  try {
+    const filePath = extractFilePath(attachmentOrPath);
+
+    if (!filePath) {
+      return {
+        ok: false,
+        error: 'Invalid file path',
+      };
+    }
+
+    const url = await getSignedUrl(filePath, expiresIn);
+
+    let fileType = 'unknown';
+    if (typeof attachmentOrPath === 'object' && attachmentOrPath?.file_type) {
+      fileType = attachmentOrPath.file_type;
+    } else if (filePath.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      fileType = 'image';
+    } else if (filePath.match(/\.pdf$/i)) {
+      fileType = 'pdf';
+    }
+
+    return {
+      ok: true,
+      url,
+      fileType,
+    };
+  } catch (error) {
+    console.error('Error opening attachment preview:', error);
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export function isValidAttachment(attachment: any): boolean {
+  return extractFilePath(attachment) !== null;
 }
 
 export async function countAttachmentsByAction(actionId: string): Promise<number> {

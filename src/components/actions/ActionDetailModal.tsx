@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft, Download, Trash2, Eye } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { uploadEvidenceFile, createAttachmentRow, getSignedUrl } from '../../lib/supabase/attachments';
+import { uploadEvidenceFile, createAttachmentRow, getSignedUrl, isValidAttachment } from '../../lib/supabase/attachments';
 
 interface ActionDetailModalProps {
   action: {
@@ -552,6 +552,12 @@ export default function ActionDetailModal({
                         {formatFileSize(attachment.file_size_bytes)} •{' '}
                         {formatDate(attachment.created_at)}
                       </p>
+                      {!isValidAttachment(attachment) && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          <span className="text-xs text-amber-600 font-medium">Bad file reference</span>
+                        </div>
+                      )}
                       {attachment.caption && (
                         <p className="text-xs text-neutral-600 mt-1 line-clamp-2">
                           {attachment.caption}
@@ -561,7 +567,8 @@ export default function ActionDetailModal({
                         <button
                           type="button"
                           onClick={() => handlePreview(attachment)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200 transition-colors"
+                          disabled={!isValidAttachment(attachment)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Eye className="w-3 h-3" />
                           Preview
@@ -569,7 +576,8 @@ export default function ActionDetailModal({
                         <button
                           type="button"
                           onClick={() => handleDownload(attachment)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                          disabled={!isValidAttachment(attachment)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Download className="w-3 h-3" />
                           Download

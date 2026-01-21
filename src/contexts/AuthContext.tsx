@@ -17,6 +17,7 @@ interface AuthContextType {
   organisation: Organisation | null;
   roleError: string | null;
   loading: boolean;
+  authInitialized: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
@@ -39,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   const fetchUserRole = async (userId: string, userEmail: string) => {
     try {
@@ -231,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error('[AuthContext] Error getting session:', error);
           setLoading(false);
+          setAuthInitialized(true);
           return;
         }
 
@@ -242,10 +245,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setLoading(false);
         }
+
+        setAuthInitialized(true);
       } catch (error) {
         console.error('[AuthContext] Exception during auth init:', error);
         if (isMounted) {
           setLoading(false);
+          setAuthInitialized(true);
         }
       }
     };
@@ -326,6 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       organisation,
       roleError,
       loading,
+      authInitialized,
       signIn,
       signUp,
       signOut,

@@ -32,6 +32,7 @@ interface ActionDetailModalProps {
   };
   onClose: () => void;
   onActionUpdated: () => void;
+  returnTo?: string;
 }
 
 interface Attachment {
@@ -49,13 +50,14 @@ export default function ActionDetailModal({
   action,
   onClose,
   onActionUpdated,
+  returnTo,
 }: ActionDetailModalProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { organisation, user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const returnToPath = (location.state as any)?.returnTo || null;
+  const returnToPath = returnTo || (location.state as any)?.returnTo || null;
 
   const [status, setStatus] = useState(action.status);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -134,11 +136,14 @@ export default function ActionDetailModal({
   };
 
   const handleBackToActions = () => {
-    if (returnToPath) {
-      navigate(returnToPath);
-    } else {
-      navigate('/dashboard/actions');
-    }
+    onClose();
+    setTimeout(() => {
+      if (returnToPath) {
+        navigate(returnToPath);
+      } else {
+        navigate('/dashboard/actions');
+      }
+    }, 0);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,36 +356,40 @@ export default function ActionDetailModal({
 
           <div className="border-t border-neutral-200 pt-4">
             <h3 className="text-sm font-medium text-neutral-700 mb-3">Navigation</h3>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               <button
+                type="button"
                 onClick={handleBackToActions}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-3.5 h-3.5" />
                 Back to Actions Register
               </button>
               <button
+                type="button"
                 onClick={handleGoToDocument}
                 disabled={!action.document}
-                className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-neutral-900 text-white rounded-md hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
-                <FileText className="w-4 h-4" />
+                <FileText className="w-3.5 h-3.5" />
                 Go to Document
               </button>
               <button
+                type="button"
                 onClick={handleGoToModule}
                 disabled={!action.module_instance}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
-                <Layers className="w-4 h-4" />
+                <Layers className="w-3.5 h-3.5" />
                 Go to Module
               </button>
               {action.document && (
                 <button
+                  type="button"
                   onClick={() => navigate(`/documents/${action.document!.id}/evidence`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50 transition-colors font-medium"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-3.5 h-3.5" />
                   View All Evidence
                 </button>
               )}

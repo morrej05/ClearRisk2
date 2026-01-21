@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X, Paperclip, Download, Trash2, Image as ImageIcon, Eye, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getSignedUrl, isValidAttachment } from '../../lib/supabase/attachments';
+import { getSignedUrl, isValidAttachment, deleteAttachment } from '../../lib/supabase/attachments';
+import ConfirmModal from '../ConfirmModal';
 
 interface EvidencePanelProps {
   actionId: string;
@@ -26,9 +27,13 @@ export default function EvidencePanel({ actionId, onClose }: EvidencePanelProps)
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [documentStatus, setDocumentStatus] = useState<string>('draft');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<Attachment | null>(null);
 
   useEffect(() => {
     fetchAttachments();
+    fetchDocumentStatus();
   }, [actionId]);
 
   const fetchAttachments = async () => {
@@ -66,6 +71,48 @@ export default function EvidencePanel({ actionId, onClose }: EvidencePanelProps)
       console.error('Error fetching attachments:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDocumentStatus = async () => {
+    try {
+      const { data: actionData, error: actionError } = await supabase
+        .from('actions')
+        .select('document_id')
+        .eq('id', actionId)
+        .single();
+
+      if (actionError || !actionData?.document_id) {
+        return;
+      }
+
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .select('status')
+        .eq('id', actionData.document_id)
+        .single();
+
+      if (docError) throw docError;
+      if (docData) setDocumentStatus(docData.status);
+    } catch (error) {
+      console.error('Error fetching document status:', error);
+    }
+  };
+
+  const handleDeleteAttachment = async () => {
+    if (!attachmentToDelete) return;
+
+    try {
+      const result = await deleteAttachment(attachmentToDelete.id);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete attachment');
+      }
+
+      await fetchAttachments();
+      setAttachmentToDelete(null);
+    } catch (error) {
+      console.error('Error deleting attachment:', error);
+      alert('Failed to delete attachment. Please try again.');
     }
   };
 
@@ -230,6 +277,19 @@ export default function EvidencePanel({ actionId, onClose }: EvidencePanelProps)
                           <Download className="w-3.5 h-3.5" />
                           Download
                         </button>
+                        {documentStatus === 'draft' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAttachmentToDelete(attachment);
+                              setDeleteConfirmOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -240,6 +300,11 @@ export default function EvidencePanel({ actionId, onClose }: EvidencePanelProps)
         </div>
 
         <div className="border-t border-neutral-200 p-4 bg-neutral-50">
+          {documentStatus !== 'draft' && (
+            <p className="text-xs text-neutral-500 italic mb-3">
+              Document is issued — evidence cannot be deleted
+            </p>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -249,6 +314,19 @@ export default function EvidencePanel({ actionId, onClose }: EvidencePanelProps)
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setAttachmentToDelete(null);
+        }}
+        onConfirm={handleDeleteAttachment}
+        title="Delete Evidence?"
+        message={`This will permanently delete "${attachmentToDelete?.file_name}". This cannot be undone.`}
+        confirmText="Delete"
+        isDestructive={true}
+      />
 
       {previewUrl && previewAttachment && (
         <div

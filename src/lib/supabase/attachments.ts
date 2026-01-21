@@ -146,28 +146,41 @@ export async function updateAttachmentLinks(
   }
 }
 
-export async function deleteAttachment(id: string): Promise<void> {
-  const attachment = await getAttachment(id);
-  if (!attachment) {
-    throw new Error('Attachment not found');
-  }
+export async function deleteAttachment(attachmentId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const attachment = await getAttachment(attachmentId);
+    if (!attachment) {
+      return { success: false, error: 'Attachment not found' };
+    }
 
-  const { error: storageError } = await supabase.storage
-    .from('evidence')
-    .remove([attachment.file_path]);
+    // Delete from storage
+    const { error: storageError } = await supabase.storage
+      .from('evidence')
+      .remove([attachment.file_path]);
 
-  if (storageError) {
-    console.warn('Error deleting file from storage:', storageError);
-  }
+    if (storageError) {
+      console.error('[deleteAttachment] Error deleting from storage:', storageError);
+      // Continue anyway - the database record is more critical
+    }
 
-  const { error } = await supabase
-    .from('attachments')
-    .delete()
-    .eq('id', id);
+    // Delete from database
+    const { error: dbError } = await supabase
+      .from('attachments')
+      .delete()
+      .eq('id', attachmentId);
 
-  if (error) {
-    console.error('Error deleting attachment:', error);
-    throw error;
+    if (dbError) {
+      console.error('[deleteAttachment] Error deleting from database:', dbError);
+      return { success: false, error: dbError.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[deleteAttachment] Unexpected error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
 }
 

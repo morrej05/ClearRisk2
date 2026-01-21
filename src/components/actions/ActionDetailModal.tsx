@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft, Download, Trash2, Eye } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { uploadEvidenceFile, createAttachmentRow, getSignedUrl, isValidAttachment } from '../../lib/supabase/attachments';
+import { uploadEvidenceFile, createAttachmentRow, getSignedUrl, isValidAttachment, deleteAttachment } from '../../lib/supabase/attachments';
+import ConfirmModal from '../ConfirmModal';
 
 interface ActionDetailModalProps {
   action: {
@@ -112,8 +113,16 @@ export default function ActionDetailModal({
 
   const handleDeleteAction = async () => {
     try {
-      await supabase.from('attachments').delete().eq('action_id', action.id);
+      // Delete all attachments (also deletes from storage)
+      for (const attachment of attachments) {
+        const result = await deleteAttachment(attachment.id);
+        if (!result.success) {
+          console.error('Error deleting attachment:', result.error);
+          // Continue with other attachments
+        }
+      }
 
+      // Delete the action itself
       const { error: actionError } = await supabase
         .from('actions')
         .delete()
@@ -606,30 +615,15 @@ export default function ActionDetailModal({
         </div>
       </div>
 
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-neutral-900 mb-3">Delete Action?</h3>
-            <p className="text-neutral-700 mb-6">
-              This will permanently delete this action and all its attachments. This cannot be undone.
-            </p>
-            <div className="flex items-center gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAction}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteAction}
+        title="Delete Action?"
+        message="This will permanently delete this action and all its attachments. This cannot be undone."
+        confirmText="Delete"
+        isDestructive={true}
+      />
 
       {previewUrl && previewAttachment && (
         <div

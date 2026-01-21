@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { canIssueDocument } from './approvalWorkflow';
 
 export interface DocumentVersion {
   id: string;
@@ -27,13 +28,13 @@ export interface CreateNewVersionResult {
   newVersionNumber?: number;
 }
 
-export async function validateDocumentForIssue(documentId: string): Promise<{ valid: boolean; errors: string[] }> {
+export async function validateDocumentForIssue(documentId: string, organisationId: string): Promise<{ valid: boolean; errors: string[] }> {
   const errors: string[] = [];
 
   try {
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('issue_status, document_type')
+      .select('issue_status, document_type, approval_status')
       .eq('id', documentId)
       .single();
 
@@ -42,6 +43,11 @@ export async function validateDocumentForIssue(documentId: string): Promise<{ va
     if (document.issue_status !== 'draft') {
       errors.push('Only draft documents can be issued');
       return { valid: false, errors };
+    }
+
+    const approvalCheck = await canIssueDocument(documentId, organisationId);
+    if (!approvalCheck.canIssue) {
+      errors.push(approvalCheck.reason || 'Approval check failed');
     }
 
     const { data: modules, error: moduleError } = await supabase
@@ -68,9 +74,9 @@ export async function validateDocumentForIssue(documentId: string): Promise<{ va
   }
 }
 
-export async function issueDocument(documentId: string, userId: string): Promise<IssueDocumentResult> {
+export async function issueDocument(documentId: string, userId: string, organisationId: string): Promise<IssueDocumentResult> {
   try {
-    const validation = await validateDocumentForIssue(documentId);
+    const validation = await validateDocumentForIssue(documentId, organisationId);
     if (!validation.valid) {
       return { success: false, error: validation.errors.join(', ') };
     }

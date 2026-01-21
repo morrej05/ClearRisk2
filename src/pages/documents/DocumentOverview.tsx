@@ -12,6 +12,9 @@ import VersionStatusBanner from '../../components/documents/VersionStatusBanner'
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
 import CreateNewVersionModal from '../../components/documents/CreateNewVersionModal';
 import VersionHistoryModal from '../../components/documents/VersionHistoryModal';
+import ApprovalManagementModal from '../../components/documents/ApprovalManagementModal';
+import ApprovalStatusBadge from '../../components/documents/ApprovalStatusBadge';
+import type { ApprovalStatus } from '../../utils/approvalWorkflow';
 
 interface Document {
   id: string;
@@ -36,6 +39,10 @@ interface Document {
   issued_by: string | null;
   superseded_by_document_id: string | null;
   superseded_date: string | null;
+  approval_status: ApprovalStatus;
+  approved_by: string | null;
+  approval_date: string | null;
+  approval_notes: string | null;
 }
 
 interface ModuleInstance {
@@ -94,6 +101,7 @@ export default function DocumentOverview() {
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showNewVersionModal, setShowNewVersionModal] = useState(false);
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
@@ -440,9 +448,22 @@ export default function DocumentOverview() {
                 <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
                   {document.document_type}
                 </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-neutral-500">Approval:</span>
+                  <ApprovalStatusBadge status={document.approval_status} size="sm" />
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {document.issue_status === 'draft' && (
+                <button
+                  onClick={() => setShowApprovalModal(true)}
+                  className="px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Manage Approval
+                </button>
+              )}
               <button
                 onClick={() => setShowVersionHistoryModal(true)}
                 className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors flex items-center gap-2"
@@ -709,12 +730,29 @@ export default function DocumentOverview() {
         </div>
       </div>
 
-      {showIssueModal && user?.id && (
+      {showIssueModal && user?.id && organisation?.id && (
         <IssueDocumentModal
           documentId={id!}
           documentTitle={document.title}
           userId={user.id}
+          organisationId={organisation.id}
           onClose={() => setShowIssueModal(false)}
+          onSuccess={handleIssueSuccess}
+        />
+      )}
+
+      {showApprovalModal && user?.id && organisation?.id && (
+        <ApprovalManagementModal
+          documentId={id!}
+          documentTitle={document.title}
+          currentApprovalStatus={document.approval_status}
+          approvalNotes={document.approval_notes}
+          approvedBy={document.approved_by}
+          approvalDate={document.approval_date}
+          userId={user.id}
+          organisationId={organisation.id}
+          userRole={user.role || 'viewer'}
+          onClose={() => setShowApprovalModal(false)}
           onSuccess={handleIssueSuccess}
         />
       )}

@@ -6,6 +6,7 @@ interface IssueDocumentModalProps {
   documentId: string;
   documentTitle: string;
   userId: string;
+  organisationId: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -14,6 +15,7 @@ export default function IssueDocumentModal({
   documentId,
   documentTitle,
   userId,
+  organisationId,
   onClose,
   onSuccess,
 }: IssueDocumentModalProps) {
@@ -25,7 +27,7 @@ export default function IssueDocumentModal({
   const handleValidate = async () => {
     setIsValidating(true);
     try {
-      const result = await validateDocumentForIssue(documentId);
+      const result = await validateDocumentForIssue(documentId, organisationId);
       setValidationErrors(result.errors);
       setValidated(true);
     } catch (error) {
@@ -39,7 +41,7 @@ export default function IssueDocumentModal({
   const handleIssue = async () => {
     setIsIssuing(true);
     try {
-      const result = await issueDocument(documentId, userId);
+      const result = await issueDocument(documentId, userId, organisationId);
       if (result.success) {
         onSuccess();
         onClose();

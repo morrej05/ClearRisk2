@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft } from 'lucide-react';
+import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft, Download } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadEvidenceFile, createAttachmentRow } from '../../lib/supabase/attachments';
@@ -261,6 +261,28 @@ export default function ActionDetailModal({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const handleDownload = async (attachment: Attachment) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('evidence')
+        .download(attachment.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Failed to download file');
+    }
+  };
+
   const isOverdue =
     action.target_date &&
     action.status !== 'complete' &&
@@ -444,11 +466,11 @@ export default function ActionDetailModal({
                 <p className="text-neutral-500 text-sm">No evidence attached yet</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {attachments.map((attachment) => (
                   <div
                     key={attachment.id}
-                    className="flex items-start gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-200 hover:bg-neutral-100 transition-colors"
+                    className="flex items-start gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-200 hover:border-neutral-300 transition-colors"
                   >
                     <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
                       {attachment.file_type.startsWith('image/') ? (
@@ -470,6 +492,14 @@ export default function ActionDetailModal({
                           {attachment.caption}
                         </p>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(attachment)}
+                        className="inline-flex items-center gap-1 mt-2 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                      >
+                        <Download className="w-3 h-3" />
+                        Download
+                      </button>
                     </div>
                   </div>
                 ))}

@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, Filter, X, ClipboardList, AlertTriangle, Paperclip, Camera, ExternalLink, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import ActionDetailModal from '../../components/actions/ActionDetailModal';
+import EvidencePanel from '../../components/actions/EvidencePanel';
 
 interface ActionOwner {
   id: string;
@@ -46,6 +47,7 @@ export default function ActionsDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
+  const [evidenceActionId, setEvidenceActionId] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
@@ -264,6 +266,11 @@ export default function ActionsDashboard() {
 
   const handleActionUpdated = () => {
     fetchActions();
+  };
+
+  const handleEvidenceBadgeClick = (e: React.MouseEvent, actionId: string) => {
+    e.stopPropagation();
+    setEvidenceActionId(actionId);
   };
 
   const hasActiveFilters =
@@ -554,15 +561,20 @@ export default function ActionsDashboard() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {action.attachment_count > 0 && (
-                          <div className="flex items-center justify-center gap-1">
-                            <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                              <Paperclip className="w-3 h-3" />
-                              <span className="text-xs font-medium">
-                                {action.attachment_count}
-                              </span>
-                            </div>
-                          </div>
+                        {action.attachment_count > 0 ? (
+                          <button
+                            type="button"
+                            onClick={(e) => handleEvidenceBadgeClick(e, action.id)}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                            title="View evidence for this action"
+                          >
+                            <Paperclip className="w-3 h-3" />
+                            <span className="text-xs font-medium">
+                              {action.attachment_count}
+                            </span>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-neutral-400">—</span>
                         )}
                       </td>
                     </tr>
@@ -580,6 +592,13 @@ export default function ActionsDashboard() {
           onClose={() => setSelectedAction(null)}
           onActionUpdated={handleActionUpdated}
           returnTo="/dashboard/actions"
+        />
+      )}
+
+      {evidenceActionId && (
+        <EvidencePanel
+          actionId={evidenceActionId}
+          onClose={() => setEvidenceActionId(null)}
         />
       )}
     </div>

@@ -485,7 +485,7 @@ export default function A2BuildingProfileForm({
         isSaving={isSaving}
       />
 
-            <ModuleActions
+      <ModuleActions
         key={actionsReloadKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}

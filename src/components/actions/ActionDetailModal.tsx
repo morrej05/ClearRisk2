@@ -70,6 +70,9 @@ export default function ActionDetailModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closureNotes, setClosureNotes] = useState('');
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     fetchAttachments();
@@ -141,6 +144,11 @@ export default function ActionDetailModal({
   const handleStatusChange = async (newStatus: string) => {
     if (!organisation?.id) return;
 
+    if (newStatus === 'closed') {
+      setShowCloseModal(true);
+      return;
+    }
+
     setIsUpdating(true);
     try {
       const { error } = await supabase
@@ -160,6 +168,69 @@ export default function ActionDetailModal({
       alert('Failed to update action status');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleCloseAction = async () => {
+    if (!organisation?.id || !user?.id) return;
+
+    setIsClosing(true);
+    try {
+      const rootId = action.id;
+
+      const linkedActionIds = await findLinkedActions(rootId);
+
+      const updateData = {
+        status: 'closed',
+        closed_at: new Date().toISOString(),
+        closed_by: user.id,
+        closure_notes: closureNotes.trim() || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('actions')
+        .update(updateData)
+        .in('id', linkedActionIds);
+
+      if (error) throw error;
+
+      setStatus('closed');
+      setShowCloseModal(false);
+      setClosureNotes('');
+      onActionUpdated();
+      alert(`Action closed successfully. ${linkedActionIds.length > 1 ? `${linkedActionIds.length - 1} related action(s) also closed.` : ''}`);
+    } catch (error) {
+      console.error('Error closing action:', error);
+      alert('Failed to close action. Please try again.');
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  const findLinkedActions = async (actionId: string): Promise<string[]> => {
+    try {
+      const { data: currentAction, error: fetchError } = await supabase
+        .from('actions')
+        .select('id, origin_action_id')
+        .eq('id', actionId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const rootId = currentAction.origin_action_id || currentAction.id;
+
+      const { data: linkedActions, error: linkedError } = await supabase
+        .from('actions')
+        .select('id')
+        .or(`id.eq.${rootId},origin_action_id.eq.${rootId}`);
+
+      if (linkedError) throw linkedError;
+
+      return linkedActions?.map(a => a.id) || [actionId];
+    } catch (error) {
+      console.error('Error finding linked actions:', error);
+      return [actionId];
     }
   };
 
@@ -249,7 +320,7 @@ export default function ActionDetailModal({
         return <AlertCircle className="w-4 h-4 text-red-600" />;
       case 'in_progress':
         return <Clock className="w-4 h-4 text-blue-600" />;
-      case 'complete':
+      case 'closed':
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'deferred':
         return <Clock className="w-4 h-4 text-amber-600" />;
@@ -266,7 +337,7 @@ export default function ActionDetailModal({
         return 'bg-red-100 text-red-700 border-red-300';
       case 'in_progress':
         return 'bg-blue-100 text-blue-700 border-blue-300';
-      case 'complete':
+      case 'closed':
         return 'bg-green-100 text-green-700 border-green-300';
       case 'deferred':
         return 'bg-amber-100 text-amber-700 border-amber-300';
@@ -347,7 +418,7 @@ export default function ActionDetailModal({
 
   const isOverdue =
     action.target_date &&
-    action.status !== 'complete' &&
+    action.status !== 'closed' &&
     action.target_date < new Date().toISOString().split('T')[0];
 
   const isInfoGap = action.source === 'info_gap' || action.module_instance?.outcome === 'info_gap';
@@ -413,20 +484,31 @@ export default function ActionDetailModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h3 className="text-sm font-medium text-neutral-700 mb-2">Status</h3>
-              <select
-                value={status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                disabled={isUpdating}
-                className={`w-full px-3 py-2 text-sm font-medium rounded-lg border-2 transition-colors ${getStatusColor(
-                  status
-                )} focus:outline-none focus:ring-2 focus:ring-neutral-500 disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="complete">Complete</option>
-                <option value="deferred">Deferred</option>
-                <option value="not_applicable">Not Applicable</option>
-              </select>
+              <div className="space-y-2">
+                <select
+                  value={status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  disabled={isUpdating}
+                  className={`w-full px-3 py-2 text-sm font-medium rounded-lg border-2 transition-colors ${getStatusColor(
+                    status
+                  )} focus:outline-none focus:ring-2 focus:ring-neutral-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="closed">Closed</option>
+                  <option value="deferred">Deferred</option>
+                  <option value="not_applicable">Not Applicable</option>
+                </select>
+                {status !== 'closed' && (
+                  <button
+                    onClick={() => setShowCloseModal(true)}
+                    className="w-full px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Close Action
+                  </button>
+                )}
+              </div>
             </div>
 
             <div>
@@ -625,6 +707,79 @@ export default function ActionDetailModal({
         confirmText="Delete"
         isDestructive={true}
       />
+
+      {showCloseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex items-start justify-between p-6 border-b">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-neutral-900">Close Action?</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCloseModal(false);
+                  setClosureNotes('');
+                }}
+                disabled={isClosing}
+                className="text-neutral-400 hover:text-neutral-600 transition-colors disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <p className="text-neutral-700 mb-4">
+                Closing this action will mark it as resolved. All related actions across document versions will also be closed.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Closure Notes (Optional)
+                </label>
+                <textarea
+                  value={closureNotes}
+                  onChange={(e) => setClosureNotes(e.target.value)}
+                  placeholder="Add any notes about how this action was resolved..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-neutral-50 rounded-b-lg">
+              <button
+                onClick={() => {
+                  setShowCloseModal(false);
+                  setClosureNotes('');
+                }}
+                disabled={isClosing}
+                className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCloseAction}
+                disabled={isClosing}
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isClosing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Closing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Close Action
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {previewUrl && previewAttachment && (
         <div

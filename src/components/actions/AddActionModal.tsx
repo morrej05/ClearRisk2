@@ -113,6 +113,26 @@ export default function AddActionModal({
     setIsSubmitting(true);
 
     try {
+      const trimmedAction = formData.recommendedAction.trim().toLowerCase();
+
+      const { data: existingActions, error: checkError } = await supabase
+        .from('actions')
+        .select('id, recommended_action')
+        .eq('document_id', documentId)
+        .eq('module_instance_id', moduleInstanceId)
+        .neq('status', 'closed');
+
+      if (checkError) throw checkError;
+
+      const duplicate = existingActions?.find(
+        (action) => action.recommended_action.trim().toLowerCase() === trimmedAction
+      );
+
+      if (duplicate) {
+        setIsSubmitting(false);
+        alert('This action already exists in this module.');
+        return;
+      }
       let targetDate = null;
       if (formData.targetDate) {
         targetDate = formData.targetDate;

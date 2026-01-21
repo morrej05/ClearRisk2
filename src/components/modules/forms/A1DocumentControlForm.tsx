@@ -144,7 +144,7 @@ export default function A1DocumentControlForm({
           </h2>
         </div>
         <p className="text-neutral-600">
-          Establish document metadata, approval status, and governance information
+          Establish document metadata, internal QA status, and governance information
         </p>
         {lastSaved && (
           <div className="flex items-center gap-2 mt-2 text-sm text-green-700">
@@ -307,7 +307,7 @@ export default function A1DocumentControlForm({
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Approval Status
+                  Internal QA Status
                 </label>
                 <select
                   value={moduleData.approvalStatus}
@@ -317,10 +317,13 @@ export default function A1DocumentControlForm({
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
                 >
                   <option value="draft">Draft</option>
-                  <option value="issued">Issued</option>
-                  <option value="under_review">Under Review</option>
+                  <option value="issued">QA Approved</option>
+                  <option value="under_review">In QA Review</option>
                   <option value="superseded">Superseded</option>
                 </select>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Internal quality assurance status (separate from document issuance)
+                </p>
               </div>
             </div>
 

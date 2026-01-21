@@ -99,7 +99,7 @@ export default function A2BuildingProfileForm({
     };
   };
 
-  const suggestedOutcome = !outcome ? getSuggestedOutcome() : null;
+const suggestedOutcome = !String(outcome ?? '').trim() ? getSuggestedOutcome() : null;
 
   const handleSave = async () => {
     setIsSaving(true);

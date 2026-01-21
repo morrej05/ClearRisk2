@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle, ChevronRight, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import AddActionModal from '../actions/AddActionModal';
+import ActionDetailModal from '../actions/ActionDetailModal';
 
 interface Action {
   id: string;
@@ -10,6 +11,23 @@ interface Action {
   priority_band: string | null;
   target_date: string | null;
   updated_at: string;
+  source: string | null;
+  owner_user_id: string | null;
+  document: {
+    id: string;
+    title: string;
+    document_type: string;
+  } | null;
+  module_instance: {
+    id: string;
+    module_key: string;
+    outcome: string | null;
+  } | null;
+  owner: {
+    id: string;
+    name: string | null;
+  } | null;
+  attachment_count: number;
 }
 
 interface ModuleActionsProps {
@@ -21,26 +39,92 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
   const [actions, setActions] = useState<Action[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<Action | null>(null);
+  const [documentStatus, setDocumentStatus] = useState<string>('draft');
+  const [actionToDelete, setActionToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchActions();
-  }, [moduleInstanceId]);
+    fetchDocumentStatus();
+  }, [moduleInstanceId, documentId]);
 
   const fetchActions = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('actions')
-        .select('*')
+        .select(`
+          *,
+          document:documents(id, title, document_type),
+          module_instance:module_instances(id, module_key, outcome),
+          owner:user_profiles(id, name)
+        `)
         .eq('module_instance_id', moduleInstanceId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setActions(data || []);
+
+      const actionIds = (data || []).map((a) => a.id);
+      let attachmentCounts: Record<string, number> = {};
+
+      if (actionIds.length > 0) {
+        const { data: attachmentData } = await supabase
+          .from('attachments')
+          .select('action_id')
+          .in('action_id', actionIds)
+          .not('action_id', 'is', null);
+
+        attachmentData?.forEach((att) => {
+          if (att.action_id) {
+            attachmentCounts[att.action_id] = (attachmentCounts[att.action_id] || 0) + 1;
+          }
+        });
+      }
+
+      const actionsWithAttachments = (data || []).map((action) => ({
+        ...action,
+        attachment_count: attachmentCounts[action.id] || 0,
+      }));
+
+      setActions(actionsWithAttachments);
     } catch (error) {
       console.error('Error fetching actions:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDocumentStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('status')
+        .eq('id', documentId)
+        .single();
+
+      if (error) throw error;
+      if (data) setDocumentStatus(data.status);
+    } catch (error) {
+      console.error('Error fetching document status:', error);
+    }
+  };
+
+  const handleDeleteAction = async (actionId: string) => {
+    try {
+      await supabase.from('attachments').delete().eq('action_id', actionId);
+
+      const { error: actionError } = await supabase
+        .from('actions')
+        .delete()
+        .eq('id', actionId);
+
+      if (actionError) throw actionError;
+
+      setActionToDelete(null);
+      fetchActions();
+    } catch (error) {
+      console.error('Error deleting action:', error);
+      alert('Failed to delete action. Please try again.');
     }
   };
 
@@ -89,6 +173,8 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
     return status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
+  const isDeletable = documentStatus === 'draft';
+
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-6 mt-6">
       <div className="flex items-center justify-between mb-4">
@@ -131,6 +217,9 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
                 <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
                   Due Date
                 </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
@@ -154,13 +243,39 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
                       {formatStatus(action.status)}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm text-neutral-900 max-w-lg">
+                  <td
+                    className="px-4 py-3 cursor-pointer"
+                    onClick={() => setSelectedAction(action)}
+                  >
+                    <div className="text-sm text-neutral-900 max-w-lg hover:text-neutral-600 transition-colors">
                       {action.recommended_action}
                     </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                     {formatDate(action.target_date)}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setSelectedAction(action)}
+                        className="p-1.5 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded transition-colors"
+                        title="View details"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      {isDeletable && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActionToDelete(action.id);
+                          }}
+                          className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                          title="Delete action"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -179,6 +294,47 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
             fetchActions();
           }}
         />
+      )}
+
+      {selectedAction && (
+        <ActionDetailModal
+          action={selectedAction}
+          onClose={() => setSelectedAction(null)}
+          onActionUpdated={() => {
+            fetchActions();
+          }}
+        />
+      )}
+
+      {actionToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-neutral-900 mb-3">Delete Action?</h3>
+            <p className="text-neutral-700 mb-6">
+              This will permanently delete this action and all its attachments. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setActionToDelete(null)}
+                className="px-4 py-2 text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteAction(actionToDelete)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isDeletable && actions.length > 0 && (
+        <p className="text-xs text-neutral-500 mt-3 italic">
+          Document is issued — actions cannot be deleted. You can close them instead.
+        </p>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft, Download } from 'lucide-react';
+import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft, Download, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadEvidenceFile, createAttachmentRow } from '../../lib/supabase/attachments';
@@ -65,9 +65,12 @@ export default function ActionDetailModal({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(true);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [documentStatus, setDocumentStatus] = useState<string>('draft');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     fetchAttachments();
+    fetchDocumentStatus();
   }, [action.id]);
 
   const fetchAttachments = async () => {
@@ -85,6 +88,42 @@ export default function ActionDetailModal({
       console.error('Error fetching attachments:', error);
     } finally {
       setIsLoadingAttachments(false);
+    }
+  };
+
+  const fetchDocumentStatus = async () => {
+    if (!action.document?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('status')
+        .eq('id', action.document.id)
+        .single();
+
+      if (error) throw error;
+      if (data) setDocumentStatus(data.status);
+    } catch (error) {
+      console.error('Error fetching document status:', error);
+    }
+  };
+
+  const handleDeleteAction = async () => {
+    try {
+      await supabase.from('attachments').delete().eq('action_id', action.id);
+
+      const { error: actionError } = await supabase
+        .from('actions')
+        .delete()
+        .eq('id', action.id);
+
+      if (actionError) throw actionError;
+
+      onActionUpdated();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting action:', error);
+      alert('Failed to delete action. Please try again.');
     }
   };
 
@@ -290,6 +329,7 @@ export default function ActionDetailModal({
     action.target_date < new Date().toISOString().split('T')[0];
 
   const isInfoGap = action.source === 'info_gap' || action.module_instance?.outcome === 'info_gap';
+  const isDeletable = documentStatus === 'draft';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -323,12 +363,23 @@ export default function ActionDetailModal({
               </div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isDeletable && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                title="Delete action"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -510,6 +561,11 @@ export default function ActionDetailModal({
         </div>
 
         <div className="flex items-center justify-end gap-3 p-6 border-t border-neutral-200 bg-neutral-50">
+          {!isDeletable && (
+            <p className="text-xs text-neutral-500 italic mr-auto">
+              Document is issued — this action cannot be deleted. You can close it instead.
+            </p>
+          )}
           <button
             onClick={onClose}
             className="px-5 py-2.5 text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
@@ -518,6 +574,31 @@ export default function ActionDetailModal({
           </button>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-neutral-900 mb-3">Delete Action?</h3>
+            <p className="text-neutral-700 mb-6">
+              This will permanently delete this action and all its attachments. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAction}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -102,7 +102,6 @@ export default function A2BuildingProfileForm({
 const suggestedOutcome = !String(outcome ?? '').trim() ? getSuggestedOutcome() : null;
 
   const handleSave = async () => {
-    console.log("A2 handleSave running", { outcome });
     setIsSaving(true);
     try {
       const payload: any = {

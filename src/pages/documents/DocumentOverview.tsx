@@ -8,7 +8,10 @@ import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { saveAs } from 'file-saver';
-import IssueDocumentModal from '../../components/IssueDocumentModal';
+import VersionStatusBanner from '../../components/documents/VersionStatusBanner';
+import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
+import CreateNewVersionModal from '../../components/documents/CreateNewVersionModal';
+import VersionHistoryModal from '../../components/documents/VersionHistoryModal';
 
 interface Document {
   id: string;
@@ -26,6 +29,13 @@ interface Document {
   standards_selected: string[];
   created_at: string;
   updated_at: string;
+  base_document_id: string;
+  version_number: number;
+  issue_status: 'draft' | 'issued' | 'superseded';
+  issue_date: string | null;
+  issued_by: string | null;
+  superseded_by_document_id: string | null;
+  superseded_date: string | null;
 }
 
 interface ModuleInstance {
@@ -82,7 +92,8 @@ export default function DocumentOverview() {
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
-  const [isIssuing, setIsIssuing] = useState(false);
+  const [showNewVersionModal, setShowNewVersionModal] = useState(false);
+  const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
@@ -236,32 +247,16 @@ export default function DocumentOverview() {
     });
   };
 
-  const handleIssueDocument = async () => {
-    if (!id || !user?.id || !document) return;
+  const handleIssueSuccess = () => {
+    fetchDocument();
+  };
 
-    setIsIssuing(true);
-    try {
-      const { error } = await supabase
-        .from('documents')
-        .update({
-          status: 'issued',
-          issued_at: new Date().toISOString(),
-          issued_by: user.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
+  const handleNewVersionSuccess = (newDocumentId: string, newVersionNumber: number) => {
+    navigate(`/documents/${newDocumentId}`);
+  };
 
-      if (error) throw error;
-
-      await fetchDocument();
-      setShowIssueModal(false);
-      alert('Document issued successfully.');
-    } catch (error) {
-      console.error('Error issuing document:', error);
-      alert('Failed to issue document. Please try again.');
-    } finally {
-      setIsIssuing(false);
-    }
+  const handleNavigateToVersion = (documentId: string) => {
+    navigate(`/documents/${documentId}`);
   };
 
   const handleGeneratePdf = async () => {
@@ -427,6 +422,13 @@ export default function DocumentOverview() {
           </button>
         </div>
 
+        <VersionStatusBanner
+          versionNumber={document.version_number}
+          issueStatus={document.issue_status}
+          issueDate={document.issue_date}
+          supersededByDocumentId={document.superseded_by_document_id}
+        />
+
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
@@ -435,23 +437,35 @@ export default function DocumentOverview() {
                 <h1 className="text-2xl font-bold text-neutral-900">{document.title}</h1>
               </div>
               <div className="flex items-center gap-4 text-sm text-neutral-600">
-                <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(document.status)}`}>
-                  {document.status}
-                </span>
                 <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
                   {document.document_type}
                 </span>
-                <span>v{document.version}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {document.status === 'draft' && (
+              <button
+                onClick={() => setShowVersionHistoryModal(true)}
+                className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors flex items-center gap-2"
+              >
+                <Clock className="w-4 h-4" />
+                Version History
+              </button>
+              {document.issue_status === 'draft' && (
                 <button
                   onClick={() => setShowIssueModal(true)}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
                 >
                   <FileCheck className="w-4 h-4" />
                   Issue Document
+                </button>
+              )}
+              {document.issue_status === 'issued' && (
+                <button
+                  onClick={() => setShowNewVersionModal(true)}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Create New Version
                 </button>
               )}
               <button
@@ -695,12 +709,36 @@ export default function DocumentOverview() {
         </div>
       </div>
 
-      <IssueDocumentModal
-        isOpen={showIssueModal}
-        onClose={() => setShowIssueModal(false)}
-        onConfirm={handleIssueDocument}
-        isProcessing={isIssuing}
-      />
+      {showIssueModal && user?.id && (
+        <IssueDocumentModal
+          documentId={id!}
+          documentTitle={document.title}
+          userId={user.id}
+          onClose={() => setShowIssueModal(false)}
+          onSuccess={handleIssueSuccess}
+        />
+      )}
+
+      {showNewVersionModal && user?.id && organisation?.id && (
+        <CreateNewVersionModal
+          baseDocumentId={document.base_document_id}
+          currentVersion={document.version_number}
+          documentTitle={document.title}
+          userId={user.id}
+          organisationId={organisation.id}
+          onClose={() => setShowNewVersionModal(false)}
+          onSuccess={handleNewVersionSuccess}
+        />
+      )}
+
+      {showVersionHistoryModal && (
+        <VersionHistoryModal
+          baseDocumentId={document.base_document_id}
+          currentDocumentId={id!}
+          onClose={() => setShowVersionHistoryModal(false)}
+          onNavigateToVersion={handleNavigateToVersion}
+        />
+      )}
     </div>
   );
 }

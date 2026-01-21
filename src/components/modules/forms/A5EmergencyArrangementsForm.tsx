@@ -110,15 +110,22 @@ export default function A5EmergencyArrangementsForm({
     try {
       const completedAt = outcome ? new Date().toISOString() : null;
 
-      const { error } = await supabase
-        .from('module_instances')
-        .update({
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
+        const payload: any = {
           data: formData,
-          completed_at: completedAt,
-        })
-        .eq('id', moduleInstance.id);
+          assessor_notes: assessorNotes,
+          updated_at: new Date().toISOString(),
+        };
+        
+        // Only include outcome if it's a non-empty string
+        const cleanOutcome = String(outcome ?? '').trim();
+        if (cleanOutcome !== '') {
+          payload.outcome = cleanOutcome;
+        }
+        
+        const { error } = await supabase
+          .from('module_instances')
+          .update(payload)
+          .eq('id', moduleInstance.id);
 
       if (error) throw error;
 

@@ -491,7 +491,7 @@ export default function A2BuildingProfileForm({
         moduleInstanceId={moduleInstance.id}
       />
 
-      {showActionModal && (
+            {showActionModal && (
         <AddActionModal
           documentId={document.id}
           moduleInstanceId={moduleInstance.id}
@@ -502,16 +502,14 @@ export default function A2BuildingProfileForm({
           onActionCreated={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);
-
-            // 🔁 refresh “Actions from this module” immediately
             setActionsReloadKey((k) => k + 1);
           }}
-
           defaultAction={quickActionTemplate?.action}
           defaultLikelihood={quickActionTemplate?.likelihood}
           defaultImpact={quickActionTemplate?.impact}
         />
       )}
+
     </div>
   );
 }

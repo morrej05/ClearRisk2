@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { saveAs } from 'file-saver';
+import IssueDocumentModal from '../../components/IssueDocumentModal';
 
 interface Document {
   id: string;
@@ -74,12 +75,14 @@ export default function DocumentOverview() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { organisation } = useAuth();
+  const { organisation, user } = useAuth();
   const [document, setDocument] = useState<Document | null>(null);
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [isIssuing, setIsIssuing] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
@@ -230,6 +233,34 @@ export default function DocumentOverview() {
       month: 'short',
       year: 'numeric',
     });
+  };
+
+  const handleIssueDocument = async () => {
+    if (!id || !user?.id || !document) return;
+
+    setIsIssuing(true);
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          status: 'issued',
+          issued_at: new Date().toISOString(),
+          issued_by: user.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await fetchDocument();
+      setShowIssueModal(false);
+      alert('Document issued successfully.');
+    } catch (error) {
+      console.error('Error issuing document:', error);
+      alert('Failed to issue document. Please try again.');
+    } finally {
+      setIsIssuing(false);
+    }
   };
 
   const handleGeneratePdf = async () => {
@@ -412,6 +443,15 @@ export default function DocumentOverview() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {document.status === 'draft' && (
+                <button
+                  onClick={() => setShowIssueModal(true)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <FileCheck className="w-4 h-4" />
+                  Issue Document
+                </button>
+              )}
               <button
                 onClick={() => navigate(`/documents/${id}/workspace`)}
                 className="px-4 py-2 bg-neutral-900 text-white rounded-lg font-medium hover:bg-neutral-800 transition-colors flex items-center gap-2"
@@ -652,6 +692,13 @@ export default function DocumentOverview() {
           )}
         </div>
       </div>
+
+      <IssueDocumentModal
+        isOpen={showIssueModal}
+        onClose={() => setShowIssueModal(false)}
+        onConfirm={handleIssueDocument}
+        isProcessing={isIssuing}
+      />
     </div>
   );
 }

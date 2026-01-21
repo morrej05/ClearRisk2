@@ -521,8 +521,9 @@ export default function ActionDetailModal({
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingFiles}
+                  disabled={isUploadingFiles || documentStatus !== 'draft'}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={documentStatus !== 'draft' ? 'Document is issued - cannot add evidence' : ''}
                 >
                   <Upload className="w-4 h-4" />
                   {isUploadingFiles ? 'Uploading...' : 'Add Evidence'}

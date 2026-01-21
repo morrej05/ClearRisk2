@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, CheckCircle, AlertCircle, FileText, List } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName, sortModulesByOrder } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
+import IssueDocumentModal from '../../components/IssueDocumentModal';
 
 interface Document {
   id: string;
@@ -36,7 +37,7 @@ export default function DocumentWorkspace() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { organisation } = useAuth();
+  const { organisation, user } = useAuth();
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
@@ -44,6 +45,8 @@ export default function DocumentWorkspace() {
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [isIssuing, setIsIssuing] = useState(false);
 
   useEffect(() => {
     if (id && organisation?.id) {
@@ -117,6 +120,34 @@ export default function DocumentWorkspace() {
     fetchDocument();
   };
 
+  const handleIssueDocument = async () => {
+    if (!id || !user?.id || !document) return;
+
+    setIsIssuing(true);
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          status: 'issued',
+          issued_at: new Date().toISOString(),
+          issued_by: user.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await fetchDocument();
+      setShowIssueModal(false);
+      alert('Document issued successfully.');
+    } catch (error) {
+      console.error('Error issuing document:', error);
+      alert('Failed to issue document. Please try again.');
+    } finally {
+      setIsIssuing(false);
+    }
+  };
+
   const getOutcomeColor = (outcome: string | null) => {
     switch (outcome) {
       case 'compliant':
@@ -177,6 +208,15 @@ export default function DocumentWorkspace() {
               </div>
             </div>
           </div>
+          {document.status === 'draft' && (
+            <button
+              onClick={() => setShowIssueModal(true)}
+              className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <FileCheck className="w-4 h-4" />
+              Issue Document
+            </button>
+          )}
         </div>
       </div>
 
@@ -257,6 +297,13 @@ export default function DocumentWorkspace() {
           )}
         </div>
       </div>
+
+      <IssueDocumentModal
+        isOpen={showIssueModal}
+        onClose={() => setShowIssueModal(false)}
+        onConfirm={handleIssueDocument}
+        isProcessing={isIssuing}
+      />
     </div>
   );
 }

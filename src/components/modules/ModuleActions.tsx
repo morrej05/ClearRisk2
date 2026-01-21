@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, AlertCircle, ChevronRight, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import AddActionModal from '../actions/AddActionModal';
 import ActionDetailModal from '../actions/ActionDetailModal';
 
@@ -36,6 +37,7 @@ interface ModuleActionsProps {
 }
 
 export default function ModuleActions({ documentId, moduleInstanceId }: ModuleActionsProps) {
+  const { user } = useAuth();
   const [actions, setActions] = useState<Action[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -60,6 +62,7 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
           owner:user_profiles(id, name)
         `)
         .eq('module_instance_id', moduleInstanceId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -110,15 +113,27 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
   };
 
   const handleDeleteAction = async (actionId: string) => {
-    try {
-      await supabase.from('attachments').delete().eq('action_id', actionId);
+    if (documentStatus !== 'draft') {
+      alert('Actions can only be deleted when the document is in Draft status.');
+      return;
+    }
 
-      const { error: actionError } = await supabase
+    if (!user?.id) {
+      alert('User not found. Please refresh and try again.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
         .from('actions')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user.id,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', actionId);
 
-      if (actionError) throw actionError;
+      if (error) throw error;
 
       setActionToDelete(null);
       fetchActions();
@@ -149,7 +164,7 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
         return 'bg-red-100 text-red-700';
       case 'in_progress':
         return 'bg-blue-100 text-blue-700';
-      case 'complete':
+      case 'closed':
         return 'bg-green-100 text-green-700';
       case 'deferred':
         return 'bg-amber-100 text-amber-700';

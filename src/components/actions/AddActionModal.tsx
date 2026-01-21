@@ -120,7 +120,7 @@ export default function AddActionModal({
         .select('id, recommended_action')
         .eq('document_id', documentId)
         .eq('module_instance_id', moduleInstanceId)
-        .neq('status', 'closed');
+        .is('deleted_at', null);
 
       if (checkError) throw checkError;
 
@@ -162,6 +162,7 @@ export default function AddActionModal({
       const actionData = {
         organisation_id: organisation.id,
         document_id: documentId,
+        source_document_id: documentId,
         module_instance_id: moduleInstanceId,
         recommended_action: formData.recommendedAction.trim(),
         status: 'open',

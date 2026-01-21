@@ -115,26 +115,31 @@ export default function ActionDetailModal({
   };
 
   const handleDeleteAction = async () => {
-    try {
-      // Delete all attachments (also deletes from storage)
-      for (const attachment of attachments) {
-        const result = await deleteAttachment(attachment.id);
-        if (!result.success) {
-          console.error('Error deleting attachment:', result.error);
-          // Continue with other attachments
-        }
-      }
+    if (documentStatus !== 'draft') {
+      alert('Actions can only be deleted when the document is in Draft status.');
+      return;
+    }
 
-      // Delete the action itself
-      const { error: actionError } = await supabase
+    if (!user?.id) {
+      alert('User not found. Please refresh and try again.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
         .from('actions')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user.id,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', action.id);
 
-      if (actionError) throw actionError;
+      if (error) throw error;
 
       onActionUpdated();
       onClose();
+      alert('Action deleted successfully');
     } catch (error) {
       console.error('Error deleting action:', error);
       alert('Failed to delete action. Please try again.');
@@ -151,12 +156,20 @@ export default function ActionDetailModal({
 
     setIsUpdating(true);
     try {
+      const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (status === 'closed' && newStatus !== 'closed') {
+        updateData.closed_at = null;
+        updateData.closed_by = null;
+        updateData.closure_notes = null;
+      }
+
       const { error } = await supabase
         .from('actions')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', action.id);
 
       if (error) throw error;

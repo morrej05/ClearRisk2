@@ -162,7 +162,8 @@ export default function DocumentOverview() {
         .select('priority_band, status')
         .eq('document_id', id)
         .eq('organisation_id', organisation.id)
-        .eq('status', 'open');
+        .eq('status', 'open')
+        .is('deleted_at', null);
 
       if (error) throw error;
 
@@ -295,6 +296,7 @@ export default function DocumentOverview() {
         `)
         .eq('document_id', id)
         .eq('organisation_id', organisation.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: true });
 
       if (actionsError) throw actionsError;

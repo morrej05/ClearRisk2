@@ -82,15 +82,16 @@ export default function ActionsDashboard() {
           module_instance:module_instances(id, module_key, outcome),
           owner:user_profiles(id, name)
         `)
-        .eq('organisation_id', organisation.id);
+        .eq('organisation_id', organisation.id)
+        .is('deleted_at', null);
 
       if (statusFilter === 'open') {
         query = query.in('status', ['open', 'in_progress']);
       } else if (statusFilter === 'closed') {
-        query = query.eq('status', 'complete');
+        query = query.eq('status', 'closed');
       } else if (statusFilter === 'overdue') {
         query = query
-          .neq('status', 'complete')
+          .neq('status', 'closed')
           .not('target_date', 'is', null)
           .lt('target_date', new Date().toISOString().split('T')[0]);
       } else if (statusFilter !== 'all') {

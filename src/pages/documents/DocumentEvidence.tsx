@@ -145,6 +145,7 @@ export default function DocumentEvidence() {
         .select('id, recommended_action, priority_band')
         .eq('document_id', id)
         .eq('organisation_id', organisation.id)
+        .is('deleted_at', null)
         .order('priority_band', { ascending: true });
 
       if (error) throw error;

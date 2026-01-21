@@ -197,18 +197,48 @@ export function sanitizeFilename(filename: string): string {
     .substring(0, 200);
 }
 
-export function extractFilePath(input: any): string | null {
+function extractStorageKey(input: any): string {
+  // Accept: string key, attachment row, or jsonb object
   if (typeof input === 'string') {
-    return input.trim() || null;
+    const trimmed = input.trim();
+    if (!trimmed) {
+      throw new Error('Empty string passed as storage key');
+    }
+    return trimmed;
   }
 
-  if (typeof input === 'object' && input !== null) {
-    if ('file_path' in input && typeof input.file_path === 'string') {
-      return input.file_path.trim() || null;
+  // If passed an attachment row with file_path as string
+  if (input && typeof input === 'object' && typeof input.file_path === 'string') {
+    const trimmed = input.file_path.trim();
+    if (!trimmed) {
+      throw new Error('Empty file_path in attachment object');
+    }
+    return trimmed;
+  }
+
+  // If file_path itself is a nested jsonb object { file_path, file_name, ... }
+  // This can happen if the database column is JSONB and not properly extracted
+  if (input && typeof input === 'object' && input.file_path && typeof input.file_path === 'object') {
+    if (typeof input.file_path.file_path === 'string') {
+      const trimmed = input.file_path.file_path.trim();
+      if (!trimmed) {
+        throw new Error('Empty file_path in nested JSONB object');
+      }
+      console.warn('[extractStorageKey] Nested JSONB detected - database query may need fixing:', input);
+      return trimmed;
     }
   }
 
-  return null;
+  console.error('[extractStorageKey] Invalid input:', input);
+  throw new Error('Invalid storage key input (expected string or attachment with file_path)');
+}
+
+export function extractFilePath(input: any): string | null {
+  try {
+    return extractStorageKey(input);
+  } catch {
+    return null;
+  }
 }
 
 export async function uploadEvidenceFile(
@@ -255,23 +285,37 @@ export function getPublicUrl(filePath: string): string {
 }
 
 export async function getSignedUrl(input: string | any, expiresIn: number = 3600): Promise<string> {
-  const filePath = extractFilePath(input);
+  let key: string;
 
-  if (!filePath) {
-    console.error('Invalid file path passed to getSignedUrl:', input);
-    throw new Error(`Invalid attachment file_path (expected string). Received: ${JSON.stringify(input)}`);
+  try {
+    key = extractStorageKey(input);
+  } catch (error) {
+    console.error('[getSignedUrl] Failed to extract storage key:', error, 'Input:', input);
+    throw error;
   }
 
+  // Trim and validate
+  key = key.trim();
+
+  // Hard fail if key looks like JSON
+  if (!key || key.startsWith('{') || key.includes('"file_path"') || key.includes('{"')) {
+    console.error('[getSignedUrl] Invalid key - appears to be JSON:', { key, input });
+    throw new Error('Invalid storage key: key appears to be JSON object, not a path string');
+  }
+
+  // Debug log (remove after verification)
+  console.log('[getSignedUrl] Using key:', key);
+
   if (typeof input === 'object') {
-    console.warn('Object passed to getSignedUrl - extracting file_path. Call site should pass string directly:', input);
+    console.warn('[getSignedUrl] Object passed - extracting file_path. Call site should pass string directly:', input);
   }
 
   const { data, error } = await supabase.storage
     .from('evidence')
-    .createSignedUrl(filePath, expiresIn);
+    .createSignedUrl(key, expiresIn);
 
   if (error) {
-    console.error('Error creating signed URL:', error);
+    console.error('[getSignedUrl] Supabase Storage error:', error, 'Key:', key);
     throw error;
   }
 

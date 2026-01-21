@@ -105,15 +105,22 @@ export default function DSEAR1DangerousSubstancesForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('module_instances')
-        .update({
-          data: { substances },
-          outcome,
+      const payload: any = {
+          data: formData,
           assessor_notes: assessorNotes,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', moduleInstance.id);
+        };
+        
+        // Only include outcome if it's a non-empty string
+        const cleanOutcome = String(outcome ?? '').trim();
+        if (cleanOutcome !== '') {
+          payload.outcome = cleanOutcome;
+        }
+        
+        const { error } = await supabase
+          .from('module_instances')
+          .update(payload)
+          .eq('id', moduleInstance.id);
 
       if (error) throw error;
 

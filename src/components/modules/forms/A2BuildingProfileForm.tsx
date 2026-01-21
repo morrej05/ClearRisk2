@@ -29,12 +29,7 @@ interface QuickActionTemplate {
   likelihood: number;
   impact: number;
 }
-  const [showActionModal, setShowActionModal] = useState(false);
-  const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
-
-  // 🔁 Force ModuleActions to reload after creating an action
-  const [actionsReloadKey, setActionsReloadKey] = useState(0);
-
+  
 export default function A2BuildingProfileForm({
   moduleInstance,
   document,
@@ -44,6 +39,8 @@ export default function A2BuildingProfileForm({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
+
+  const [actionsReloadKey, setActionsReloadKey] = useState(0);
 
   const [formData, setFormData] = useState({
     building_name: moduleInstance.data.building_name || '',
@@ -502,7 +499,7 @@ const suggestedOutcome = !String(outcome ?? '').trim() ? getSuggestedOutcome() :
             setShowActionModal(false);
             setQuickActionTemplate(null);
           }}
-                    onActionCreated={() => {
+          onActionCreated={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { X, ExternalLink, FileText, Layers, Paperclip, Camera, Upload, AlertCircle, CheckCircle, Clock, XCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadEvidenceFile, createAttachmentRow } from '../../lib/supabase/attachments';
@@ -51,8 +51,11 @@ export default function ActionDetailModal({
   onActionUpdated,
 }: ActionDetailModalProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { organisation, user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const returnToPath = (location.state as any)?.returnTo || null;
 
   const [status, setStatus] = useState(action.status);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -118,12 +121,24 @@ export default function ActionDetailModal({
       from = '/dashboard/fire';
     }
 
-    navigate(`/documents/${action.document.id}?from=${from}`);
+    navigate(`/documents/${action.document.id}?from=${from}`, {
+      state: { returnTo: returnToPath || '/dashboard/actions' }
+    });
   };
 
   const handleGoToModule = () => {
     if (!action.document?.id || !action.module_instance?.id) return;
-    navigate(`/documents/${action.document.id}/workspace?m=${action.module_instance.id}`);
+    navigate(`/documents/${action.document.id}/workspace?m=${action.module_instance.id}`, {
+      state: { returnTo: returnToPath || '/dashboard/actions' }
+    });
+  };
+
+  const handleBackToActions = () => {
+    if (returnToPath) {
+      navigate(returnToPath);
+    } else {
+      navigate('/dashboard/actions');
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -337,6 +352,13 @@ export default function ActionDetailModal({
           <div className="border-t border-neutral-200 pt-4">
             <h3 className="text-sm font-medium text-neutral-700 mb-3">Navigation</h3>
             <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleBackToActions}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Actions Register
+              </button>
               <button
                 onClick={handleGoToDocument}
                 disabled={!action.document}

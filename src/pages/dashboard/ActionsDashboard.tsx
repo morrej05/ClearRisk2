@@ -260,6 +260,7 @@ export default function ActionsDashboard() {
 
   const handleActionClick = (action: Action) => {
     setSelectedAction(action);
+    window.history.replaceState({ returnTo: '/dashboard/actions' }, '');
   };
 
   const handleActionUpdated = () => {

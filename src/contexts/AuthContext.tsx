@@ -220,18 +220,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('[AuthContext] Initializing auth state...');
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[AuthContext] Initial session:', session?.user?.email || 'No user');
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserRole(session.user.id, session.user.email || '');
-      } else {
-        setLoading(false);
+    let isMounted = true;
+
+    const initAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('[AuthContext] Error getting session:', error);
+          setLoading(false);
+          return;
+        }
+
+        console.log('[AuthContext] Initial session:', session?.user?.email || 'No user');
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          await fetchUserRole(session.user.id, session.user.email || '');
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('[AuthContext] Exception during auth init:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    });
+    };
+
+    initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AuthContext] Auth state changed:', event, session?.user?.email || 'No user');
+
+      if (!isMounted) return;
+
       (async () => {
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -254,7 +279,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })();
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

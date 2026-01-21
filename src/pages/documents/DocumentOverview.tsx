@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
@@ -72,6 +72,7 @@ function sortActionsByPriority(actions: Action[]): Action[] {
 export default function DocumentOverview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { organisation } = useAuth();
   const [document, setDocument] = useState<Document | null>(null);
@@ -80,7 +81,13 @@ export default function DocumentOverview() {
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+  const returnToPath = (location.state as any)?.returnTo || null;
+
   const getDashboardRoute = () => {
+    if (returnToPath === '/dashboard/actions') {
+      return '/dashboard/actions';
+    }
+
     const fromParam = searchParams.get('from');
     if (fromParam) {
       return fromParam;
@@ -367,10 +374,23 @@ export default function DocumentOverview() {
         <div className="mb-6">
           <button
             onClick={() => navigate(getDashboardRoute())}
-            className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 font-medium transition-colors"
+            className={`flex items-center gap-2 font-medium transition-colors ${
+              returnToPath === '/dashboard/actions'
+                ? 'text-blue-600 hover:text-blue-700'
+                : 'text-neutral-600 hover:text-neutral-900'
+            }`}
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
+            {returnToPath === '/dashboard/actions' ? (
+              <>
+                <List className="w-4 h-4" />
+                Actions Register
+              </>
+            ) : (
+              <>
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </>
+            )}
           </button>
         </div>
 

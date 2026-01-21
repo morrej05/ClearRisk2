@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle, FileText, List } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName, sortModulesByOrder } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
@@ -34,8 +34,11 @@ interface ModuleInstance {
 export default function DocumentWorkspace() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { organisation } = useAuth();
+
+  const returnToPath = (location.state as any)?.returnTo || null;
 
   const [document, setDocument] = useState<Document | null>(null);
   const [modules, setModules] = useState<ModuleInstance[]>([]);
@@ -146,13 +149,23 @@ export default function DocumentWorkspace() {
       <div className="bg-white border-b border-neutral-200 px-4 py-3">
         <div className="max-w-[1800px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(`/documents/${id}`)}
-              className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 font-medium transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Overview
-            </button>
+            {returnToPath === '/dashboard/actions' ? (
+              <button
+                onClick={() => navigate('/dashboard/actions')}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              >
+                <List className="w-4 h-4" />
+                Actions Register
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate(`/documents/${id}`)}
+                className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 font-medium transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Overview
+              </button>
+            )}
             <div className="h-6 w-px bg-neutral-300" />
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-neutral-600" />

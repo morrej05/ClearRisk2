@@ -20,6 +20,14 @@ import ReportPreviewPage from './pages/ReportPreviewPage';
 import ArchivedAssessments from './pages/ArchivedAssessments';
 import ClientDocumentView from './pages/ClientDocumentView';
 import PublicDocumentViewer from './pages/PublicDocumentViewer';
+import DashboardPage from './pages/ezirisk/DashboardPage';
+import AssessmentsPage from './pages/ezirisk/AssessmentsPage';
+import NewAssessmentPage from './pages/ezirisk/NewAssessmentPage';
+import ReportsPage from './pages/ezirisk/ReportsPage';
+import CombinedReportsPage from './pages/ezirisk/CombinedReportsPage';
+import ImpairmentsPage from './pages/ezirisk/ImpairmentsPage';
+import LibraryPage from './pages/ezirisk/LibraryPage';
+import AdminPage from './pages/ezirisk/AdminPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import PlatformAdminRoute from './components/SuperAdminRoute';
@@ -39,7 +47,11 @@ function App() {
           <Route path="/public/documents" element={<PublicDocumentViewer />} />
           <Route
             path="/dashboard"
-            element={<Navigate to="/common-dashboard" replace />}
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/legacy-dashboard"
@@ -114,6 +126,54 @@ function App() {
             }
           />
           <Route
+            path="/assessments"
+            element={
+              <ProtectedRoute>
+                <AssessmentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/assessments/new"
+            element={
+              <ProtectedRoute>
+                <NewAssessmentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <ReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports/combined"
+            element={
+              <ProtectedRoute>
+                <CombinedReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/impairments"
+            element={
+              <ProtectedRoute>
+                <ImpairmentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library"
+            element={
+              <ProtectedRoute>
+                <LibraryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/upgrade"
             element={
               <AdminRoute>
@@ -133,6 +193,14 @@ function App() {
             path="/admin"
             element={
               <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/legacy-admin"
+            element={
+              <AdminRoute>
                 <AdminDashboard />
               </AdminRoute>
             }
@@ -146,7 +214,7 @@ function App() {
             }
           />
           <Route
-            path="/assessments/*"
+            path="/archived-assessments"
             element={
               <ProtectedRoute>
                 <ArchivedAssessments />

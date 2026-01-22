@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
@@ -20,6 +20,15 @@ import ChangeSummaryPanel from '../../components/documents/ChangeSummaryPanel';
 import type { ApprovalStatus } from '../../utils/approvalWorkflow';
 import { getClientAccessDescription, isDocumentImmutable } from '../../utils/clientAccess';
 import { getLockedPdfInfo, downloadLockedPdf, shouldRegeneratePdf } from '../../utils/pdfLocking';
+import {
+  getDefencePack,
+  buildDefencePack,
+  downloadDefencePack,
+  getDefencePackStatus,
+  getDefencePackFilename,
+  formatFileSize,
+  type DefencePack,
+} from '../../utils/defencePack';
 
 interface Document {
   id: string;
@@ -115,6 +124,8 @@ export default function DocumentOverview() {
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showClientAccessModal, setShowClientAccessModal] = useState(false);
+  const [defencePack, setDefencePack] = useState<DefencePack | null>(null);
+  const [isBuildingDefencePack, setIsBuildingDefencePack] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
@@ -141,6 +152,7 @@ export default function DocumentOverview() {
       fetchDocument();
       fetchModules();
       fetchActionCounts();
+      fetchDefencePack();
     }
   }, [id, organisation?.id]);
 
@@ -209,6 +221,54 @@ export default function DocumentOverview() {
       setActionCounts(counts);
     } catch (error) {
       console.error('Error fetching action counts:', error);
+    }
+  };
+
+  const fetchDefencePack = async () => {
+    if (!id) return;
+
+    try {
+      const pack = await getDefencePack(id);
+      setDefencePack(pack);
+    } catch (error) {
+      console.error('Error fetching defence pack:', error);
+    }
+  };
+
+  const handleBuildDefencePack = async () => {
+    if (!id) return;
+
+    setIsBuildingDefencePack(true);
+    try {
+      const result = await buildDefencePack(id);
+
+      if (result.success) {
+        setDefencePack(result.pack || null);
+        alert('Defence pack created successfully!');
+      } else {
+        alert(result.error || 'Failed to create defence pack');
+      }
+    } catch (error: any) {
+      console.error('Error building defence pack:', error);
+      alert(error.message || 'Failed to create defence pack');
+    } finally {
+      setIsBuildingDefencePack(false);
+    }
+  };
+
+  const handleDownloadDefencePack = async () => {
+    if (!defencePack) return;
+
+    try {
+      const filename = getDefencePackFilename(defencePack);
+      const result = await downloadDefencePack(defencePack.bundle_path, filename);
+
+      if (!result.success) {
+        alert(result.error || 'Failed to download defence pack');
+      }
+    } catch (error: any) {
+      console.error('Error downloading defence pack:', error);
+      alert(error.message || 'Failed to download defence pack');
     }
   };
 
@@ -591,8 +651,67 @@ export default function DocumentOverview() {
                   </>
                 )}
               </button>
+              {document.issue_status === 'issued' && (
+                <button
+                  onClick={defencePack ? handleDownloadDefencePack : handleBuildDefencePack}
+                  disabled={isBuildingDefencePack || (!document.locked_pdf_path && !defencePack)}
+                  className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${
+                    isBuildingDefencePack || (!document.locked_pdf_path && !defencePack)
+                      ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                      : defencePack
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                  }`}
+                  title={
+                    !document.locked_pdf_path
+                      ? 'Locked PDF required to create defence pack'
+                      : defencePack
+                      ? 'Download defence pack'
+                      : 'Create immutable defence pack bundle'
+                  }
+                >
+                  {isBuildingDefencePack ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent"></div>
+                      Building Pack...
+                    </>
+                  ) : defencePack ? (
+                    <>
+                      <Package className="w-4 h-4" />
+                      Download Defence Pack
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4" />
+                      Generate Defence Pack
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
+
+          {defencePack && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center gap-3">
+              <Shield className="w-5 h-5 text-purple-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-purple-900">Defence Pack Available</p>
+                <p className="text-xs text-purple-700">
+                  Created {formatDate(defencePack.created_at)}
+                  {defencePack.size_bytes && ` • ${formatFileSize(defencePack.size_bytes)}`}
+                  {' • '}
+                  v{defencePack.version_number}
+                </p>
+              </div>
+              <button
+                onClick={handleDownloadDefencePack}
+                className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <Package className="w-4 h-4" />
+                Download
+              </button>
+            </div>
+          )}
 
           {document.locked_pdf_path && document.issue_status !== 'draft' && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-3">

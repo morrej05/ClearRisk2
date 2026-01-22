@@ -4,87 +4,59 @@ export interface DefencePack {
   id: string;
   organisation_id: string;
   document_id: string;
-  title: string;
-  description: string | null;
-  included_pdf: boolean;
-  included_change_summary: boolean;
-  included_action_register: boolean;
-  included_evidence_list: boolean;
-  bundle_storage_path: string | null;
-  bundle_size_bytes: number | null;
-  internal_only: boolean;
-  client_accessible: boolean;
-  generated_at: string;
-  generated_by: string | null;
-  version_timestamp: string;
+  base_document_id: string;
+  version_number: number;
+  created_by: string | null;
   created_at: string;
-  updated_at: string;
+  bundle_path: string;
+  checksum: string | null;
+  size_bytes: number | null;
+  manifest: any | null;
 }
 
-export interface DefencePackOptions {
-  includePdf?: boolean;
-  includeChangeSummary?: boolean;
-  includeActionRegister?: boolean;
-  includeEvidenceList?: boolean;
-  internalOnly?: boolean;
-  clientAccessible?: boolean;
+export interface DefencePackManifest {
+  document_id: string;
+  base_document_id: string;
+  title: string;
+  document_type: string;
+  version_number: number;
+  issue_date: string;
+  pack_created_at: string;
+  files: Array<{
+    name: string;
+    type: string;
+  }>;
+  action_count: number;
+  evidence_count: number;
 }
 
-export async function createDefencePack(
-  documentId: string,
-  organisationId: string,
-  userId: string,
-  options: DefencePackOptions = {}
-): Promise<{ success: boolean; packId?: string; error?: string }> {
+export async function getDefencePack(documentId: string): Promise<DefencePack | null> {
   try {
-    // Get document details
-    const { data: document, error: docError } = await supabase
-      .from('documents')
-      .select('title, version_number, issue_date')
-      .eq('id', documentId)
-      .single();
-
-    if (docError) throw docError;
-
-    const title = `Defence Pack - ${document.title} v${document.version_number}`;
-    const description = `Professional defence bundle generated on ${new Date().toLocaleDateString()} for document issued ${document.issue_date}`;
-
     const { data, error } = await supabase
-      .from('defence_packs')
-      .insert({
-        organisation_id: organisationId,
-        document_id: documentId,
-        title,
-        description,
-        included_pdf: options.includePdf ?? true,
-        included_change_summary: options.includeChangeSummary ?? true,
-        included_action_register: options.includeActionRegister ?? true,
-        included_evidence_list: options.includeEvidenceList ?? true,
-        internal_only: options.internalOnly ?? true,
-        client_accessible: options.clientAccessible ?? false,
-        generated_by: userId,
-      })
-      .select()
-      .single();
+      .from('document_defence_packs')
+      .select('*')
+      .eq('document_id', documentId)
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching defence pack:', error);
+      return null;
+    }
 
-    return { success: true, packId: data.id };
-  } catch (error: any) {
-    console.error('Error creating defence pack:', error);
-    return { success: false, error: error.message };
+    return data;
+  } catch (error) {
+    console.error('Error fetching defence pack:', error);
+    return null;
   }
 }
 
-export async function getDefencePacks(
-  documentId: string
-): Promise<DefencePack[]> {
+export async function getDefencePacksByBaseDocument(baseDocumentId: string): Promise<DefencePack[]> {
   try {
     const { data, error } = await supabase
-      .from('defence_packs')
+      .from('document_defence_packs')
       .select('*')
-      .eq('document_id', documentId)
-      .order('generated_at', { ascending: false });
+      .eq('base_document_id', baseDocumentId)
+      .order('version_number', { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -94,183 +66,137 @@ export async function getDefencePacks(
   }
 }
 
-export async function getDefencePack(
-  packId: string
-): Promise<DefencePack | null> {
+export async function buildDefencePack(documentId: string): Promise<{ success: boolean; pack?: DefencePack; error?: string }> {
   try {
-    const { data, error } = await supabase
-      .from('defence_packs')
-      .select('*')
-      .eq('id', packId)
-      .maybeSingle();
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const { data: { session } } = await supabase.auth.getSession();
 
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error fetching defence pack:', error);
-    return null;
+    if (!session) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/build-defence-pack`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ document_id: documentId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.error || 'Failed to build defence pack',
+      };
+    }
+
+    const result = await response.json();
+
+    if (result.success) {
+      return { success: true, pack: result.pack };
+    } else {
+      return { success: false, error: result.error || 'Unknown error' };
+    }
+  } catch (error: any) {
+    console.error('Error building defence pack:', error);
+    return { success: false, error: error.message || 'Unknown error occurred' };
   }
 }
 
-export async function updateDefencePackAccessibility(
-  packId: string,
-  clientAccessible: boolean
-): Promise<{ success: boolean; error?: string }> {
+export async function downloadDefencePack(bundlePath: string, filename: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase
-      .from('defence_packs')
-      .update({
-        client_accessible: clientAccessible,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', packId);
+    const { data, error } = await supabase.storage
+      .from('defence-packs')
+      .createSignedUrl(bundlePath, 300);
 
-    if (error) throw error;
+    if (error || !data) {
+      console.error('Error creating signed URL:', error);
+      return { success: false, error: 'Failed to generate download URL' };
+    }
+
+    const link = document.createElement('a');
+    link.href = data.signedUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     return { success: true };
   } catch (error: any) {
-    console.error('Error updating defence pack accessibility:', error);
-    return { success: false, error: error.message };
+    console.error('Error downloading defence pack:', error);
+    return { success: false, error: error.message || 'Unknown error occurred' };
   }
 }
 
-export function getDefencePackContents(pack: DefencePack): string[] {
+export function formatFileSize(bytes: number | null): string {
+  if (bytes === null || bytes === 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+export function getDefencePackFilename(pack: DefencePack): string {
+  return `defence_pack_v${pack.version_number}.zip`;
+}
+
+export async function checkDefencePackExists(documentId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('document_defence_packs')
+      .select('id')
+      .eq('document_id', documentId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking defence pack:', error);
+      return false;
+    }
+
+    return !!data;
+  } catch (error) {
+    console.error('Error checking defence pack:', error);
+    return false;
+  }
+}
+
+export function isDefencePackEligible(issueStatus: string, lockedPdfPath: string | null): boolean {
+  return issueStatus === 'issued' && !!lockedPdfPath;
+}
+
+export function getDefencePackStatus(pack: DefencePack | null, issueStatus: string, lockedPdfPath: string | null): 'not_eligible' | 'ready' | 'exists' {
+  if (!isDefencePackEligible(issueStatus, lockedPdfPath)) {
+    return 'not_eligible';
+  }
+
+  if (pack) {
+    return 'exists';
+  }
+
+  return 'ready';
+}
+
+export function getDefencePackContents(manifest: DefencePackManifest | null): string[] {
   const contents: string[] = [];
 
-  if (pack.included_pdf) {
-    contents.push('Issued Report PDF (Locked)');
-  }
-
-  if (pack.included_change_summary) {
-    contents.push('Change Summary (Material Changes)');
-  }
-
-  if (pack.included_action_register) {
-    contents.push('Action Register Snapshot');
-  }
-
-  if (pack.included_evidence_list) {
-    contents.push('Evidence List (Metadata)');
-  }
+  contents.push('Issued Report PDF (Locked)');
+  contents.push('Change Summary');
+  contents.push('Action Register Snapshot');
+  contents.push('Evidence Index');
+  contents.push('Manifest File');
 
   return contents;
 }
 
 export function getDefencePackSummary(pack: DefencePack): string {
-  const contents = getDefencePackContents(pack);
-  return `Defence pack containing ${contents.length} components: ${contents.join(', ')}`;
-}
-
-export function formatFileSize(bytes: number | null): string {
-  if (bytes === null) return 'N/A';
-
-  const kb = bytes / 1024;
-  if (kb < 1024) {
-    return `${kb.toFixed(2)} KB`;
+  const manifest = pack.manifest as DefencePackManifest | null;
+  if (!manifest) {
+    return 'Defence pack bundle (contents unknown)';
   }
 
-  const mb = kb / 1024;
-  if (mb < 1024) {
-    return `${mb.toFixed(2)} MB`;
-  }
-
-  const gb = mb / 1024;
-  return `${gb.toFixed(2)} GB`;
-}
-
-export function canClientAccessPack(pack: DefencePack): boolean {
-  return !pack.internal_only && pack.client_accessible;
-}
-
-export async function generateDefencePackManifest(
-  packId: string
-): Promise<{ success: boolean; manifest?: any; error?: string }> {
-  try {
-    const pack = await getDefencePack(packId);
-    if (!pack) {
-      throw new Error('Defence pack not found');
-    }
-
-    // Get document details
-    const { data: document, error: docError } = await supabase
-      .from('documents')
-      .select('title, version_number, issue_date, issued_by')
-      .eq('id', pack.document_id)
-      .single();
-
-    if (docError) throw docError;
-
-    // Get change summary if included
-    let changeSummary = null;
-    if (pack.included_change_summary) {
-      const { data: summary } = await supabase
-        .from('document_change_summaries')
-        .select('*')
-        .eq('document_id', pack.document_id)
-        .maybeSingle();
-
-      changeSummary = summary;
-    }
-
-    // Get actions if included
-    let actionCount = 0;
-    if (pack.included_action_register) {
-      const { count } = await supabase
-        .from('actions')
-        .select('*', { count: 'exact', head: true })
-        .eq('document_id', pack.document_id)
-        .is('deleted_at', null);
-
-      actionCount = count || 0;
-    }
-
-    // Get evidence count if included
-    let evidenceCount = 0;
-    if (pack.included_evidence_list) {
-      const { count } = await supabase
-        .from('attachments')
-        .select('*', { count: 'exact', head: true })
-        .eq('document_id', pack.document_id);
-
-      evidenceCount = count || 0;
-    }
-
-    const manifest = {
-      pack_id: pack.id,
-      title: pack.title,
-      description: pack.description,
-      generated_at: pack.generated_at,
-      document: {
-        title: document.title,
-        version: document.version_number,
-        issue_date: document.issue_date,
-        issued_by: document.issued_by,
-      },
-      contents: {
-        pdf: pack.included_pdf,
-        change_summary: pack.included_change_summary ? {
-          included: true,
-          has_material_changes: changeSummary?.has_material_changes,
-          new_actions: changeSummary?.new_actions_count,
-          closed_actions: changeSummary?.closed_actions_count,
-        } : { included: false },
-        action_register: pack.included_action_register ? {
-          included: true,
-          action_count: actionCount,
-        } : { included: false },
-        evidence_list: pack.included_evidence_list ? {
-          included: true,
-          evidence_count: evidenceCount,
-        } : { included: false },
-      },
-      access_control: {
-        internal_only: pack.internal_only,
-        client_accessible: pack.client_accessible,
-      },
-    };
-
-    return { success: true, manifest };
-  } catch (error: any) {
-    console.error('Error generating defence pack manifest:', error);
-    return { success: false, error: error.message };
-  }
+  return `Defence pack containing ${manifest.files?.length || 5} files - ${manifest.action_count || 0} actions, ${manifest.evidence_count || 0} evidence items`;
 }

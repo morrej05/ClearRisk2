@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPillarB } from '../utils/entitlements';
 import { ArrowLeft, Lock } from 'lucide-react';
+import { getModuleKeysForDocType } from '../lib/modules/moduleCatalog';
 
 export default function NewAssessment() {
   const { user, userProfile, organisation } = useAuth();
@@ -21,6 +22,15 @@ export default function NewAssessment() {
     assessment_date: new Date().toISOString().split('T')[0],
   });
 
+  const mapToDocType = (type: string) => {
+    switch (type) {
+      case 'fra': return 'FRA';
+      case 'fire_strategy': return 'FSD';
+      case 'dsear': return 'DSEAR';
+      default: return 'FRA';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -37,30 +47,56 @@ export default function NewAssessment() {
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase
-        .from('assessments')
+      const docType = mapToDocType(formData.type);
+      const title = `${formData.site_name} — ${docType}`;
+
+      // Create the document
+      const { data: document, error: docError } = await supabase
+        .from('documents')
         .insert({
-          org_id: organisation.id,
-          type: formData.type,
-          jurisdiction: formData.jurisdiction,
-          site_name: formData.site_name,
-          site_address: formData.site_address || null,
-          client_name: formData.client_name || null,
-          client_address: formData.client_address || null,
-          assessor_name: formData.assessor_name,
-          assessor_company: formData.assessor_company || null,
+          organisation_id: organisation.id,
+          document_type: docType,
+          title: title,
           assessment_date: formData.assessment_date,
-          status: 'draft',
+          assessor_name: formData.assessor_name,
+          standards_selected: [],
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (docError) throw docError;
 
-      navigate(`/assessments/${data.id}`);
+      // Update base_document_id to point to itself
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({ base_document_id: document.id })
+        .eq('id', document.id);
+
+      if (updateError) throw updateError;
+
+      // Get module keys for this document type
+      const moduleKeys = getModuleKeysForDocType(docType);
+
+      // Insert module instances
+      const moduleInstances = moduleKeys.map(moduleKey => ({
+        organisation_id: organisation.id,
+        document_id: document.id,
+        module_key: moduleKey,
+        data: {},
+        assessor_notes: '',
+        outcome: null,
+      }));
+
+      const { error: moduleError } = await supabase
+        .from('module_instances')
+        .insert(moduleInstances);
+
+      if (moduleError) throw moduleError;
+
+      navigate(`/documents/${document.id}/workspace`);
     } catch (error) {
-      console.error('Error creating assessment:', error);
-      alert('Failed to create assessment. Please try again.');
+      console.error('Error creating document:', error);
+      alert('Failed to create document. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -124,7 +160,6 @@ export default function NewAssessment() {
                   <option value="fra">Fire Risk Assessment (FRA)</option>
                   <option value="fire_strategy">Fire Strategy Document</option>
                   <option value="dsear">ATEX/DSEAR Assessment</option>
-                  <option value="wildfire">Wildfire Risk Assessment</option>
                 </select>
               </div>
 

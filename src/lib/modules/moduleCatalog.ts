@@ -158,3 +158,10 @@ export function sortModulesByOrder(modules: Array<{ module_key: string }>): Arra
     return orderA - orderB;
   });
 }
+
+export function getModuleKeysForDocType(docType: string): string[] {
+  return Object.entries(MODULE_CATALOG)
+    .filter(([_, def]) => def.docTypes.includes(docType))
+    .sort((a, b) => (a[1].order ?? 999) - (b[1].order ?? 999))
+    .map(([key]) => key);
+}

@@ -19,6 +19,7 @@ import ExternalSurvey from './pages/ExternalSurvey';
 import ReportPreviewPage from './pages/ReportPreviewPage';
 import ArchivedAssessments from './pages/ArchivedAssessments';
 import ClientDocumentView from './pages/ClientDocumentView';
+import PublicDocumentViewer from './pages/PublicDocumentViewer';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import PlatformAdminRoute from './components/SuperAdminRoute';
@@ -35,6 +36,7 @@ function App() {
           <Route path="/signin" element={<SignIn />} />
           <Route path="/external/:token" element={<ExternalSurvey />} />
           <Route path="/client/document/:token" element={<ClientDocumentView />} />
+          <Route path="/public/documents" element={<PublicDocumentViewer />} />
           <Route
             path="/dashboard"
             element={<Navigate to="/common-dashboard" replace />}

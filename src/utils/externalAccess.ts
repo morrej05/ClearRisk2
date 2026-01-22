@@ -213,3 +213,224 @@ export function getAccessStats(links: ExternalAccessLink[]) {
     totalAccesses,
   };
 }
+
+export interface DocumentAccessLink {
+  id: string;
+  organisation_id: string;
+  base_document_id: string;
+  token: string;
+  created_by: string | null;
+  created_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+  last_accessed_at: string | null;
+  access_count: number;
+  label: string | null;
+  allowed_actions: any | null;
+}
+
+export interface CreateDocumentAccessLinkParams {
+  baseDocumentId: string;
+  organisationId: string;
+  expiresInDays: number;
+  label?: string;
+}
+
+export interface PublicDocumentInfo {
+  document_id: string;
+  title: string;
+  document_type: string;
+  version_number: number;
+  issue_date: string;
+  locked_pdf_path: string | null;
+  has_pdf: boolean;
+  label: string | null;
+}
+
+async function generateAccessToken(): Promise<string> {
+  const { data, error } = await supabase.rpc('generate_access_token');
+
+  if (error) {
+    console.error('Error generating token:', error);
+    return btoa(crypto.randomUUID() + crypto.randomUUID()).replace(/[^a-zA-Z0-9]/g, '').substring(0, 43);
+  }
+
+  return data || btoa(crypto.randomUUID() + crypto.randomUUID()).replace(/[^a-zA-Z0-9]/g, '').substring(0, 43);
+}
+
+export async function createDocumentAccessLink(params: CreateDocumentAccessLinkParams): Promise<{ success: boolean; link?: DocumentAccessLink; url?: string; error?: string }> {
+  try {
+    const token = await generateAccessToken();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + params.expiresInDays);
+
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+
+    const { data, error } = await supabase
+      .from('document_access_links')
+      .insert({
+        organisation_id: params.organisationId,
+        base_document_id: params.baseDocumentId,
+        token,
+        expires_at: expiresAt.toISOString(),
+        label: params.label || null,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating access link:', error);
+      return { success: false, error: error.message };
+    }
+
+    const url = `${window.location.origin}/public/documents?token=${token}`;
+
+    return { success: true, link: data, url };
+  } catch (error: any) {
+    console.error('Error creating access link:', error);
+    return { success: false, error: error.message || 'Unknown error occurred' };
+  }
+}
+
+export async function getDocumentAccessLinks(baseDocumentId: string, organisationId: string): Promise<DocumentAccessLink[]> {
+  try {
+    const { data, error } = await supabase
+      .from('document_access_links')
+      .select('*')
+      .eq('base_document_id', baseDocumentId)
+      .eq('organisation_id', organisationId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching access links:', error);
+    return [];
+  }
+}
+
+export async function revokeDocumentAccessLink(linkId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('document_access_links')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', linkId);
+
+    if (error) {
+      console.error('Error revoking access link:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error revoking access link:', error);
+    return { success: false, error: error.message || 'Unknown error occurred' };
+  }
+}
+
+export async function deleteDocumentAccessLink(linkId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('document_access_links')
+      .delete()
+      .eq('id', linkId);
+
+    if (error) {
+      console.error('Error deleting access link:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error deleting access link:', error);
+    return { success: false, error: error.message || 'Unknown error occurred' };
+  }
+}
+
+export function isDocumentLinkActive(link: DocumentAccessLink): boolean {
+  if (link.revoked_at) return false;
+
+  const now = new Date();
+  const expiresAt = new Date(link.expires_at);
+
+  return now <= expiresAt;
+}
+
+export function getDocumentLinkStatus(link: DocumentAccessLink): 'active' | 'expired' | 'revoked' {
+  if (link.revoked_at) return 'revoked';
+
+  const now = new Date();
+  const expiresAt = new Date(link.expires_at);
+
+  return now <= expiresAt ? 'active' : 'expired';
+}
+
+export function formatDocumentLinkUrl(token: string): string {
+  return `${window.location.origin}/public/documents?token=${token}`;
+}
+
+export async function fetchPublicDocument(token: string): Promise<{ success: boolean; data?: PublicDocumentInfo; error?: string; status?: string }> {
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const response = await fetch(`${supabaseUrl}/functions/v1/public-document?token=${token}`);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.error || 'Failed to fetch document',
+        status: errorData.status,
+      };
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (error: any) {
+    console.error('Error fetching public document:', error);
+    return { success: false, error: error.message || 'Unknown error occurred' };
+  }
+}
+
+export async function fetchPublicDocumentDownloadUrl(token: string): Promise<{ success: boolean; url?: string; filename?: string; error?: string }> {
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const response = await fetch(`${supabaseUrl}/functions/v1/public-document-download?token=${token}`);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.error || 'Failed to fetch download URL',
+      };
+    }
+
+    const data = await response.json();
+    return { success: true, url: data.url, filename: data.filename };
+  } catch (error: any) {
+    console.error('Error fetching download URL:', error);
+    return { success: false, error: error.message || 'Unknown error occurred' };
+  }
+}
+
+export function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    document.execCommand('copy');
+    return Promise.resolve();
+  } catch (err) {
+    return Promise.reject(err);
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}

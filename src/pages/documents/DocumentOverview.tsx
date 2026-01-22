@@ -17,6 +17,7 @@ import ApprovalStatusBadge from '../../components/documents/ApprovalStatusBadge'
 import ClientAccessModal from '../../components/documents/ClientAccessModal';
 import type { ApprovalStatus } from '../../utils/approvalWorkflow';
 import { getClientAccessDescription, isDocumentImmutable } from '../../utils/clientAccess';
+import { getLockedPdfInfo, downloadLockedPdf, shouldRegeneratePdf } from '../../utils/pdfLocking';
 
 interface Document {
   id: string;
@@ -275,7 +276,34 @@ export default function DocumentOverview() {
 
     setIsGeneratingPdf(true);
     try {
-      console.log('[PDF] Starting PDF generation for document:', id);
+      console.log('[PDF] Starting PDF process for document:', id);
+
+      const pdfInfo = await getLockedPdfInfo(id);
+
+      if (pdfInfo?.locked_pdf_path && document.issue_status !== 'draft') {
+        console.log('[PDF] Using locked PDF:', pdfInfo.locked_pdf_path);
+
+        const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
+
+        if (downloadResult.success && downloadResult.data) {
+          const siteName = document.title
+            .replace(/[^a-z0-9]/gi, '_')
+            .replace(/_+/g, '_')
+            .toLowerCase();
+          const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
+          const docType = document.document_type || 'FRA';
+          const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
+
+          saveAs(downloadResult.data, filename);
+          console.log('[PDF] Downloaded locked PDF successfully:', filename);
+          setIsGeneratingPdf(false);
+          return;
+        } else {
+          console.warn('[PDF] Failed to download locked PDF, regenerating:', downloadResult.error);
+        }
+      }
+
+      console.log('[PDF] Generating PDF from current data...');
 
       // Fetch module instances
       const { data: moduleInstances, error: moduleError } = await supabase
@@ -378,10 +406,10 @@ export default function DocumentOverview() {
         .toLowerCase();
       const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
       const docType = document.document_type || 'FRA';
-      const filename = `${docType}_${siteName}_${dateStr}_v${document.version}.pdf`;
+      const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
 
       saveAs(blob, filename);
-      console.log('[PDF] PDF generated successfully:', filename);
+      console.log('[PDF] PDF generated successfully from current data:', filename);
     } catch (error) {
       console.error('[PDF] Error generating PDF:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -538,6 +566,19 @@ export default function DocumentOverview() {
               </button>
             </div>
           </div>
+
+          {document.locked_pdf_path && document.issue_status !== 'draft' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-3">
+              <FileCheck className="w-5 h-5 text-green-600" />
+              <div>
+                <p className="text-sm font-medium text-green-900">PDF Locked</p>
+                <p className="text-xs text-green-700">
+                  Issued {formatDate(document.locked_pdf_generated_at)}
+                  {document.locked_pdf_size_bytes && ` • ${(document.locked_pdf_size_bytes / 1024).toFixed(0)} KB`}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-neutral-200">
             <div className="flex items-start gap-3">

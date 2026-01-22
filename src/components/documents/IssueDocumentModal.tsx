@@ -1,6 +1,11 @@
 import { useState } from 'react';
-import { X, AlertTriangle, CheckCircle } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle, FileCheck } from 'lucide-react';
 import { issueDocument, validateDocumentForIssue } from '../../utils/documentVersioning';
+import { generateAndLockPdf } from '../../utils/pdfLocking';
+import { supabase } from '../../lib/supabase';
+import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
+import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
+import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 
 interface IssueDocumentModalProps {
   documentId: string;
@@ -23,6 +28,7 @@ export default function IssueDocumentModal({
   const [isIssuing, setIsIssuing] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validated, setValidated] = useState(false);
+  const [issueProgress, setIssueProgress] = useState<string>('');
 
   const handleValidate = async () => {
     setIsValidating(true);
@@ -40,17 +46,97 @@ export default function IssueDocumentModal({
 
   const handleIssue = async () => {
     setIsIssuing(true);
+    setIssueProgress('Fetching document data...');
+
     try {
-      const result = await issueDocument(documentId, userId, organisationId);
-      if (result.success) {
-        onSuccess();
-        onClose();
+      const { data: document, error: docError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', documentId)
+        .single();
+
+      if (docError) throw docError;
+
+      setIssueProgress('Loading modules and actions...');
+
+      const { data: modules, error: moduleError } = await supabase
+        .from('module_instances')
+        .select('*')
+        .eq('document_id', documentId)
+        .order('display_order', { ascending: true });
+
+      if (moduleError) throw moduleError;
+
+      const { data: actions, error: actionError } = await supabase
+        .from('actions')
+        .select('*')
+        .eq('document_id', documentId)
+        .eq('is_deleted', false)
+        .order('priority', { ascending: true });
+
+      if (actionError) throw actionError;
+
+      const { data: org, error: orgError } = await supabase
+        .from('organisations')
+        .select('*')
+        .eq('id', organisationId)
+        .single();
+
+      if (orgError) throw orgError;
+
+      setIssueProgress('Generating PDF...');
+
+      let pdfBytes: Uint8Array;
+
+      const buildOptions = {
+        document,
+        moduleInstances: modules || [],
+        actions: actions || [],
+        actionRatings: {},
+        organisation: org,
+      };
+
+      if (document.document_type === 'FRA') {
+        pdfBytes = await buildFraPdf(buildOptions);
+      } else if (document.document_type === 'FSD') {
+        pdfBytes = await buildFsdPdf(buildOptions);
+      } else if (document.document_type === 'DSEAR') {
+        pdfBytes = await buildDsearPdf(buildOptions);
       } else {
-        alert(result.error || 'Failed to issue document');
+        throw new Error('Unsupported document type');
       }
-    } catch (error) {
+
+      setIssueProgress('Uploading and locking PDF...');
+
+      const lockResult = await generateAndLockPdf(
+        documentId,
+        organisationId,
+        document.title,
+        document.version_number,
+        pdfBytes
+      );
+
+      if (!lockResult.success) {
+        throw new Error(lockResult.error || 'Failed to lock PDF');
+      }
+
+      setIssueProgress('Updating document status...');
+
+      const issueResult = await issueDocument(documentId, userId, organisationId);
+
+      if (issueResult.success) {
+        setIssueProgress('Complete!');
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 500);
+      } else {
+        throw new Error(issueResult.error || 'Failed to issue document');
+      }
+    } catch (error: any) {
       console.error('Error issuing document:', error);
-      alert('Failed to issue document');
+      alert(error.message || 'Failed to issue document. Document remains in draft.');
+      setIssueProgress('');
     } finally {
       setIsIssuing(false);
     }
@@ -121,14 +207,32 @@ export default function IssueDocumentModal({
             </div>
           )}
 
+          {isIssuing && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                <div>
+                  <p className="font-medium text-blue-900">Issuing Document...</p>
+                  <p className="text-sm text-blue-800">{issueProgress}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-900 font-medium mb-2">After issuing:</p>
-            <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-              <li>The document will be marked as issued with today's date</li>
-              <li>All editing will be locked</li>
-              <li>The document will remain available for download</li>
-              <li>To make changes, you will need to create a new version</li>
-            </ul>
+            <div className="flex items-start gap-3">
+              <FileCheck className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-blue-900 font-medium mb-2">What happens when you issue:</p>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• A locked PDF will be generated and stored</li>
+                  <li>• The document will be marked as issued with today's date</li>
+                  <li>• All editing will be locked to preserve integrity</li>
+                  <li>• The PDF cannot change unless you create a new version</li>
+                  <li>• The document will be available for client sharing</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
 

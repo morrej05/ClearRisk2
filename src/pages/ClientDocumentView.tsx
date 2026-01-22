@@ -7,6 +7,7 @@ import { buildFraPdf } from '../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../lib/pdf/buildDsearPdf';
 import { saveAs } from 'file-saver';
+import { getLockedPdfInfo, downloadLockedPdf } from '../utils/pdfLocking';
 
 interface Document {
   id: string;
@@ -83,6 +84,25 @@ export default function ClientDocumentView() {
     setIsGeneratingPdf(true);
 
     try {
+      const pdfInfo = await getLockedPdfInfo(document.id);
+
+      if (pdfInfo?.locked_pdf_path) {
+        console.log('[Client PDF] Using locked PDF:', pdfInfo.locked_pdf_path);
+
+        const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
+
+        if (downloadResult.success && downloadResult.data) {
+          const filename = `${document.title.replace(/[^a-z0-9]/gi, '_')}_v${document.version_number}.pdf`;
+          saveAs(downloadResult.data, filename);
+          setIsGeneratingPdf(false);
+          return;
+        } else {
+          console.warn('[Client PDF] Failed to download locked PDF, regenerating:', downloadResult.error);
+        }
+      }
+
+      console.log('[Client PDF] Generating PDF from current data...');
+
       const { data: modules, error: moduleError } = await supabase
         .from('module_instances')
         .select('*')

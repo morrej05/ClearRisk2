@@ -17,6 +17,7 @@ import {
   drawDraftWatermark,
   addNewPage,
   drawFooter,
+  addSupersededWatermark,
 } from './pdfUtils';
 
 interface Document {
@@ -183,6 +184,10 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
   for (let i = 1; i < totalPages.length; i++) {
     drawFooter(totalPages[i], footerText, i, totalPages.length - 1, font);
+  }
+
+  if (document.issue_status === 'superseded') {
+    await addSupersededWatermark(pdfDoc);
   }
 
   const pdfBytes = await pdfDoc.save();

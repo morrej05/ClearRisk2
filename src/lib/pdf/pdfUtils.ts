@@ -1,4 +1,4 @@
-import { PDFDocument, PDFPage, rgb } from 'pdf-lib';
+import { PDFDocument, PDFPage, rgb, degrees, StandardFonts } from 'pdf-lib';
 
 export const PAGE_WIDTH = 595.28;
 export const PAGE_HEIGHT = 841.89;
@@ -182,4 +182,31 @@ export function drawFooter(page: PDFPage, text: string, pageNum: number, totalPa
     font,
     color: rgb(0.5, 0.5, 0.5),
   });
+}
+
+export async function addSupersededWatermark(pdfDoc: PDFDocument): Promise<void> {
+  const pages = pdfDoc.getPages();
+  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const watermarkText = 'SUPERSEDED';
+  const fontSize = 80;
+  const textWidth = font.widthOfTextAtSize(watermarkText, fontSize);
+  const textHeight = font.heightAtSize(fontSize);
+
+  for (const page of pages) {
+    const { width, height } = page.getSize();
+
+    const x = (width - textWidth) / 2;
+    const y = (height - textHeight) / 2;
+
+    page.drawText(watermarkText, {
+      x,
+      y,
+      size: fontSize,
+      font,
+      color: rgb(0.8, 0, 0),
+      opacity: 0.3,
+      rotate: degrees(-45),
+    });
+  }
 }

@@ -165,6 +165,10 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     drawFooter(p, idx + 1, totalPages.length, document.title, font);
   });
 
+  if (document.issue_status === 'superseded') {
+    await addSupersededWatermark(pdfDoc);
+  }
+
   return await pdfDoc.save();
 }
 

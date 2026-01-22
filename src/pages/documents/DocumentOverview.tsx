@@ -14,7 +14,9 @@ import CreateNewVersionModal from '../../components/documents/CreateNewVersionMo
 import VersionHistoryModal from '../../components/documents/VersionHistoryModal';
 import ApprovalManagementModal from '../../components/documents/ApprovalManagementModal';
 import ApprovalStatusBadge from '../../components/documents/ApprovalStatusBadge';
+import ClientAccessModal from '../../components/documents/ClientAccessModal';
 import type { ApprovalStatus } from '../../utils/approvalWorkflow';
+import { getClientAccessDescription, isDocumentImmutable } from '../../utils/clientAccess';
 
 interface Document {
   id: string;
@@ -102,6 +104,7 @@ export default function DocumentOverview() {
   const [showNewVersionModal, setShowNewVersionModal] = useState(false);
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [showClientAccessModal, setShowClientAccessModal] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
@@ -464,6 +467,15 @@ export default function DocumentOverview() {
                   Manage Approval
                 </button>
               )}
+              {document.issue_status === 'issued' && (
+                <button
+                  onClick={() => setShowClientAccessModal(true)}
+                  className="px-4 py-2 border-2 border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Share with Clients
+                </button>
+              )}
               <button
                 onClick={() => setShowVersionHistoryModal(true)}
                 className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors flex items-center gap-2"
@@ -754,6 +766,16 @@ export default function DocumentOverview() {
           userRole={user.role || 'viewer'}
           onClose={() => setShowApprovalModal(false)}
           onSuccess={handleIssueSuccess}
+        />
+      )}
+
+      {showClientAccessModal && user?.id && (
+        <ClientAccessModal
+          baseDocumentId={document.base_document_id}
+          documentTitle={document.title}
+          userId={user.id}
+          issueStatus={document.issue_status}
+          onClose={() => setShowClientAccessModal(false)}
         />
       )}
 

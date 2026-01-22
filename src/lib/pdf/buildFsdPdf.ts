@@ -147,6 +147,10 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
     );
   }
 
+  if (document.issue_status === 'superseded') {
+    await addSupersededWatermark(pdfDoc);
+  }
+
   const pdfBytes = await pdfDoc.save();
   console.log('[FSD PDF] PDF generated successfully');
   return pdfBytes;

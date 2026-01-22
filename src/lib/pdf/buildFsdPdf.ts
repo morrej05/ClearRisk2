@@ -143,6 +143,18 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
   ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
   page = drawPurposeAndScope(page, pdfDoc, isDraft, totalPages, font, fontBold);
 
+  if (document.scope_description) {
+    ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+    page = drawDocumentScope(page, document.scope_description, pdfDoc, isDraft, totalPages, font, fontBold);
+  }
+
+  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+  page = drawFsdLimitations(page, pdfDoc, isDraft, totalPages, font, fontBold);
+
+  if (document.limitations_assumptions) {
+    page = drawDocumentLimitations(page, document.limitations_assumptions, pdfDoc, isDraft, totalPages, font, fontBold);
+  }
+
   const sortedModules = sortModules(moduleInstances);
   for (const moduleInstance of sortedModules) {
     ({ page } = drawModuleSummary(page, moduleInstance, pdfDoc, isDraft, totalPages, font, fontBold));
@@ -155,11 +167,6 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
   if (attachments.length > 0) {
     ({ page } = drawAttachmentsIndex(page, attachments, moduleInstances, actions, pdfDoc, isDraft, totalPages, font, fontBold));
   }
-
-  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
-  page = drawFsdLimitations(page, pdfDoc, isDraft, totalPages, font, fontBold);
-
-  ({ page } = drawAssumptionsAndLimitations(page, document, moduleInstances, pdfDoc, isDraft, totalPages, font, fontBold));
 
   for (let i = 0; i < totalPages.length; i++) {
     drawFooter(
@@ -997,6 +1004,94 @@ function drawFsdLimitations(
     }
 
     yPosition -= 8;
+  }
+
+  return page;
+}
+
+function drawDocumentScope(
+  page: PDFPage,
+  scopeText: string,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): PDFPage {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('SCOPE', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const sanitized = sanitizePdfText(scopeText);
+  const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
+  
+  for (const line of lines) {
+    if (yPosition < MARGIN + 50) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 16;
+  }
+
+  return page;
+}
+
+function drawDocumentLimitations(
+  page: PDFPage,
+  limitationsText: string,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): PDFPage {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  if (totalPages[totalPages.length - 1] === page) {
+    yPosition = PAGE_HEIGHT - MARGIN - 60;
+  }
+
+  page.drawText('PROJECT-SPECIFIC LIMITATIONS', {
+    x: MARGIN,
+    y: yPosition,
+    size: 14,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 25;
+
+  const sanitized = sanitizePdfText(limitationsText);
+  const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
+  
+  for (const line of lines) {
+    if (yPosition < MARGIN + 50) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 16;
   }
 
   return page;

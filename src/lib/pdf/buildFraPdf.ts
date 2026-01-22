@@ -166,6 +166,20 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   yPosition = PAGE_HEIGHT - MARGIN;
   yPosition = drawResponsiblePersonDuties(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
+  if (document.scope_description) {
+    const scopeResult = addNewPage(pdfDoc, isDraft, totalPages);
+    page = scopeResult.page;
+    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = drawScope(page, document.scope_description, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  if (document.limitations_assumptions) {
+    const limResult = addNewPage(pdfDoc, isDraft, totalPages);
+    page = limResult.page;
+    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = drawLimitations(page, document.limitations_assumptions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
   const sortedModules = sortModules(moduleInstances);
   const fra4Module = sortedModules.find((m) => m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS');
 
@@ -1681,6 +1695,92 @@ function drawAttachmentsIndex(
     });
 
     yPosition -= 15;
+  }
+
+  return yPosition;
+}
+
+function drawScope(
+  page: PDFPage,
+  scopeText: string,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  yPosition -= 20;
+  page.drawText('SCOPE', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const sanitized = sanitizePdfText(scopeText);
+  const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
+  
+  for (const line of lines) {
+    if (yPosition < MARGIN + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 16;
+  }
+
+  return yPosition;
+}
+
+function drawLimitations(
+  page: PDFPage,
+  limitationsText: string,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  yPosition -= 20;
+  page.drawText('LIMITATIONS AND ASSUMPTIONS', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const sanitized = sanitizePdfText(limitationsText);
+  const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
+  
+  for (const line of lines) {
+    if (yPosition < MARGIN + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 16;
   }
 
   return yPosition;

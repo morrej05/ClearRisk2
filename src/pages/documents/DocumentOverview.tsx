@@ -17,6 +17,7 @@ import ApprovalStatusBadge from '../../components/documents/ApprovalStatusBadge'
 import ClientAccessModal from '../../components/documents/ClientAccessModal';
 import EditLockBanner from '../../components/EditLockBanner';
 import ChangeSummaryPanel from '../../components/documents/ChangeSummaryPanel';
+import DraftCompletenessBanner from '../../components/documents/DraftCompletenessBanner';
 import type { ApprovalStatus } from '../../utils/approvalWorkflow';
 import { getClientAccessDescription, isDocumentImmutable } from '../../utils/clientAccess';
 import { getLockedPdfInfo, downloadLockedPdf, shouldRegeneratePdf } from '../../utils/pdfLocking';
@@ -118,6 +119,8 @@ export default function DocumentOverview() {
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
+  const [totalActions, setTotalActions] = useState(0);
+  const [evidenceCount, setEvidenceCount] = useState(0);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showNewVersionModal, setShowNewVersionModal] = useState(false);
@@ -152,6 +155,7 @@ export default function DocumentOverview() {
       fetchDocument();
       fetchModules();
       fetchActionCounts();
+      fetchEvidenceCount();
       fetchDefencePack();
     }
   }, [id, organisation?.id]);
@@ -219,8 +223,26 @@ export default function DocumentOverview() {
       });
 
       setActionCounts(counts);
+      setTotalActions((data || []).length);
     } catch (error) {
       console.error('Error fetching action counts:', error);
+    }
+  };
+
+  const fetchEvidenceCount = async () => {
+    if (!id || !organisation) return;
+
+    try {
+      const { count, error } = await supabase
+        .from('attachments')
+        .select('*', { count: 'exact', head: true })
+        .eq('document_id', id)
+        .eq('organisation_id', organisation.id);
+
+      if (error) throw error;
+      setEvidenceCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching evidence count:', error);
     }
   };
 
@@ -349,30 +371,34 @@ export default function DocumentOverview() {
 
       const pdfInfo = await getLockedPdfInfo(id);
 
-      if (pdfInfo?.locked_pdf_path && document.issue_status !== 'draft') {
-        console.log('[PDF] Using locked PDF:', pdfInfo.locked_pdf_path);
+      if (document.issue_status !== 'draft') {
+        if (pdfInfo?.locked_pdf_path) {
+          console.log('[PDF] Document is issued/superseded. Downloading locked PDF:', pdfInfo.locked_pdf_path);
 
-        const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
+          const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
 
-        if (downloadResult.success && downloadResult.data) {
-          const siteName = document.title
-            .replace(/[^a-z0-9]/gi, '_')
-            .replace(/_+/g, '_')
-            .toLowerCase();
-          const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
-          const docType = document.document_type || 'FRA';
-          const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
+          if (downloadResult.success && downloadResult.data) {
+            const siteName = document.title
+              .replace(/[^a-z0-9]/gi, '_')
+              .replace(/_+/g, '_')
+              .toLowerCase();
+            const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
+            const docType = document.document_type || 'FRA';
+            const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
 
-          saveAs(downloadResult.data, filename);
-          console.log('[PDF] Downloaded locked PDF successfully:', filename);
-          setIsGeneratingPdf(false);
-          return;
+            saveAs(downloadResult.data, filename);
+            console.log('[PDF] Downloaded locked PDF successfully:', filename);
+            setIsGeneratingPdf(false);
+            return;
+          } else {
+            throw new Error(`Failed to download locked PDF: ${downloadResult.error || 'Unknown error'}. The issued document PDF may be corrupted or missing. Please contact support.`);
+          }
         } else {
-          console.warn('[PDF] Failed to download locked PDF, regenerating:', downloadResult.error);
+          throw new Error('This document has been issued but does not have a locked PDF. This indicates a system error. Please contact support to resolve this issue.');
         }
       }
 
-      console.log('[PDF] Generating PDF from current data...');
+      console.log('[PDF] Document is draft. Generating PDF from current data...');
 
       // Fetch module instances
       const { data: moduleInstances, error: moduleError } = await supabase
@@ -555,6 +581,25 @@ export default function DocumentOverview() {
           <ChangeSummaryPanel documentId={id!} className="mb-6" />
         )}
 
+        {/* Draft Completeness Banner */}
+        {['FRA', 'DSEAR', 'FSD'].includes(document.document_type) && (
+          <DraftCompletenessBanner
+            documentId={id!}
+            issueStatus={document.issue_status}
+            executiveSummaryMode={(document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'ai'}
+            executiveSummaryAi={document.executive_summary_ai}
+            executiveSummaryAuthor={document.executive_summary_author}
+            totalActions={totalActions}
+            evidenceCount={evidenceCount}
+            approvalStatus={document.approval_status}
+            onGenerateAiSummary={() => navigate(`/documents/${id}`)}
+            onAddAuthorCommentary={() => navigate(`/documents/${id}`)}
+            onViewActions={() => navigate(`/documents/${id}`)}
+            onAddEvidence={() => navigate(`/documents/${id}/evidence`)}
+            onManageApproval={() => setShowApprovalModal(true)}
+          />
+        )}
+
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
@@ -642,12 +687,12 @@ export default function DocumentOverview() {
                 {isGeneratingPdf ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent"></div>
-                    Generating...
+                    {document.issue_status === 'draft' ? 'Generating...' : 'Downloading...'}
                   </>
                 ) : (
                   <>
                     <FileDown className="w-4 h-4" />
-                    Generate PDF
+                    {document.issue_status === 'draft' ? 'Generate PDF' : 'Download Issued PDF'}
                   </>
                 )}
               </button>

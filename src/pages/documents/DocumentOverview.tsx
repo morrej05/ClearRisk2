@@ -15,6 +15,7 @@ import VersionHistoryModal from '../../components/documents/VersionHistoryModal'
 import ApprovalManagementModal from '../../components/documents/ApprovalManagementModal';
 import ApprovalStatusBadge from '../../components/documents/ApprovalStatusBadge';
 import ClientAccessModal from '../../components/documents/ClientAccessModal';
+import EditLockBanner from '../../components/EditLockBanner';
 import type { ApprovalStatus } from '../../utils/approvalWorkflow';
 import { getClientAccessDescription, isDocumentImmutable } from '../../utils/clientAccess';
 import { getLockedPdfInfo, downloadLockedPdf, shouldRegeneratePdf } from '../../utils/pdfLocking';
@@ -467,6 +468,19 @@ export default function DocumentOverview() {
           issueDate={document.issue_date}
           supersededByDocumentId={document.superseded_by_document_id}
         />
+
+        {document.issue_status !== 'draft' && (
+          <EditLockBanner
+            issueStatus={document.issue_status}
+            supersededByDocumentId={document.superseded_by_document_id}
+            onNavigateToSuccessor={() => {
+              if (document.superseded_by_document_id) {
+                navigate(`/documents/${document.superseded_by_document_id}`);
+              }
+            }}
+            className="mb-6"
+          />
+        )}
 
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6 mb-6">
           <div className="flex items-start justify-between mb-4">

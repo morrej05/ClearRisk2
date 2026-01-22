@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { X, AlertTriangle, CheckCircle, FileCheck } from 'lucide-react';
-import { issueDocument, validateDocumentForIssue } from '../../utils/documentVersioning';
+import { X, AlertTriangle, CheckCircle, FileCheck, Shield } from 'lucide-react';
+import { issueDocument } from '../../utils/documentVersioning';
 import { generateAndLockPdf } from '../../utils/pdfLocking';
+import { validateDocumentForIssue as serverValidateDocument, getValidationErrorMessage } from '../../utils/lifecycleGuards';
 import { supabase } from '../../lib/supabase';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
@@ -26,19 +27,31 @@ export default function IssueDocumentModal({
 }: IssueDocumentModalProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [isIssuing, setIsIssuing] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [validationError, setValidationError] = useState<string>('');
+  const [validationErrorCode, setValidationErrorCode] = useState<string>('');
   const [validated, setValidated] = useState(false);
   const [issueProgress, setIssueProgress] = useState<string>('');
 
   const handleValidate = async () => {
     setIsValidating(true);
     try {
-      const result = await validateDocumentForIssue(documentId, organisationId);
-      setValidationErrors(result.errors);
-      setValidated(true);
+      const result = await serverValidateDocument(documentId, userId);
+
+      if (result.isValid) {
+        setValidationError('');
+        setValidationErrorCode('');
+        setValidated(true);
+      } else {
+        const friendlyMessage = getValidationErrorMessage(result.errorCode, result.errorMessage);
+        setValidationError(friendlyMessage);
+        setValidationErrorCode(result.errorCode);
+        setValidated(true);
+      }
     } catch (error) {
       console.error('Error validating document:', error);
-      setValidationErrors(['Failed to validate document']);
+      setValidationError('Failed to validate document. Please try again.');
+      setValidationErrorCode('VALIDATION_FAILED');
+      setValidated(true);
     } finally {
       setIsValidating(false);
     }
@@ -167,26 +180,31 @@ export default function IssueDocumentModal({
           {!validated ? (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <Shield className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium text-amber-900 mb-1">
                     Validation Required
                   </p>
                   <p className="text-sm text-amber-800">
-                    Before issuing, the document must be validated to ensure all mandatory
-                    sections are complete and there are no blocking errors.
+                    Before issuing, the document must pass server-side validation checks including:
                   </p>
+                  <ul className="text-sm text-amber-800 mt-2 space-y-1 ml-4">
+                    <li>• Permissions verification</li>
+                    <li>• Module completeness check</li>
+                    <li>• Approval workflow compliance</li>
+                    <li>• Lifecycle state validation</li>
+                  </ul>
                 </div>
               </div>
             </div>
-          ) : validationErrors.length === 0 ? (
+          ) : !validationError ? (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium text-green-900 mb-1">Validation Passed</p>
                   <p className="text-sm text-green-800">
-                    This document is ready to be issued.
+                    All checks passed. This document is ready to be issued.
                   </p>
                 </div>
               </div>
@@ -196,12 +214,18 @@ export default function IssueDocumentModal({
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-medium text-red-900 mb-2">Validation Failed</p>
-                  <ul className="list-disc list-inside text-sm text-red-800 space-y-1">
-                    {validationErrors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
+                  <p className="font-medium text-red-900 mb-2">Cannot Issue Document</p>
+                  <p className="text-sm text-red-800">{validationError}</p>
+                  {validationErrorCode === 'APPROVAL_REQUIRED' && (
+                    <p className="text-sm text-red-700 mt-2">
+                      Go to Document Overview → Request Approval
+                    </p>
+                  )}
+                  {validationErrorCode === 'NO_PERMISSION' && (
+                    <p className="text-sm text-red-700 mt-2">
+                      Only users with edit permissions can issue documents.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -252,7 +276,7 @@ export default function IssueDocumentModal({
             >
               {isValidating ? 'Validating...' : 'Validate Document'}
             </button>
-          ) : validationErrors.length === 0 ? (
+          ) : !validationError ? (
             <button
               onClick={handleIssue}
               disabled={isIssuing}

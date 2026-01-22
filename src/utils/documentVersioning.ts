@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { canIssueDocument } from './approvalWorkflow';
 import { generateChangeSummary, createInitialIssueSummary } from './changeSummary';
+import { carryForwardEvidence } from './evidenceManagement';
 
 export interface DocumentVersion {
   id: string;
@@ -132,7 +133,8 @@ export async function issueDocument(documentId: string, userId: string, organisa
 export async function createNewVersion(
   baseDocumentId: string,
   userId: string,
-  organisationId: string
+  organisationId: string,
+  shouldCarryForwardEvidence: boolean = true
 ): Promise<CreateNewVersionResult> {
   try {
     const { data: currentIssued, error: currentError } = await supabase
@@ -257,6 +259,19 @@ export async function createNewVersion(
 
       if (actionsInsertError) {
         console.error('Error carrying forward actions:', actionsInsertError);
+      }
+    }
+
+    if (shouldCarryForwardEvidence) {
+      const evidenceResult = await carryForwardEvidence(
+        currentIssued.id,
+        newDocument.id,
+        baseDocumentId,
+        organisationId
+      );
+
+      if (!evidenceResult.success) {
+        console.error('Error carrying forward evidence:', evidenceResult.error);
       }
     }
 

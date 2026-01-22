@@ -11,7 +11,7 @@ import ActionsDashboard from './pages/dashboard/ActionsDashboard';
 import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
 import DocumentOverview from './pages/documents/DocumentOverview';
 import DocumentWorkspace from './pages/documents/DocumentWorkspace';
-import DocumentEvidence from './pages/documents/DocumentEvidence';
+import DocumentEvidence from './pages/documents/DocumentEvidenceV2';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UpgradeSubscription from './pages/UpgradeSubscription';

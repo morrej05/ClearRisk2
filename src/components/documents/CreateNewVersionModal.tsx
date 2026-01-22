@@ -22,11 +22,12 @@ export default function CreateNewVersionModal({
   onSuccess,
 }: CreateNewVersionModalProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const [carryForwardEvidence, setCarryForwardEvidence] = useState(true);
 
   const handleCreateNewVersion = async () => {
     setIsCreating(true);
     try {
-      const result = await createNewVersion(baseDocumentId, userId, organisationId);
+      const result = await createNewVersion(baseDocumentId, userId, organisationId, carryForwardEvidence);
       if (result.success && result.newDocumentId && result.newVersionNumber) {
         onSuccess(result.newDocumentId, result.newVersionNumber);
       } else {
@@ -73,9 +74,30 @@ export default function CreateNewVersionModal({
                   <li>All module data and form content</li>
                   <li>Open, In Progress, and Deferred actions</li>
                   <li>Document title and metadata</li>
+                  <li>Evidence and attachments (if enabled below)</li>
                 </ul>
               </div>
             </div>
+          </div>
+
+          <div className="bg-white border border-neutral-200 rounded-lg p-4 mb-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={carryForwardEvidence}
+                onChange={(e) => setCarryForwardEvidence(e.target.checked)}
+                className="mt-0.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <p className="font-medium text-neutral-900 mb-1">
+                  Carry forward evidence and attachments
+                </p>
+                <p className="text-sm text-neutral-600">
+                  Evidence files will be linked to the new version without duplication.
+                  Recommended for maintaining continuity of evidence across versions.
+                </p>
+              </div>
+            </label>
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">

@@ -8,6 +8,7 @@ import ModuleRenderer from '../../components/modules/ModuleRenderer';
 import IssueDocumentModal from '../../components/IssueDocumentModal';
 import EditLockBanner from '../../components/EditLockBanner';
 import { isEditableStatus } from '../../utils/lifecycleGuards';
+import ExecutiveSummaryPanel from '../../components/documents/ExecutiveSummaryPanel';
 
 interface Document {
   id: string;
@@ -25,6 +26,9 @@ interface Document {
   issue_status: 'draft' | 'issued' | 'superseded';
   base_document_id: string;
   version_number: number;
+  executive_summary_ai?: string | null;
+  executive_summary_author?: string | null;
+  executive_summary_mode?: string | null;
 }
 
 interface ModuleInstance {
@@ -299,21 +303,35 @@ export default function DocumentWorkspace() {
         </div>
 
         <div className="flex-1 overflow-y-auto bg-neutral-50">
-          {selectedModule ? (
-            <ModuleRenderer
-              moduleInstance={selectedModule}
-              document={document}
-              onSaved={handleModuleSaved}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <AlertCircle className="w-16 h-16 text-neutral-300 mb-4" />
-              <p className="text-neutral-500 text-lg">No module selected</p>
-              <p className="text-neutral-400 text-sm">
-                Select a module from the sidebar to begin editing
-              </p>
-            </div>
-          )}
+          <div className="max-w-7xl mx-auto p-6">
+            {document.document_type === 'FRA' && organisation?.id && (
+              <ExecutiveSummaryPanel
+                documentId={document.id}
+                organisationId={organisation.id}
+                issueStatus={document.issue_status}
+                initialAiSummary={document.executive_summary_ai}
+                initialAuthorSummary={document.executive_summary_author}
+                initialMode={(document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'ai'}
+                onUpdate={fetchDocument}
+              />
+            )}
+
+            {selectedModule ? (
+              <ModuleRenderer
+                moduleInstance={selectedModule}
+                document={document}
+                onSaved={handleModuleSaved}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <AlertCircle className="w-16 h-16 text-neutral-300 mb-4" />
+                <p className="text-neutral-500 text-lg">No module selected</p>
+                <p className="text-neutral-400 text-sm">
+                  Select a module from the sidebar to begin editing
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

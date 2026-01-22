@@ -16,7 +16,6 @@ import {
   drawDraftWatermark,
   addNewPage,
   drawFooter,
-  addExecutiveSummaryPages,
 } from './pdfUtils';
 
 interface Document {
@@ -35,9 +34,6 @@ interface Document {
   standards_selected: string[];
   created_at: string;
   updated_at: string;
-  executive_summary_ai?: string | null;
-  executive_summary_author?: string | null;
-  executive_summary_mode?: string | null;
 }
 
 interface ModuleInstance {
@@ -125,16 +121,6 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
 
   // SECTION 1: Cover Page
   yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition);
-
-  addExecutiveSummaryPages(
-    pdfDoc,
-    isDraft,
-    totalPages,
-    (document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'none',
-    document.executive_summary_ai,
-    document.executive_summary_author,
-    { bold: fontBold, regular: font }
-  );
 
   // SECTION 2: Executive Summary (NO OVERALL RATING)
   const result1 = addNewPage(pdfDoc, isDraft, totalPages);

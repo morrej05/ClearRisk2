@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Edit3, FileText, X, AlertCircle } from 'lucide-react';
+import { Sparkles, Edit3, FileText, X, ChevronDown, ChevronUp, AlertCircle, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { generateExecutiveSummary } from '../../lib/ai/generateExecutiveSummary';
 
-interface ExecutiveSummaryEditorProps {
+interface ExecutiveSummaryPanelProps {
   documentId: string;
-  documentType: string;
-  isImmutable: boolean;
+  organisationId: string;
+  issueStatus: string;
   initialAiSummary: string | null;
   initialAuthorSummary: string | null;
   initialMode: 'ai' | 'author' | 'both' | 'none';
@@ -14,15 +15,15 @@ interface ExecutiveSummaryEditorProps {
 
 type SummaryMode = 'ai' | 'author' | 'both' | 'none';
 
-export default function ExecutiveSummaryEditor({
+export default function ExecutiveSummaryPanel({
   documentId,
-  documentType,
-  isImmutable,
+  organisationId,
+  issueStatus,
   initialAiSummary,
   initialAuthorSummary,
   initialMode,
   onUpdate,
-}: ExecutiveSummaryEditorProps) {
+}: ExecutiveSummaryPanelProps) {
   const [mode, setMode] = useState<SummaryMode>(initialMode);
   const [aiSummary, setAiSummary] = useState(initialAiSummary || '');
   const [authorSummary, setAuthorSummary] = useState(initialAuthorSummary || '');
@@ -30,48 +31,33 @@ export default function ExecutiveSummaryEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [authorExpanded, setAuthorExpanded] = useState(!!initialAuthorSummary);
+
+  const isDraft = issueStatus === 'draft';
 
   useEffect(() => {
     setMode(initialMode);
     setAiSummary(initialAiSummary || '');
     setAuthorSummary(initialAuthorSummary || '');
+    setAuthorExpanded(!!initialAuthorSummary);
   }, [initialMode, initialAiSummary, initialAuthorSummary]);
 
   const handleGenerateAiSummary = async () => {
+    if (!isDraft) return;
+
     setIsGenerating(true);
     setError(null);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const { data: { session } } = await supabase.auth.getSession();
+      const result = await generateExecutiveSummary({ documentId, organisationId });
 
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/generate-executive-summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ document_id: documentId }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate summary');
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
+      if (result.success && result.summary) {
         setAiSummary(result.summary);
         if (onUpdate) {
           onUpdate();
         }
       } else {
-        throw new Error(result.error || 'Unknown error');
+        setError(result.error || 'Failed to generate AI summary');
       }
     } catch (err: any) {
       console.error('Error generating AI summary:', err);
@@ -82,6 +68,8 @@ export default function ExecutiveSummaryEditor({
   };
 
   const handleSaveChanges = async () => {
+    if (!isDraft) return;
+
     setIsSaving(true);
     setError(null);
 
@@ -93,7 +81,8 @@ export default function ExecutiveSummaryEditor({
           executive_summary_author: authorSummary || null,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', documentId);
+        .eq('id', documentId)
+        .eq('organisation_id', organisationId);
 
       if (updateError) throw updateError;
 
@@ -110,23 +99,40 @@ export default function ExecutiveSummaryEditor({
   };
 
   const handleModeChange = (newMode: SummaryMode) => {
+    if (!isDraft) return;
     setMode(newMode);
     setHasUnsavedChanges(true);
   };
 
   const handleAuthorSummaryChange = (value: string) => {
+    if (!isDraft) return;
+
     setAuthorSummary(value);
     setHasUnsavedChanges(true);
+
+    if (value.trim()) {
+      if (aiSummary) {
+        if (mode !== 'both' && mode !== 'author') {
+          setMode('both');
+        }
+      } else {
+        if (mode !== 'author') {
+          setMode('author');
+        }
+      }
+    }
   };
 
-  if (isImmutable) {
+  if (!isDraft) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border-2 border-neutral-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border-2 border-neutral-200 p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <FileText className="w-6 h-6 text-blue-600" />
+          <Lock className="w-6 h-6 text-neutral-400" />
           <div>
             <h3 className="text-lg font-bold text-neutral-900">Executive Summary</h3>
-            <p className="text-xs text-neutral-500">Locked (document issued)</p>
+            <p className="text-xs text-neutral-500">
+              This executive summary is locked. Create a new version to make changes.
+            </p>
           </div>
         </div>
 
@@ -162,7 +168,7 @@ export default function ExecutiveSummaryEditor({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border-2 border-neutral-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border-2 border-neutral-200 p-6 mb-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <FileText className="w-6 h-6 text-blue-600" />
@@ -208,7 +214,7 @@ export default function ExecutiveSummaryEditor({
             }`}
           >
             <Sparkles className="w-4 h-4 mx-auto mb-1" />
-            AI Only
+            AI summary
           </button>
           <button
             onClick={() => handleModeChange('author')}
@@ -219,13 +225,13 @@ export default function ExecutiveSummaryEditor({
             }`}
           >
             <Edit3 className="w-4 h-4 mx-auto mb-1" />
-            Author Only
+            Author summary
           </button>
           <button
             onClick={() => handleModeChange('both')}
             className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
               mode === 'both'
-                ? 'border-purple-600 bg-purple-50 text-purple-700'
+                ? 'border-green-600 bg-green-50 text-green-700'
                 : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300'
             }`}
           >
@@ -268,7 +274,7 @@ export default function ExecutiveSummaryEditor({
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      {aiSummary ? 'Regenerate' : 'Generate'}
+                      {aiSummary ? 'Regenerate' : 'Generate AI Summary'}
                     </>
                   )}
                 </button>
@@ -279,7 +285,9 @@ export default function ExecutiveSummaryEditor({
                 </div>
               ) : (
                 <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 text-center">
-                  <p className="text-sm text-neutral-600">Click "Generate" to create an AI summary based on your assessment data</p>
+                  <p className="text-sm text-neutral-600">
+                    Click "Generate AI Summary" to create a summary based on your assessment data
+                  </p>
                 </div>
               )}
             </div>
@@ -287,26 +295,41 @@ export default function ExecutiveSummaryEditor({
 
           {(mode === 'author' || mode === 'both') && (
             <div>
-              <label className="text-sm font-semibold text-neutral-700 flex items-center gap-2 mb-3">
-                <Edit3 className="w-4 h-4 text-amber-600" />
-                {mode === 'both' ? 'Author Commentary (Optional)' : 'Author Summary'}
-              </label>
-              <textarea
-                value={authorSummary}
-                onChange={(e) => handleAuthorSummaryChange(e.target.value)}
-                placeholder={
-                  mode === 'both'
-                    ? 'Add optional commentary to supplement the AI summary...'
-                    : 'Write your executive summary...'
-                }
-                rows={8}
-                className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none text-sm"
-              />
-              <p className="text-xs text-neutral-500 mt-2">
-                {mode === 'both'
-                  ? 'This will appear after the AI summary in the report'
-                  : 'This will be the only executive summary in the report'}
-              </p>
+              <button
+                onClick={() => setAuthorExpanded(!authorExpanded)}
+                className="flex items-center justify-between w-full text-left mb-3"
+              >
+                <label className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-amber-600" />
+                  {mode === 'both' ? 'Add author commentary (optional)' : 'Author Summary'}
+                </label>
+                {authorExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-neutral-600" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-neutral-600" />
+                )}
+              </button>
+
+              {authorExpanded && (
+                <>
+                  <textarea
+                    value={authorSummary}
+                    onChange={(e) => handleAuthorSummaryChange(e.target.value)}
+                    placeholder={
+                      mode === 'both'
+                        ? 'Add optional commentary to supplement the AI summary...'
+                        : 'Write your executive summary...'
+                    }
+                    rows={8}
+                    className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none text-sm"
+                  />
+                  <p className="text-xs text-neutral-500 mt-2">
+                    {mode === 'both'
+                      ? 'This will appear after the AI summary in the report'
+                      : 'This will be the only executive summary in the report'}
+                  </p>
+                </>
+              )}
             </div>
           )}
         </div>

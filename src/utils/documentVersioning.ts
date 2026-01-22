@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { canIssueDocument } from './approvalWorkflow';
+import { generateChangeSummary } from './changeSummary';
 
 export interface DocumentVersion {
   id: string;
@@ -81,6 +82,25 @@ export async function issueDocument(documentId: string, userId: string, organisa
       return { success: false, error: validation.errors.join(', ') };
     }
 
+    // Get document to check for previous version
+    const { data: document, error: docError } = await supabase
+      .from('documents')
+      .select('base_document_id')
+      .eq('id', documentId)
+      .single();
+
+    if (docError) throw docError;
+
+    // Find previously issued document in this chain
+    const { data: previousIssued } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('base_document_id', document.base_document_id)
+      .eq('issue_status', 'issued')
+      .neq('id', documentId)
+      .maybeSingle();
+
+    // Issue the document
     const { error } = await supabase
       .from('documents')
       .update({
@@ -92,6 +112,11 @@ export async function issueDocument(documentId: string, userId: string, organisa
       .eq('id', documentId);
 
     if (error) throw error;
+
+    // Generate change summary if there was a previous issued version
+    if (previousIssued) {
+      await generateChangeSummary(documentId, previousIssued.id, userId);
+    }
 
     return { success: true, documentId };
   } catch (error) {

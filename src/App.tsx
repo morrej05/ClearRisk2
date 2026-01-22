@@ -8,6 +8,7 @@ import CommonDashboard from './pages/CommonDashboard';
 import FireSafetyDashboard from './pages/dashboard/FireSafetyDashboard';
 import ExplosionDashboard from './pages/dashboard/ExplosionDashboard';
 import ActionsDashboard from './pages/dashboard/ActionsDashboard';
+import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
 import DocumentOverview from './pages/documents/DocumentOverview';
 import DocumentWorkspace from './pages/documents/DocumentWorkspace';
 import DocumentEvidence from './pages/documents/DocumentEvidence';
@@ -67,6 +68,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ExplosionDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/action-register"
+            element={
+              <ProtectedRoute>
+                <ActionRegisterPage />
               </ProtectedRoute>
             }
           />

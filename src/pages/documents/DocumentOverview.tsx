@@ -482,6 +482,10 @@ export default function DocumentOverview() {
           />
         )}
 
+        {document.issue_status === 'issued' && (
+          <ChangeSummaryPanel documentId={id!} className="mb-6" />
+        )}
+
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">

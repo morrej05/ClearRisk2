@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileText,
   Download,
@@ -21,23 +21,32 @@ import {
   getActionRegisterStats,
   getTrackingStatusColor,
   getTrackingStatusLabel,
+  getUniqueModuleKeys,
+  getUniqueDocumentTypes,
+  getModuleKeyLabel,
 } from '../../utils/actionRegister';
 
 export default function ActionRegisterPage() {
   const { organisation } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const documentFilter = searchParams.get('document');
 
   const [actions, setActions] = useState<ActionRegisterEntry[]>([]);
   const [filteredActions, setFilteredActions] = useState<ActionRegisterEntry[]>([]);
   const [orgStats, setOrgStats] = useState<OrgActionStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [documentTitle, setDocumentTitle] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
     status: [] as string[],
     priority: [] as string[],
     trackingStatus: [] as string[],
+    documentType: [] as string[],
+    moduleKey: [] as string[],
     overdue: false,
+    documentId: documentFilter || undefined,
   });
 
   useEffect(() => {
@@ -45,6 +54,15 @@ export default function ActionRegisterPage() {
       fetchData();
     }
   }, [organisation?.id]);
+
+  useEffect(() => {
+    if (documentFilter && actions.length > 0) {
+      const doc = actions.find(a => a.document_id === documentFilter);
+      if (doc) {
+        setDocumentTitle(doc.document_title);
+      }
+    }
+  }, [documentFilter, actions]);
 
   useEffect(() => {
     const filtered = filterActionRegister(actions, filters);
@@ -67,11 +85,17 @@ export default function ActionRegisterPage() {
   };
 
   const handleExportCSV = () => {
-    const filename = `action-register-${new Date().toISOString().split('T')[0]}.csv`;
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = documentFilter && documentTitle
+      ? `actions_${documentTitle.replace(/[^a-z0-9]/gi, '_')}_${dateStr}.csv`
+      : `action_register_${dateStr}.csv`;
     downloadActionRegisterCSV(filteredActions, filename);
   };
 
-  const toggleFilter = (filterType: 'status' | 'priority' | 'trackingStatus', value: string) => {
+  const toggleFilter = (
+    filterType: 'status' | 'priority' | 'trackingStatus' | 'documentType' | 'moduleKey',
+    value: string
+  ) => {
     setFilters((prev) => ({
       ...prev,
       [filterType]: prev[filterType].includes(value)
@@ -85,15 +109,21 @@ export default function ActionRegisterPage() {
       status: [],
       priority: [],
       trackingStatus: [],
+      documentType: [],
+      moduleKey: [],
       overdue: false,
     });
   };
 
   const stats = getActionRegisterStats(filteredActions);
+  const availableModuleKeys = getUniqueModuleKeys(actions);
+  const availableDocumentTypes = getUniqueDocumentTypes(actions);
   const hasActiveFilters =
     filters.status.length > 0 ||
     filters.priority.length > 0 ||
     filters.trackingStatus.length > 0 ||
+    filters.documentType.length > 0 ||
+    filters.moduleKey.length > 0 ||
     filters.overdue;
 
   if (isLoading) {
@@ -113,14 +143,31 @@ export default function ActionRegisterPage() {
             <div className="flex items-center gap-3">
               <FileText className="w-6 h-6 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Action Register</h1>
+                <h1 className="text-2xl font-bold text-neutral-900">
+                  Action Register
+                  {documentTitle && (
+                    <span className="text-lg font-normal text-neutral-600 ml-2">
+                      — {documentTitle}
+                    </span>
+                  )}
+                </h1>
                 <p className="text-sm text-neutral-600">
-                  Organisation-wide action tracking and management
+                  {documentFilter
+                    ? 'Document-level action tracking'
+                    : 'Organisation-wide action tracking and management'}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
+              {documentFilter && (
+                <button
+                  onClick={() => navigate('/dashboard/actions')}
+                  className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors"
+                >
+                  View All Actions
+                </button>
+              )}
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`px-4 py-2 rounded-lg border font-medium transition-colors ${
@@ -130,7 +177,13 @@ export default function ActionRegisterPage() {
                 }`}
               >
                 <Filter className="w-4 h-4 inline mr-2" />
-                Filter {hasActiveFilters && `(${filters.status.length + filters.priority.length + filters.trackingStatus.length})`}
+                Filter {hasActiveFilters && `(${
+                  filters.status.length +
+                  filters.priority.length +
+                  filters.trackingStatus.length +
+                  filters.documentType.length +
+                  filters.moduleKey.length
+                })`}
               </button>
 
               <button
@@ -196,7 +249,7 @@ export default function ActionRegisterPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
               {/* Status Filter */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -260,6 +313,54 @@ export default function ActionRegisterPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Document Type Filter */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Document Type
+                </label>
+                <div className="space-y-2">
+                  {availableDocumentTypes.map((type) => (
+                    <label key={type} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={filters.documentType.includes(type)}
+                        onChange={() => toggleFilter('documentType', type)}
+                        className="rounded border-neutral-300"
+                      />
+                      <span className="text-sm text-neutral-700">{type}</span>
+                    </label>
+                  ))}
+                  {availableDocumentTypes.length === 0 && (
+                    <p className="text-sm text-neutral-500">No types available</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Module Filter */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Module
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {availableModuleKeys.map((key) => (
+                    <label key={key} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={filters.moduleKey.includes(key)}
+                        onChange={() => toggleFilter('moduleKey', key)}
+                        className="rounded border-neutral-300"
+                      />
+                      <span className="text-sm text-neutral-700" title={getModuleKeyLabel(key)}>
+                        {key}
+                      </span>
+                    </label>
+                  ))}
+                  {availableModuleKeys.length === 0 && (
+                    <p className="text-sm text-neutral-500">No modules available</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -304,9 +405,23 @@ export default function ActionRegisterPage() {
                       <div className="text-sm font-medium text-neutral-900">
                         {action.document_title}
                       </div>
-                      {action.issue_date && (
-                        <div className="text-xs text-neutral-500">
-                          Issued {new Date(action.issue_date).toLocaleDateString()}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-neutral-500">
+                          {action.document_type} v{action.version_number}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                          action.issue_status === 'issued'
+                            ? 'bg-green-100 text-green-700'
+                            : action.issue_status === 'draft'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-neutral-100 text-neutral-700'
+                        }`}>
+                          {action.issue_status}
+                        </span>
+                      </div>
+                      {action.module_key && (
+                        <div className="text-xs text-neutral-500 mt-0.5">
+                          {action.module_key}
                         </div>
                       )}
                     </td>

@@ -5,7 +5,14 @@ export interface ActionRegisterEntry {
   organisation_id: string;
   document_id: string;
   document_title: string;
+  document_type: string;
+  base_document_id: string;
+  version_number: number;
+  issue_status: string;
   issue_date: string | null;
+  module_instance_id: string | null;
+  module_key: string | null;
+  module_outcome: any;
   recommended_action: string;
   priority_band: string;
   timescale: string | null;
@@ -99,6 +106,8 @@ export function filterActionRegister(
     status?: string[];
     priority?: string[];
     trackingStatus?: string[];
+    documentType?: string[];
+    moduleKey?: string[];
     overdue?: boolean;
     documentId?: string;
   }
@@ -117,6 +126,14 @@ export function filterActionRegister(
     filtered = filtered.filter(a => filters.trackingStatus!.includes(a.tracking_status));
   }
 
+  if (filters.documentType && filters.documentType.length > 0) {
+    filtered = filtered.filter(a => filters.documentType!.includes(a.document_type));
+  }
+
+  if (filters.moduleKey && filters.moduleKey.length > 0) {
+    filtered = filtered.filter(a => a.module_key && filters.moduleKey!.includes(a.module_key));
+  }
+
   if (filters.overdue) {
     filtered = filtered.filter(a => a.tracking_status === 'overdue');
   }
@@ -130,32 +147,40 @@ export function filterActionRegister(
 
 export function exportActionRegisterToCSV(actions: ActionRegisterEntry[]): string {
   const headers = [
-    'Document',
-    'Issue Date',
-    'Action',
     'Priority',
-    'Timescale',
-    'Target Date',
     'Status',
+    'Recommended Action',
     'Owner',
-    'Source',
+    'Target Date',
+    'Module Key',
+    'Document Title',
+    'Document Type',
+    'Version Number',
+    'Issue Status',
+    'Issue Date',
     'Tracking Status',
+    'Timescale',
+    'Source',
     'Age (Days)',
-    'Created',
-    'Closed',
+    'Created Date',
+    'Closed Date',
   ];
 
   const rows = actions.map(action => [
-    action.document_title,
-    action.issue_date || '',
-    action.recommended_action,
     action.priority_band,
-    action.timescale || '',
-    action.target_date || '',
     action.status,
-    action.owner_name || '',
-    action.source,
+    action.recommended_action,
+    action.owner_name || 'Unassigned',
+    action.target_date || 'Not set',
+    action.module_key || 'N/A',
+    action.document_title,
+    action.document_type,
+    action.version_number.toString(),
+    action.issue_status,
+    action.issue_date || 'Not issued',
     action.tracking_status,
+    action.timescale || '',
+    action.source,
     action.age_days.toString(),
     new Date(action.created_at).toLocaleDateString(),
     action.closed_at ? new Date(action.closed_at).toLocaleDateString() : '',
@@ -163,7 +188,7 @@ export function exportActionRegisterToCSV(actions: ActionRegisterEntry[]): strin
 
   const csvContent = [
     headers.join(','),
-    ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
   ].join('\n');
 
   return csvContent;
@@ -227,4 +252,49 @@ export function getTrackingStatusLabel(status: string): string {
     default:
       return status;
   }
+}
+
+export function getUniqueModuleKeys(actions: ActionRegisterEntry[]): string[] {
+  const keys = actions
+    .map(a => a.module_key)
+    .filter((key): key is string => key !== null && key !== undefined);
+  return Array.from(new Set(keys)).sort();
+}
+
+export function getUniqueDocumentTypes(actions: ActionRegisterEntry[]): string[] {
+  const types = actions.map(a => a.document_type);
+  return Array.from(new Set(types)).sort();
+}
+
+export function getModuleKeyLabel(key: string): string {
+  const labels: Record<string, string> = {
+    'A1': 'A1 - Document Control',
+    'A2': 'A2 - Building Profile',
+    'A3': 'A3 - Persons at Risk',
+    'A4': 'A4 - Management Controls',
+    'A5': 'A5 - Emergency Arrangements',
+    'FRA1': 'FRA1 - Fire Hazards',
+    'FRA2': 'FRA2 - Means of Escape',
+    'FRA3': 'FRA3 - Fire Protection',
+    'FRA4': 'FRA4 - Significant Findings',
+    'FRA5': 'FRA5 - External Fire Spread',
+    'FSD1': 'FSD1 - Regulatory Basis',
+    'FSD2': 'FSD2 - Evacuation Strategy',
+    'FSD3': 'FSD3 - Means of Escape Design',
+    'FSD4': 'FSD4 - Passive Fire Protection',
+    'FSD5': 'FSD5 - Active Fire Systems',
+    'FSD6': 'FSD6 - Fire Service Access',
+    'FSD7': 'FSD7 - Drawings Index',
+    'FSD8': 'FSD8 - Smoke Control',
+    'FSD9': 'FSD9 - Construction Phase',
+    'DSEAR1': 'DSEAR1 - Dangerous Substances',
+    'DSEAR2': 'DSEAR2 - Process Releases',
+    'DSEAR3': 'DSEAR3 - Hazardous Area Classification',
+    'DSEAR4': 'DSEAR4 - Ignition Sources',
+    'DSEAR5': 'DSEAR5 - Explosion Protection',
+    'DSEAR6': 'DSEAR6 - Risk Assessment Table',
+    'DSEAR10': 'DSEAR10 - Hierarchy Control',
+    'DSEAR11': 'DSEAR11 - Emergency Response',
+  };
+  return labels[key] || key;
 }

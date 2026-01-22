@@ -702,6 +702,13 @@ export default function DocumentOverview() {
           <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-neutral-500 uppercase">Open Actions</h3>
+              <button
+                onClick={() => navigate(`/dashboard/actions?document=${id}`)}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+              >
+                <List className="w-3 h-3" />
+                View Register
+              </button>
             </div>
             <div className="mb-3">
               <div className="text-3xl font-bold text-neutral-900 mb-1">{totalOpenActions}</div>

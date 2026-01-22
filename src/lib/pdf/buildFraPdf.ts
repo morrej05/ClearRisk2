@@ -3,6 +3,10 @@ import { getModuleName } from '../modules/moduleCatalog';
 import { detectInfoGaps } from '../../utils/infoGapQuickActions';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import {
+  fraRegulatoryFrameworkText,
+  fraResponsiblePersonDutiesText,
+} from '../reportText';
+import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
   MARGIN,
@@ -151,6 +155,16 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     document.executive_summary_author,
     { bold: fontBold, regular: font }
   );
+
+  const regFrameworkResult = addNewPage(pdfDoc, isDraft, totalPages);
+  page = regFrameworkResult.page;
+  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = drawRegulatoryFramework(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+  const respPersonResult = addNewPage(pdfDoc, isDraft, totalPages);
+  page = respPersonResult.page;
+  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = drawResponsiblePersonDuties(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   const sortedModules = sortModules(moduleInstances);
   const fra4Module = sortedModules.find((m) => m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS');
@@ -1399,6 +1413,145 @@ function drawAssumptionsAndLimitations(
         color: rgb(0.2, 0.2, 0.2),
       });
       yPosition -= 14;
+    }
+  }
+
+  return yPosition;
+}
+
+function drawRegulatoryFramework(
+  page: PDFPage,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  yPosition -= 20;
+  page.drawText('REGULATORY FRAMEWORK', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const paragraphs = fraRegulatoryFrameworkText.split('\n\n');
+  for (const paragraph of paragraphs) {
+    if (!paragraph.trim()) continue;
+
+    const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
+    for (const line of lines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 16;
+    }
+
+    yPosition -= 8;
+  }
+
+  return yPosition;
+}
+
+function drawResponsiblePersonDuties(
+  page: PDFPage,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  yPosition -= 20;
+  page.drawText('WHAT IS REQUIRED OF THE RESPONSIBLE PERSON', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const paragraphs = fraResponsiblePersonDutiesText.split('\n\n');
+  for (const paragraph of paragraphs) {
+    if (!paragraph.trim()) continue;
+
+    if (paragraph.startsWith('**') && paragraph.includes('**')) {
+      const match = paragraph.match(/\*\*(.+?)\*\*:?\s*(.*)/s);
+      if (match) {
+        const heading = match[1];
+        const content = match[2];
+
+        if (yPosition < MARGIN + 100) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+
+        page.drawText(heading, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+
+        yPosition -= 18;
+
+        if (content.trim()) {
+          const lines = wrapText(content, CONTENT_WIDTH, 11, font);
+          for (const line of lines) {
+            if (yPosition < MARGIN + 50) {
+              const result = addNewPage(pdfDoc, isDraft, totalPages);
+              page = result.page;
+              yPosition = PAGE_HEIGHT - MARGIN - 20;
+            }
+            page.drawText(line, {
+              x: MARGIN,
+              y: yPosition,
+              size: 11,
+              font,
+              color: rgb(0.1, 0.1, 0.1),
+            });
+            yPosition -= 16;
+          }
+        }
+
+        yPosition -= 8;
+      }
+    } else {
+      const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
+      for (const line of lines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+        page.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 16;
+      }
+
+      yPosition -= 8;
     }
   }
 

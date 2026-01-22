@@ -1,10 +1,32 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, ArrowRight } from 'lucide-react';
 import AppLayout from '../../components/AppLayout';
 import { isFeatureEnabled } from '../../utils/featureFlags';
+import { useAssessments } from '../../hooks/useAssessments';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { assessments, loading } = useAssessments({ limit: 8 });
+
+  function formatDate(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  }
+
+  function handleContinue(assessmentId: string) {
+    navigate(`/documents/${assessmentId}/workspace`);
+  }
 
   return (
     <AppLayout>
@@ -66,14 +88,72 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
-                    <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-500">
-                        No active assessments
-                      </td>
-                    </tr>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-500">
+                          Loading...
+                        </td>
+                      </tr>
+                    ) : assessments.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-500">
+                          No assessments yet
+                        </td>
+                      </tr>
+                    ) : (
+                      assessments.map((assessment) => (
+                        <tr key={assessment.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-slate-900">
+                              {assessment.clientName}
+                            </div>
+                            <div className="text-sm text-slate-500">{assessment.siteName}</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-900">
+                            {assessment.discipline}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-900">
+                            {assessment.type}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                assessment.status === 'Draft'
+                                  ? 'bg-slate-100 text-slate-800'
+                                  : 'bg-green-100 text-green-800'
+                              }`}
+                            >
+                              {assessment.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-500">
+                            {formatDate(assessment.updatedAt)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-right">
+                            <button
+                              onClick={() => handleContinue(assessment.id)}
+                              className="text-slate-900 hover:text-slate-700 font-medium"
+                            >
+                              {assessment.status === 'Draft' ? 'Continue' : 'View'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
+              {assessments.length > 0 && (
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
+                  <button
+                    onClick={() => navigate('/assessments')}
+                    className="text-sm text-slate-700 hover:text-slate-900 font-medium flex items-center gap-1"
+                  >
+                    View all assessments
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

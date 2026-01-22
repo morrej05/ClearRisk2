@@ -1,16 +1,20 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Check, Zap, Lock, Users } from 'lucide-react';
+import { useTenant } from '../hooks/useTenant';
+import { ArrowLeft, Check, Zap, Lock, Users, AlertCircle, CheckCircle } from 'lucide-react';
 import { PLAN_LABELS } from '../utils/permissions';
-
-const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+import { supabase } from '../lib/supabase';
 
 export default function UpgradePage() {
   const { user, userPlan } = useAuth();
+  const { organisation } = useTenant();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
   const plans = [
     {
@@ -110,8 +114,51 @@ export default function UpgradePage() {
     },
   ];
 
+  useEffect(() => {
+    const sessionStatus = searchParams.get('session_status');
+    if (sessionStatus === 'success') {
+      setIsPending(true);
+      setPendingMessage("We're confirming your subscription. This usually updates within a few seconds.");
+      pollForPlanUpdate();
+    }
+  }, [searchParams]);
+
+  const pollForPlanUpdate = async () => {
+    if (!organisation) return;
+
+    const maxRetries = 15;
+    let retries = 0;
+
+    const poll = async () => {
+      const { data } = await supabase
+        .from('organisations')
+        .select('plan_type, subscription_status')
+        .eq('id', organisation.id)
+        .single();
+
+      if (data?.subscription_status === 'active' && data?.plan_type !== userPlan) {
+        setIsPending(false);
+        setPendingMessage(`You are now on ${PLAN_LABELS[data.plan_type as keyof typeof PLAN_LABELS]}.`);
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
+        return;
+      }
+
+      retries++;
+      if (retries < maxRetries) {
+        setTimeout(poll, 1000);
+      } else {
+        setIsPending(false);
+        setPendingMessage("If your plan doesn't update shortly, refresh or contact support.");
+      }
+    };
+
+    poll();
+  };
+
   const handleUpgrade = async (plan: typeof plans[0]) => {
-    if (!plan.showCheckout || !user) {
+    if (!plan.showCheckout || !user || !organisation) {
       window.location.href = 'mailto:sales@ezirisk.com';
       return;
     }
@@ -119,36 +166,38 @@ export default function UpgradePage() {
     setIsProcessing(true);
 
     try {
-      const priceId = billingCycle === 'monthly'
-        ? plan.stripePriceIdMonthly
-        : plan.stripePriceIdAnnual;
+      const priceIdKey = billingCycle === 'monthly'
+        ? 'stripePriceIdMonthly'
+        : 'stripePriceIdAnnual';
 
-      const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      const priceId = plan[priceIdKey];
+
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${STRIPE_PUBLISHABLE_KEY}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
         },
-        body: new URLSearchParams({
-          'price': priceId || '',
-          'success_url': `${window.location.origin}/dashboard?upgrade=success`,
-          'cancel_url': `${window.location.origin}/upgrade`,
-          'client_reference_id': user.id,
-          'mode': 'subscription',
+        body: JSON.stringify({
+          priceId,
+          organisationId: organisation.id,
+          successUrl: `${window.location.origin}/upgrade?session_status=success`,
+          cancelUrl: `${window.location.origin}/upgrade`,
         }),
       });
 
-      const session = await response.json();
+      const data = await response.json();
 
-      if (session.url) {
-        window.location.href = session.url;
+      if (data.url) {
+        window.location.href = data.url;
       } else {
-        throw new Error('No checkout URL returned');
+        throw new Error(data.error || 'No checkout URL returned');
       }
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Unable to start checkout. Please contact support.');
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -184,11 +233,37 @@ export default function UpgradePage() {
               <h1 className="text-2xl font-bold text-slate-900">Upgrade Your Plan</h1>
               <p className="text-sm text-slate-600 mt-0.5">
                 Current Plan: <span className="font-medium text-slate-900">{getCurrentPlanLabel()}</span>
+                {organisation?.subscription_status && organisation.subscription_status !== 'active' && (
+                  <span className="ml-2 text-amber-600">({organisation.subscription_status})</span>
+                )}
               </p>
             </div>
           </div>
         </div>
       </header>
+
+      {pendingMessage && (
+        <div className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4`}>
+          <div className={`rounded-lg p-4 ${
+            isPending
+              ? 'bg-blue-50 border border-blue-200'
+              : 'bg-green-50 border border-green-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {isPending ? (
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              ) : (
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              )}
+              <p className={`text-sm font-medium ${
+                isPending ? 'text-blue-900' : 'text-green-900'
+              }`}>
+                {pendingMessage}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-8">

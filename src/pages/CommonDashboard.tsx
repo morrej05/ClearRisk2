@@ -6,6 +6,7 @@ import { getRolePermissions } from '../utils/permissions';
 import { canAccessExplosionSafety, shouldShowUpgradePrompts, getPlanTier, getSubscriptionStatusDisplayName } from '../utils/entitlements';
 import { useState } from 'react';
 import ClientBrandingModal from '../components/ClientBrandingModal';
+import BillingStatusBanner from '../components/BillingStatusBanner';
 
 interface DashboardTileProps {
   title: string;
@@ -192,6 +193,8 @@ export default function CommonDashboard() {
           </div>
         </div>
       </nav>
+
+      <BillingStatusBanner />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">

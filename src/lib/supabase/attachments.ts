@@ -153,17 +153,16 @@ export async function deleteAttachment(attachmentId: string): Promise<{ success:
       return { success: false, error: 'Attachment not found' };
     }
 
-    // Delete from storage
+    const fileSizeMb = (attachment.file_size_bytes || 0) / (1024 * 1024);
+
     const { error: storageError } = await supabase.storage
       .from('evidence')
       .remove([attachment.file_path]);
 
     if (storageError) {
       console.error('[deleteAttachment] Error deleting from storage:', storageError);
-      // Continue anyway - the database record is more critical
     }
 
-    // Delete from database
     const { error: dbError } = await supabase
       .from('attachments')
       .delete()
@@ -172,6 +171,22 @@ export async function deleteAttachment(attachmentId: string): Promise<{ success:
     if (dbError) {
       console.error('[deleteAttachment] Error deleting from database:', dbError);
       return { success: false, error: dbError.message };
+    }
+
+    if (attachment.organisation_id && fileSizeMb > 0) {
+      const { data: orgData } = await supabase
+        .from('organisations')
+        .select('storage_used_mb')
+        .eq('id', attachment.organisation_id)
+        .single();
+
+      if (orgData) {
+        const newStorageMb = Math.max(0, (orgData.storage_used_mb || 0) - fileSizeMb);
+        await supabase
+          .from('organisations')
+          .update({ storage_used_mb: newStorageMb })
+          .eq('id', attachment.organisation_id);
+      }
     }
 
     return { success: true };
@@ -264,6 +279,36 @@ export async function uploadEvidenceFile(
     throw new Error(validation.error);
   }
 
+  const fileSizeMb = file.size / (1024 * 1024);
+
+  const { data: orgData, error: orgError } = await supabase
+    .from('organisations')
+    .select(`
+      id,
+      storage_used_mb,
+      plan_definitions!organisations_plan_id_fkey (
+        max_storage_mb
+      )
+    `)
+    .eq('id', organisationId)
+    .single();
+
+  if (orgError || !orgData) {
+    console.error('Error fetching organisation storage limits:', orgError);
+    throw new Error('Unable to verify storage limits');
+  }
+
+  const storageUsedMb = orgData.storage_used_mb || 0;
+  const maxStorageMb = (orgData.plan_definitions as any)?.max_storage_mb || 0;
+  const newTotalMb = storageUsedMb + fileSizeMb;
+
+  if (newTotalMb > maxStorageMb) {
+    const remainingMb = Math.max(0, maxStorageMb - storageUsedMb);
+    throw new Error(
+      `Storage limit reached. You have ${remainingMb.toFixed(1)}MB remaining of ${maxStorageMb}MB. This file is ${fileSizeMb.toFixed(1)}MB. Upgrade your plan to add more storage.`
+    );
+  }
+
   const timestamp = new Date().toISOString().split('T')[0];
   const randomId = crypto.randomUUID();
   const sanitizedName = sanitizeFilename(file.name);
@@ -280,6 +325,13 @@ export async function uploadEvidenceFile(
     console.error('Error uploading file:', uploadError);
     throw uploadError;
   }
+
+  await supabase
+    .from('organisations')
+    .update({
+      storage_used_mb: newTotalMb,
+    })
+    .eq('id', organisationId);
 
   return {
     file_path: filePath,

@@ -8,12 +8,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, stripe-signature",
 };
 
-const PLAN_PRICE_MAP: Record<string, { plan: string; maxEditors: number; cycle: string }> = {
-  [Deno.env.get("STRIPE_PRICE_CORE_MONTHLY") || ""]: { plan: "core", maxEditors: 1, cycle: "monthly" },
-  [Deno.env.get("STRIPE_PRICE_CORE_ANNUAL") || ""]: { plan: "core", maxEditors: 1, cycle: "annual" },
-  [Deno.env.get("STRIPE_PRICE_PRO_MONTHLY") || ""]: { plan: "professional", maxEditors: 3, cycle: "monthly" },
-  [Deno.env.get("STRIPE_PRICE_PRO_ANNUAL") || ""]: { plan: "professional", maxEditors: 3, cycle: "annual" },
+type PlanType = 'core' | 'professional';
+type PlanInterval = 'month' | 'year';
+
+interface StripePlanMapping {
+  planType: PlanType;
+  interval: PlanInterval;
+}
+
+const PRICE_TO_PLAN: Record<string, StripePlanMapping> = {
+  [Deno.env.get("STRIPE_PRICE_CORE_MONTHLY") || ""]: { planType: "core", interval: "month" },
+  [Deno.env.get("STRIPE_PRICE_CORE_ANNUAL") || ""]: { planType: "core", interval: "year" },
+  [Deno.env.get("STRIPE_PRICE_PRO_MONTHLY") || ""]: { planType: "professional", interval: "month" },
+  [Deno.env.get("STRIPE_PRICE_PRO_ANNUAL") || ""]: { planType: "professional", interval: "year" },
 };
+
+function getPlanFromPriceId(priceId: string): StripePlanMapping | null {
+  return PRICE_TO_PLAN[priceId] || null;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -61,13 +73,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: existingEvent } = await supabase
-      .from("stripe_events_processed")
-      .select("id")
-      .eq("stripe_event_id", event.id)
-      .maybeSingle();
+    const { error: idempotencyError } = await supabase
+      .from("stripe_webhook_events")
+      .insert({
+        event_id: event.id,
+        event_type: event.type,
+        received_at: new Date().toISOString(),
+        processed: false
+      });
 
-    if (existingEvent) {
+    if (idempotencyError && idempotencyError.code === '23505') {
       console.log(`Event ${event.id} already processed, skipping`);
       return new Response(
         JSON.stringify({ received: true, skipped: true }),
@@ -78,135 +93,206 @@ Deno.serve(async (req: Request) => {
     }
 
     let organisationId: string | null = null;
-    let updateData: any = {};
+
+    async function getOrganisationId(
+      metadata: Record<string, string> | null | undefined,
+      subscriptionId?: string,
+      customerId?: string
+    ): Promise<string | null> {
+      if (metadata?.organisation_id) {
+        return metadata.organisation_id;
+      }
+
+      if (subscriptionId) {
+        const { data: org } = await supabase
+          .from("organisations")
+          .select("id")
+          .eq("stripe_subscription_id", subscriptionId)
+          .maybeSingle();
+        if (org) return org.id;
+      }
+
+      if (customerId) {
+        const { data: org } = await supabase
+          .from("organisations")
+          .select("id")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+        if (org) return org.id;
+      }
+
+      return null;
+    }
+
+    async function updateOrganisationSubscription(
+      orgId: string,
+      subscription: Stripe.Subscription
+    ) {
+      const priceId = subscription.items.data[0]?.price.id;
+      const planMapping = getPlanFromPriceId(priceId);
+
+      if (!planMapping) {
+        console.error(`Unknown price ID: ${priceId}`);
+        return;
+      }
+
+      const updateData: any = {
+        stripe_subscription_id: subscription.id,
+        stripe_customer_id: subscription.customer as string,
+        stripe_price_id: priceId,
+        stripe_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        subscription_status: subscription.status,
+        cancel_at_period_end: subscription.cancel_at_period_end || false,
+        plan_interval: planMapping.interval,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (subscription.status === 'active' || subscription.status === 'trialing') {
+        updateData.plan_type = planMapping.planType;
+      } else if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
+        updateData.plan_type = 'core';
+      }
+
+      await supabase
+        .from("organisations")
+        .update(updateData)
+        .eq("id", orgId);
+
+      console.log(`Updated org ${orgId}: plan=${updateData.plan_type}, status=${subscription.status}`);
+    }
 
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        organisationId = session.metadata?.organisation_id || null;
+
+        organisationId = await getOrganisationId(
+          session.metadata,
+          session.subscription as string,
+          session.customer as string
+        );
 
         if (!organisationId) {
-          console.error("No organisation_id in checkout session metadata");
+          console.error("No organisation found for checkout session");
           break;
         }
 
-        const subscription = await stripe.subscriptions.retrieve(
-          session.subscription as string
+        if (session.subscription) {
+          const subscription = await stripe.subscriptions.retrieve(
+            session.subscription as string
+          );
+          await updateOrganisationSubscription(organisationId, subscription);
+        }
+        break;
+      }
+
+      case "customer.subscription.created": {
+        const subscription = event.data.object as Stripe.Subscription;
+
+        organisationId = await getOrganisationId(
+          subscription.metadata,
+          subscription.id,
+          subscription.customer as string
         );
 
-        const priceId = subscription.items.data[0]?.price.id;
-        const planConfig = PLAN_PRICE_MAP[priceId];
-
-        if (planConfig) {
-          updateData = {
-            plan_type: planConfig.plan,
-            subscription_status: "active",
-            max_editors: planConfig.maxEditors,
-            billing_cycle: planConfig.cycle,
-            stripe_subscription_id: subscription.id,
-            stripe_customer_id: session.customer as string,
-            updated_at: new Date().toISOString(),
-          };
-
-          await supabase
-            .from("organisations")
-            .update(updateData)
-            .eq("id", organisationId);
-
-          console.log(`Activated ${planConfig.plan} plan for org ${organisationId}`);
+        if (!organisationId) {
+          console.error("No organisation found for subscription");
+          break;
         }
+
+        await updateOrganisationSubscription(organisationId, subscription);
         break;
       }
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        organisationId = subscription.metadata?.organisation_id || null;
 
-        if (!organisationId) {
-          const { data: org } = await supabase
-            .from("organisations")
-            .select("id")
-            .eq("stripe_subscription_id", subscription.id)
-            .maybeSingle();
-
-          organisationId = org?.id || null;
-        }
+        organisationId = await getOrganisationId(
+          subscription.metadata,
+          subscription.id,
+          subscription.customer as string
+        );
 
         if (!organisationId) {
           console.error("No organisation found for subscription");
           break;
         }
 
-        const priceId = subscription.items.data[0]?.price.id;
-        const planConfig = PLAN_PRICE_MAP[priceId];
-        const status = subscription.status;
-
-        if (status === "active" && planConfig) {
-          updateData = {
-            plan_type: planConfig.plan,
-            subscription_status: "active",
-            max_editors: planConfig.maxEditors,
-            billing_cycle: planConfig.cycle,
-            updated_at: new Date().toISOString(),
-          };
-        } else if (status === "past_due") {
-          updateData = {
-            subscription_status: "past_due",
-            updated_at: new Date().toISOString(),
-          };
-        } else if (status === "canceled" || status === "unpaid") {
-          updateData = {
-            plan_type: "free",
-            subscription_status: "canceled",
-            max_editors: 0,
-            updated_at: new Date().toISOString(),
-          };
-        }
-
-        if (Object.keys(updateData).length > 0) {
-          await supabase
-            .from("organisations")
-            .update(updateData)
-            .eq("id", organisationId);
-
-          console.log(`Updated subscription for org ${organisationId}: ${status}`);
-        }
+        await updateOrganisationSubscription(organisationId, subscription);
         break;
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        organisationId = subscription.metadata?.organisation_id || null;
 
-        if (!organisationId) {
-          const { data: org } = await supabase
-            .from("organisations")
-            .select("id")
-            .eq("stripe_subscription_id", subscription.id)
-            .maybeSingle();
-
-          organisationId = org?.id || null;
-        }
+        organisationId = await getOrganisationId(
+          subscription.metadata,
+          subscription.id,
+          subscription.customer as string
+        );
 
         if (!organisationId) {
           console.error("No organisation found for subscription");
           break;
         }
 
-        updateData = {
-          plan_type: "free",
-          subscription_status: "canceled",
-          max_editors: 0,
-          stripe_subscription_id: null,
-          updated_at: new Date().toISOString(),
-        };
-
         await supabase
           .from("organisations")
-          .update(updateData)
+          .update({
+            plan_type: "core",
+            subscription_status: "canceled",
+            stripe_subscription_id: null,
+            cancel_at_period_end: false,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", organisationId);
 
         console.log(`Canceled subscription for org ${organisationId}`);
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+
+        if (invoice.subscription) {
+          organisationId = await getOrganisationId(
+            null,
+            invoice.subscription as string,
+            invoice.customer as string
+          );
+
+          if (organisationId) {
+            await supabase
+              .from("organisations")
+              .update({
+                subscription_status: "past_due",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", organisationId);
+
+            console.log(`Payment failed for org ${organisationId}`);
+          }
+        }
+        break;
+      }
+
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
+
+        if (invoice.subscription) {
+          organisationId = await getOrganisationId(
+            null,
+            invoice.subscription as string,
+            invoice.customer as string
+          );
+
+          if (organisationId) {
+            const subscription = await stripe.subscriptions.retrieve(
+              invoice.subscription as string
+            );
+            await updateOrganisationSubscription(organisationId, subscription);
+            console.log(`Payment succeeded for org ${organisationId}`);
+          }
+        }
         break;
       }
 
@@ -214,16 +300,10 @@ Deno.serve(async (req: Request) => {
         console.log(`Unhandled event type: ${event.type}`);
     }
 
-    await supabase.from("stripe_events_processed").insert({
-      stripe_event_id: event.id,
-      event_type: event.type,
-      organisation_id: organisationId,
-      metadata: {
-        processed: true,
-        event_type: event.type,
-        timestamp: new Date().toISOString(),
-      },
-    });
+    await supabase
+      .from("stripe_webhook_events")
+      .update({ processed: true })
+      .eq("event_id", event.id);
 
     return new Response(
       JSON.stringify({ received: true }),

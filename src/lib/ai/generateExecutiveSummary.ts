@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { canGenerateAiSummary } from '../../utils/entitlements';
 
 interface GenerateExecutiveSummaryOptions {
   documentId: string;
@@ -32,6 +33,23 @@ export async function generateExecutiveSummary(
 
     if (docError || !document) {
       return { success: false, error: 'Document not found' };
+    }
+
+    const { data: organisation, error: orgError } = await supabase
+      .from('organisations')
+      .select('*')
+      .eq('id', organisationId)
+      .maybeSingle();
+
+    if (orgError || !organisation) {
+      return { success: false, error: 'Organisation not found' };
+    }
+
+    if (!canGenerateAiSummary(organisation)) {
+      return {
+        success: false,
+        error: 'AI executive summaries are available on the Professional plan. Upgrade to access this feature.',
+      };
     }
 
     if (document.issue_status !== 'draft') {

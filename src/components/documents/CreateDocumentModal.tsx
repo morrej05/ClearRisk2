@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, ArrowUpCircle, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { canAccessRiskEngineering } from '../../utils/entitlements';
 
 interface CreateDocumentModalProps {
   onClose: () => void;
@@ -67,7 +68,13 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
   const { organisation } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const availableTypes = allowedTypes || ['FRA', 'FSD', 'DSEAR'];
+  const canAccessEngineering = organisation ? canAccessRiskEngineering(organisation) : false;
+
+  let availableTypes = allowedTypes || ['FRA', 'FSD', 'DSEAR'];
+
+  if (!canAccessEngineering) {
+    availableTypes = availableTypes.filter(t => t === 'FRA');
+  }
 
   const [formData, setFormData] = useState({
     documentType: availableTypes[0],
@@ -184,14 +191,36 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
               required
             >
-              {availableTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type === 'FRA' && 'Fire Risk Assessment'}
-                  {type === 'FSD' && 'Fire Strategy Document'}
-                  {type === 'DSEAR' && 'DSEAR Assessment'}
-                </option>
-              ))}
+              <option value="FRA">Fire Risk Assessment</option>
+              <option value="FSD" disabled={!canAccessEngineering}>
+                Fire Strategy Document {!canAccessEngineering ? '(Professional plan)' : ''}
+              </option>
+              <option value="DSEAR" disabled={!canAccessEngineering}>
+                DSEAR Assessment {!canAccessEngineering ? '(Professional plan)' : ''}
+              </option>
             </select>
+            {!canAccessEngineering && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-amber-900 mb-1">Fire Risk Engineering Features</p>
+                  <p className="text-xs text-amber-700">
+                    Fire Strategy Documents and DSEAR Assessments are available on the Professional plan.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      navigate('/upgrade');
+                    }}
+                    className="mt-2 px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs rounded font-medium hover:from-blue-700 hover:to-purple-700 transition-colors inline-flex items-center gap-1"
+                  >
+                    <ArrowUpCircle className="w-3 h-3" />
+                    Upgrade Now
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

@@ -308,6 +308,7 @@ export default function DocumentWorkspace() {
               <ExecutiveSummaryPanel
                 documentId={document.id}
                 organisationId={organisation.id}
+                organisation={organisation}
                 issueStatus={document.issue_status}
                 initialAiSummary={document.executive_summary_ai}
                 initialAuthorSummary={document.executive_summary_author}

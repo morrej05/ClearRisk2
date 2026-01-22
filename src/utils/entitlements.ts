@@ -345,3 +345,54 @@ export const ADDON_DISPLAY_NAMES = {
   [ADDON_KEYS.ATEX_FORM]: 'ATEX Assessment',
   [ADDON_KEYS.ASEAR_FORM]: 'ASEAR Assessment'
 };
+
+export const ENTITLEMENTS = {
+  core: {
+    canAccessRiskEngineering: false,
+    canGenerateAiExecutiveSummary: false,
+    canShareWithClients: false,
+    canUseApprovalWorkflow: false,
+  },
+  professional: {
+    canAccessRiskEngineering: true,
+    canGenerateAiExecutiveSummary: true,
+    canShareWithClients: true,
+    canUseApprovalWorkflow: true,
+  },
+};
+
+export function canAccessRiskEngineering(org: Organisation): boolean {
+  const tier = getPlanTier(org);
+
+  if (tier === 'enterprise') return true;
+  if (tier === 'professional') return ENTITLEMENTS.professional.canAccessRiskEngineering;
+
+  return false;
+}
+
+export function canGenerateAiSummary(org: Organisation): boolean {
+  const tier = getPlanTier(org);
+
+  if (tier === 'enterprise') return true;
+  if (tier === 'professional') return ENTITLEMENTS.professional.canGenerateAiExecutiveSummary;
+
+  return false;
+}
+
+export function canShareWithClients(org: Organisation): boolean {
+  const tier = getPlanTier(org);
+
+  if (tier === 'enterprise') return true;
+  if (tier === 'professional') return ENTITLEMENTS.professional.canShareWithClients;
+
+  return false;
+}
+
+export function canUseApprovalWorkflow(org: Organisation): boolean {
+  const tier = getPlanTier(org);
+
+  if (tier === 'enterprise') return true;
+  if (tier === 'professional') return ENTITLEMENTS.professional.canUseApprovalWorkflow;
+
+  return false;
+}

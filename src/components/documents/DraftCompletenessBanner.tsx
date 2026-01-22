@@ -1,4 +1,5 @@
 import { CheckCircle, Circle, FileText, ListTodo, Image, CheckSquare, Sparkles, Edit3 } from 'lucide-react';
+import { canUseApprovalWorkflow, type Organisation } from '../../utils/entitlements';
 
 interface DraftCompletenessBannerProps {
   documentId: string;
@@ -9,6 +10,7 @@ interface DraftCompletenessBannerProps {
   totalActions: number;
   evidenceCount: number;
   approvalStatus: string | null;
+  organisation: Organisation;
   onGenerateAiSummary?: () => void;
   onAddAuthorCommentary?: () => void;
   onViewActions?: () => void;
@@ -25,6 +27,7 @@ export default function DraftCompletenessBanner({
   totalActions,
   evidenceCount,
   approvalStatus,
+  organisation,
   onGenerateAiSummary,
   onAddAuthorCommentary,
   onViewActions,
@@ -34,6 +37,8 @@ export default function DraftCompletenessBanner({
   if (issueStatus !== 'draft') {
     return null;
   }
+
+  const canUseApproval = canUseApprovalWorkflow(organisation);
 
   const checkExecutiveSummary = (): boolean => {
     if (executiveSummaryMode === 'none') return true;
@@ -176,7 +181,7 @@ export default function DraftCompletenessBanner({
           </div>
         </div>
 
-        {approvalStatus && (
+        {approvalStatus && canUseApproval && (
           <div className="flex items-start gap-3 group">
             {approvalComplete ? (
               <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />

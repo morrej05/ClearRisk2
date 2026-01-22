@@ -21,6 +21,7 @@ import DraftCompletenessBanner from '../../components/documents/DraftCompletenes
 import type { ApprovalStatus } from '../../utils/approvalWorkflow';
 import { getClientAccessDescription, isDocumentImmutable } from '../../utils/clientAccess';
 import { getLockedPdfInfo, downloadLockedPdf, shouldRegeneratePdf } from '../../utils/pdfLocking';
+import { canShareWithClients, canUseApprovalWorkflow } from '../../utils/entitlements';
 import {
   getDefencePack,
   buildDefencePack,
@@ -582,7 +583,7 @@ export default function DocumentOverview() {
         )}
 
         {/* Draft Completeness Banner */}
-        {['FRA', 'DSEAR', 'FSD'].includes(document.document_type) && (
+        {['FRA', 'DSEAR', 'FSD'].includes(document.document_type) && organisation && (
           <DraftCompletenessBanner
             documentId={id!}
             issueStatus={document.issue_status}
@@ -592,6 +593,7 @@ export default function DocumentOverview() {
             totalActions={totalActions}
             evidenceCount={evidenceCount}
             approvalStatus={document.approval_status}
+            organisation={organisation}
             onGenerateAiSummary={() => navigate(`/documents/${id}`)}
             onAddAuthorCommentary={() => navigate(`/documents/${id}`)}
             onViewActions={() => navigate(`/documents/${id}`)}
@@ -618,7 +620,7 @@ export default function DocumentOverview() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {document.issue_status === 'draft' && (
+              {document.issue_status === 'draft' && organisation && canUseApprovalWorkflow(organisation) && (
                 <button
                   onClick={() => setShowApprovalModal(true)}
                   className="px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center gap-2"
@@ -627,7 +629,7 @@ export default function DocumentOverview() {
                   Manage Approval
                 </button>
               )}
-              {document.issue_status === 'issued' && (
+              {document.issue_status === 'issued' && organisation && canShareWithClients(organisation) && (
                 <button
                   onClick={() => setShowClientAccessModal(true)}
                   className="px-4 py-2 border-2 border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center gap-2"

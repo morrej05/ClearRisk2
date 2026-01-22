@@ -304,7 +304,7 @@ export default function DocumentWorkspace() {
 
         <div className="flex-1 overflow-y-auto bg-neutral-50">
           <div className="max-w-7xl mx-auto p-6">
-            {document.document_type === 'FRA' && organisation?.id && (
+            {['FRA', 'DSEAR', 'FSD'].includes(document.document_type) && organisation?.id && (
               <ExecutiveSummaryPanel
                 documentId={document.id}
                 organisationId={organisation.id}

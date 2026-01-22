@@ -1,0 +1,9 @@
+export const hazardousAreaClassificationText = `Hazardous area classification is a systematic approach to identifying and categorising areas where explosive atmospheres may occur. This methodology forms a critical part of compliance with the Dangerous Substances and Explosive Atmospheres Regulations 2002 (DSEAR) and associated standards including BS EN 60079-10-1 for gases and vapours, and BS EN 60079-10-2 for combustible dusts.
+
+The classification process involves identifying all sources of release of flammable substances, determining the likelihood and duration of release, and assessing whether the concentration of flammable material in air can reach explosive levels. The resulting classification determines the selection of electrical and mechanical equipment that can be safely used in each area, ensuring that potential ignition sources are eliminated or adequately controlled.
+
+Areas are classified according to the frequency and duration of the presence of explosive atmospheres. Zone 0 (or Zone 20 for dusts) represents areas where an explosive atmosphere is present continuously or for long periods. Zone 1 (or Zone 21 for dusts) indicates areas where an explosive atmosphere is likely to occur in normal operation occasionally. Zone 2 (or Zone 22 for dusts) identifies areas where an explosive atmosphere is not likely to occur in normal operation but, if it does occur, will persist for a short period only.
+
+The classification methodology considers factors including the physical and chemical properties of the substances present, the nature and adequacy of ventilation, the design and operation of plant and equipment, and the competence of personnel and operational controls in place. The resulting classification informs equipment selection, maintenance requirements, work permit systems, and operational procedures to maintain safety and regulatory compliance.`;
+
+export default hazardousAreaClassificationText;

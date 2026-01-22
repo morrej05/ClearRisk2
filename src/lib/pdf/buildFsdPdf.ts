@@ -2,6 +2,10 @@ import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
 import { getModuleName } from '../modules/moduleCatalog';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import {
+  fsdPurposeAndScopeText,
+  fsdLimitationsText,
+} from '../reportText';
+import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
   MARGIN,
@@ -14,6 +18,9 @@ import {
   getPriorityColor,
   addNewPage,
   drawFooter,
+  addExecutiveSummaryPages,
+  addSupersededWatermark,
+  drawDraftWatermark,
 } from './pdfUtils';
 
 interface Document {
@@ -32,6 +39,10 @@ interface Document {
   standards_selected: string[];
   created_at: string;
   updated_at: string;
+  executive_summary_ai: string | null;
+  executive_summary_author: string | null;
+  executive_summary_mode: string | null;
+  issue_status: string;
 }
 
 interface ModuleInstance {
@@ -119,8 +130,18 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
   let { page } = addNewPage(pdfDoc, isDraft, totalPages);
   drawCoverPage(page, document, organisation, font, fontBold);
 
+  addExecutiveSummaryPages(
+    pdfDoc,
+    isDraft,
+    totalPages,
+    (document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'none',
+    document.executive_summary_ai,
+    document.executive_summary_author,
+    { bold: fontBold, regular: font }
+  );
+
   ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
-  drawExecutiveSummary(page, document, moduleInstances, actions, font, fontBold);
+  page = drawPurposeAndScope(page, pdfDoc, isDraft, totalPages, font, fontBold);
 
   const sortedModules = sortModules(moduleInstances);
   for (const moduleInstance of sortedModules) {
@@ -134,6 +155,9 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
   if (attachments.length > 0) {
     ({ page } = drawAttachmentsIndex(page, attachments, moduleInstances, actions, pdfDoc, isDraft, totalPages, font, fontBold));
   }
+
+  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+  page = drawFsdLimitations(page, pdfDoc, isDraft, totalPages, font, fontBold);
 
   ({ page } = drawAssumptionsAndLimitations(page, document, moduleInstances, pdfDoc, isDraft, totalPages, font, fontBold));
 
@@ -884,4 +908,96 @@ function drawAttachmentsIndex(
   }
 
   return { page };
+}
+
+function drawPurposeAndScope(
+  page: PDFPage,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): PDFPage {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('PURPOSE AND SCOPE', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const paragraphs = fsdPurposeAndScopeText.split('\n\n');
+  for (const paragraph of paragraphs) {
+    if (!paragraph.trim()) continue;
+
+    const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
+    for (const line of lines) {
+      if (yPosition < MARGIN + 50) {
+        ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 16;
+    }
+
+    yPosition -= 8;
+  }
+
+  return page;
+}
+
+function drawFsdLimitations(
+  page: PDFPage,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): PDFPage {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('LIMITATIONS AND ASSUMPTIONS', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const paragraphs = fsdLimitationsText.split('\n\n');
+  for (const paragraph of paragraphs) {
+    if (!paragraph.trim()) continue;
+
+    const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
+    for (const line of lines) {
+      if (yPosition < MARGIN + 50) {
+        ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 16;
+    }
+
+    yPosition -= 8;
+  }
+
+  return page;
 }

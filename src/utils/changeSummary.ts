@@ -33,6 +33,72 @@ export interface ChangeSummary {
   updated_at: string;
 }
 
+export async function createInitialIssueSummary(
+  documentId: string,
+  userId: string
+): Promise<{ success: boolean; summaryId?: string; error?: string }> {
+  try {
+    const { data: document, error: docError } = await supabase
+      .from('documents')
+      .select('organisation_id, base_document_id')
+      .eq('id', documentId)
+      .single();
+
+    if (docError) throw docError;
+
+    const { data: actions, error: actionsError } = await supabase
+      .from('actions')
+      .select('id, recommended_action, priority_band, status')
+      .eq('document_id', documentId)
+      .is('deleted_at', null);
+
+    if (actionsError) throw actionsError;
+
+    const openActions = actions?.filter(a =>
+      ['open', 'in_progress', 'deferred'].includes(a.status)
+    ) || [];
+
+    const summaryData = {
+      organisation_id: document.organisation_id,
+      base_document_id: document.base_document_id,
+      document_id: documentId,
+      previous_document_id: null,
+      new_actions_count: openActions.length,
+      closed_actions_count: 0,
+      reopened_actions_count: 0,
+      outstanding_actions_count: openActions.length,
+      new_actions: openActions.map(a => ({
+        id: a.id,
+        recommended_action: a.recommended_action,
+        priority_band: a.priority_band,
+        status: a.status
+      })),
+      closed_actions: [],
+      reopened_actions: [],
+      risk_rating_changes: [],
+      material_field_changes: [],
+      summary_text: null,
+      summary_markdown: 'Initial issue – no previous version.',
+      has_material_changes: false,
+      visible_to_client: true,
+      generated_by: userId,
+    };
+
+    const { data: summary, error: insertError } = await supabase
+      .from('document_change_summaries')
+      .insert([summaryData])
+      .select('id')
+      .single();
+
+    if (insertError) throw insertError;
+
+    return { success: true, summaryId: summary.id };
+  } catch (error: any) {
+    console.error('Error creating initial issue summary:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function generateChangeSummary(
   newDocumentId: string,
   oldDocumentId: string,

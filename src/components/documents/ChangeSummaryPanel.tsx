@@ -50,6 +50,32 @@ export default function ChangeSummaryPanel({ documentId, className = '' }: Chang
     );
   }
 
+  // Check if this is an initial issue
+  const isInitialIssue = !summary.previous_document_id;
+
+  if (isInitialIssue) {
+    return (
+      <div className={`bg-blue-50 rounded-lg border border-blue-200 p-6 ${className}`}>
+        <div className="flex items-start gap-3">
+          <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-blue-900">Initial Issue</h3>
+            <p className="text-sm text-blue-700 mt-1">
+              This is the first issued version of this document.
+            </p>
+            {summary.outstanding_actions_count > 0 && (
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <p className="text-sm font-medium text-blue-900">
+                  {summary.outstanding_actions_count} {summary.outstanding_actions_count === 1 ? 'action' : 'actions'} identified
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const stats = getChangeSummaryStats(summary);
   const formattedText = formatChangeSummaryText(summary);
 

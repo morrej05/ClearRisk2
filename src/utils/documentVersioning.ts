@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { canIssueDocument } from './approvalWorkflow';
-import { generateChangeSummary } from './changeSummary';
+import { generateChangeSummary, createInitialIssueSummary } from './changeSummary';
 
 export interface DocumentVersion {
   id: string;
@@ -113,9 +113,13 @@ export async function issueDocument(documentId: string, userId: string, organisa
 
     if (error) throw error;
 
-    // Generate change summary if there was a previous issued version
+    // Generate change summary
     if (previousIssued) {
+      // Compare with previous issued version
       await generateChangeSummary(documentId, previousIssued.id, userId);
+    } else {
+      // First issue - create initial summary
+      await createInitialIssueSummary(documentId, userId);
     }
 
     return { success: true, documentId };

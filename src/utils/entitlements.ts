@@ -52,11 +52,12 @@ export function getPlanTier(org: Organisation): 'free' | 'solo' | 'core' | 'prof
   return 'free';
 }
 
-export function isPaidActive(org: Organisation): boolean {
-  return org.subscription_status === 'active' || org.subscription_status === 'trialing';
+export function isPaidActive(org?: Organisation | null): boolean {
+  const status = org?.subscription_status;
+  return status === 'active' || status === 'trialing';
 }
 
-export function canEdit(user: User, org: Organisation): boolean {
+export function canEdit(user: User, org?: Organisation | null): boolean {
   if (isPlatformAdmin(user)) {
     return true;
   }
@@ -69,15 +70,23 @@ export function canEdit(user: User, org: Organisation): boolean {
     return false;
   }
 
+  if (!org) {
+    return false;
+  }
+
   const tier = getPlanTier(org);
   const isActiveSubscription = isPaidActive(org) || tier === 'enterprise';
 
   return isActiveSubscription;
 }
 
-export function canAccessProFeatures(user: User, org: Organisation): boolean {
+export function canAccessProFeatures(user: User, org?: Organisation | null): boolean {
   if (isPlatformAdmin(user)) {
     return true;
+  }
+
+  if (!org) {
+    return false;
   }
 
   const tier = getPlanTier(org);
@@ -87,9 +96,13 @@ export function canAccessProFeatures(user: User, org: Organisation): boolean {
   return isProOrEnterprise && isActive;
 }
 
-export function canAccessExplosionSafety(user: User, org: Organisation): boolean {
+export function canAccessExplosionSafety(user: User, org?: Organisation | null): boolean {
   if (isPlatformAdmin(user)) {
     return true;
+  }
+
+  if (!org) {
+    return false;
   }
 
   const tier = getPlanTier(org);
@@ -99,9 +112,13 @@ export function canAccessExplosionSafety(user: User, org: Organisation): boolean
   return isProOrEnterprise && isActive;
 }
 
-export function hasAddon(user: User, org: Organisation, addonKey: string): boolean {
+export function hasAddon(user: User, org?: Organisation | null, addonKey?: string): boolean {
   if (isPlatformAdmin(user)) {
     return true;
+  }
+
+  if (!org || !addonKey) {
+    return false;
   }
 
   const tier = getPlanTier(org);
@@ -109,12 +126,16 @@ export function hasAddon(user: User, org: Organisation, addonKey: string): boole
     return true;
   }
 
-  return org.enabled_addons.includes(addonKey);
+  return org.enabled_addons?.includes(addonKey) ?? false;
 }
 
-export function canSwitchDiscipline(user: User, org: Organisation): boolean {
+export function canSwitchDiscipline(user: User, org?: Organisation | null): boolean {
   if (isPlatformAdmin(user)) {
     return true;
+  }
+
+  if (!org) {
+    return false;
   }
 
   const tier = getPlanTier(org);
@@ -129,21 +150,28 @@ export function canAccessPlatformSettings(user: User): boolean {
   return isPlatformAdmin(user);
 }
 
-export function canViewData(org: Organisation): boolean {
+export function canViewData(org?: Organisation | null): boolean {
   return true;
 }
 
-export function canExportData(org: Organisation): boolean {
+export function canExportData(org?: Organisation | null): boolean {
   return true;
 }
 
-export function isSubscriptionActive(org: Organisation): boolean {
+export function isSubscriptionActive(org?: Organisation | null): boolean {
+  if (!org) {
+    return false;
+  }
   return isPaidActive(org) || getPlanTier(org) === 'enterprise';
 }
 
-export function shouldShowUpgradePrompts(user: User, org: Organisation): boolean {
+export function shouldShowUpgradePrompts(user: User, org?: Organisation | null): boolean {
   if (isPlatformAdmin(user)) {
     return false;
+  }
+
+  if (!org) {
+    return true;
   }
 
   const tier = getPlanTier(org);
@@ -154,9 +182,13 @@ export function shouldShowUpgradePrompts(user: User, org: Organisation): boolean
   return true;
 }
 
-export function needsActiveSubscription(user: User, org: Organisation): boolean {
+export function needsActiveSubscription(user: User, org?: Organisation | null): boolean {
   if (isPlatformAdmin(user)) {
     return false;
+  }
+
+  if (!org) {
+    return true;
   }
 
   const tier = getPlanTier(org);
@@ -190,7 +222,7 @@ export function canManageBranding(user: User): boolean {
   return isOrgAdmin(user);
 }
 
-export function canCreateSurveys(user: User, org: Organisation): boolean {
+export function canCreateSurveys(user: User, org?: Organisation | null): boolean {
   return canEdit(user, org);
 }
 
@@ -198,13 +230,17 @@ export function canDeleteSurveys(user: User): boolean {
   return isOrgAdmin(user);
 }
 
-export function canIssueSurveys(user: User, org: Organisation): boolean {
+export function canIssueSurveys(user: User, org?: Organisation | null): boolean {
   return canEdit(user, org);
 }
 
-export function canAccessPillarB(user: User, org: Organisation): boolean {
+export function canAccessPillarB(user: User, org?: Organisation | null): boolean {
   if (isPlatformAdmin(user)) {
     return true;
+  }
+
+  if (!org) {
+    return false;
   }
 
   // Check for plan_id first (new field), fallback to plan_type (old field)
@@ -361,7 +397,11 @@ export const ENTITLEMENTS = {
   },
 };
 
-export function canAccessRiskEngineering(org: Organisation): boolean {
+export function canAccessRiskEngineering(org?: Organisation | null): boolean {
+  if (!org) {
+    return false;
+  }
+
   const tier = getPlanTier(org);
 
   if (tier === 'enterprise') return true;
@@ -370,7 +410,11 @@ export function canAccessRiskEngineering(org: Organisation): boolean {
   return false;
 }
 
-export function canGenerateAiSummary(org: Organisation): boolean {
+export function canGenerateAiSummary(org?: Organisation | null): boolean {
+  if (!org) {
+    return false;
+  }
+
   const tier = getPlanTier(org);
 
   if (tier === 'enterprise') return true;
@@ -379,7 +423,11 @@ export function canGenerateAiSummary(org: Organisation): boolean {
   return false;
 }
 
-export function canShareWithClients(org: Organisation): boolean {
+export function canShareWithClients(org?: Organisation | null): boolean {
+  if (!org) {
+    return false;
+  }
+
   const tier = getPlanTier(org);
 
   if (tier === 'enterprise') return true;
@@ -388,7 +436,11 @@ export function canShareWithClients(org: Organisation): boolean {
   return false;
 }
 
-export function canUseApprovalWorkflow(org: Organisation): boolean {
+export function canUseApprovalWorkflow(org?: Organisation | null): boolean {
+  if (!org) {
+    return false;
+  }
+
   const tier = getPlanTier(org);
 
   if (tier === 'enterprise') return true;

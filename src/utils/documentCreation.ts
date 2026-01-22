@@ -1,0 +1,130 @@
+import { supabase } from '../lib/supabase';
+
+const MODULE_SKELETONS = {
+  FRA: [
+    'A1_DOC_CONTROL',
+    'A2_BUILDING_PROFILE',
+    'A3_PERSONS_AT_RISK',
+    'A4_MANAGEMENT_CONTROLS',
+    'A5_EMERGENCY_ARRANGEMENTS',
+    'A7_REVIEW_ASSURANCE',
+    'FRA_1_HAZARDS',
+    'FRA_2_ESCAPE_ASIS',
+    'FRA_3_PROTECTION_ASIS',
+    'FRA_5_EXTERNAL_FIRE_SPREAD',
+    'FRA_4_SIGNIFICANT_FINDINGS',
+  ],
+  FSD: [
+    'A1_DOC_CONTROL',
+    'A2_BUILDING_PROFILE',
+    'FSD_1_REG_BASIS',
+    'FSD_2_EVAC_STRATEGY',
+    'FSD_3_ESCAPE_DESIGN',
+    'FSD_4_PASSIVE_PROTECTION',
+    'FSD_5_ACTIVE_SYSTEMS',
+    'FSD_6_FRS_ACCESS',
+    'FSD_7_DRAWINGS',
+    'FSD_8_SMOKE_CONTROL',
+    'FSD_9_CONSTRUCTION_PHASE',
+  ],
+  DSEAR: [
+    'A1_DOC_CONTROL',
+    'A2_BUILDING_PROFILE',
+    'DSEAR_1_SUBSTANCES_REGISTER',
+    'DSEAR_2_PROCESS_RELEASES',
+    'DSEAR_3_HAC_ZONING',
+    'DSEAR_4_IGNITION_CONTROL',
+    'DSEAR_5_MITIGATION',
+    'DSEAR_6_RISK_TABLE',
+    'DSEAR_10_HIERARCHY_SUBSTITUTION',
+    'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE',
+  ],
+};
+
+export type DocumentType = 'FRA' | 'FSD' | 'DSEAR';
+
+interface CreateDocumentParams {
+  organisationId: string;
+  documentType: DocumentType;
+  title?: string;
+}
+
+export async function createDocument({
+  organisationId,
+  documentType,
+  title
+}: CreateDocumentParams): Promise<string> {
+  const documentTitle = title || `New ${documentType}`;
+  const assessmentDate = new Date().toISOString().split('T')[0];
+
+  const documentData = {
+    organisation_id: organisationId,
+    document_type: documentType,
+    title: documentTitle,
+    status: 'draft',
+    version: 1,
+    assessment_date: assessmentDate,
+  };
+
+  const { data: document, error: docError } = await supabase
+    .from('documents')
+    .insert([documentData])
+    .select()
+    .single();
+
+  if (docError) throw docError;
+  if (!document) throw new Error('Document creation failed');
+
+  const moduleKeys = MODULE_SKELETONS[documentType] || [];
+
+  const moduleInstances = moduleKeys.map((moduleKey) => ({
+    organisation_id: organisationId,
+    document_id: document.id,
+    module_key: moduleKey,
+    module_scope: 'document',
+    outcome: null,
+    assessor_notes: '',
+    data: {},
+  }));
+
+  const { error: modulesError } = await supabase
+    .from('module_instances')
+    .insert(moduleInstances);
+
+  if (modulesError) throw modulesError;
+
+  return document.id;
+}
+
+export async function createPropertySurvey(
+  userId: string,
+  companyName: string
+): Promise<string> {
+  const surveyDate = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('survey_reports')
+    .insert({
+      user_id: userId,
+      framework_type: 'fire_property',
+      survey_type: 'Full',
+      report_status: 'Draft',
+      property_name: 'Untitled Survey',
+      property_address: '',
+      company_name: companyName,
+      survey_date: surveyDate,
+      issued: false,
+      form_data: {
+        companyName,
+        surveyDate,
+        reportStatus: 'Draft',
+      },
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('Survey creation failed');
+
+  return data.id;
+}

@@ -4,8 +4,7 @@ import { ArrowRight, Lock } from 'lucide-react';
 import AppLayout from '../../components/AppLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { canAccessRiskEngineering, canAccessExplosionSafety } from '../../utils/entitlements';
-import CreateDocumentModal from '../../components/documents/CreateDocumentModal';
-import NewSurveyModal from '../../components/NewSurveyModal';
+import { createDocument, createPropertySurvey } from '../../utils/documentCreation';
 
 interface AssessmentType {
   id: string;
@@ -18,11 +17,9 @@ interface AssessmentType {
 export default function NewAssessmentPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { organisation } = useAuth();
+  const { user, organisation } = useAuth();
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showSurveyModal, setShowSurveyModal] = useState(false);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [creatingType, setCreatingType] = useState<string | null>(null);
 
   const hasRiskEngineering = organisation ? canAccessRiskEngineering(organisation) : false;
   const hasExplosion = organisation ? canAccessExplosionSafety(organisation) : false;
@@ -68,29 +65,52 @@ export default function NewAssessmentPage() {
     },
   ];
 
-  const handleStart = (typeId: string) => {
-    if (typeId === 'fra') {
-      setSelectedType('FRA');
-      setShowCreateModal(true);
-    } else if (typeId === 'fsd') {
-      setSelectedType('FSD');
-      setShowCreateModal(true);
-    } else if (typeId === 'dsear') {
-      setSelectedType('DSEAR');
-      setShowCreateModal(true);
-    } else if (typeId === 'property') {
-      setShowSurveyModal(true);
+  const handleStart = async (typeId: string) => {
+    if (!organisation?.id) {
+      alert('Organisation not found. Please refresh and try again.');
+      return;
     }
-  };
 
-  const handleDocumentCreated = () => {
-    setShowCreateModal(false);
-    navigate('/assessments');
-  };
+    if (!user?.id) {
+      alert('User not found. Please refresh and try again.');
+      return;
+    }
 
-  const handleSurveyCreated = (surveyId: string) => {
-    setShowSurveyModal(false);
-    navigate(`/report/${surveyId}`);
+    setCreatingType(typeId);
+
+    try {
+      let documentId: string;
+
+      if (typeId === 'fra') {
+        documentId = await createDocument({
+          organisationId: organisation.id,
+          documentType: 'FRA',
+          title: 'New Fire Risk Assessment',
+        });
+        navigate(`/documents/${documentId}/workspace`);
+      } else if (typeId === 'fsd') {
+        documentId = await createDocument({
+          organisationId: organisation.id,
+          documentType: 'FSD',
+          title: 'New Fire Strategy',
+        });
+        navigate(`/documents/${documentId}/workspace`);
+      } else if (typeId === 'dsear') {
+        documentId = await createDocument({
+          organisationId: organisation.id,
+          documentType: 'DSEAR',
+          title: 'New DSEAR Assessment',
+        });
+        navigate(`/documents/${documentId}/workspace`);
+      } else if (typeId === 'property') {
+        documentId = await createPropertySurvey(user.id, 'New Client');
+        navigate(`/report/${documentId}`);
+      }
+    } catch (error) {
+      console.error('Error creating assessment:', error);
+      alert('Failed to create assessment. Please try again.');
+      setCreatingType(null);
+    }
   };
 
   return (
@@ -137,10 +157,11 @@ export default function NewAssessmentPage() {
                   </div>
                   <button
                     onClick={() => handleStart(assessment.id)}
-                    className="ml-6 flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors"
+                    disabled={creatingType !== null}
+                    className="ml-6 flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Start
-                    <ArrowRight className="w-4 h-4" />
+                    {creatingType === assessment.id ? 'Starting...' : 'Start'}
+                    {creatingType !== assessment.id && <ArrowRight className="w-4 h-4" />}
                   </button>
                 </div>
               ))}
@@ -168,10 +189,11 @@ export default function NewAssessmentPage() {
                     {assessment.enabled ? (
                       <button
                         onClick={() => handleStart(assessment.id)}
-                        className="ml-6 flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors"
+                        disabled={creatingType !== null}
+                        className="ml-6 flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Start
-                        <ArrowRight className="w-4 h-4" />
+                        {creatingType === assessment.id ? 'Starting...' : 'Start'}
+                        {creatingType !== assessment.id && <ArrowRight className="w-4 h-4" />}
                       </button>
                     ) : (
                       <button
@@ -187,24 +209,6 @@ export default function NewAssessmentPage() {
           </div>
         </div>
       </div>
-
-      {showCreateModal && selectedType && (
-        <CreateDocumentModal
-          onClose={() => {
-            setShowCreateModal(false);
-            setSelectedType(null);
-          }}
-          onDocumentCreated={handleDocumentCreated}
-          allowedTypes={[selectedType]}
-        />
-      )}
-
-      {showSurveyModal && (
-        <NewSurveyModal
-          onClose={() => setShowSurveyModal(false)}
-          onSurveyCreated={handleSurveyCreated}
-        />
-      )}
     </AppLayout>
   );
 }

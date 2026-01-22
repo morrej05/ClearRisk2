@@ -78,10 +78,11 @@ export default function ActionsDashboard() {
         .from('actions')
         .select(`
           *,
-          document:documents(id, title, document_type),
-          module_instance:module_instances(id, module_key, outcome),
-          owner:user_profiles(id, name)
+          document:documents!actions_document_id_fkey(id,title,document_type),
+          module_instance:module_instances(id,module_key,outcome),
+          owner:user_profiles(id,name)
         `)
+
         .eq('organisation_id', organisation.id)
         .is('deleted_at', null);
 

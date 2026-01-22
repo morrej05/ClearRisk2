@@ -57,9 +57,9 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
         .from('actions')
         .select(`
           *,
-          document:documents(id, title, document_type),
-          module_instance:module_instances(id, module_key, outcome),
-          owner:user_profiles(id, name)
+          document:documents!actions_document_id_fkey(id,title,document_type),
+          module_instance:module_instances(id,module_key,outcome),
+          owner:user_profiles(id,name)
         `)
         .eq('module_instance_id', moduleInstanceId)
         .is('deleted_at', null)

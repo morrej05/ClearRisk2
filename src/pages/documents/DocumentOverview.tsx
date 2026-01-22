@@ -16,7 +16,7 @@ import ApprovalManagementModal from '../../components/documents/ApprovalManageme
 import ApprovalStatusBadge from '../../components/documents/ApprovalStatusBadge';
 import ClientAccessModal from '../../components/documents/ClientAccessModal';
 import EditLockBanner from '../../components/EditLockBanner';
-// import ChangeSummaryPanel from '../../components/documents/ChangeSummaryPanel';
+import ChangeSummaryPanel from '../../components/documents/ChangeSummaryPanel';
 import type { ApprovalStatus } from '../../utils/approvalWorkflow';
 import { getClientAccessDescription, isDocumentImmutable } from '../../utils/clientAccess';
 import { getLockedPdfInfo, downloadLockedPdf, shouldRegeneratePdf } from '../../utils/pdfLocking';
@@ -105,7 +105,7 @@ export default function DocumentOverview() {
   const [document, setDocument] = useState<Document | null>(null);
 
   // Feature flag: Enable change summary panel when ready
-  const SHOW_CHANGE_SUMMARY = false;
+  const SHOW_CHANGE_SUMMARY = true;
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
@@ -490,19 +490,9 @@ export default function DocumentOverview() {
           />
         )}
 
-        {/* Change Summary Panel - Enable when ready */}
+        {/* Change Summary Panel */}
         {SHOW_CHANGE_SUMMARY && document.issue_status === 'issued' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-blue-900">Change Summary</p>
-                <p className="text-sm text-blue-700">
-                  What changed since last issue will appear here
-                </p>
-              </div>
-            </div>
-          </div>
+          <ChangeSummaryPanel documentId={id!} className="mb-6" />
         )}
 
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6 mb-6">

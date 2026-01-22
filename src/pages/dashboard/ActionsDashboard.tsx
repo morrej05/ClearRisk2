@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, Filter, X, ClipboardList, AlertTriangle, Paperclip, Camera, ExternalLink, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import AppLayout from '../../components/AppLayout';
 import ActionDetailModal from '../../components/actions/ActionDetailModal';
 import EvidencePanel from '../../components/actions/EvidencePanel';
 
@@ -176,16 +177,16 @@ export default function ActionsDashboard() {
     const today = new Date().toISOString().split('T')[0];
 
     const openP1 = allActions.filter(
-      (a) => a.priority_band === 'P1' && a.status !== 'complete'
+      (a) => a.priority_band === 'P1' && a.status !== 'closed'
     ).length;
 
     const openP2 = allActions.filter(
-      (a) => a.priority_band === 'P2' && a.status !== 'complete'
+      (a) => a.priority_band === 'P2' && a.status !== 'closed'
     ).length;
 
     const overdue = allActions.filter(
       (a) =>
-        a.status !== 'complete' &&
+        a.status !== 'closed' &&
         a.target_date &&
         a.target_date < today
     ).length;
@@ -200,7 +201,7 @@ export default function ActionsDashboard() {
   };
 
   const isOverdue = (action: Action) => {
-    if (!action.target_date || action.status === 'complete') return false;
+    if (!action.target_date || action.status === 'closed') return false;
     const today = new Date().toISOString().split('T')[0];
     return action.target_date < today;
   };
@@ -230,7 +231,7 @@ export default function ActionsDashboard() {
         return 'bg-red-100 text-red-700';
       case 'in_progress':
         return 'bg-blue-100 text-blue-700';
-      case 'complete':
+      case 'closed':
         return 'bg-green-100 text-green-700';
       case 'deferred':
         return 'bg-amber-100 text-amber-700';
@@ -289,343 +290,345 @@ export default function ActionsDashboard() {
     infoGapFilter;
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <button
-            onClick={() => navigate('/common-dashboard')}
-            className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 font-medium transition-colors mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </button>
-
-          <div>
-            <h1 className="text-3xl font-bold text-neutral-900">Actions Register</h1>
-            <p className="text-neutral-600 mt-1">
-              Track and manage actions across all documents
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-neutral-600">Open P1 Actions</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">
-                  {summaryMetrics.openP1}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-neutral-600">Open P2 Actions</p>
-                <p className="text-3xl font-bold text-orange-600 mt-1">
-                  {summaryMetrics.openP2}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-neutral-600">Overdue Actions</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">
-                  {summaryMetrics.overdue}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <ClipboardList className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-neutral-600">Documents Affected</p>
-                <p className="text-3xl font-bold text-neutral-900 mt-1">
-                  {summaryMetrics.documentsAffected}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center">
-                <ExternalLink className="w-6 h-6 text-neutral-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-6 bg-white rounded-lg border border-neutral-200 p-4">
-          <div className="flex items-center justify-between mb-4">
+    <AppLayout>
+      <div className="bg-neutral-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6">
             <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-neutral-900"
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 font-medium transition-colors mb-4"
             >
-              <Filter className="w-4 h-4" />
-              Filters {showFilters ? '▼' : '▶'}
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
             </button>
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-neutral-600">
-                Showing {actions.length} action{actions.length !== 1 ? 's' : ''}
-              </div>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'priority' | 'target_date')}
-                className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500"
-              >
-                <option value="priority">Sort by Priority</option>
-                <option value="target_date">Sort by Due Date</option>
-              </select>
+
+            <div>
+              <h1 className="text-3xl font-bold text-neutral-900">Actions Register</h1>
+              <p className="text-neutral-600 mt-1">
+                Track and manage actions across all documents
+              </p>
             </div>
           </div>
 
-          {showFilters && (
-            <div className="flex flex-wrap items-end gap-4 pb-2 border-t border-neutral-200 pt-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-neutral-700">Status:</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500 min-w-[180px]"
-                >
-                  <option value="all">All Status</option>
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="complete">Complete</option>
-                  <option value="overdue">Overdue</option>
-                  <option value="deferred">Deferred</option>
-                  <option value="not_applicable">Not Applicable</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-neutral-700">Priority:</label>
-                <div className="flex gap-2">
-                  {['P1', 'P2', 'P3', 'P4'].map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => togglePriorityFilter(p)}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-                        priorityFilter.includes(p)
-                          ? 'bg-neutral-900 text-white border-neutral-900'
-                          : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-neutral-600">Open P1 Actions</p>
+                  <p className="text-3xl font-bold text-red-600 mt-1">
+                    {summaryMetrics.openP1}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
                 </div>
               </div>
+            </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-neutral-700">Document Type:</label>
+            <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-neutral-600">Open P2 Actions</p>
+                  <p className="text-3xl font-bold text-orange-600 mt-1">
+                    {summaryMetrics.openP2}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-orange-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-neutral-600">Overdue Actions</p>
+                  <p className="text-3xl font-bold text-red-600 mt-1">
+                    {summaryMetrics.overdue}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <ClipboardList className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-neutral-600">Documents Affected</p>
+                  <p className="text-3xl font-bold text-neutral-900 mt-1">
+                    {summaryMetrics.documentsAffected}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center">
+                  <ExternalLink className="w-6 h-6 text-neutral-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6 bg-white rounded-lg border border-neutral-200 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-neutral-900"
+              >
+                <Filter className="w-4 h-4" />
+                Filters {showFilters ? '▼' : '▶'}
+              </button>
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-neutral-600">
+                  Showing {actions.length} action{actions.length !== 1 ? 's' : ''}
+                </div>
                 <select
-                  value={documentTypeFilter}
-                  onChange={(e) => setDocumentTypeFilter(e.target.value)}
-                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500 min-w-[150px]"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'priority' | 'target_date')}
+                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500"
                 >
-                  <option value="all">All Types</option>
-                  <option value="FRA">FRA</option>
-                  <option value="FSD">FSD</option>
-                  <option value="DSEAR">DSEAR</option>
+                  <option value="priority">Sort by Priority</option>
+                  <option value="target_date">Sort by Due Date</option>
                 </select>
               </div>
+            </div>
 
-              <div className="flex flex-col gap-1 justify-end">
-                <label className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={infoGapFilter}
-                    onChange={(e) => setInfoGapFilter(e.target.checked)}
-                    className="w-4 h-4 text-amber-600 border-neutral-300 rounded focus:ring-2 focus:ring-amber-500"
-                  />
-                  <span className="flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 text-amber-600" />
-                    Info gap only
-                  </span>
-                </label>
+            {showFilters && (
+              <div className="flex flex-wrap items-end gap-4 pb-2 border-t border-neutral-200 pt-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-neutral-700">Status:</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500 min-w-[180px]"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="closed">Closed</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="deferred">Deferred</option>
+                    <option value="not_applicable">Not Applicable</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-neutral-700">Priority:</label>
+                  <div className="flex gap-2">
+                    {['P1', 'P2', 'P3', 'P4'].map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => togglePriorityFilter(p)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                          priorityFilter.includes(p)
+                            ? 'bg-neutral-900 text-white border-neutral-900'
+                            : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-neutral-700">Document Type:</label>
+                  <select
+                    value={documentTypeFilter}
+                    onChange={(e) => setDocumentTypeFilter(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500 min-w-[150px]"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="FRA">FRA</option>
+                    <option value="FSD">FSD</option>
+                    <option value="DSEAR">DSEAR</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1 justify-end">
+                  <label className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={infoGapFilter}
+                      onChange={(e) => setInfoGapFilter(e.target.checked)}
+                      className="w-4 h-4 text-amber-600 border-neutral-300 rounded focus:ring-2 focus:ring-amber-500"
+                    />
+                    <span className="flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 text-amber-600" />
+                      Info gap only
+                    </span>
+                  </label>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-neutral-700 opacity-0">Clear</label>
+                  <button
+                    onClick={handleClearFilters}
+                    disabled={!hasActiveFilters}
+                    className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                      hasActiveFilters
+                        ? 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-300'
+                        : 'bg-neutral-50 text-neutral-400 cursor-not-allowed border border-neutral-200'
+                    }`}
+                    title="Clear all filters"
+                  >
+                    <X className="w-4 h-4" />
+                    Clear Filters
+                  </button>
+                </div>
               </div>
+            )}
+          </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-neutral-700 opacity-0">Clear</label>
-                <button
-                  onClick={handleClearFilters}
-                  disabled={!hasActiveFilters}
-                  className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    hasActiveFilters
-                      ? 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-300'
-                      : 'bg-neutral-50 text-neutral-400 cursor-not-allowed border border-neutral-200'
-                  }`}
-                  title="Clear all filters"
-                >
-                  <X className="w-4 h-4" />
-                  Clear Filters
-                </button>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-300 border-t-neutral-900"></div>
+            </div>
+          ) : actions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-lg border border-neutral-200">
+              <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
+                <ClipboardList className="w-8 h-8 text-neutral-400" />
+              </div>
+              <p className="text-neutral-500 text-lg mb-2">No actions found</p>
+              <p className="text-neutral-400 text-sm">
+                {hasActiveFilters
+                  ? 'Try adjusting your filters'
+                  : 'Actions will appear here when created from document modules'}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-neutral-200">
+                  <thead className="bg-neutral-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                        Priority
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                        Action
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                        Document
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                        Owner
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                        Due Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                        Evidence
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-neutral-200">
+                    {actions.map((action) => (
+                      <tr
+                        key={action.id}
+                        className="hover:bg-neutral-50 transition-colors cursor-pointer"
+                        onClick={() => handleActionClick(action)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-bold rounded border ${getPriorityColor(
+                              action.priority_band
+                            )}`}
+                          >
+                            {action.priority_band || '—'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-neutral-900 max-w-md">
+                            {action.recommended_action}
+                          </div>
+                          {isInfoGap(action) && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <AlertCircle className="w-3 h-3 text-amber-600" />
+                              <span className="text-xs text-amber-700 font-medium">⚠ Info gap</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {action.document ? (
+                            <div>
+                              <div className="text-sm font-medium text-neutral-900">
+                                {action.document.title}
+                              </div>
+                              <div className="text-xs text-neutral-500">
+                                {action.document.document_type}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-neutral-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
+                          {action.owner?.name || '—'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                              action.status
+                            )}`}
+                          >
+                            {formatStatus(action.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-neutral-600">
+                              {formatDate(action.target_date)}
+                            </span>
+                            {isOverdue(action) && (
+                              <span className="text-red-600 font-bold text-xs">OVERDUE</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {action.attachment_count > 0 ? (
+                            <button
+                              type="button"
+                              onClick={(e) => handleEvidenceBadgeClick(e, action.id)}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                              title="View evidence for this action"
+                            >
+                              <Paperclip className="w-3 h-3" />
+                              <span className="text-xs font-medium">
+                                {action.attachment_count}
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="text-xs text-neutral-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-300 border-t-neutral-900"></div>
-          </div>
-        ) : actions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-lg border border-neutral-200">
-            <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
-              <ClipboardList className="w-8 h-8 text-neutral-400" />
-            </div>
-            <p className="text-neutral-500 text-lg mb-2">No actions found</p>
-            <p className="text-neutral-400 text-sm">
-              {hasActiveFilters
-                ? 'Try adjusting your filters'
-                : 'Actions will appear here when created from document modules'}
-            </p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-neutral-200">
-                <thead className="bg-neutral-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
-                      Priority
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
-                      Action
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
-                      Document
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
-                      Owner
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
-                      Due Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
-                      Evidence
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-neutral-200">
-                  {actions.map((action) => (
-                    <tr
-                      key={action.id}
-                      className="hover:bg-neutral-50 transition-colors cursor-pointer"
-                      onClick={() => handleActionClick(action)}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-bold rounded border ${getPriorityColor(
-                            action.priority_band
-                          )}`}
-                        >
-                          {action.priority_band || '—'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-neutral-900 max-w-md">
-                          {action.recommended_action}
-                        </div>
-                        {isInfoGap(action) && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <AlertCircle className="w-3 h-3 text-amber-600" />
-                            <span className="text-xs text-amber-700 font-medium">⚠ Info gap</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {action.document ? (
-                          <div>
-                            <div className="text-sm font-medium text-neutral-900">
-                              {action.document.title}
-                            </div>
-                            <div className="text-xs text-neutral-500">
-                              {action.document.document_type}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-neutral-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
-                        {action.owner?.name || '—'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                            action.status
-                          )}`}
-                        >
-                          {formatStatus(action.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-neutral-600">
-                            {formatDate(action.target_date)}
-                          </span>
-                          {isOverdue(action) && (
-                            <span className="text-red-600 font-bold text-xs">OVERDUE</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {action.attachment_count > 0 ? (
-                          <button
-                            type="button"
-                            onClick={(e) => handleEvidenceBadgeClick(e, action.id)}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-                            title="View evidence for this action"
-                          >
-                            <Paperclip className="w-3 h-3" />
-                            <span className="text-xs font-medium">
-                              {action.attachment_count}
-                            </span>
-                          </button>
-                        ) : (
-                          <span className="text-xs text-neutral-400">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {selectedAction && (
+          <ActionDetailModal
+            action={selectedAction}
+            onClose={() => setSelectedAction(null)}
+            onActionUpdated={handleActionUpdated}
+            returnTo="/dashboard"
+          />
+        )}
+
+        {evidenceActionId && (
+          <EvidencePanel
+            actionId={evidenceActionId}
+            onClose={() => setEvidenceActionId(null)}
+          />
         )}
       </div>
-
-      {selectedAction && (
-        <ActionDetailModal
-          action={selectedAction}
-          onClose={() => setSelectedAction(null)}
-          onActionUpdated={handleActionUpdated}
-          returnTo="/dashboard/actions"
-        />
-      )}
-
-      {evidenceActionId && (
-        <EvidencePanel
-          actionId={evidenceActionId}
-          onClose={() => setEvidenceActionId(null)}
-        />
-      )}
-    </div>
+    </AppLayout>
   );
 }

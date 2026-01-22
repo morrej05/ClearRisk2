@@ -29,7 +29,7 @@ export default function SignIn() {
       if (authError) {
         setError(authError.message);
       } else {
-        navigate('/common-dashboard');
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       setError('An unexpected error occurred');

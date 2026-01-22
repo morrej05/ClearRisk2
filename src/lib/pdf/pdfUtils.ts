@@ -210,3 +210,123 @@ export async function addSupersededWatermark(pdfDoc: PDFDocument): Promise<void>
     });
   }
 }
+
+export function addExecutiveSummaryPages(
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  mode: 'ai' | 'author' | 'both' | 'none',
+  aiSummary: string | null,
+  authorSummary: string | null,
+  fonts: { bold: any; regular: any }
+): number {
+  if (mode === 'none') {
+    return 0;
+  }
+
+  let pagesAdded = 0;
+
+  if ((mode === 'ai' || mode === 'both') && aiSummary) {
+    const { page } = addNewPage(pdfDoc, isDraft, totalPages);
+    let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+    page.drawText('Executive Summary', {
+      x: MARGIN,
+      y: yPosition,
+      size: 18,
+      font: fonts.bold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 30;
+
+    const paragraphs = aiSummary.split('\n\n');
+    for (const paragraph of paragraphs) {
+      if (!paragraph.trim()) continue;
+
+      const lines = wrapText(paragraph, CONTENT_WIDTH, 11, fonts.regular);
+
+      for (const line of lines) {
+        if (yPosition < MARGIN + 40) {
+          const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
+          pagesAdded++;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          page.drawText(line, {
+            x: MARGIN,
+            y: yPosition,
+            size: 11,
+            font: fonts.regular,
+            color: rgb(0, 0, 0),
+          });
+        } else {
+          page.drawText(line, {
+            x: MARGIN,
+            y: yPosition,
+            size: 11,
+            font: fonts.regular,
+            color: rgb(0, 0, 0),
+          });
+        }
+        yPosition -= 14;
+      }
+
+      yPosition -= 8;
+    }
+
+    pagesAdded++;
+  }
+
+  if ((mode === 'author' || mode === 'both') && authorSummary) {
+    const { page } = addNewPage(pdfDoc, isDraft, totalPages);
+    let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+    const heading = mode === 'both' ? 'Author Commentary' : 'Executive Summary';
+
+    page.drawText(heading, {
+      x: MARGIN,
+      y: yPosition,
+      size: 18,
+      font: fonts.bold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 30;
+
+    const paragraphs = authorSummary.split('\n\n');
+    for (const paragraph of paragraphs) {
+      if (!paragraph.trim()) continue;
+
+      const lines = wrapText(paragraph, CONTENT_WIDTH, 11, fonts.regular);
+
+      for (const line of lines) {
+        if (yPosition < MARGIN + 40) {
+          const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
+          pagesAdded++;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          page.drawText(line, {
+            x: MARGIN,
+            y: yPosition,
+            size: 11,
+            font: fonts.regular,
+            color: rgb(0, 0, 0),
+          });
+        } else {
+          page.drawText(line, {
+            x: MARGIN,
+            y: yPosition,
+            size: 11,
+            font: fonts.regular,
+            color: rgb(0, 0, 0),
+          });
+        }
+        yPosition -= 14;
+      }
+
+      yPosition -= 8;
+    }
+
+    pagesAdded++;
+  }
+
+  return pagesAdded;
+}

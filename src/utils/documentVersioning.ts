@@ -175,6 +175,9 @@ export async function createNewVersion(
       issue_date: null,
       issued_by: null,
       status: 'draft',
+      executive_summary_ai: null,
+      executive_summary_author: null,
+      executive_summary_mode: 'ai',
     };
 
     const { data: newDocument, error: newDocError } = await supabase

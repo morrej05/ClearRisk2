@@ -18,6 +18,7 @@ import {
   addNewPage,
   drawFooter,
   addSupersededWatermark,
+  addExecutiveSummaryPages,
 } from './pdfUtils';
 
 interface Document {
@@ -36,6 +37,9 @@ interface Document {
   standards_selected: string[];
   created_at: string;
   updated_at: string;
+  executive_summary_ai?: string | null;
+  executive_summary_author?: string | null;
+  executive_summary_mode?: string | null;
 }
 
 interface ModuleInstance {
@@ -137,6 +141,16 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   }
 
   yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition);
+
+  addExecutiveSummaryPages(
+    pdfDoc,
+    isDraft,
+    totalPages,
+    (document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'none',
+    document.executive_summary_ai,
+    document.executive_summary_author,
+    { bold: fontBold, regular: font }
+  );
 
   const sortedModules = sortModules(moduleInstances);
   const fra4Module = sortedModules.find((m) => m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS');

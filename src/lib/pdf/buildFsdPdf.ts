@@ -14,6 +14,7 @@ import {
   getPriorityColor,
   addNewPage,
   drawFooter,
+  addExecutiveSummaryPages,
 } from './pdfUtils';
 
 interface Document {
@@ -32,6 +33,9 @@ interface Document {
   standards_selected: string[];
   created_at: string;
   updated_at: string;
+  executive_summary_ai?: string | null;
+  executive_summary_author?: string | null;
+  executive_summary_mode?: string | null;
 }
 
 interface ModuleInstance {
@@ -118,6 +122,16 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
 
   let { page } = addNewPage(pdfDoc, isDraft, totalPages);
   drawCoverPage(page, document, organisation, font, fontBold);
+
+  addExecutiveSummaryPages(
+    pdfDoc,
+    isDraft,
+    totalPages,
+    (document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'none',
+    document.executive_summary_ai,
+    document.executive_summary_author,
+    { bold: fontBold, regular: font }
+  );
 
   ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
   drawExecutiveSummary(page, document, moduleInstances, actions, font, fontBold);

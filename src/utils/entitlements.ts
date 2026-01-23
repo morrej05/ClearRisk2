@@ -3,6 +3,10 @@ export type DisciplineType = 'engineering' | 'assessment' | 'both';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'inactive';
 export type UserRole = 'admin' | 'surveyor' | 'viewer';
 
+export function isDev(): boolean {
+  return import.meta.env.DEV === true;
+}
+
 export interface Organisation {
   id: string;
   name: string;
@@ -96,13 +100,18 @@ export function canAccessProFeatures(user: User, org?: Organisation | null): boo
   return isProOrEnterprise && isActive;
 }
 
-export function canAccessExplosionSafety(user: User, org?: Organisation | null): boolean {
-  if (isPlatformAdmin(user)) {
+export function canAccessExplosionSafety(user?: User | null, org?: Organisation | null): boolean {
+  if (user && isPlatformAdmin(user)) {
     return true;
   }
 
   if (!org) {
     return false;
+  }
+
+  // DEV override so we can test flows without subscription wiring
+  if (isDev()) {
+    return true;
   }
 
   const tier = getPlanTier(org);

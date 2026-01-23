@@ -55,35 +55,19 @@ function App() {
           />
           <Route
             path="/legacy-dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/dashboard" replace />}
           />
           <Route
             path="/common-dashboard"
-            element={
-              <ProtectedRoute>
-                <CommonDashboard />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/dashboard" replace />}
           />
           <Route
             path="/dashboard/fire"
-            element={
-              <ProtectedRoute>
-                <FireSafetyDashboard />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/dashboard" replace />}
           />
           <Route
             path="/dashboard/explosion"
-            element={
-              <ProtectedRoute>
-                <ExplosionDashboard />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/dashboard" replace />}
           />
           <Route
             path="/dashboard/action-register"

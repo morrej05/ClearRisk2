@@ -1,12 +1,19 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArrowRight } from 'lucide-react';
+import { Plus, ArrowRight, FileText, Sparkles } from 'lucide-react';
 import AppLayout from '../../components/AppLayout';
 import { isFeatureEnabled } from '../../utils/featureFlags';
 import { useAssessments } from '../../hooks/useAssessments';
+import { usePropertySurveys } from '../../hooks/usePropertySurveys';
+import { useAuth } from '../../contexts/AuthContext';
+import { canAccessRiskEngineering } from '../../utils/entitlements';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { organisation } = useAuth();
   const { assessments, loading } = useAssessments({ limit: 8 });
+  const { surveys: propertySurveys, loading: surveysLoading } = usePropertySurveys({ limit: 5 });
+
+  const hasRiskEngineering = organisation ? canAccessRiskEngineering(organisation) : false;
 
   function formatDate(date: Date): string {
     const now = new Date();
@@ -57,8 +64,8 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 xl:col-span-2">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200">
               <div className="px-6 py-4 border-b border-slate-200">
                 <h2 className="text-lg font-semibold text-slate-900">Active Work</h2>
@@ -156,6 +163,89 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+
+          {hasRiskEngineering && (
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+                <div className="px-6 py-4 border-b border-slate-200">
+                  <h2 className="text-lg font-semibold text-slate-900">Risk Engineering Summary</h2>
+                </div>
+
+                {surveysLoading ? (
+                  <div className="p-6 text-center text-sm text-slate-500">
+                    Loading...
+                  </div>
+                ) : (
+                  <>
+                    {propertySurveys.length > 0 ? (
+                      <>
+                        <div className="px-6 py-4 bg-blue-50 border-b border-slate-200">
+                          <div className="flex items-start gap-3">
+                            <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <h3 className="text-sm font-semibold text-slate-900 mb-2">AI Overview</h3>
+                              <p className="text-sm text-slate-700">
+                                {propertySurveys[0]?.notes_summary || propertySurveys[0]?.summary_text || 'No AI summary available yet'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-6">
+                          <h3 className="text-sm font-semibold text-slate-900 mb-3">Recent Surveys</h3>
+                          <div className="space-y-3">
+                            {propertySurveys.slice(0, 5).map((survey) => (
+                              <div
+                                key={survey.id}
+                                className="flex items-start justify-between gap-3 p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors cursor-pointer"
+                                onClick={() => navigate(`/report/${survey.id}`)}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                    <p className="text-sm font-medium text-slate-900 truncate">
+                                      {survey.property_name || 'Untitled Survey'}
+                                    </p>
+                                  </div>
+                                  {survey.property_address && (
+                                    <p className="text-xs text-slate-500 mt-1 ml-6 truncate">
+                                      {survey.property_address}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-slate-400 mt-1 ml-6">
+                                    {formatDate(new Date(survey.updated_at))}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => navigate('/reports')}
+                            className="mt-4 w-full px-4 py-2 bg-slate-100 text-slate-900 text-sm font-medium rounded-md hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
+                          >
+                            View All Risk Surveys
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="p-6 text-center">
+                        <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                        <p className="text-sm text-slate-500 mb-4">No property surveys yet</p>
+                        <button
+                          onClick={() => navigate('/assessments/new')}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Create Survey
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {isFeatureEnabled('IMPAIRMENTS_ENABLED') && (
             <div className="lg:col-span-1">

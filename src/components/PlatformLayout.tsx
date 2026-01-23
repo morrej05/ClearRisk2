@@ -12,13 +12,15 @@ export default function PlatformLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <div className="border-b border-slate-800 bg-slate-950">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="border-b bg-white">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="text-sm">
-            <span className="font-semibold">Platform</span>
+          <div className="text-sm text-slate-700 flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-xs font-semibold">
+              Platform
+            </span>
           </div>
-          <Link to="/dashboard" className="text-sm text-slate-200 hover:text-white">
+          <Link to="/dashboard" className="text-sm text-slate-700 hover:text-slate-900">
             Exit Platform
           </Link>
         </div>
@@ -26,7 +28,7 @@ export default function PlatformLayout({ children }: { children: ReactNode }) {
 
       <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
         <aside className="col-span-12 md:col-span-3">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2">
+          <div className="bg-white border rounded-xl p-2">
             {nav.map((n) => {
               const active = loc.pathname === n.to;
               return (
@@ -35,7 +37,7 @@ export default function PlatformLayout({ children }: { children: ReactNode }) {
                   to={n.to}
                   className={[
                     'block px-3 py-2 rounded-lg text-sm',
-                    active ? 'bg-white text-slate-950' : 'text-slate-200 hover:bg-slate-800',
+                    active ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100',
                   ].join(' ')}
                 >
                   {n.label}

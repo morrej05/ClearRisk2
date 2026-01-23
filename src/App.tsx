@@ -32,6 +32,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import PlatformAdminRoute from './components/SuperAdminRoute';
 import AuthedLayout from './components/AuthedLayout';
+import PlatformLayout from './components/PlatformLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
@@ -175,35 +176,29 @@ function App() {
             }
           />
           <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AuthedLayout>
-                  <AdminPage />
-                </AuthedLayout>
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/legacy-admin"
+            path="/admin/*"
             element={
               <AuthedLayout>
                 <AdminRoute>
-                  <AdminDashboard />
+                  <AdminPage />
                 </AdminRoute>
               </AuthedLayout>
             }
           />
           <Route
-            path="/super-admin"
+            path="/platform/*"
             element={
               <AuthedLayout>
                 <PlatformAdminRoute>
-                  <SuperAdminDashboard />
+                  <PlatformLayout>
+                    <SuperAdminDashboard />
+                  </PlatformLayout>
                 </PlatformAdminRoute>
               </AuthedLayout>
             }
           />
+          <Route path="/super-admin" element={<Navigate to="/platform" replace />} />
+          <Route path="/legacy-admin" element={<Navigate to="/admin" replace />} />
           <Route
             path="/archived-assessments"
             element={

@@ -1,3 +1,26 @@
+/**
+ * Role Definitions and Responsibilities
+ *
+ * ADMIN (Organisation Admin):
+ * - Manage organisation settings
+ * - Manage users within their organisation
+ * - Configure client branding
+ * - View and upgrade subscription plans
+ * - Access all features within their organisation's plan limits
+ *
+ * PLATFORM ADMIN (Platform Administrator):
+ * - All admin permissions, plus:
+ * - Manage all organisations across the platform
+ * - Configure platform-wide settings
+ * - Manage subscription plans and feature flags
+ * - Impersonate organisations for support purposes
+ * - Access global analytics and reporting
+ * - Bypass all feature gates and subscription checks
+ *
+ * Note: Platform Admin is NOT a separate role, it's a flag on admin users.
+ * A Platform Admin must have role === 'admin' AND is_platform_admin === true.
+ */
+
 export type PlanType = 'free' | 'core' | 'professional' | 'enterprise';
 export type DisciplineType = 'engineering' | 'assessment' | 'both';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'inactive';

@@ -2,13 +2,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut } from 'lucide-react';
 import { isFeatureEnabled } from '../utils/featureFlags';
-import { getRolePermissions } from '../utils/permissions';
-import { canAccessPlatformSettings } from '../utils/entitlements';
+import { canAccessAdmin, canAccessPlatformSettings } from '../utils/entitlements';
 
 export default function PrimaryNavigation() {
   const location = useLocation();
-  const { signOut, userRole, user } = useAuth();
-  const permissions = getRolePermissions(userRole);
+  const { signOut, user } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -23,7 +21,7 @@ export default function PrimaryNavigation() {
     { label: 'Reports', path: '/reports', show: true },
     { label: 'Impairments', path: '/impairments', show: isFeatureEnabled('IMPAIRMENTS_ENABLED') },
     { label: 'Library', path: '/library', show: true },
-    { label: 'Admin', path: '/admin', show: permissions.canAccessAdmin && !canAccessPlatformSettings(user as any) },
+    { label: 'Admin', path: '/admin', show: user && canAccessAdmin(user as any) },
     { label: 'Platform', path: '/platform', show: user && canAccessPlatformSettings(user as any) },
   ];
 

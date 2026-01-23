@@ -161,11 +161,9 @@ function App() {
           <Route
             path="/upgrade"
             element={
-              <AdminRoute>
-                <AuthedLayout>
-                  <UpgradeSubscription />
-                </AuthedLayout>
-              </AdminRoute>
+              <AuthedLayout>
+                <UpgradeSubscription />
+              </AuthedLayout>
             }
           />
           <Route
@@ -189,17 +187,21 @@ function App() {
           <Route
             path="/legacy-admin"
             element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
+              <AuthedLayout>
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/super-admin"
             element={
-              <PlatformAdminRoute>
-                <SuperAdminDashboard />
-              </PlatformAdminRoute>
+              <AuthedLayout>
+                <PlatformAdminRoute>
+                  <SuperAdminDashboard />
+                </PlatformAdminRoute>
+              </AuthedLayout>
             }
           />
           <Route

@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { Plus, ArrowRight, FileText, Sparkles } from 'lucide-react';
-import AppLayout from '../../components/AppLayout';
 import { isFeatureEnabled } from '../../utils/featureFlags';
 import { useAssessments } from '../../hooks/useAssessments';
 import { usePropertySurveys } from '../../hooks/usePropertySurveys';
@@ -36,8 +35,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
         </div>
@@ -62,6 +60,27 @@ export default function DashboardPage() {
           >
             View Reports
           </button>
+        </div>
+
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Summary</h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Plan:</span>
+              <span className="text-sm font-medium text-slate-900">
+                {organisation?.plan_id || 'N/A'} / {organisation?.subscription_status || 'inactive'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Last updated assessment:</span>
+              <span className="text-sm font-medium text-slate-900">
+                {assessments[0]?.siteName || '—'}
+              </span>
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <p className="text-sm text-slate-500 italic">AI summary panel (coming next)</p>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -280,6 +299,5 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
-    </AppLayout>
   );
 }

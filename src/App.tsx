@@ -31,6 +31,7 @@ import AdminPage from './pages/ezirisk/AdminPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import PlatformAdminRoute from './components/SuperAdminRoute';
+import AuthedLayout from './components/AuthedLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
@@ -48,9 +49,9 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <DashboardPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
@@ -72,89 +73,89 @@ function App() {
           <Route
             path="/dashboard/action-register"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <ActionRegisterPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/dashboard/actions"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <ActionsDashboard />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/documents/:id"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <DocumentOverview />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/documents/:id/workspace"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <DocumentWorkspace />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/documents/:id/evidence"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <DocumentEvidence />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/assessments"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <AssessmentsPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/assessments/new"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <NewAssessmentPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/reports"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <ReportsPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/reports/combined"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <CombinedReportsPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/impairments"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <ImpairmentsPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
             path="/library"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <LibraryPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
@@ -168,9 +169,9 @@ function App() {
           <Route
             path="/report/:surveyId"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <ReportPreviewPage />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route
@@ -200,9 +201,9 @@ function App() {
           <Route
             path="/archived-assessments"
             element={
-              <ProtectedRoute>
+              <AuthedLayout>
                 <ArchivedAssessments />
-              </ProtectedRoute>
+              </AuthedLayout>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

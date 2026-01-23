@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import AppLayout from '../../components/AppLayout';
 
 type LibraryTab = 'recommendations' | 'standards' | 'templates';
 
@@ -13,8 +12,7 @@ export default function LibraryPage() {
   ];
 
   return (
-    <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900">Library</h1>
         </div>
@@ -141,6 +139,5 @@ export default function LibraryPage() {
           )}
         </div>
       </div>
-    </AppLayout>
   );
 }

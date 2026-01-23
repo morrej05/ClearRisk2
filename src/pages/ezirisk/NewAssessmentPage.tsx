@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Lock } from 'lucide-react';
-import AppLayout from '../../components/AppLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { canAccessRiskEngineering, canAccessExplosionSafety } from '../../utils/entitlements';
 import { createDocument, createPropertySurvey } from '../../utils/documentCreation';
@@ -24,16 +23,14 @@ export default function NewAssessmentPage() {
   // Guard: Wait for auth to load
   if (!user || !organisation) {
     return (
-      <AppLayout>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-300 border-t-slate-900 mx-auto mb-4"></div>
-              <p className="text-slate-600">Setting up your account...</p>
-            </div>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-300 border-t-slate-900 mx-auto mb-4"></div>
+            <p className="text-slate-600">Setting up your account...</p>
           </div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
@@ -130,8 +127,7 @@ export default function NewAssessmentPage() {
   };
 
   return (
-    <AppLayout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900">Assessments</h1>
         </div>
@@ -225,6 +221,5 @@ export default function NewAssessmentPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

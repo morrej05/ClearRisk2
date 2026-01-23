@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import AppLayout from '../../components/AppLayout';
 
 export default function ReportsPage() {
   const location = useLocation();
@@ -14,8 +13,7 @@ export default function ReportsPage() {
   };
 
   return (
-    <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900">Reports</h1>
         </div>
@@ -77,6 +75,5 @@ export default function ReportsPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

@@ -134,13 +134,27 @@ export default function DocumentOverview() {
   const returnToPath = (location.state as any)?.returnTo || null;
 
   const getDashboardRoute = () => {
-    // Use returnTo state if provided
-    if (returnToPath) {
-      return returnToPath;
+    // Special case: keep actions register path
+    if (returnToPath === '/dashboard/actions') {
+      return '/dashboard/actions';
     }
 
     // Check for legacy 'from' query parameter
     const fromParam = searchParams.get('from');
+    const pathToCheck = returnToPath || fromParam;
+
+    // Normalize legacy paths to /dashboard
+    const legacyPaths = ['/common-dashboard', '/dashboard/fire', '/dashboard/explosion', '/legacy-dashboard'];
+    if (pathToCheck && legacyPaths.includes(pathToCheck)) {
+      return '/dashboard';
+    }
+
+    // Use returnTo state if provided and not legacy
+    if (returnToPath) {
+      return returnToPath;
+    }
+
+    // Use from parameter if provided and not legacy
     if (fromParam) {
       return fromParam;
     }

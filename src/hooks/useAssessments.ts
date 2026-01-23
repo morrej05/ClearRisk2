@@ -2,18 +2,16 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
-export interface Assessment {
+export interface Document {
   id: string;
-  client_name: string | null;
-  site_name: string;
-  site_address: string | null;
-  type: 'fra' | 'fire_strategy' | 'dsear' | 'wildfire';
-  status: 'draft' | 'issued';
+  organisation_id: string;
+  document_type: 'FRA' | 'FSD' | 'DSEAR';
+  title: string;
+  status: 'draft' | 'issued' | 'superseded';
+  version: number;
   created_at: string;
   updated_at: string;
-  assessor_name: string;
-  jurisdiction: string;
-  issued_at: string | null;
+  assessor_name: string | null;
 }
 
 export interface AssessmentViewModel {
@@ -27,25 +25,24 @@ export interface AssessmentViewModel {
   createdAt: Date;
 }
 
-function mapAssessmentToViewModel(assessment: Assessment): AssessmentViewModel {
+function mapDocumentToViewModel(document: Document): AssessmentViewModel {
   const typeMap: Record<string, { display: string; discipline: string }> = {
-    fra: { display: 'FRA', discipline: 'Fire' },
-    fire_strategy: { display: 'Fire Strategy', discipline: 'Fire' },
-    dsear: { display: 'DSEAR', discipline: 'Risk Engineering' },
-    wildfire: { display: 'Wildfire', discipline: 'Risk Engineering' },
+    FRA: { display: 'FRA', discipline: 'Fire' },
+    FSD: { display: 'Fire Strategy', discipline: 'Fire' },
+    DSEAR: { display: 'DSEAR', discipline: 'Risk Engineering' },
   };
 
-  const typeInfo = typeMap[assessment.type] || { display: assessment.type.toUpperCase(), discipline: 'Fire' };
+  const typeInfo = typeMap[document.document_type] || { display: document.document_type, discipline: 'Fire' };
 
   return {
-    id: assessment.id,
-    clientName: assessment.client_name || '—',
-    siteName: assessment.site_name,
+    id: document.id,
+    clientName: '—',
+    siteName: document.title,
     discipline: typeInfo.discipline,
     type: typeInfo.display,
-    status: assessment.status.charAt(0).toUpperCase() + assessment.status.slice(1),
-    updatedAt: new Date(assessment.updated_at),
-    createdAt: new Date(assessment.created_at),
+    status: document.status.charAt(0).toUpperCase() + document.status.slice(1),
+    updatedAt: new Date(document.updated_at),
+    createdAt: new Date(document.created_at),
   };
 }
 
@@ -73,9 +70,9 @@ export function useAssessments(options: UseAssessmentsOptions = {}) {
         setError(null);
 
         let query = supabase
-          .from('assessments')
-          .select('*')
-          .eq('org_id', organisation.id)
+          .from('documents')
+          .select('id, organisation_id, document_type, title, status, version, created_at, updated_at, assessor_name')
+          .eq('organisation_id', organisation.id)
           .order('updated_at', { ascending: false });
 
         if (activeOnly) {
@@ -90,7 +87,7 @@ export function useAssessments(options: UseAssessmentsOptions = {}) {
 
         if (fetchError) throw fetchError;
 
-        const viewModels = (data || []).map(mapAssessmentToViewModel);
+        const viewModels = (data || []).map(mapDocumentToViewModel);
         setAssessments(viewModels);
       } catch (err) {
         console.error('Error fetching assessments:', err);

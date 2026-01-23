@@ -119,6 +119,7 @@ export default function DocumentOverview() {
   const SHOW_CHANGE_SUMMARY = true;
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [documentNotFound, setDocumentNotFound] = useState(false);
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
   const [totalActions, setTotalActions] = useState(0);
   const [evidenceCount, setEvidenceCount] = useState(0);
@@ -182,14 +183,25 @@ export default function DocumentOverview() {
         .select('*')
         .eq('id', id)
         .eq('organisation_id', organisation.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+
+      if (!data) {
+        setDocument(null);
+        setDocumentNotFound(true);
+        setIsLoading(false);
+        return;
+      }
+
       setDocument(data);
+      setDocumentNotFound(false);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching document:', error);
-      alert('Failed to load document. It may not exist or you may not have access.');
-      navigate('/dashboard');
+      setDocument(null);
+      setDocumentNotFound(true);
+      setIsLoading(false);
     }
   };
 
@@ -535,7 +547,29 @@ export default function DocumentOverview() {
   const materialDefModules = modules.filter((m) => m.outcome === 'material_def').length;
   const totalOpenActions = actionCounts.P1 + actionCounts.P2 + actionCounts.P3 + actionCounts.P4;
 
-  if (!document) {
+  if (documentNotFound) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto p-8 bg-white rounded-lg shadow-sm border border-neutral-200 text-center">
+          <div className="mb-4">
+            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+          </div>
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Document Not Found</h2>
+          <p className="text-neutral-600 mb-6">
+            This document doesn't exist or you don't have permission to access it.
+          </p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-4 py-2 bg-neutral-900 text-white text-sm font-medium rounded-md hover:bg-neutral-800 transition-colors"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !document) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-300 border-t-neutral-900"></div>

@@ -2,12 +2,17 @@ import { useState, useMemo, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, MoreVertical, TrendingUp, FileText, CheckCircle } from 'lucide-react';
 import { useAssessments, AssessmentViewModel } from '../../hooks/useAssessments';
+import { useAuth } from '../../contexts/AuthContext';
+import { canCreateSurveys, isSubscriptionActive } from '../../utils/entitlements';
 
 export default function AssessmentsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { assessments, loading } = useAssessments();
+  const { user, organisation } = useAuth();
+
+  const canCreate = user && organisation && canCreateSurveys(user as any, organisation) && isSubscriptionActive(organisation);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [disciplineFilter, setDisciplineFilter] = useState('All');
@@ -113,11 +118,13 @@ export default function AssessmentsPage() {
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-slate-900">Assessments</h1>
           <button
-            onClick={() => navigate('/assessments/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors"
+            onClick={() => navigate(canCreate ? '/assessments/new' : '/upgrade')}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!canCreate && !organisation}
+            title={!canCreate ? 'Upgrade required to create assessments' : ''}
           >
             <Plus className="w-4 h-4" />
-            New Assessment
+            {canCreate ? 'New Assessment' : 'Upgrade to Create'}
           </button>
         </div>
 
@@ -279,11 +286,13 @@ export default function AssessmentsPage() {
                       </div>
                       {assessments.length === 0 && (
                         <button
-                          onClick={() => navigate('/assessments/new')}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors"
+                          onClick={() => navigate(canCreate ? '/assessments/new' : '/upgrade')}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!canCreate && !organisation}
+                          title={!canCreate ? 'Upgrade required to create assessments' : ''}
                         >
                           <Plus className="w-4 h-4" />
-                          New Assessment
+                          {canCreate ? 'New Assessment' : 'Upgrade to Create'}
                         </button>
                       )}
                     </td>

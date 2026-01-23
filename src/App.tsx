@@ -32,6 +32,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import PlatformAdminRoute from './components/SuperAdminRoute';
 import AuthedLayout from './components/AuthedLayout';
+import AdminLayout from './components/AdminLayout';
 import PlatformLayout from './components/PlatformLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -180,7 +181,9 @@ function App() {
             element={
               <AuthedLayout>
                 <AdminRoute>
-                  <AdminPage />
+                  <AdminLayout>
+                    <AdminPage />
+                  </AdminLayout>
                 </AdminRoute>
               </AuthedLayout>
             }

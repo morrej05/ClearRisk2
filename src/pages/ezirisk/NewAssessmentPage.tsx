@@ -89,6 +89,19 @@ export default function NewAssessmentPage() {
       return;
     }
 
+    // Double-check entitlements at submit time to prevent bypass
+    if (typeId === 'property' && !hasRiskEngineering) {
+      alert('This assessment type requires an upgrade to your plan.');
+      navigate('/upgrade');
+      return;
+    }
+
+    if (typeId === 'dsear' && !hasExplosion) {
+      alert('This assessment type requires an upgrade to your plan.');
+      navigate('/upgrade');
+      return;
+    }
+
     setCreatingType(typeId);
 
     try {

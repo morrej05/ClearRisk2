@@ -36,6 +36,12 @@ export default function PrimaryNavigation() {
           <div className="flex items-center gap-8">
             <div className="text-xl font-bold text-slate-900">EZIRisk</div>
 
+            {import.meta.env.DEV && user ? (
+              <div className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-700">
+                role: {String((user as any).role)} · platform: {String((user as any).is_platform_admin)}
+              </div>
+            ) : null}
+
             <div className="flex items-center gap-1">
               {navItems.filter(item => item.show).map((item) => (
                 <Link

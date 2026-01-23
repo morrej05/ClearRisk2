@@ -4,8 +4,16 @@ import { supabase } from '../lib/supabase';
 import { UserRole, SubscriptionPlan, DisciplineType } from '../utils/permissions';
 import { Organisation, UserRole as EntitlementUserRole } from '../utils/entitlements';
 
+// Enriched user object that combines auth + profile data
+interface AppUser extends User {
+  role?: UserRole;
+  is_platform_admin?: boolean;
+  can_edit?: boolean;
+  organisation_id?: string | null;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   userRole: UserRole | null;
   userPlan: SubscriptionPlan | null;
   disciplineType: DisciplineType | null;
@@ -28,7 +36,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [userPlan, setUserPlan] = useState<SubscriptionPlan | null>(null);
   const [disciplineType, setDisciplineType] = useState<DisciplineType | null>(null);
@@ -42,7 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authInitialized, setAuthInitialized] = useState(false);
 
-  const fetchUserRole = async (userId: string, userEmail: string) => {
+  // Helper to create enriched user object with profile fields
+  const createAppUser = (authUser: User | null, profile: any): AppUser | null => {
+    if (!authUser) return null;
+
+    return {
+      ...authUser,
+      role: profile?.role,
+      is_platform_admin: profile?.is_platform_admin || false,
+      can_edit: profile?.can_edit || false,
+      organisation_id: profile?.organisation_id,
+    };
+  };
+
+  const fetchUserRole = async (userId: string, userEmail: string, authUser: User) => {
     try {
       setRoleError(null);
       console.log('[AuthContext] 🔍 Fetching user profile for:', userId, userEmail);
@@ -91,6 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('[AuthContext] ✅ Successfully fetched profile:', profile);
 
+      // Update user object with profile fields
+      setUser(createAppUser(authUser, profile));
+
       // Check if organisation is missing and auto-create
       if (!profile.organisation_id || !profile.organisations) {
         console.log('[AuthContext] 🏥 Organisation missing - auto-healing...');
@@ -117,6 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           console.log('[AuthContext] ✅ Profile refetched with organisation:', updatedProfile);
+
+          // Update user object with profile fields
+          setUser(createAppUser(authUser, updatedProfile));
 
           // Use the updated profile
           setUserRole(updatedProfile.role as UserRole);
@@ -159,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Organisation exists, use it
+        // User object already updated above
         setUserRole(profile.role as UserRole);
         setUserPlan(profile.plan as SubscriptionPlan);
         setDisciplineType(profile.discipline_type as DisciplineType);
@@ -215,7 +243,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUserRole = async () => {
     if (user) {
       setLoading(true);
-      await fetchUserRole(user.id, user.email || '');
+      await fetchUserRole(user.id, user.email || '', user);
     }
   };
 
@@ -238,11 +266,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         console.log('[AuthContext] Initial session:', session?.user?.email || 'No user');
-        setUser(session?.user ?? null);
 
         if (session?.user) {
-          await fetchUserRole(session.user.id, session.user.email || '');
+          // Don't set user yet - fetchUserRole will set it with merged profile data
+          await fetchUserRole(session.user.id, session.user.email || '', session.user);
         } else {
+          setUser(null);
           setLoading(false);
         }
 
@@ -264,11 +293,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isMounted) return;
 
       (async () => {
-        setUser(session?.user ?? null);
         if (session?.user) {
           setLoading(true);
-          await fetchUserRole(session.user.id, session.user.email || '');
+          // Don't set user yet - fetchUserRole will set it with merged profile data
+          await fetchUserRole(session.user.id, session.user.email || '', session.user);
         } else {
+          setUser(null);
           console.log('[AuthContext] Clearing profile state on sign out');
           setUserRole(null);
           setUserPlan(null);

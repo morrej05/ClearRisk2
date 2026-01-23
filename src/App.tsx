@@ -162,7 +162,9 @@ function App() {
             path="/upgrade"
             element={
               <AdminRoute>
-                <UpgradeSubscription />
+                <AuthedLayout>
+                  <UpgradeSubscription />
+                </AuthedLayout>
               </AdminRoute>
             }
           />
@@ -178,7 +180,9 @@ function App() {
             path="/admin"
             element={
               <AdminRoute>
-                <AdminPage />
+                <AuthedLayout>
+                  <AdminPage />
+                </AuthedLayout>
               </AdminRoute>
             }
           />

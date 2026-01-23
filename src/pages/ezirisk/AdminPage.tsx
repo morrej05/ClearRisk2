@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 type AdminTab = 'organisation' | 'users' | 'assessment-settings' | 'recommendations' | 'document-control' | 'audit-log';
 
 export default function AdminPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AdminTab>('organisation');
 
   const tabs = [
@@ -16,8 +19,24 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900">Admin</h1>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </button>
+            <div className="h-6 w-px bg-slate-300" />
+            <h1 className="text-3xl font-bold text-slate-900">Admin</h1>
+          </div>
+          <button
+            onClick={() => navigate('/assessments')}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            Assessments
+          </button>
         </div>
 
         <div className="mb-6 border-b border-slate-200">

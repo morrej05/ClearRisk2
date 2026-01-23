@@ -93,7 +93,7 @@ export default function DocumentWorkspace() {
     } catch (error) {
       console.error('Error fetching document:', error);
       alert('Failed to load document.');
-      navigate('/common-dashboard');
+      navigate('/dashboard');
     }
   };
 
@@ -213,7 +213,7 @@ export default function DocumentWorkspace() {
               </button>
             ) : (
               <button
-                onClick={() => navigate(`/documents/${id}`)}
+                onClick={() => navigate(`/documents/${id}`, { state: { returnTo: returnToPath || '/dashboard' } })}
                 className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 font-medium transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />

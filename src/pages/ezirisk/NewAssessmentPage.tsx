@@ -21,8 +21,24 @@ export default function NewAssessmentPage() {
 
   const [creatingType, setCreatingType] = useState<string | null>(null);
 
-  const hasRiskEngineering = organisation ? canAccessRiskEngineering(organisation) : false;
-  const hasExplosion = organisation ? canAccessExplosionSafety(organisation) : false;
+  // Guard: Wait for auth to load
+  if (!user || !organisation) {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-300 border-t-slate-900 mx-auto mb-4"></div>
+              <p className="text-slate-600">Setting up your account...</p>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const hasRiskEngineering = canAccessRiskEngineering(organisation);
+  const hasExplosion = canAccessExplosionSafety(user, organisation);
 
   const subNavItems = [
     { label: 'All Assessments', path: '/assessments' },

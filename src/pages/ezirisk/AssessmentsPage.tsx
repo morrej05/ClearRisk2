@@ -1,12 +1,13 @@
-import { useState, useMemo } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Search, MoreVertical, TrendingUp, FileText, CheckCircle } from 'lucide-react';
 import AppLayout from '../../components/AppLayout';
 import { useAssessments, AssessmentViewModel } from '../../hooks/useAssessments';
 
 export default function AssessmentsPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { assessments, loading } = useAssessments();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,6 +15,18 @@ export default function AssessmentsPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [sortBy, setSortBy] = useState('updated');
+
+  // Sync discipline filter with URL params
+  useEffect(() => {
+    const disciplineParam = searchParams.get('discipline');
+    if (disciplineParam === 'risk') {
+      setDisciplineFilter('Risk Engineering');
+    } else if (disciplineParam === 'fire') {
+      setDisciplineFilter('Fire');
+    } else {
+      setDisciplineFilter('All');
+    }
+  }, [searchParams]);
 
   const subNavItems = [
     { label: 'All Assessments', path: '/assessments' },
@@ -78,8 +91,23 @@ export default function AssessmentsPage() {
   }
 
   function handleContinue(assessmentId: string, status: string) {
-    navigate(`/documents/${assessmentId}/workspace`);
+    navigate(`/documents/${assessmentId}/workspace`, { state: { returnTo: '/assessments' } });
   }
+
+  // Calculate metrics for Risk Engineering overview
+  const riskEngineeringMetrics = useMemo(() => {
+    const riskAssessments = assessments.filter(a => a.discipline === 'Risk Engineering');
+    const drafts = riskAssessments.filter(a => a.status === 'Draft').length;
+    const issued = riskAssessments.filter(a => a.status === 'Issued').length;
+    const recentlyIssued = riskAssessments.filter(a => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return a.status === 'Issued' && a.updatedAt >= thirtyDaysAgo;
+    }).length;
+    return { drafts, issued, recentlyIssued, total: riskAssessments.length };
+  }, [assessments]);
+
+  const showRiskEngineeringOverview = disciplineFilter === 'Risk Engineering';
 
   return (
     <AppLayout>
@@ -112,6 +140,53 @@ export default function AssessmentsPage() {
             ))}
           </nav>
         </div>
+
+        {showRiskEngineeringOverview && (
+          <div className="mb-6 bg-gradient-to-br from-blue-50 to-slate-50 rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <TrendingUp className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-slate-900">Risk Engineering Overview</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg p-4 border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Total Surveys</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">{riskEngineeringMetrics.total}</p>
+                  </div>
+                  <FileText className="w-8 h-8 text-slate-400" />
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Draft</p>
+                    <p className="text-3xl font-bold text-amber-600 mt-1">{riskEngineeringMetrics.drafts}</p>
+                  </div>
+                  <FileText className="w-8 h-8 text-amber-200" />
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Issued</p>
+                    <p className="text-3xl font-bold text-green-600 mt-1">{riskEngineeringMetrics.issued}</p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-200" />
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Last 30 Days</p>
+                    <p className="text-3xl font-bold text-blue-600 mt-1">{riskEngineeringMetrics.recentlyIssued}</p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-blue-200" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mb-6 bg-white rounded-lg shadow-sm border border-slate-200 p-4">
           <div className="flex flex-col sm:flex-row gap-4">

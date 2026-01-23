@@ -1,6 +1,6 @@
 export type PlanType = 'free' | 'core' | 'professional' | 'enterprise';
 export type DisciplineType = 'engineering' | 'assessment' | 'both';
-export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'inactive';
+export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'inactive';
 export type UserRole = 'admin' | 'surveyor' | 'viewer';
 
 export interface Organisation {
@@ -298,6 +298,8 @@ export function getSubscriptionStatusDisplayName(status: SubscriptionStatus): st
   switch (status) {
     case 'active':
       return 'Active';
+    case 'trialing':
+      return 'Trial';
     case 'past_due':
       return 'Past Due';
     case 'canceled':

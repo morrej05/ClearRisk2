@@ -134,21 +134,19 @@ export default function DocumentOverview() {
   const returnToPath = (location.state as any)?.returnTo || null;
 
   const getDashboardRoute = () => {
-    if (returnToPath === '/dashboard/actions') {
-      return '/dashboard/actions';
+    // Use returnTo state if provided
+    if (returnToPath) {
+      return returnToPath;
     }
 
+    // Check for legacy 'from' query parameter
     const fromParam = searchParams.get('from');
     if (fromParam) {
       return fromParam;
     }
 
-    if (document?.document_type === 'DSEAR') {
-      return '/dashboard/explosion';
-    } else if (document?.document_type === 'FRA' || document?.document_type === 'FSD') {
-      return '/dashboard/fire';
-    }
-    return '/common-dashboard';
+    // Default to main dashboard
+    return '/dashboard';
   };
 
   useEffect(() => {
@@ -177,7 +175,7 @@ export default function DocumentOverview() {
     } catch (error) {
       console.error('Error fetching document:', error);
       alert('Failed to load document. It may not exist or you may not have access.');
-      navigate('/common-dashboard');
+      navigate('/dashboard');
     }
   };
 

@@ -25,7 +25,7 @@ export default function DashboardPage() {
   }
 
   function handleContinue(assessmentId: string) {
-    navigate(`/documents/${assessmentId}/workspace`);
+    navigate(`/documents/${assessmentId}/workspace`, { state: { returnTo: '/dashboard' } });
   }
 
   return (
@@ -37,14 +37,14 @@ export default function DashboardPage() {
 
         <div className="mb-8 flex items-center gap-4">
           <button
-            onClick={() => navigate('/assessments/new')}
+            onClick={() => navigate('/assessments/new', { state: { returnTo: '/dashboard' } })}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors"
           >
             <Plus className="w-4 h-4" />
             New Assessment
           </button>
           <button
-            onClick={() => navigate('/assessments')}
+            onClick={() => navigate('/assessments', { state: { returnTo: '/dashboard' } })}
             className="px-4 py-2 bg-white text-slate-900 text-sm font-medium rounded-md border border-slate-300 hover:bg-slate-50 transition-colors"
           >
             View Assessments

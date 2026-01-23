@@ -61,83 +61,78 @@ export default function SuperAdminDashboard() {
 
       <div className="w-full max-w-6xl mx-auto px-4 py-6 min-w-0">
         <div className="bg-white border rounded-xl p-6 min-w-0">
-          <div className="flex flex-col lg:flex-row gap-6">
-            <aside className="w-full lg:w-64 flex-shrink-0">
-            <nav className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-              <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                Platform Settings
-              </h2>
-              <ul className="space-y-1">
-                <li>
-                  <button
-                    onClick={() => setActiveView('sector-weightings')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeView === 'sector-weightings'
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Sliders className="w-4 h-4" />
-                    Sector Weightings
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setActiveView('user-management')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeView === 'user-management'
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Users className="w-4 h-4" />
-                    User Management
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setActiveView('recommendation-library')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeView === 'recommendation-library'
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    Recommendation Library
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setActiveView('trigger-debugger')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeView === 'trigger-debugger'
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Bug className="w-4 h-4" />
-                    Trigger Debugger
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setActiveView('pricing-plans')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeView === 'pricing-plans'
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    Pricing & Plans
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          </aside>
+          <div className="space-y-6">
+            <nav className="bg-white rounded-lg shadow-sm border border-slate-200 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Platform Settings
+                </h2>
+              </div>
 
-          <main className="flex-1 min-w-0">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setActiveView('sector-weightings')}
+                  className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors whitespace-nowrap ${
+                    activeView === 'sector-weightings'
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Sliders className="w-4 h-4" />
+                  Sector Weightings
+                </button>
+
+                <button
+                  onClick={() => setActiveView('user-management')}
+                  className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors whitespace-nowrap ${
+                    activeView === 'user-management'
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  User Management
+                </button>
+
+                <button
+                  onClick={() => setActiveView('recommendation-library')}
+                  className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors whitespace-nowrap ${
+                    activeView === 'recommendation-library'
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Recommendation Library
+                </button>
+
+                <button
+                  onClick={() => setActiveView('trigger-debugger')}
+                  className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors whitespace-nowrap ${
+                    activeView === 'trigger-debugger'
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Bug className="w-4 h-4" />
+                  Trigger Debugger
+                </button>
+
+                <button
+                  onClick={() => setActiveView('pricing-plans')}
+                  className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors whitespace-nowrap ${
+                    activeView === 'pricing-plans'
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Pricing & Plans
+                </button>
+              </div>
+            </nav>
+
+            <main className="min-w-0">
             {activeView === 'sector-weightings' && <SectorWeightings />}
 
             {activeView === 'user-management' && <UserRoleManagement />}
@@ -185,7 +180,7 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
             )}
-          </main>
+            </main>
           </div>
         </div>
       </div>

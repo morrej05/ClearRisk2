@@ -18,7 +18,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 min-w-0">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -66,8 +66,8 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'users' && (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="w-full min-w-0 overflow-x-auto">
+              <table className="min-w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -120,8 +120,8 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'audit-log' && (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="w-full min-w-0 overflow-x-auto">
+              <table className="min-w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">

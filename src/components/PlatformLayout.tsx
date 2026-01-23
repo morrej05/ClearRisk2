@@ -12,7 +12,7 @@ export default function PlatformLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
       <div className="border-b bg-white">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="text-sm text-slate-700 flex items-center gap-2">
@@ -47,7 +47,7 @@ export default function PlatformLayout({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <main className="col-span-12 md:col-span-9">{children}</main>
+        <main className="col-span-12 md:col-span-9 min-w-0">{children}</main>
       </div>
     </div>
   );

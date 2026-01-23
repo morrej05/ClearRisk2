@@ -180,8 +180,8 @@ export default function UserRoleManagement() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-6 px-6">
+          <table className="min-w-full">
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">User</th>
@@ -196,10 +196,10 @@ export default function UserRoleManagement() {
                 <tr key={user.id} className="hover:bg-slate-50">
                   <td className="py-3 px-4">
                     <p className="text-sm font-medium text-slate-900">{user.name}</p>
-                    <p className="text-xs text-slate-500 font-mono">{user.id.slice(0, 8)}...</p>
+                    <p className="text-xs text-slate-500 font-mono whitespace-nowrap">{user.id.slice(0, 8)}...</p>
                   </td>
                   <td className="py-3 px-4">
-                    <p className="text-sm text-slate-700">{user.email}</p>
+                    <p className="text-sm text-slate-700 max-w-[200px] truncate">{user.email}</p>
                   </td>
                   <td className="py-3 px-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>

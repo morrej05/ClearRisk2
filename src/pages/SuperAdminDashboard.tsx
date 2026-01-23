@@ -61,8 +61,8 @@ export default function SuperAdminDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white border rounded-xl p-6">
-          <div className="flex gap-6">
-            <aside className="w-64 flex-shrink-0">
+          <div className="flex flex-col lg:flex-row gap-6">
+            <aside className="w-full lg:w-64 flex-shrink-0">
             <nav className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
                 Platform Settings
@@ -137,7 +137,7 @@ export default function SuperAdminDashboard() {
             </nav>
           </aside>
 
-          <main className="flex-1">
+          <main className="flex-1 min-w-0">
             {activeView === 'sector-weightings' && <SectorWeightings />}
 
             {activeView === 'user-management' && <UserRoleManagement />}

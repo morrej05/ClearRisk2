@@ -185,6 +185,7 @@ export function getValidationErrorMessage(errorCode: string, errorMessage: strin
     NO_PERMISSION: 'You do not have permission to issue documents. Contact your administrator.',
     NO_MODULES: 'Document must have at least one module before it can be issued.',
     EMPTY_MODULES: errorMessage,
+    EMPTY_REQUIRED_MODULES: errorMessage,
     APPROVAL_REQUIRED: 'This document requires approval before it can be issued. Please request approval first.',
     APPROVAL_REJECTED: 'This document\'s approval was rejected. Please address the feedback and request approval again.',
     APPROVAL_INVALID: 'This document does not have valid approval. Please request approval.',

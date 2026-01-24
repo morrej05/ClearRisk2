@@ -9,7 +9,6 @@ import { useAuth } from '../contexts/AuthContext';
 import IssuedLockBanner from '../components/IssuedLockBanner';
 import ApprovalWorkflowBanner from '../components/ApprovalWorkflowBanner';
 import { isLocked } from '../utils/lockState';
-import { isOrgAdmin } from '../utils/entitlements';
 import { loadReportData, listIssuedRevisions, getSurveyStatus, type ReportData } from '../utils/reportData';
 import IssueReadinessPanel from '../components/issue/IssueReadinessPanel';
 import IssueBlockersModal from '../components/issue/IssueBlockersModal';

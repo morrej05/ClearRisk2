@@ -5,22 +5,27 @@
  * This is the single source of truth for issue gating rules.
  */
 
+import { MODULE_KEYS } from '../config/moduleKeys';
+
 export type SurveyType = 'FRA' | 'FSD' | 'DSEAR';
+
+export type IssueCtx = {
+  scope_type?: 'full' | 'limited' | 'desktop' | 'other';
+  engineered_solutions_used?: boolean;
+  suppression_applicable?: boolean;
+  smoke_control_applicable?: boolean;
+}
 
 export interface ModuleRule {
   key: string;
   label: string;
   required: boolean;
-  condition?: (ctx: ValidationContext) => boolean;
+  condition?: (ctx: IssueCtx) => boolean;
   requiredFields?: string[];
 }
 
-export interface ValidationContext {
+export interface ValidationContext extends IssueCtx {
   surveyType: SurveyType;
-  scopeType?: string;
-  engineeredSolutionsUsed?: boolean;
-  hasSuppression?: boolean;
-  hasSmokeControl?: boolean;
   [key: string]: any;
 }
 
@@ -29,7 +34,7 @@ export interface ValidationContext {
  */
 export function getRequiredModules(
   surveyType: SurveyType,
-  ctx: ValidationContext = { surveyType }
+  ctx: IssueCtx = {}
 ): ModuleRule[] {
   switch (surveyType) {
     case 'FRA':
@@ -46,53 +51,51 @@ export function getRequiredModules(
 /**
  * FRA Required Modules
  */
-function getFraRequiredModules(ctx: ValidationContext): ModuleRule[] {
+function getFraRequiredModules(ctx: IssueCtx): ModuleRule[] {
   return [
     {
-      key: 'survey_info',
-      label: 'Survey Information',
-      required: true,
-      requiredFields: ['inspection_date', 'surveyor_name', 'company_name', 'site_name', 'scope_type'],
-    },
-    {
-      key: 'property_details',
-      label: 'Property Details',
+      key: MODULE_KEYS.survey_info,
+      label: 'Document Control & Governance',
       required: true,
     },
     {
-      key: 'construction',
-      label: 'Construction',
+      key: MODULE_KEYS.property_details,
+      label: 'Building Profile',
       required: true,
     },
     {
-      key: 'occupancy',
-      label: 'Occupancy',
+      key: MODULE_KEYS.persons_at_risk,
+      label: 'Occupancy & Persons at Risk',
       required: true,
     },
     {
-      key: 'hazards',
-      label: 'Fire Hazards',
+      key: MODULE_KEYS.management,
+      label: 'Management Systems',
       required: true,
     },
     {
-      key: 'fire_protection',
+      key: MODULE_KEYS.emergency_arrangements,
+      label: 'Emergency Arrangements',
+      required: true,
+    },
+    {
+      key: MODULE_KEYS.hazards,
+      label: 'Hazards & Ignition Sources',
+      required: true,
+    },
+    {
+      key: MODULE_KEYS.means_of_escape,
+      label: 'Means of Escape',
+      required: true,
+    },
+    {
+      key: MODULE_KEYS.fire_protection,
       label: 'Fire Protection',
       required: true,
     },
     {
-      key: 'management',
-      label: 'Management',
-      required: true,
-    },
-    {
-      key: 'risk_evaluation',
-      label: 'Risk Evaluation',
-      required: true,
-      requiredFields: ['overall_risk_rating'],
-    },
-    {
-      key: 'recommendations',
-      label: 'Recommendations',
+      key: MODULE_KEYS.significant_findings,
+      label: 'Significant Findings',
       required: true,
     },
   ];
@@ -101,71 +104,68 @@ function getFraRequiredModules(ctx: ValidationContext): ModuleRule[] {
 /**
  * FSD Required Modules
  */
-function getFsdRequiredModules(ctx: ValidationContext): ModuleRule[] {
+function getFsdRequiredModules(ctx: IssueCtx): ModuleRule[] {
   const modules: ModuleRule[] = [
     {
-      key: 'strategy_scope_basis',
-      label: 'Strategy Scope & Basis',
-      required: true,
-      requiredFields: ['design_stage', 'standards_basis'],
-    },
-    {
-      key: 'building_description',
-      label: 'Building Description',
+      key: MODULE_KEYS.survey_info,
+      label: 'Document Control & Governance',
       required: true,
     },
     {
-      key: 'occupancy_fire_load',
-      label: 'Occupancy & Fire Load',
+      key: MODULE_KEYS.property_details,
+      label: 'Building Profile',
       required: true,
     },
     {
-      key: 'means_of_escape',
-      label: 'Means of Escape',
+      key: MODULE_KEYS.persons_at_risk,
+      label: 'Occupancy & Persons at Risk',
       required: true,
     },
     {
-      key: 'compartmentation',
-      label: 'Compartmentation',
+      key: MODULE_KEYS.regulatory_basis,
+      label: 'Regulatory Basis',
       required: true,
     },
     {
-      key: 'detection_alarm',
-      label: 'Detection & Alarm',
+      key: MODULE_KEYS.evacuation_strategy,
+      label: 'Evacuation Strategy',
       required: true,
     },
     {
-      key: 'management_assumptions',
-      label: 'Management Assumptions',
-      required: ctx.engineeredSolutionsUsed === true,
-      condition: (c) => c.engineeredSolutionsUsed === true,
+      key: MODULE_KEYS.escape_design,
+      label: 'Escape Design',
+      required: true,
     },
     {
-      key: 'limitations_reliance',
-      label: 'Limitations & Reliance',
-      required: ctx.engineeredSolutionsUsed === true,
-      condition: (c) => c.engineeredSolutionsUsed === true,
-      requiredFields: ['limitations_text'],
+      key: MODULE_KEYS.passive_protection,
+      label: 'Passive Fire Protection',
+      required: true,
+    },
+    {
+      key: MODULE_KEYS.active_systems,
+      label: 'Active Fire Systems',
+      required: true,
+    },
+    {
+      key: MODULE_KEYS.frs_access,
+      label: 'Fire & Rescue Service Access',
+      required: true,
     },
   ];
 
   // Conditional modules
-  if (ctx.hasSuppression || ctx.requiresSuppression) {
+  if (ctx.smoke_control_applicable) {
     modules.push({
-      key: 'suppression',
-      label: 'Suppression Systems',
+      key: MODULE_KEYS.smoke_control,
+      label: 'Smoke Control',
       required: true,
-      condition: (c) => c.hasSuppression === true || c.requiresSuppression === true,
+      condition: (c) => c.smoke_control_applicable === true,
     });
   }
 
-  if (ctx.hasSmokeControl) {
-    modules.push({
-      key: 'smoke_control',
-      label: 'Smoke Control',
-      required: true,
-      condition: (c) => c.hasSmokeControl === true,
-    });
+  // If engineered solutions used, certain sections become mandatory
+  if (ctx.engineered_solutions_used) {
+    // These are already required, but we might need to add specific validation later
   }
 
   return modules;
@@ -174,58 +174,61 @@ function getFsdRequiredModules(ctx: ValidationContext): ModuleRule[] {
 /**
  * DSEAR Required Modules
  */
-function getDsearRequiredModules(ctx: ValidationContext): ModuleRule[] {
+function getDsearRequiredModules(ctx: IssueCtx): ModuleRule[] {
   return [
     {
-      key: 'assessment_scope',
-      label: 'Assessment Scope',
+      key: MODULE_KEYS.survey_info,
+      label: 'Document Control & Governance',
       required: true,
     },
     {
-      key: 'substances',
-      label: 'Dangerous Substances',
-      required: true,
-      requiredFields: ['substance_list'],
-    },
-    {
-      key: 'processes',
-      label: 'Processes',
+      key: MODULE_KEYS.property_details,
+      label: 'Building Profile',
       required: true,
     },
     {
-      key: 'hazardous_area_classification',
+      key: MODULE_KEYS.persons_at_risk,
+      label: 'Occupancy & Persons at Risk',
+      required: true,
+    },
+    {
+      key: MODULE_KEYS.dangerous_substances,
+      label: 'Dangerous Substances Register',
+      required: true,
+    },
+    {
+      key: MODULE_KEYS.process_releases,
+      label: 'Process & Release Assessment',
+      required: true,
+    },
+    {
+      key: MODULE_KEYS.hazardous_area_classification,
       label: 'Hazardous Area Classification',
       required: true,
-      requiredFields: ['zone_entries'],
     },
     {
-      key: 'ignition_sources',
-      label: 'Ignition Sources',
+      key: MODULE_KEYS.ignition_sources,
+      label: 'Ignition Source Control',
       required: true,
     },
     {
-      key: 'control_measures',
-      label: 'Control Measures',
+      key: MODULE_KEYS.explosion_protection,
+      label: 'Explosion Protection & Mitigation',
       required: true,
     },
     {
-      key: 'equipment_compliance',
-      label: 'Equipment Compliance',
+      key: MODULE_KEYS.risk_assessment_table,
+      label: 'Risk Assessment Table',
       required: true,
     },
     {
-      key: 'management_controls',
-      label: 'Management Controls',
+      key: MODULE_KEYS.hierarchy_of_control,
+      label: 'Hierarchy of Control',
       required: true,
     },
     {
-      key: 'risk_evaluation',
-      label: 'Risk Evaluation',
-      required: true,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
+      key: MODULE_KEYS.explosion_emergency,
+      label: 'Explosion Emergency Response',
       required: true,
     },
   ];
@@ -238,7 +241,7 @@ export function isFieldRequired(
   surveyType: SurveyType,
   moduleKey: string,
   fieldKey: string,
-  ctx: ValidationContext
+  ctx: IssueCtx
 ): boolean {
   const modules = getRequiredModules(surveyType, ctx);
   const module = modules.find(m => m.key === moduleKey);
@@ -255,7 +258,7 @@ export function isFieldRequired(
  */
 export function getRequirementDescription(
   surveyType: SurveyType,
-  ctx: ValidationContext
+  ctx: IssueCtx
 ): string {
   const modules = getRequiredModules(surveyType, ctx);
   const requiredCount = modules.filter(m => m.required).length;
@@ -275,7 +278,7 @@ export function getRequirementDescription(
  */
 export function isModuleRequired(
   module: ModuleRule,
-  ctx: ValidationContext
+  ctx: IssueCtx
 ): boolean {
   if (!module.required && !module.condition) {
     return false;

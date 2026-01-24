@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, List, Download, ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
+import { FileText, List, Download, ArrowLeft, Sparkles, Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import SurveyReport from '../components/SurveyReport';
 import RecommendationReport from '../components/RecommendationReport';
 import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/surveySummaryApi';
+import { useAuth } from '../contexts/AuthContext';
 
 type TabType = 'survey' | 'recommendations';
 
@@ -26,11 +27,14 @@ interface Survey {
 export default function ReportPreviewPage() {
   const { surveyId } = useParams<{ surveyId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('survey');
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiSummary, setAiSummary] = useState('');
+  const [isTestingIssue, setIsTestingIssue] = useState(false);
+  const [issueTestResult, setIssueTestResult] = useState<any>(null);
 
   useEffect(() => {
     if (surveyId) {
@@ -77,6 +81,59 @@ export default function ReportPreviewPage() {
 
   const handleExportPDF = () => {
     window.print();
+  };
+
+  // TEMPORARY: Test /issueSurvey endpoint
+  const handleTestIssue = async () => {
+    if (!surveyId) return;
+
+    setIsTestingIssue(true);
+    setIssueTestResult(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/issue-survey`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          survey_id: surveyId,
+          change_log: 'Test issue via admin button',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setIssueTestResult({
+          success: false,
+          error: result.error,
+          blockers: result.blockers || [],
+        });
+      } else {
+        setIssueTestResult({
+          success: true,
+          ...result,
+        });
+        // Refresh survey data
+        fetchSurvey();
+      }
+    } catch (err: any) {
+      console.error('Error testing issue:', err);
+      setIssueTestResult({
+        success: false,
+        error: err.message || 'Failed to call issue endpoint',
+      });
+    } finally {
+      setIsTestingIssue(false);
+    }
   };
 
   if (isLoading) {
@@ -155,6 +212,28 @@ export default function ReportPreviewPage() {
                 )}
               </button>
 
+              {/* TEMPORARY: Test Issue Button (Admin Only) */}
+              {user && !survey.issued && (
+                <button
+                  onClick={handleTestIssue}
+                  disabled={isTestingIssue}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Developer Test: Call /issueSurvey endpoint"
+                >
+                  {isTestingIssue ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Testing Issue...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Test Issue</span>
+                    </>
+                  )}
+                </button>
+              )}
+
               <button
                 onClick={handleExportPDF}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
@@ -214,6 +293,50 @@ export default function ReportPreviewPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* TEMPORARY: Issue Test Result Display */}
+        {issueTestResult && (
+          <div className={`mb-6 p-4 rounded-lg border ${
+            issueTestResult.success
+              ? 'bg-green-50 border-green-200'
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <h3 className={`font-semibold mb-2 ${
+              issueTestResult.success ? 'text-green-900' : 'text-red-900'
+            }`}>
+              {issueTestResult.success ? 'Success!' : 'Issue Failed'}
+            </h3>
+            {issueTestResult.success ? (
+              <div className="text-sm text-green-800">
+                <p>Survey issued successfully!</p>
+                <p className="mt-1">Revision: {issueTestResult.revision_number}</p>
+                <p>Revision ID: {issueTestResult.revision_id}</p>
+              </div>
+            ) : (
+              <div className="text-sm text-red-800">
+                <p className="font-medium mb-2">{issueTestResult.error}</p>
+                {issueTestResult.blockers && issueTestResult.blockers.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="font-semibold">Blockers:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {issueTestResult.blockers.map((blocker: any, idx: number) => (
+                        <li key={idx}>
+                          {blocker.moduleKey && <span className="font-medium">[{blocker.moduleKey}]</span>} {blocker.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={() => setIssueTestResult(null)}
+              className="mt-3 text-sm underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {activeTab === 'survey' ? (
           <SurveyReport
             surveyId={surveyId!}

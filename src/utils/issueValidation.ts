@@ -5,15 +5,16 @@
  * - Required module completion
  * - Required field validation
  * - Conditional requirements
- * - Assessor confirmation
+ * - Survey-specific business rules
+ *
+ * This module uses simple, serializable inputs so it can be reused in Edge Functions.
  */
 
 import {
   getRequiredModules,
   isModuleRequired,
   type SurveyType,
-  type ValidationContext,
-  type ModuleRule,
+  type IssueCtx,
 } from './issueRequirements';
 
 export type BlockerType =
@@ -35,49 +36,30 @@ export interface ValidationResult {
   blockers: Blocker[];
 }
 
-export interface Survey {
-  id: string;
-  document_type: SurveyType;
-  scope_type?: string;
-  scope_limitations?: string;
-  engineered_solutions_used?: boolean;
-  issued_confirmed?: boolean;
-  form_data?: any;
-}
-
-export interface ModuleProgress {
-  [moduleKey: string]: 'complete' | 'incomplete' | 'not_started';
-}
-
-export interface Action {
-  id: string;
-  status: string;
-  [key: string]: any;
-}
+export type ModuleProgress = Record<string, 'not_started' | 'in_progress' | 'complete'>;
+export type ActionStatus = 'open' | 'closed' | string;
 
 /**
  * Main validation function - checks if survey is eligible for issuance
+ *
+ * @param type - Survey type (FRA, FSD, DSEAR)
+ * @param ctx - Issue context with scope, engineered solutions, etc.
+ * @param answers - Survey answers/form data
+ * @param moduleProgress - Module completion status map
+ * @param actions - List of actions/recommendations
+ * @returns ValidationResult with eligible flag and list of blockers
  */
-export async function validateIssueEligibility(
-  survey: Survey,
+export function validateIssueEligibility(
+  type: SurveyType,
+  ctx: IssueCtx,
   answers: any,
   moduleProgress: ModuleProgress,
-  actions: Action[]
-): Promise<ValidationResult> {
+  actions: Array<{ status: ActionStatus }>
+): ValidationResult {
   const blockers: Blocker[] = [];
 
-  // Build validation context
-  const ctx: ValidationContext = {
-    surveyType: survey.document_type,
-    scopeType: survey.scope_type,
-    engineeredSolutionsUsed: survey.engineered_solutions_used,
-    // Extract conditional flags from answers if needed
-    hasSuppression: answers?.suppression_applicable === true,
-    hasSmokeControl: answers?.smoke_control_applicable === true,
-  };
-
   // Get required modules for this survey type
-  const requiredModules = getRequiredModules(survey.document_type, ctx);
+  const requiredModules = getRequiredModules(type, ctx);
 
   // 1. Check module completion
   for (const module of requiredModules) {
@@ -94,21 +76,9 @@ export async function validateIssueEligibility(
     }
   }
 
-  // 2. Check required fields
-  const fieldBlockers = validateRequiredFields(survey, answers, requiredModules, ctx);
-  blockers.push(...fieldBlockers);
-
-  // 3. Survey-specific validations
-  const specificBlockers = validateSurveySpecific(survey, answers, actions, ctx);
+  // 2. Survey-specific validations
+  const specificBlockers = validateSurveySpecific(type, ctx, answers, actions);
   blockers.push(...specificBlockers);
-
-  // 4. Check assessor confirmation
-  if (!survey.issued_confirmed) {
-    blockers.push({
-      type: 'confirm_missing',
-      message: 'Assessor must confirm completeness before issuing',
-    });
-  }
 
   return {
     eligible: blockers.length === 0,
@@ -117,58 +87,25 @@ export async function validateIssueEligibility(
 }
 
 /**
- * Validate required fields for each module
- */
-function validateRequiredFields(
-  survey: Survey,
-  answers: any,
-  modules: ModuleRule[],
-  ctx: ValidationContext
-): Blocker[] {
-  const blockers: Blocker[] = [];
-
-  for (const module of modules) {
-    if (!isModuleRequired(module, ctx) || !module.requiredFields) {
-      continue;
-    }
-
-    for (const fieldKey of module.requiredFields) {
-      const fieldValue = answers?.[module.key]?.[fieldKey];
-
-      if (!isFieldValueValid(fieldValue)) {
-        blockers.push({
-          type: 'missing_field',
-          moduleKey: module.key,
-          fieldKey,
-          message: `${module.label}: ${formatFieldName(fieldKey)} is required`,
-        });
-      }
-    }
-  }
-
-  return blockers;
-}
-
-/**
  * Survey-specific validation rules
  */
 function validateSurveySpecific(
-  survey: Survey,
+  type: SurveyType,
+  ctx: IssueCtx,
   answers: any,
-  actions: Action[],
-  ctx: ValidationContext
+  actions: Array<{ status: ActionStatus }>
 ): Blocker[] {
   const blockers: Blocker[] = [];
 
-  switch (survey.document_type) {
+  switch (type) {
     case 'FRA':
-      blockers.push(...validateFra(survey, answers, actions, ctx));
+      blockers.push(...validateFra(ctx, answers, actions));
       break;
     case 'FSD':
-      blockers.push(...validateFsd(survey, answers, ctx));
+      blockers.push(...validateFsd(ctx, answers));
       break;
     case 'DSEAR':
-      blockers.push(...validateDsear(survey, answers, actions, ctx));
+      blockers.push(...validateDsear(ctx, answers, actions));
       break;
   }
 
@@ -179,45 +116,31 @@ function validateSurveySpecific(
  * FRA-specific validation
  */
 function validateFra(
-  survey: Survey,
+  ctx: IssueCtx,
   answers: any,
-  actions: Action[],
-  ctx: ValidationContext
+  actions: Array<{ status: ActionStatus }>
 ): Blocker[] {
   const blockers: Blocker[] = [];
 
   // Check scope limitations for limited/desktop assessments
   if (
-    ctx.scopeType &&
-    ['limited', 'desktop'].includes(ctx.scopeType) &&
-    !survey.scope_limitations?.trim()
+    ctx.scope_type &&
+    ['limited', 'desktop'].includes(ctx.scope_type) &&
+    !answers?.scope_limitations?.trim()
   ) {
     blockers.push({
       type: 'conditional_missing',
-      moduleKey: 'survey_info',
-      fieldKey: 'scope_limitations',
       message: 'Scope limitations must be specified for limited/desktop assessments',
     });
   }
 
-  // Check overall risk rating exists
-  if (!answers?.risk_evaluation?.overall_risk_rating) {
-    blockers.push({
-      type: 'missing_field',
-      moduleKey: 'risk_evaluation',
-      fieldKey: 'overall_risk_rating',
-      message: 'Overall risk rating must be assigned',
-    });
-  }
-
   // Check recommendations or "no significant findings"
-  const hasRecommendations = actions && actions.length > 0;
-  const noSignificantFindings = answers?.recommendations?.no_significant_findings === true;
+  const hasRecommendations = actions && actions.filter(a => a.status !== 'closed').length > 0;
+  const noSignificantFindings = answers?.no_significant_findings === true;
 
   if (!hasRecommendations && !noSignificantFindings) {
     blockers.push({
       type: 'no_recommendations',
-      moduleKey: 'recommendations',
       message: 'Must have at least one recommendation OR confirm no significant findings',
     });
   }
@@ -229,50 +152,26 @@ function validateFra(
  * FSD-specific validation
  */
 function validateFsd(
-  survey: Survey,
-  answers: any,
-  ctx: ValidationContext
+  ctx: IssueCtx,
+  answers: any
 ): Blocker[] {
   const blockers: Blocker[] = [];
 
   // Check engineered solutions requirements
-  if (survey.engineered_solutions_used) {
-    if (!answers?.limitations_reliance?.limitations_text?.trim()) {
+  if (ctx.engineered_solutions_used) {
+    if (!answers?.limitations_text?.trim()) {
       blockers.push({
         type: 'conditional_missing',
-        moduleKey: 'limitations_reliance',
-        fieldKey: 'limitations_text',
         message: 'Limitations must be documented when using engineered solutions',
       });
     }
 
-    if (!answers?.management_assumptions?.assumptions_text?.trim()) {
+    if (!answers?.management_assumptions_text?.trim()) {
       blockers.push({
         type: 'conditional_missing',
-        moduleKey: 'management_assumptions',
-        fieldKey: 'assumptions_text',
         message: 'Management assumptions must be documented when using engineered solutions',
       });
     }
-  }
-
-  // Check design stage and standards are specified
-  if (!answers?.strategy_scope_basis?.design_stage) {
-    blockers.push({
-      type: 'missing_field',
-      moduleKey: 'strategy_scope_basis',
-      fieldKey: 'design_stage',
-      message: 'Design stage must be specified',
-    });
-  }
-
-  if (!answers?.strategy_scope_basis?.standards_basis?.trim()) {
-    blockers.push({
-      type: 'missing_field',
-      moduleKey: 'strategy_scope_basis',
-      fieldKey: 'standards_basis',
-      message: 'Standards and regulatory basis must be documented',
-    });
   }
 
   return blockers;
@@ -282,79 +181,46 @@ function validateFsd(
  * DSEAR-specific validation
  */
 function validateDsear(
-  survey: Survey,
+  ctx: IssueCtx,
   answers: any,
-  actions: Action[],
-  ctx: ValidationContext
+  actions: Array<{ status: ActionStatus }>
 ): Blocker[] {
   const blockers: Blocker[] = [];
 
   // Check substances list
-  const substances = answers?.substances?.substance_list;
-  if (!substances || !Array.isArray(substances) || substances.length === 0) {
+  const substances = answers?.substances;
+  const noDangerousSubstances = answers?.no_dangerous_substances === true;
+
+  if ((!substances || substances.length === 0) && !noDangerousSubstances) {
     blockers.push({
       type: 'missing_field',
-      moduleKey: 'substances',
-      fieldKey: 'substance_list',
-      message: 'At least one dangerous substance must be identified',
+      message: 'At least one dangerous substance must be identified OR confirm no dangerous substances',
     });
   }
 
   // Check hazardous area classification
-  const zoneEntries = answers?.hazardous_area_classification?.zone_entries;
-  const noZonedAreas = answers?.hazardous_area_classification?.no_zoned_areas === true;
+  const zones = answers?.zones;
+  const noZonedAreas = answers?.no_zoned_areas === true;
 
-  if ((!zoneEntries || zoneEntries.length === 0) && !noZonedAreas) {
+  if ((!zones || zones.length === 0) && !noZonedAreas) {
     blockers.push({
       type: 'missing_field',
-      moduleKey: 'hazardous_area_classification',
-      fieldKey: 'zone_entries',
       message: 'Zone classification must be documented OR confirm no zoned areas',
     });
   }
 
   // Check actions or controls adequate confirmation
-  const hasActions = actions && actions.length > 0;
-  const controlsAdequate = answers?.actions?.controls_adequate === true;
+  const hasActions = actions && actions.filter(a => a.status !== 'closed').length > 0;
+  const controlsAdequate = answers?.controls_adequate_confirmed === true;
 
   if (!hasActions && !controlsAdequate) {
     blockers.push({
       type: 'no_recommendations',
-      moduleKey: 'actions',
       message: 'Must have at least one action OR confirm controls are adequate',
     });
   }
 
   return blockers;
-}
-
-/**
- * Check if a field value is valid (not empty/null/undefined)
- */
-function isFieldValueValid(value: any): boolean {
-  if (value === null || value === undefined) {
-    return false;
-  }
-
-  if (typeof value === 'string') {
-    return value.trim().length > 0;
-  }
-
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-
-  return true;
-}
-
-/**
- * Format field key to human-readable label
- */
-function formatFieldName(fieldKey: string): string {
-  return fieldKey
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 }
 
 /**

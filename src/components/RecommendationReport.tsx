@@ -20,6 +20,7 @@ interface Recommendation {
 
 interface RecommendationReportProps {
   surveyId: string | null;
+  surveyType: 'fra' | 'risk_engineering' | 'combined';
   onClose: () => void;
   embedded?: boolean;
   aiSummary?: string;
@@ -36,7 +37,7 @@ interface Survey {
   issued: boolean;
 }
 
-export default function RecommendationReport({ surveyId, onClose, embedded = false, aiSummary }: RecommendationReportProps) {
+export default function RecommendationReport({ surveyId, surveyType, onClose, embedded = false, aiSummary }: RecommendationReportProps) {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -269,6 +270,19 @@ export default function RecommendationReport({ surveyId, onClose, embedded = fal
   }
 
   if (!survey) return null;
+
+  // HARD STOP: This component is FRA-only.
+  // Prevent cross-class report leakage by refusing to render for other survey types.
+  if (surveyType !== 'fra') {
+    return (
+      <div className="bg-white rounded-lg border border-slate-200 p-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-2">Report type mismatch</h2>
+        <p className="text-slate-600">
+          This report view is only available for Fire Risk (FRA) surveys.
+        </p>
+      </div>
+    );
+  }
 
   const formData = survey?.form_data || {};
 

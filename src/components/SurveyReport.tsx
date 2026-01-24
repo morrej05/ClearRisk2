@@ -6,6 +6,7 @@ import ReportCoverPage from './reports/ReportCoverPage';
 
 interface SurveyReportProps {
   surveyId: string;
+  surveyType: 'fra' | 'risk_engineering' | 'combined';
   embedded?: boolean;
   aiSummary?: string;
 }
@@ -41,7 +42,7 @@ interface Building {
   };
 }
 
-export default function SurveyReport({ surveyId, embedded = false, aiSummary }: SurveyReportProps) {
+export default function SurveyReport({ surveyId, surveyType, embedded = false, aiSummary }: SurveyReportProps) {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { branding: clientBranding } = useClientBranding();
@@ -109,6 +110,19 @@ export default function SurveyReport({ surveyId, embedded = false, aiSummary }: 
   }
 
   if (!survey) return null;
+
+  // HARD STOP: This component is FRA-only.
+  // Prevent cross-class report leakage by refusing to render for other survey types.
+  if (surveyType !== 'fra') {
+    return (
+      <div className="bg-white rounded-lg border border-slate-200 p-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-2">Report type mismatch</h2>
+        <p className="text-slate-600">
+          This report view is only available for Fire Risk (FRA) surveys.
+        </p>
+      </div>
+    );
+  }
 
   const formData = survey.form_data || {};
   const buildings: Building[] = formData.buildings || [];

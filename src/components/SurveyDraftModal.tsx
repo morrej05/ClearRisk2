@@ -15,6 +15,7 @@ interface Survey {
   id: string;
   property_name: string;
   form_data: any;
+  survey_type: 'fra' | 'risk_engineering' | 'combined';
 }
 
 export default function SurveyDraftModal({ surveyId, onClose, cachedSummary, onSummaryGenerated }: SurveyDraftModalProps) {
@@ -38,7 +39,7 @@ export default function SurveyDraftModal({ surveyId, onClose, cachedSummary, onS
     try {
       const { data, error } = await supabase
         .from('survey_reports')
-        .select('id, property_name, form_data')
+        .select('id, property_name, form_data, survey_type')
         .eq('id', surveyId)
         .single();
 
@@ -146,6 +147,7 @@ export default function SurveyDraftModal({ surveyId, onClose, cachedSummary, onS
             <div className="overflow-hidden">
               <SurveyReport
                 surveyId={surveyId}
+                surveyType={survey.survey_type}
                 embedded={true}
                 aiSummary={aiSummary}
               />

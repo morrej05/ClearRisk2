@@ -20,6 +20,7 @@ interface Survey {
   survey_date: string | null;
   issue_date: string | null;
   issued: boolean;
+  survey_type: 'fra' | 'risk_engineering' | 'combined';
 }
 
 export default function ReportPreviewPage() {
@@ -44,7 +45,7 @@ export default function ReportPreviewPage() {
     try {
       const { data, error } = await supabase
         .from('survey_reports')
-        .select('*')
+        .select('*, survey_type')
         .eq('id', surveyId)
         .single();
 
@@ -74,8 +75,6 @@ export default function ReportPreviewPage() {
     }
   };
 
-
-
   const handleExportPDF = () => {
     window.print();
   };
@@ -98,6 +97,26 @@ export default function ReportPreviewPage() {
             className="text-slate-900 hover:text-slate-700 font-medium"
           >
             ← Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ROUTER-LEVEL GUARD: Prevent non-FRA surveys from accessing FRA report UI
+  if (survey.survey_type !== 'fra') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="bg-white border border-slate-200 rounded-lg p-6 max-w-xl w-full">
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">Report not available</h2>
+          <p className="text-slate-600">
+            This report viewer currently supports Fire Risk (FRA) surveys only.
+          </p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            Back to Dashboard
           </button>
         </div>
       </div>
@@ -156,7 +175,7 @@ export default function ReportPreviewPage() {
               }`}
             >
               <FileText className="w-4 h-4" />
-              <span>Survey Report</span>
+              <span>Fire Risk Survey Report</span>
               {!survey.issued && (
                 <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-700 rounded">
                   Draft
@@ -178,7 +197,7 @@ export default function ReportPreviewPage() {
               }`}
             >
               <List className="w-4 h-4" />
-              <span>Recommendation Report</span>
+              <span>Fire Risk Recommendation Report</span>
               {!survey.issued && (
                 <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-700 rounded">
                   Draft
@@ -198,6 +217,7 @@ export default function ReportPreviewPage() {
         {activeTab === 'survey' ? (
           <SurveyReport
             surveyId={surveyId!}
+            surveyType={survey.survey_type}
             embedded={true}
             aiSummary={aiSummary}
           />
@@ -205,6 +225,7 @@ export default function ReportPreviewPage() {
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             <RecommendationReport
               surveyId={surveyId!}
+              surveyType={survey.survey_type}
               onClose={() => {}}
               embedded={true}
               aiSummary={aiSummary}

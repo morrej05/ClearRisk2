@@ -210,10 +210,12 @@ export async function createNewVersion(
 
     if (newDocError) throw newDocError;
 
-    const { data: modules, error: modulesError } = await supabase
-      .from('module_instances')
-      .select('*')
-      .eq('document_id', currentIssued.id);
+const { data: modules, error: moduleError } = await supabase
+  .from('module_instances')
+  .select('id, module_key')
+  .eq('document_id', documentId)
+  .eq('organisation_id', organisationId);
+
 
     if (modulesError) throw modulesError;
 

@@ -62,10 +62,10 @@ export async function validateDocumentForIssue(
       errors.push(approvalCheck.reason || 'Approval check failed');
     }
 
-    // 3) Modules exist + have payload
+    // 3) Modules exist + have data
     const { data: modules, error: moduleError } = await supabase
       .from('module_instances')
-      .select('module_key, data')
+      .select('module_key, data, assessor_notes, completed_at')
       .eq('document_id', documentId)
       .eq('organisation_id', organisationId);
 
@@ -76,10 +76,18 @@ export async function validateDocumentForIssue(
     if (!modules || modules.length === 0) {
       errors.push('Document must have at least one module');
     } else {
-      for (const module of modules) {
-        const moduleData = (module as any).data;
-        if (!moduleData || (typeof moduleData === 'object' && Object.keys(moduleData).length === 0)) {
-          errors.push(`Module ${module.module_key} has no data`);
+      const isEmptyObject = (v: any) =>
+        !v || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
+
+      for (const m of modules) {
+        const hasJson = !isEmptyObject((m as any).data);
+        const hasNotes =
+          typeof (m as any).assessor_notes === 'string' &&
+          (m as any).assessor_notes.trim().length > 0;
+        const isCompleted = !!(m as any).completed_at;
+
+        if (!hasJson && !hasNotes && !isCompleted) {
+          errors.push(`Module ${m.module_key} has no data`);
         }
       }
     }

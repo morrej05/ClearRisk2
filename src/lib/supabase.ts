@@ -10,3 +10,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
 });
+
+// Dev helper for console debugging
+if (import.meta.env.DEV) {
+  // @ts-ignore
+  window.supabase = supabase;
+}

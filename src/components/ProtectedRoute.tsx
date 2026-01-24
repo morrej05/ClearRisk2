@@ -7,9 +7,10 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, authInitialized } = useAuth();
+  const { user, authInitialized, loading } = useAuth();
 
-  if (!authInitialized) {
+  // Don't decide anything until auth bootstrap finished
+  if (!authInitialized || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">

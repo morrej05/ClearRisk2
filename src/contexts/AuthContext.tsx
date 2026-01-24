@@ -269,9 +269,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           // Don't set user yet - fetchUserRole will set it with merged profile data
+          // fetchUserRole will setLoading(false) in finally
           await fetchUserRole(session.user.id, session.user.email || '', session.user);
         } else {
           setUser(null);
+          setUserRole(null);
+          setUserPlan(null);
+          setDisciplineType(null);
+          setBoltOns([]);
+          setMaxEditors(999);
+          setActiveEditors(1);
+          setIsPlatformAdmin(false);
+          setCanEdit(false);
+          setOrganisation(null);
+          setRoleError(null);
           setLoading(false);
         }
 
@@ -292,11 +303,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!isMounted) return;
 
+      // Prevent duplicate fetch on initial page load.
+      // initAuth() already handles session restore.
+      if (event === 'INITIAL_SESSION') return;
+
       (async () => {
         if (session?.user) {
-          setLoading(true);
-          // Don't set user yet - fetchUserRole will set it with merged profile data
-          await fetchUserRole(session.user.id, session.user.email || '', session.user);
+          // Only refetch profile on real auth changes
+          if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+            setLoading(true);
+            // Don't set user yet - fetchUserRole will set it with merged profile data
+            await fetchUserRole(session.user.id, session.user.email || '', session.user);
+          }
+          // For TOKEN_REFRESHED and other events, don't refetch - avoid UI flicker
         } else {
           setUser(null);
           console.log('[AuthContext] Clearing profile state on sign out');

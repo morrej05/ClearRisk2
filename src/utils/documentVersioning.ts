@@ -216,7 +216,6 @@ const { data: modules, error: moduleError } = await supabase
   .eq('document_id', documentId)
   .eq('organisation_id', organisationId);
 
-
     if (modulesError) throw modulesError;
 
     if (modules && modules.length > 0) {

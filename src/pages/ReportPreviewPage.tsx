@@ -6,6 +6,8 @@ import SurveyReport from '../components/SurveyReport';
 import RecommendationReport from '../components/RecommendationReport';
 import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/surveySummaryApi';
 import { useAuth } from '../contexts/AuthContext';
+import IssuedLockBanner from '../components/IssuedLockBanner';
+import { isLocked } from '../utils/lockState';
 
 type TabType = 'survey' | 'recommendations';
 
@@ -21,6 +23,8 @@ interface Survey {
   survey_date: string | null;
   issue_date: string | null;
   issued: boolean;
+  status?: string;
+  current_revision?: number;
   survey_type: 'fra' | 'risk_engineering' | 'combined';
 }
 
@@ -35,6 +39,7 @@ export default function ReportPreviewPage() {
   const [aiSummary, setAiSummary] = useState('');
   const [isTestingIssue, setIsTestingIssue] = useState(false);
   const [issueTestResult, setIssueTestResult] = useState<any>(null);
+  const [isCreatingRevision, setIsCreatingRevision] = useState(false);
 
   useEffect(() => {
     if (surveyId) {
@@ -49,7 +54,7 @@ export default function ReportPreviewPage() {
     try {
       const { data, error } = await supabase
         .from('survey_reports')
-        .select('*, survey_type')
+        .select('*')
         .eq('id', surveyId)
         .single();
 
@@ -133,6 +138,54 @@ export default function ReportPreviewPage() {
       });
     } finally {
       setIsTestingIssue(false);
+    }
+  };
+
+  const handleCreateRevision = async () => {
+    if (!surveyId) return;
+
+    const confirmed = window.confirm(
+      'Create a new revision? This will create a draft version that you can edit, while preserving the issued version.'
+    );
+
+    if (!confirmed) return;
+
+    setIsCreatingRevision(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-revision`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          survey_id: surveyId,
+          note: 'Revision created from report preview',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create revision');
+      }
+
+      alert(`Revision ${result.revision_number} created successfully! The survey is now in draft mode.`);
+
+      // Refresh survey data
+      await fetchSurvey();
+    } catch (err: any) {
+      console.error('Error creating revision:', err);
+      alert(`Failed to create revision: ${err.message}`);
+    } finally {
+      setIsCreatingRevision(false);
     }
   };
 
@@ -293,6 +346,13 @@ export default function ReportPreviewPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Issued Lock Banner */}
+        <IssuedLockBanner
+          survey={survey}
+          canEdit={true}
+          onCreateRevision={handleCreateRevision}
+        />
+
         {/* TEMPORARY: Issue Test Result Display */}
         {issueTestResult && (
           <div className={`mb-6 p-4 rounded-lg border ${

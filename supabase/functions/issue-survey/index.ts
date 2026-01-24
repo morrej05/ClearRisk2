@@ -128,12 +128,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 2. Check if already issued
-    if (survey.issued) {
+    // 2. Check if already issued (HARD LOCK)
+    if (survey.status === 'issued' || survey.issued === true) {
       return new Response(
-        JSON.stringify({ error: 'Survey is already issued' }),
+        JSON.stringify({ error: 'Survey is already issued and locked. Create a revision to make changes.' }),
         {
-          status: 400,
+          status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -256,6 +256,7 @@ Deno.serve(async (req: Request) => {
     const { error: updateError } = await supabase
       .from('survey_reports')
       .update({
+        status: 'issued',
         issued: true,
         issue_date: new Date().toISOString().split('T')[0],
         current_revision: revision_number,

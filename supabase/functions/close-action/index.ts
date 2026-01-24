@@ -1,4 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import {
+  assertActionSurveyEditable,
+  SurveyLockedError,
+  SurveyNotFoundError,
+  createLockedSurveyResponse,
+  createNotFoundResponse
+} from '../_shared/surveyGuards.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,61 +68,40 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Load the action/recommendation
+    // GUARD: Assert survey is editable (not issued)
+    let survey;
+    try {
+      survey = await assertActionSurveyEditable(supabase, action_id);
+    } catch (error) {
+      if (error instanceof SurveyLockedError) {
+        return createLockedSurveyResponse(corsHeaders);
+      }
+      if (error instanceof SurveyNotFoundError) {
+        return createNotFoundResponse(corsHeaders);
+      }
+      console.error('Unexpected error in guard:', error);
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Load the action details
     const { data: action, error: actionError } = await supabase
       .from('survey_recommendations')
       .select('id, survey_id, status, title_final, hazard')
       .eq('id', action_id)
       .maybeSingle();
 
-    if (actionError) {
+    if (actionError || !action) {
       console.error('Error loading action:', actionError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to load action' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    if (!action) {
       return new Response(
         JSON.stringify({ error: 'Action not found' }),
         {
           status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Load the survey to check status and permissions
-    const { data: survey, error: surveyError } = await supabase
-      .from('survey_reports')
-      .select('id, status, organisation_id, current_revision')
-      .eq('id', action.survey_id)
-      .maybeSingle();
-
-    if (surveyError || !survey) {
-      console.error('Error loading survey:', surveyError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to load survey' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Check if survey is issued (locked)
-    if (survey.status === 'issued') {
-      return new Response(
-        JSON.stringify({
-          error: 'Survey is issued and locked. Create a revision to close actions.',
-          locked: true
-        }),
-        {
-          status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );

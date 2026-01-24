@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
 import { ClientBrandingProvider } from './contexts/ClientBrandingContext';
 import LandingPage from './pages/LandingPage';
 import SignIn from './pages/SignIn';
@@ -39,8 +38,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ClientBrandingProvider>
+      <ClientBrandingProvider>
           <ErrorBoundary>
             <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -214,8 +212,7 @@ function App() {
           </Routes>
           </ErrorBoundary>
         </ClientBrandingProvider>
-      </AuthProvider>
-    </BrowserRouter>
+      </BrowserRouter>
   );
 }
 

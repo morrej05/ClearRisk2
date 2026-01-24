@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { X, AlertTriangle, CheckCircle, FileCheck, Shield } from 'lucide-react';
-import { issueDocument } from '../../utils/documentVersioning';
+import { issueDocument, validateDocumentForIssue } from '../../utils/documentVersioning';
 import { generateAndLockPdf } from '../../utils/pdfLocking';
-import { validateDocumentForIssue as serverValidateDocument, getValidationErrorMessage } from '../../utils/lifecycleGuards';
 import { supabase } from '../../lib/supabase';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
@@ -35,16 +34,15 @@ export default function IssueDocumentModal({
   const handleValidate = async () => {
     setIsValidating(true);
     try {
-      const result = await serverValidateDocument(documentId, userId);
+      const result = await validateDocumentForIssue(documentId, organisationId);
 
-      if (result.isValid) {
+      if (result.valid) {
         setValidationError('');
         setValidationErrorCode('');
         setValidated(true);
       } else {
-        const friendlyMessage = getValidationErrorMessage(result.errorCode, result.errorMessage);
-        setValidationError(friendlyMessage);
-        setValidationErrorCode(result.errorCode);
+        setValidationError(result.errors.join(', '));
+        setValidationErrorCode('VALIDATION_FAILED');
         setValidated(true);
       }
     } catch (error) {

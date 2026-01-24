@@ -30,51 +30,69 @@ export interface CreateNewVersionResult {
   newVersionNumber?: number;
 }
 
-export async function validateDocumentForIssue(documentId: string, organisationId: string): Promise<{ valid: boolean; errors: string[] }> {
+export async function validateDocumentForIssue(
+  documentId: string,
+  organisationId: string
+): Promise<{ valid: boolean; errors: string[] }> {
   const errors: string[] = [];
 
   try {
+    // 1) Document exists + accessible
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('issue_status, document_type, approval_status')
+      .select('id, organisation_id, issue_status, document_type, approval_status')
       .eq('id', documentId)
-      .single();
+      .eq('organisation_id', organisationId)
+      .maybeSingle();
 
-    if (docError) throw docError;
-
-    if (document.issue_status !== 'draft') {
-      errors.push('Only draft documents can be issued');
-      return { valid: false, errors };
+    if (docError) {
+      return { valid: false, errors: [`DOC QUERY ERROR: ${docError.message}`] };
+    }
+    if (!document) {
+      return { valid: false, errors: ['DOC NOT FOUND (or blocked by RLS)'] };
     }
 
+    if (document.issue_status !== 'draft') {
+      return { valid: false, errors: ['Only draft documents can be issued'] };
+    }
+
+    // 2) Approval check (if your workflow enforces it)
     const approvalCheck = await canIssueDocument(documentId, organisationId);
     if (!approvalCheck.canIssue) {
       errors.push(approvalCheck.reason || 'Approval check failed');
     }
 
+    // 3) Modules exist + have payload
     const { data: modules, error: moduleError } = await supabase
       .from('module_instances')
-      .select('module_key, payload')
-      .eq('document_id', documentId);
+      .select('id, module_key, payload')
+      .eq('document_id', documentId)
+      .eq('organisation_id', organisationId);
 
-    if (moduleError) throw moduleError;
+    if (moduleError) {
+      return { valid: false, errors: [`MODULES QUERY ERROR: ${moduleError.message}`] };
+    }
 
     if (!modules || modules.length === 0) {
       errors.push('Document must have at least one module');
-    }
-
-    for (const module of modules || []) {
-      if (!module.payload || Object.keys(module.payload).length === 0) {
-        errors.push(`Module ${module.module_key} has no data`);
+    } else {
+      for (const m of modules) {
+        if (!m.payload || Object.keys(m.payload).length === 0) {
+          errors.push(`Module ${m.module_key} has no data`);
+        }
       }
     }
 
     return { valid: errors.length === 0, errors };
-  } catch (error) {
-    console.error('Error validating document:', error);
-    return { valid: false, errors: ['Failed to validate document'] };
+  } catch (e: any) {
+    const msg =
+      e?.message ||
+      (typeof e === 'string' ? e : 'Unknown error');
+    console.error('Error validating document:', e);
+    return { valid: false, errors: [`VALIDATION THREW: ${msg}`] };
   }
 }
+
 
 export async function issueDocument(documentId: string, userId: string, organisationId: string): Promise<IssueDocumentResult> {
   try {

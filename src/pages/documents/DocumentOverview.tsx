@@ -960,9 +960,9 @@ export default function DocumentOverview() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-neutral-600">Status:</span>
-                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(document.status)}`}>
-                  {document.status}
-                </span>
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full     ${getStatusColor(document.issue_status)}`}>
+  {document.issue_status}
+              </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-neutral-600">Version:</span>

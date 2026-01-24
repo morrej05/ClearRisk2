@@ -11,6 +11,7 @@ import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
 import DocumentOverview from './pages/documents/DocumentOverview';
 import DocumentWorkspace from './pages/documents/DocumentWorkspace';
 import DocumentEvidence from './pages/documents/DocumentEvidenceV2';
+import DocumentPreviewPage from './pages/documents/DocumentPreviewPage';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UpgradeSubscription from './pages/UpgradeSubscription';
@@ -107,6 +108,14 @@ function App() {
             element={
               <AuthedLayout>
                 <DocumentEvidence />
+              </AuthedLayout>
+            }
+          />
+          <Route
+            path="/documents/:id/preview"
+            element={
+              <AuthedLayout>
+                <DocumentPreviewPage />
               </AuthedLayout>
             }
           />

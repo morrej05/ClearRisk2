@@ -724,6 +724,13 @@ export default function DocumentOverview() {
                 Evidence
               </button>
               <button
+                onClick={() => navigate(`/documents/${id}/preview`)}
+                className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Preview Report
+              </button>
+              <button
                 onClick={handleGeneratePdf}
                 disabled={isGeneratingPdf}
                 className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${

@@ -210,7 +210,40 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 8. Carry forward open recommendations (if using recommendations table)
+    // 8. Carry forward open recommendations from survey_recommendations table
+    const { data: openSurveyRecommendations } = await supabase
+      .from('survey_recommendations')
+      .select('*')
+      .eq('survey_id', survey_id)
+      .eq('status', 'open');
+
+    if (openSurveyRecommendations && openSurveyRecommendations.length > 0) {
+      const carriedSurveyRecs = openSurveyRecommendations.map((rec: any) => ({
+        survey_id: survey_id,
+        template_id: rec.template_id,
+        title_final: rec.title_final,
+        body_final: rec.body_final,
+        priority: rec.priority,
+        status: 'open',
+        owner: rec.owner,
+        target_date: rec.target_date,
+        source: rec.source,
+        section_key: rec.section_key,
+        sort_index: rec.sort_index,
+        include_in_report: rec.include_in_report,
+        revision_number: newRevisionNumber,
+      }));
+
+      const { error: surveyRecError } = await supabase
+        .from('survey_recommendations')
+        .insert(carriedSurveyRecs);
+
+      if (surveyRecError) {
+        console.error('Warning: Failed to carry forward survey_recommendations:', surveyRecError);
+      }
+    }
+
+    // Also carry forward from legacy recommendations table if exists
     const { data: openRecommendations } = await supabase
       .from('recommendations')
       .select('*')

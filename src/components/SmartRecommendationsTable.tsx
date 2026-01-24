@@ -10,9 +10,13 @@ import {
   CheckCircle2,
   Filter,
   BookOpen,
-  Plus
+  Plus,
+  CheckCircle,
+  RotateCcw,
+  Lock
 } from 'lucide-react';
 import RecommendationLibraryModal from './RecommendationLibraryModal';
+import ActionCloseReopenModal from './actions/ActionCloseReopenModal';
 
 interface SurveyRecommendation {
   id: string;
@@ -39,6 +43,7 @@ interface SurveyRecommendation {
 interface SmartRecommendationsTableProps {
   surveyId: string;
   readonly?: boolean;
+  surveyStatus?: 'draft' | 'issued';
 }
 
 const CATEGORIES = [
@@ -64,7 +69,7 @@ const SOURCE_OPTIONS = [
   { value: 'ai', label: 'AI', color: 'bg-indigo-100 text-indigo-800' }
 ];
 
-export default function SmartRecommendationsTable({ surveyId, readonly = false }: SmartRecommendationsTableProps) {
+export default function SmartRecommendationsTable({ surveyId, readonly = false, surveyStatus = 'draft' }: SmartRecommendationsTableProps) {
   const [recommendations, setRecommendations] = useState<SurveyRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +83,17 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
   });
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
+
+  // Close/Reopen modal state
+  const [closeReopenModal, setCloseReopenModal] = useState<{
+    open: boolean;
+    action: 'close' | 'reopen';
+    actionId: string;
+    actionTitle: string;
+  } | null>(null);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+
+  const isLocked = surveyStatus === 'issued';
 
   const [filters, setFilters] = useState({
     status: [] as string[],
@@ -135,6 +151,106 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
       setError(err.message);
     }
   }, []);
+
+  const handleCloseAction = async (note: string) => {
+    if (!closeReopenModal) return;
+
+    setIsProcessingAction(true);
+    setError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/close-action`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action_id: closeReopenModal.actionId,
+          note: note || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.status === 403 && result.locked) {
+        setError('Survey is issued and locked. Create a revision to close actions.');
+        setCloseReopenModal(null);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to close action');
+      }
+
+      setSuccessMessage('Action closed successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+
+      await fetchRecommendations();
+      setCloseReopenModal(null);
+    } catch (err: any) {
+      console.error('Error closing action:', err);
+      setError(err.message);
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleReopenAction = async (note: string) => {
+    if (!closeReopenModal) return;
+
+    setIsProcessingAction(true);
+    setError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/reopen-action`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action_id: closeReopenModal.actionId,
+          note: note || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.status === 403 && result.locked) {
+        setError('Survey is issued and locked. Create a revision to reopen actions.');
+        setCloseReopenModal(null);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reopen action');
+      }
+
+      setSuccessMessage('Action reopened successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+
+      await fetchRecommendations();
+      setCloseReopenModal(null);
+    } catch (err: any) {
+      console.error('Error reopening action:', err);
+      setError(err.message);
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this recommendation?')) {
@@ -498,12 +614,15 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
                     recommendation={rec}
                     index={index}
                     readonly={readonly}
+                    isLocked={isLocked}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
                     onDragEnd={handleDragEnd}
                     onUpdate={updateRecommendation}
                     onEditBody={handleEditBody}
                     onDelete={handleDelete}
+                    onOpenCloseModal={(id, title) => setCloseReopenModal({ open: true, action: 'close', actionId: id, actionTitle: title })}
+                    onOpenReopenModal={(id, title) => setCloseReopenModal({ open: true, action: 'reopen', actionId: id, actionTitle: title })}
                   />
                 ))
               )}
@@ -600,6 +719,17 @@ export default function SmartRecommendationsTable({ surveyId, readonly = false }
           onRecommendationAdded={fetchRecommendations}
         />
       )}
+
+      {closeReopenModal && (
+        <ActionCloseReopenModal
+          open={closeReopenModal.open}
+          onClose={() => setCloseReopenModal(null)}
+          onConfirm={closeReopenModal.action === 'close' ? handleCloseAction : handleReopenAction}
+          action={closeReopenModal.action}
+          actionTitle={closeReopenModal.actionTitle}
+          isLoading={isProcessingAction}
+        />
+      )}
     </div>
   );
 }
@@ -608,24 +738,30 @@ interface RecommendationRowProps {
   recommendation: SurveyRecommendation;
   index: number;
   readonly: boolean;
+  isLocked: boolean;
   onDragStart: (index: number) => void;
   onDragOver: (e: React.DragEvent, index: number) => void;
   onDragEnd: () => void;
   onUpdate: (id: string, updates: Partial<SurveyRecommendation>) => void;
   onEditBody: (rec: SurveyRecommendation) => void;
   onDelete: (id: string) => void;
+  onOpenCloseModal: (id: string, title: string) => void;
+  onOpenReopenModal: (id: string, title: string) => void;
 }
 
 function RecommendationRow({
   recommendation,
   index,
   readonly,
+  isLocked,
   onDragStart,
   onDragOver,
   onDragEnd,
   onUpdate,
   onEditBody,
-  onDelete
+  onDelete,
+  onOpenCloseModal,
+  onOpenReopenModal
 }: RecommendationRowProps) {
   const [localOwner, setLocalOwner] = useState(recommendation.owner || '');
   const [ownerTimeout, setOwnerTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -729,9 +865,32 @@ function RecommendationRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-center gap-2">
+          {recommendation.status === 'open' && !isLocked && !readonly && (
+            <button
+              onClick={() => onOpenCloseModal(recommendation.id, recommendation.hazard || recommendation.title_final)}
+              className="text-green-600 hover:text-green-700 transition-colors"
+              title="Close action"
+            >
+              <CheckCircle className="w-4 h-4" />
+            </button>
+          )}
+          {recommendation.status === 'closed' && !isLocked && !readonly && (
+            <button
+              onClick={() => onOpenReopenModal(recommendation.id, recommendation.hazard || recommendation.title_final)}
+              className="text-blue-600 hover:text-blue-700 transition-colors"
+              title="Reopen action"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+          {isLocked && (
+            <div className="text-slate-400" title="Survey is locked">
+              <Lock className="w-4 h-4" />
+            </div>
+          )}
           <button
             onClick={() => onEditBody(recommendation)}
-            disabled={readonly}
+            disabled={readonly || isLocked}
             className="text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Edit body"
           >
@@ -739,7 +898,7 @@ function RecommendationRow({
           </button>
           <button
             onClick={() => onDelete(recommendation.id)}
-            disabled={readonly}
+            disabled={readonly || isLocked}
             className="text-red-600 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Delete"
           >

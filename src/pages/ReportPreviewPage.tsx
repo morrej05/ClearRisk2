@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, List, Download, ArrowLeft, Sparkles, Loader2, CheckCircle } from 'lucide-react';
+import { FileText, List, Download, ArrowLeft, Sparkles, Loader2, CheckCircle, Archive } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import SurveyReport from '../components/SurveyReport';
 import RecommendationReport from '../components/RecommendationReport';
@@ -67,6 +67,7 @@ export default function ReportPreviewPage() {
   const [isIssuing, setIsIssuing] = useState(false);
   const [issueConfirmed, setIssueConfirmed] = useState(false);
   const [changeLog, setChangeLog] = useState('');
+  const [isDownloadingCompliancePack, setIsDownloadingCompliancePack] = useState(false);
 
   // Parse rev query param and load data
   useEffect(() => {
@@ -342,6 +343,48 @@ export default function ReportPreviewPage() {
     }
   };
 
+  const handleDownloadCompliancePack = async () => {
+    if (!surveyId || !selectedRevision) return;
+
+    setIsDownloadingCompliancePack(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/download-compliance-pack`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          survey_id: surveyId,
+          revision_number: selectedRevision,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to generate compliance pack');
+      }
+
+      // Open the signed URL in a new window to trigger download
+      if (result.download_url) {
+        window.open(result.download_url, '_blank');
+      }
+    } catch (err: any) {
+      console.error('Error downloading compliance pack:', err);
+      alert(`Failed to download compliance pack: ${err.message}`);
+    } finally {
+      setIsDownloadingCompliancePack(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -463,6 +506,28 @@ export default function ReportPreviewPage() {
                     <>
                       <CheckCircle className="w-4 h-4" />
                       <span>Test Issue</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Compliance Pack Download - Only for issued revisions */}
+              {reportData?.source === 'snapshot' && selectedRevision && (
+                <button
+                  onClick={handleDownloadCompliancePack}
+                  disabled={isDownloadingCompliancePack}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Download compliance pack (PDF + Actions + Audit Trail)"
+                >
+                  {isDownloadingCompliancePack ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="w-4 h-4" />
+                      <span>Compliance Pack</span>
                     </>
                   )}
                 </button>

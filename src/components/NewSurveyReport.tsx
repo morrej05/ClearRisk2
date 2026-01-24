@@ -11,6 +11,7 @@ import StickySaveButton from './StickySaveButton';
 import DraftReportModal from './DraftReportModal';
 import RecommendationLibraryModal from './RecommendationLibraryModal';
 import SmartRecommendationsTable from './SmartRecommendationsTable';
+import SurveyHistoryPanel from './history/SurveyHistoryPanel';
 import { calculateOverallGrade, getRiskBandFromGrade, SectionGrades, getSectorWeightsFromDB, fetchSectorWeightings, SectorWeighting } from '../utils/riskScoring';
 import RatingRadio from './RatingRadio';
 import { getRecommendationForRating, shouldGenerateRecommendation } from '../utils/recommendationTemplates';
@@ -3724,12 +3725,18 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 </button>
               </div>
             ) : surveyId ? (
-              <SmartRecommendationsTable surveyId={surveyId} readonly={isIssued} />
+              <SmartRecommendationsTable surveyId={surveyId} readonly={isIssued} surveyStatus={isIssued ? 'issued' : 'draft'} />
             ) : (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
                   Save the survey first to manage recommendations using the smart table.
                 </p>
+              </div>
+            )}
+
+            {surveyId && (
+              <div className="mt-8 pt-8 border-t border-slate-200">
+                <SurveyHistoryPanel surveyId={surveyId} />
               </div>
             )}
 

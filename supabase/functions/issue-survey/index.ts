@@ -276,7 +276,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 11. Return success
+    // 11. Write audit log entry
+    try {
+      await supabase.from('audit_log').insert({
+        organisation_id: survey.organisation_id || null,
+        survey_id: survey_id,
+        revision_number: revision_number,
+        actor_id: user.id,
+        event_type: 'issued',
+        details: {
+          change_log: change_log || 'Initial issue',
+          survey_type: survey.survey_type,
+          scope_type: ctx.scope_type,
+        },
+      });
+    } catch (auditError) {
+      console.error('Warning: Failed to write audit log:', auditError);
+      // Don't fail the operation if audit logging fails
+    }
+
+    // 12. Return success
     return new Response(
       JSON.stringify({
         success: true,

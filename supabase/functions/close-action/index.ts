@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
     // Load the action/recommendation
     const { data: action, error: actionError } = await supabase
       .from('survey_recommendations')
-      .select('id, survey_id, status')
+      .select('id, survey_id, status, title_final, hazard')
       .eq('id', action_id)
       .maybeSingle();
 
@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
     // Load the survey to check status and permissions
     const { data: survey, error: surveyError } = await supabase
       .from('survey_reports')
-      .select('id, status, organisation_id')
+      .select('id, status, organisation_id, current_revision')
       .eq('id', action.survey_id)
       .maybeSingle();
 
@@ -191,6 +191,25 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
+    }
+
+    // Write audit log entry
+    try {
+      await supabase.from('audit_log').insert({
+        organisation_id: survey.organisation_id || null,
+        survey_id: action.survey_id,
+        revision_number: survey.current_revision || 1,
+        actor_id: user.id,
+        event_type: 'action_closed',
+        details: {
+          action_id: action_id,
+          title: action.title_final || action.hazard || 'Untitled action',
+          note: note || '',
+        },
+      });
+    } catch (auditError) {
+      console.error('Warning: Failed to write audit log:', auditError);
+      // Don't fail the operation if audit logging fails
     }
 
     return new Response(

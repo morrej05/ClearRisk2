@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useClientBranding } from '../contexts/ClientBrandingContext';
 import { useTenant } from '../hooks/useTenant';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users, X, ClipboardList } from 'lucide-react';
+import { LogOut, Plus, Eye, CreditCard as Edit, Trash2, CheckCircle2, RefreshCw, Lock, Shield, ExternalLink, FileText, FileEdit, Sparkles, TrendingUp, AlertCircle, Building2, Filter, Palette, Users, X, ClipboardList, Copy } from 'lucide-react';
 import NewSurveyReport from '../components/NewSurveyReport';
 import NewSurveyModal from '../components/NewSurveyModal';
 import ExternalLinkModal from '../components/ExternalLinkModal';
@@ -11,6 +11,7 @@ import RecommendationReport from '../components/RecommendationReport';
 import SurveyTextEditor from '../components/SurveyTextEditor';
 import TextReportModal from '../components/TextReportModal';
 import ClientBrandingModal from '../components/ClientBrandingModal';
+import CloneSurveyModal from '../components/CloneSurveyModal';
 import RoleDebugWidget from '../components/RoleDebugWidget';
 import TrialBanner from '../components/TrialBanner';
 import { supabase } from '../lib/supabase';
@@ -93,6 +94,7 @@ export default function Dashboard() {
   const [surveySummaryCache, setSurveySummaryCache] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [showBrandingModal, setShowBrandingModal] = useState(false);
+  const [cloneSurveyId, setCloneSurveyId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSurveys();
@@ -1063,6 +1065,15 @@ export default function Dashboard() {
                                     <ExternalLink className="w-4 h-4" />
                                   </button>
                                 )}
+                                {permissions.canCreateSurveys && (
+                                  <button
+                                    onClick={() => setCloneSurveyId(survey.id)}
+                                    className="text-blue-600 hover:text-blue-900 transition-colors"
+                                    title="Clone Survey"
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                  </button>
+                                )}
                                 {canIssue && (
                                   <button
                                     onClick={() => setIssueConfirmId(survey.id)}
@@ -1227,6 +1238,13 @@ export default function Dashboard() {
         />
       )}
 
+      {cloneSurveyId && (
+        <CloneSurveyModal
+          surveyId={cloneSurveyId}
+          surveyTitle={surveys.find(s => s.id === cloneSurveyId)?.property_name || 'Survey'}
+          onClose={() => setCloneSurveyId(null)}
+        />
+      )}
 
       <ClientBrandingModal
         isOpen={showBrandingModal}

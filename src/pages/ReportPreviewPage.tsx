@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, List, Download, ArrowLeft, Sparkles, Loader2, CheckCircle, Archive } from 'lucide-react';
+import { FileText, List, Download, ArrowLeft, Sparkles, Loader2, CheckCircle, Archive, Copy } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import SurveyReport from '../components/SurveyReport';
 import RecommendationReport from '../components/RecommendationReport';
@@ -8,6 +8,7 @@ import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/sur
 import { useAuth } from '../contexts/AuthContext';
 import IssuedLockBanner from '../components/IssuedLockBanner';
 import ApprovalWorkflowBanner from '../components/ApprovalWorkflowBanner';
+import CloneSurveyModal from '../components/CloneSurveyModal';
 import { isLocked } from '../utils/lockState';
 import { loadReportData, listIssuedRevisions, getSurveyStatus, type ReportData } from '../utils/reportData';
 import IssueReadinessPanel from '../components/issue/IssueReadinessPanel';
@@ -69,6 +70,7 @@ export default function ReportPreviewPage() {
   const [issueConfirmed, setIssueConfirmed] = useState(false);
   const [changeLog, setChangeLog] = useState('');
   const [isDownloadingCompliancePack, setIsDownloadingCompliancePack] = useState(false);
+  const [showCloneModal, setShowCloneModal] = useState(false);
 
   // Parse rev query param and load data
   useEffect(() => {
@@ -535,6 +537,15 @@ export default function ReportPreviewPage() {
               )}
 
               <button
+                onClick={() => setShowCloneModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                title="Clone this survey as a new draft"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Clone Survey</span>
+              </button>
+
+              <button
                 onClick={handleExportPDF}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
               >
@@ -800,6 +811,15 @@ export default function ReportPreviewPage() {
           </div>
         )}
       </div>
+
+      {/* Clone Survey Modal */}
+      {showCloneModal && survey && (
+        <CloneSurveyModal
+          surveyId={survey.id}
+          surveyTitle={survey.site_name || survey.property_name || 'Survey'}
+          onClose={() => setShowCloneModal(false)}
+        />
+      )}
     </div>
   );
 }

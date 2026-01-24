@@ -74,7 +74,8 @@ export default function IssueDocumentModal({
         .from('module_instances')
         .select('*')
         .eq('document_id', documentId)
-        .order('display_order', { ascending: true });
+        .eq('organisation_id', organisationId)
+        .order('created_at', { ascending: true });
 
       if (moduleError) throw moduleError;
 
@@ -82,8 +83,9 @@ export default function IssueDocumentModal({
         .from('actions')
         .select('*')
         .eq('document_id', documentId)
-        .eq('is_deleted', false)
-        .order('priority', { ascending: true });
+        .eq('organisation_id', organisationId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true });
 
       if (actionError) throw actionError;
 

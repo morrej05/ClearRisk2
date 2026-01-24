@@ -65,7 +65,7 @@ export async function validateDocumentForIssue(
     // 3) Modules exist + have payload
     const { data: modules, error: moduleError } = await supabase
       .from('module_instances')
-      .select('id, module_key, payload')
+      .select('module_key, data')
       .eq('document_id', documentId)
       .eq('organisation_id', organisationId);
 
@@ -76,9 +76,10 @@ export async function validateDocumentForIssue(
     if (!modules || modules.length === 0) {
       errors.push('Document must have at least one module');
     } else {
-      for (const m of modules) {
-        if (!m.payload || Object.keys(m.payload).length === 0) {
-          errors.push(`Module ${m.module_key} has no data`);
+      for (const module of modules) {
+        const moduleData = (module as any).data;
+        if (!moduleData || (typeof moduleData === 'object' && Object.keys(moduleData).length === 0)) {
+          errors.push(`Module ${module.module_key} has no data`);
         }
       }
     }

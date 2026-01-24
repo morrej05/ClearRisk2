@@ -9,6 +9,19 @@ import { useAuth } from '../contexts/AuthContext';
 import IssuedLockBanner from '../components/IssuedLockBanner';
 import { isLocked } from '../utils/lockState';
 import { loadReportData, listIssuedRevisions, getSurveyStatus, type ReportData } from '../utils/reportData';
+import IssueReadinessPanel from '../components/issue/IssueReadinessPanel';
+import IssueBlockersModal from '../components/issue/IssueBlockersModal';
+import {
+  getRequiredModules,
+  type SurveyType,
+  type IssueCtx,
+} from '../utils/issueRequirements';
+import {
+  validateIssueEligibility,
+  type Blocker,
+  type ModuleProgress,
+} from '../utils/issueValidation';
+import { isOrgAdmin } from '../utils/entitlements';
 
 type TabType = 'survey' | 'recommendations';
 
@@ -47,6 +60,13 @@ export default function ReportPreviewPage() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [availableRevisions, setAvailableRevisions] = useState<any[]>([]);
   const [selectedRevision, setSelectedRevision] = useState<number | null>(null);
+
+  // Issue flow state
+  const [showBlockersModal, setShowBlockersModal] = useState(false);
+  const [blockers, setBlockers] = useState<Blocker[]>([]);
+  const [isIssuing, setIsIssuing] = useState(false);
+  const [issueConfirmed, setIssueConfirmed] = useState(false);
+  const [changeLog, setChangeLog] = useState('');
 
   // Parse rev query param and load data
   useEffect(() => {
@@ -112,6 +132,82 @@ export default function ReportPreviewPage() {
     } else {
       setSearchParams({ rev: revNumber.toString() });
     }
+  };
+
+  const handleIssue = async () => {
+    if (!surveyId || !user) return;
+
+    setIsIssuing(true);
+    setBlockers([]);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/issue-survey`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          survey_id: surveyId,
+          change_log: changeLog.trim() || 'Survey issued',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.status === 400) {
+        setBlockers(result.blockers || []);
+        setShowBlockersModal(true);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to issue survey');
+      }
+
+      alert(`Successfully issued as Revision ${result.revision_number}`);
+
+      await fetchSurvey();
+      await loadAvailableRevisions();
+      handleRevisionChange(result.revision_number);
+
+      setIssueConfirmed(false);
+      setChangeLog('');
+    } catch (err: any) {
+      console.error('Error issuing survey:', err);
+      alert(`Failed to issue survey: ${err.message}`);
+    } finally {
+      setIsIssuing(false);
+    }
+  };
+
+  const handleExplainBlockers = () => {
+    if (!survey) return;
+
+    const ctx: IssueCtx = {
+      scope_type: survey.form_data?.scope_type,
+      engineered_solutions_used: survey.form_data?.engineered_solutions_used,
+      suppression_applicable: survey.form_data?.suppression_applicable,
+      smoke_control_applicable: survey.form_data?.smoke_control_applicable,
+    };
+
+    const moduleProgress: ModuleProgress = survey.form_data?.moduleProgress || {};
+    const validation = validateIssueEligibility(
+      survey.survey_type.toUpperCase() as SurveyType,
+      ctx,
+      survey.form_data || {},
+      moduleProgress,
+      []
+    );
+
+    setBlockers(validation.blockers);
+    setShowBlockersModal(true);
   };
 
   const handleGenerateAISummary = async () => {
@@ -436,6 +532,128 @@ export default function ReportPreviewPage() {
           survey={survey}
           canEdit={true}
           onCreateRevision={handleCreateRevision}
+        />
+
+        {/* Issue Bar - Only show when draft and viewing current draft (not a revision) */}
+        {survey.status === 'draft' && selectedRevision === null && (
+          <div className="mb-6 bg-white rounded-lg border border-slate-200 p-6">
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={issueConfirmed}
+                      onChange={(e) => setIssueConfirmed(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                    />
+                    <span>
+                      I confirm this document is complete within the stated scope and limitations
+                    </span>
+                  </label>
+                </div>
+
+                <div>
+                  <label htmlFor="change-log" className="block text-sm font-medium text-slate-700 mb-2">
+                    Change Log <span className="text-slate-500">(optional but recommended)</span>
+                  </label>
+                  <textarea
+                    id="change-log"
+                    value={changeLog}
+                    onChange={(e) => setChangeLog(e.target.value)}
+                    placeholder="Describe what changed in this issue/revision..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const canIssue = user && isOrgAdmin(user);
+                    const ctx: IssueCtx = {
+                      scope_type: survey.form_data?.scope_type,
+                      engineered_solutions_used: survey.form_data?.engineered_solutions_used,
+                      suppression_applicable: survey.form_data?.suppression_applicable,
+                      smoke_control_applicable: survey.form_data?.smoke_control_applicable,
+                    };
+                    const moduleProgress: ModuleProgress = survey.form_data?.moduleProgress || {};
+                    const validation = validateIssueEligibility(
+                      survey.survey_type.toUpperCase() as SurveyType,
+                      ctx,
+                      survey.form_data || {},
+                      moduleProgress,
+                      []
+                    );
+                    const isDisabled = !canIssue || !issueConfirmed || !validation.eligible;
+
+                    return (
+                      <>
+                        <button
+                          onClick={handleIssue}
+                          disabled={isDisabled || isIssuing}
+                          className="px-6 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        >
+                          {isIssuing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+                              Issuing...
+                            </>
+                          ) : (
+                            'Issue Survey'
+                          )}
+                        </button>
+                        {isDisabled && !isIssuing && (
+                          <button
+                            onClick={handleExplainBlockers}
+                            className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm underline"
+                          >
+                            Why is this disabled?
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div className="lg:col-span-1">
+                <IssueReadinessPanel
+                  surveyId={surveyId!}
+                  surveyType={survey.survey_type.toUpperCase() as SurveyType}
+                  ctx={{
+                    scope_type: survey.form_data?.scope_type,
+                    engineered_solutions_used: survey.form_data?.engineered_solutions_used,
+                    suppression_applicable: survey.form_data?.suppression_applicable,
+                    smoke_control_applicable: survey.form_data?.smoke_control_applicable,
+                  }}
+                  moduleProgress={survey.form_data?.moduleProgress || {}}
+                  answers={survey.form_data || {}}
+                  actions={[]}
+                  canIssue={user ? isOrgAdmin(user) : false}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Blockers Modal */}
+        <IssueBlockersModal
+          open={showBlockersModal}
+          onClose={() => setShowBlockersModal(false)}
+          blockers={blockers}
+          moduleLabels={(() => {
+            if (!survey) return {};
+            const modules = getRequiredModules(
+              survey.survey_type.toUpperCase() as SurveyType,
+              {
+                scope_type: survey.form_data?.scope_type,
+                engineered_solutions_used: survey.form_data?.engineered_solutions_used,
+                suppression_applicable: survey.form_data?.suppression_applicable,
+                smoke_control_applicable: survey.form_data?.smoke_control_applicable,
+              }
+            );
+            return Object.fromEntries(modules.map((m) => [m.key, m.label]));
+          })()}
         />
 
         {/* TEMPORARY: Issue Test Result Display */}

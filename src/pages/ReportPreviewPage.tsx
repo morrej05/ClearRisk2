@@ -7,7 +7,9 @@ import RecommendationReport from '../components/RecommendationReport';
 import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/surveySummaryApi';
 import { useAuth } from '../contexts/AuthContext';
 import IssuedLockBanner from '../components/IssuedLockBanner';
+import ApprovalWorkflowBanner from '../components/ApprovalWorkflowBanner';
 import { isLocked } from '../utils/lockState';
+import { isOrgAdmin } from '../utils/entitlements';
 import { loadReportData, listIssuedRevisions, getSurveyStatus, type ReportData } from '../utils/reportData';
 import IssueReadinessPanel from '../components/issue/IssueReadinessPanel';
 import IssueBlockersModal from '../components/issue/IssueBlockersModal';
@@ -591,6 +593,21 @@ export default function ReportPreviewPage() {
         </div>
       </div>
 
+      {/* Approval Workflow Banner - Show when not viewing a specific revision */}
+      {selectedRevision === null && (
+        <ApprovalWorkflowBanner
+          surveyId={survey.id}
+          status={survey.status || 'draft'}
+          approvedAt={survey.approved_at}
+          approvedBy={survey.approved_by}
+          approvalNote={survey.approval_note}
+          onStatusChange={() => {
+            fetchSurvey();
+            loadReportDataForView(selectedRevision);
+          }}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Issued Lock Banner */}
         <IssuedLockBanner
@@ -599,8 +616,8 @@ export default function ReportPreviewPage() {
           onCreateRevision={handleCreateRevision}
         />
 
-        {/* Issue Bar - Only show when draft and viewing current draft (not a revision) */}
-        {survey.status === 'draft' && selectedRevision === null && (
+        {/* Issue Bar - Only show when approved and viewing current draft (not a revision) */}
+        {survey.status === 'approved' && selectedRevision === null && (
           <div className="mb-6 bg-white rounded-lg border border-slate-200 p-6">
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">

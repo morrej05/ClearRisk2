@@ -139,6 +139,21 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // 2a. APPROVAL GATE: Survey must be approved before issuing
+    if (survey.status !== 'approved') {
+      return new Response(
+        JSON.stringify({
+          error: 'Survey must be approved before issuing',
+          current_status: survey.status,
+          message: 'Please submit for review and obtain approval before issuing this survey.',
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     // 3. Build context
     const ctx: IssueCtx = {
       scope_type: survey.scope_type,

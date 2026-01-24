@@ -1,5 +1,5 @@
 import { Lock, FileEdit } from 'lucide-react';
-import { isLocked } from '../utils/lockState';
+import { isIssued } from '../utils/lockState';
 
 interface IssuedLockBannerProps {
   survey: {
@@ -17,7 +17,8 @@ export default function IssuedLockBanner({
   canEdit = true,
   onCreateRevision,
 }: IssuedLockBannerProps) {
-  if (!survey || !isLocked(survey)) {
+  // Only show for issued surveys (not in_review or approved)
+  if (!survey || !isIssued(survey)) {
     return null;
   }
 

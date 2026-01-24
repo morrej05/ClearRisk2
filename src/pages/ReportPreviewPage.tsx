@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, List, Download, ArrowLeft, Sparkles, Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import SurveyReport from '../components/SurveyReport';
@@ -8,6 +8,7 @@ import { generateSurveySummary, prepareSurveyDataForSummary } from '../utils/sur
 import { useAuth } from '../contexts/AuthContext';
 import IssuedLockBanner from '../components/IssuedLockBanner';
 import { isLocked } from '../utils/lockState';
+import { loadReportData, listIssuedRevisions, getSurveyStatus, type ReportData } from '../utils/reportData';
 
 type TabType = 'survey' | 'recommendations';
 
@@ -31,6 +32,7 @@ interface Survey {
 export default function ReportPreviewPage() {
   const { surveyId } = useParams<{ surveyId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('survey');
   const [survey, setSurvey] = useState<Survey | null>(null);
@@ -41,16 +43,26 @@ export default function ReportPreviewPage() {
   const [issueTestResult, setIssueTestResult] = useState<any>(null);
   const [isCreatingRevision, setIsCreatingRevision] = useState(false);
 
+  // Revision mode state
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [availableRevisions, setAvailableRevisions] = useState<any[]>([]);
+  const [selectedRevision, setSelectedRevision] = useState<number | null>(null);
+
+  // Parse rev query param and load data
   useEffect(() => {
     if (surveyId) {
+      const revParam = searchParams.get('rev');
+      const revNumber = revParam ? parseInt(revParam, 10) : null;
+      setSelectedRevision(revNumber);
       fetchSurvey();
+      loadReportDataForView(revNumber);
+      loadAvailableRevisions();
     }
-  }, [surveyId]);
+  }, [surveyId, searchParams]);
 
   const fetchSurvey = async () => {
     if (!surveyId) return;
 
-    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('survey_reports')
@@ -62,8 +74,43 @@ export default function ReportPreviewPage() {
       setSurvey(data);
     } catch (error) {
       console.error('Error fetching survey:', error);
+    }
+  };
+
+  const loadReportDataForView = async (revNumber: number | null) => {
+    if (!surveyId) return;
+
+    setIsLoading(true);
+    try {
+      const data = await loadReportData({
+        surveyId,
+        revisionNumber: revNumber,
+      });
+
+      setReportData(data);
+    } catch (error) {
+      console.error('Error loading report data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAvailableRevisions = async () => {
+    if (!surveyId) return;
+
+    try {
+      const revisions = await listIssuedRevisions(surveyId);
+      setAvailableRevisions(revisions);
+    } catch (error) {
+      console.error('Error loading revisions:', error);
+    }
+  };
+
+  const handleRevisionChange = (revNumber: number | null) => {
+    if (revNumber === null) {
+      setSearchParams({});
+    } else {
+      setSearchParams({ rev: revNumber.toString() });
     }
   };
 
@@ -85,6 +132,12 @@ export default function ReportPreviewPage() {
   };
 
   const handleExportPDF = () => {
+    if (reportData?.source === 'snapshot') {
+      const confirmed = window.confirm(
+        `You are about to export Issued v${reportData.revisionNumber}.\n\nThis is an immutable snapshot from ${reportData.issuedAt ? new Date(reportData.issuedAt).toLocaleDateString() : 'the issue date'}.\n\nContinue?`
+      );
+      if (!confirmed) return;
+    }
     window.print();
   };
 
@@ -127,8 +180,10 @@ export default function ReportPreviewPage() {
           success: true,
           ...result,
         });
-        // Refresh survey data
-        fetchSurvey();
+        // Refresh survey data and revisions
+        await fetchSurvey();
+        await loadAvailableRevisions();
+        await loadReportDataForView(selectedRevision);
       }
     } catch (err: any) {
       console.error('Error testing issue:', err);
@@ -179,8 +234,10 @@ export default function ReportPreviewPage() {
 
       alert(`Revision ${result.revision_number} created successfully! The survey is now in draft mode.`);
 
-      // Refresh survey data
+      // Refresh survey data, revisions, and switch to draft view
       await fetchSurvey();
+      await loadAvailableRevisions();
+      handleRevisionChange(null); // Switch back to draft view
     } catch (err: any) {
       console.error('Error creating revision:', err);
       alert(`Failed to create revision: ${err.message}`);
@@ -245,6 +302,34 @@ export default function ReportPreviewPage() {
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">Back to Dashboard</span>
             </button>
+
+            {/* Revision Picker */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="revision-select" className="text-sm font-medium text-slate-700">
+                Revision:
+              </label>
+              <select
+                id="revision-select"
+                value={selectedRevision || 'draft'}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleRevisionChange(value === 'draft' ? null : parseInt(value, 10));
+                }}
+                className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+              >
+                <option value="draft">Draft (current)</option>
+                {availableRevisions.map((rev) => (
+                  <option key={rev.revision_number} value={rev.revision_number}>
+                    Issued v{rev.revision_number} ({new Date(rev.issued_at).toLocaleDateString()})
+                  </option>
+                ))}
+              </select>
+              {reportData?.source === 'snapshot' && (
+                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded font-medium">
+                  Viewing Immutable Snapshot
+                </span>
+              )}
+            </div>
 
             <div className="flex items-center gap-3">
               <button

@@ -133,6 +133,7 @@ export async function issueDocument(documentId: string, userId: string, organisa
       .from('documents')
       .update({
         issue_status: 'issued',
+        status: 'issued',
         issue_date: new Date().toISOString().split('T')[0],
         issued_by: userId,
         updated_at: new Date().toISOString(),
@@ -331,6 +332,7 @@ export async function supersedeDocumentAndIssueNew(
       .from('documents')
       .update({
         issue_status: 'superseded',
+        status: 'superseded',
         superseded_by_document_id: newDocumentId,
         superseded_date: new Date().toISOString(),
         updated_at: new Date().toISOString(),

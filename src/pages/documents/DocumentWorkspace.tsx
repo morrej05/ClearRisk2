@@ -149,8 +149,9 @@ export default function DocumentWorkspace() {
       const { error } = await supabase
         .from('documents')
         .update({
+          issue_status: 'issued',
           status: 'issued',
-          issued_at: new Date().toISOString(),
+          issue_date: new Date().toISOString().split('T')[0],
           issued_by: user.id,
           updated_at: new Date().toISOString(),
         })

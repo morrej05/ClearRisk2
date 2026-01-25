@@ -255,6 +255,8 @@ export async function createNewVersion(
 
     const newVersionNumber = currentIssued.version_number + 1;
 
+    const currentDate = new Date().toISOString().slice(0, 10);
+
     const newDocData = {
       organisation_id: organisationId,
       base_document_id: baseDocumentId,
@@ -263,25 +265,26 @@ export async function createNewVersion(
       document_type: currentIssued.document_type,
       assessor_name: currentIssued.assessor_name,
       assessor_company: currentIssued.assessor_company,
-      assessment_date: currentIssued.assessment_date,
+      assessment_date: currentIssued.assessment_date || currentDate,
       review_date: currentIssued.review_date,
       scope_description: currentIssued.scope_description,
       limitations_assumptions: currentIssued.limitations_assumptions,
       standards_selected: currentIssued.standards_selected,
       enabled_modules: currentIssued.enabled_modules,
       jurisdiction: currentIssued.jurisdiction,
-      issue_status: 'draft',
+      issue_status: 'draft' as const,
       issue_date: null,
       issued_by: null,
-      status: 'draft',
+      status: 'draft' as const,
       executive_summary_ai: null,
       executive_summary_author: null,
       executive_summary_mode: currentIssued.executive_summary_mode || 'ai',
-      approval_status: 'not_submitted',
+      approval_status: 'not_submitted' as const,
       locked_pdf_path: null,
       locked_pdf_generated_at: null,
       locked_pdf_size_bytes: null,
       locked_pdf_sha256: null,
+      pdf_generation_error: null,
       is_immutable: false,
     };
 

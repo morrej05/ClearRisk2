@@ -288,6 +288,8 @@ export async function createNewVersion(
       is_immutable: false,
     };
 
+    console.log('[createNewVersion] insert keys', Object.keys(newDocData), 'assessment_date=', newDocData.assessment_date, newDocData);
+
     const { data: newDocument, error: newDocError } = await supabase
       .from('documents')
       .insert([newDocData])

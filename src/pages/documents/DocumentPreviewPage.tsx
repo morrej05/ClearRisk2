@@ -101,84 +101,109 @@ export default function DocumentPreviewPage() {
         const fname = formatFilename(doc, defaultMode);
         setFilename(fname);
 
-        if (doc.issue_status !== 'draft') {
-          const info = await getLockedPdfInfo(id);
-
-          if (!info?.locked_pdf_path) {
-            setErrorMsg('This document is issued but has no locked PDF. Please contact support.');
-            setIsLoading(false);
-            return;
-          }
-
-          const download = await downloadLockedPdf(info.locked_pdf_path);
-          if (!download.success || !download.data) {
-            throw new Error(download.error || 'Failed to download locked PDF');
-          }
-
-          const url = URL.createObjectURL(download.data);
-          setPdfUrl(url);
-          setIsLoading(false);
-          return;
-        }
-
-        const { data: moduleInstances, error: moduleError } = await supabase
-          .from('module_instances')
-          .select('*')
-          .eq('document_id', id)
-          .eq('organisation_id', organisation.id);
-
-        if (moduleError) throw moduleError;
-
-        const { data: actions, error: actionsError } = await supabase
-          .from('actions')
-          .select(`
-            id,
-            recommended_action,
-            priority_band,
-            status,
-            owner_user_id,
-            target_date,
-            module_instance_id,
-            created_at
-          `)
-          .eq('document_id', id)
-          .eq('organisation_id', organisation.id)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: true });
-
-        if (actionsError) throw actionsError;
-
-        const actionIds = (actions || []).map((a: any) => a.id);
+        // For issued documents, load snapshot data to allow different output modes
+        let moduleInstances: any[] = [];
+        let enrichedActions: any[] = [];
         let actionRatings: any[] = [];
-        if (actionIds.length > 0) {
-          const { data: ratings } = await supabase
-            .from('action_ratings')
-            .select('action_id, likelihood, impact, score, rated_at')
-            .in('action_id', actionIds)
-            .order('rated_at', { ascending: false });
 
-          actionRatings = ratings || [];
+        if (doc.issue_status !== 'draft') {
+          // Load the latest issued revision to get snapshot data
+          const { data: latestRevision, error: revError } = await supabase
+            .from('document_revisions')
+            .select('snapshot')
+            .eq('document_id', id)
+            .eq('status', 'issued')
+            .order('revision_number', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (revError) throw revError;
+
+          if (latestRevision?.snapshot) {
+            // Use snapshot data
+            moduleInstances = latestRevision.snapshot.modules || [];
+            enrichedActions = latestRevision.snapshot.actions || [];
+            // Note: action ratings are part of actions in newer snapshots
+          } else {
+            // Fallback: try to load from tables
+            const { data: modules } = await supabase
+              .from('module_instances')
+              .select('*')
+              .eq('document_id', id)
+              .eq('organisation_id', organisation.id);
+
+            moduleInstances = modules || [];
+
+            const { data: actions } = await supabase
+              .from('actions')
+              .select(`*`)
+              .eq('document_id', id)
+              .eq('organisation_id', organisation.id)
+              .is('deleted_at', null);
+
+            enrichedActions = actions || [];
+          }
+        } else {
+          // Draft document: load live data
+          const { data: modules, error: moduleError } = await supabase
+            .from('module_instances')
+            .select('*')
+            .eq('document_id', id)
+            .eq('organisation_id', organisation.id);
+
+          if (moduleError) throw moduleError;
+          moduleInstances = modules || [];
+
+          const { data: actions, error: actionsError } = await supabase
+            .from('actions')
+            .select(`
+              id,
+              recommended_action,
+              priority_band,
+              status,
+              owner_user_id,
+              target_date,
+              module_instance_id,
+              created_at
+            `)
+            .eq('document_id', id)
+            .eq('organisation_id', organisation.id)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: true });
+
+          if (actionsError) throw actionsError;
+
+          const actionIds = (actions || []).map((a: any) => a.id);
+          if (actionIds.length > 0) {
+            const { data: ratings } = await supabase
+              .from('action_ratings')
+              .select('action_id, likelihood, impact, score, rated_at')
+              .in('action_id', actionIds)
+              .order('rated_at', { ascending: false });
+
+            actionRatings = ratings || [];
+          }
+
+          const ownerUserIds = (actions || []).map((a: any) => a.owner_user_id).filter(Boolean);
+          const uniqueOwnerIds = [...new Set(ownerUserIds)];
+          const userNameMap = new Map<string, string>();
+
+          if (uniqueOwnerIds.length > 0) {
+            const { data: profiles } = await supabase
+              .from('user_profiles')
+              .select('user_id, name')
+              .in('user_id', uniqueOwnerIds);
+
+            (profiles || []).forEach((p: any) => {
+              if (p?.name) userNameMap.set(p.user_id, p.name);
+            });
+          }
+
+          enrichedActions = (actions || []).map((a: any) => ({
+            ...a,
+            owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
+          }));
         }
-
-        const ownerUserIds = (actions || []).map((a: any) => a.owner_user_id).filter(Boolean);
-        const uniqueOwnerIds = [...new Set(ownerUserIds)];
-        const userNameMap = new Map<string, string>();
-
-        if (uniqueOwnerIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('user_profiles')
-            .select('user_id, name')
-            .in('user_id', uniqueOwnerIds);
-
-          (profiles || []).forEach((p: any) => {
-            if (p?.name) userNameMap.set(p.user_id, p.name);
-          });
-        }
-
-        const enrichedActions = (actions || []).map((a: any) => ({
-          ...a,
-          owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
-        }));
 
         const pdfOptions = {
           document: doc,
@@ -214,68 +239,110 @@ export default function DocumentPreviewPage() {
   }, [id, organisation?.id]);
 
   useEffect(() => {
-    if (!document || !organisation?.id || document.issue_status !== 'draft') return;
+    if (!document || !organisation?.id) return;
 
     const regeneratePdf = async () => {
       try {
-        const { data: moduleInstances, error: moduleError } = await supabase
-          .from('module_instances')
-          .select('*')
-          .eq('document_id', document.id)
-          .eq('organisation_id', organisation.id);
-
-        if (moduleError) throw moduleError;
-
-        const { data: actions, error: actionsError } = await supabase
-          .from('actions')
-          .select(`
-            id,
-            recommended_action,
-            priority_band,
-            status,
-            owner_user_id,
-            target_date,
-            module_instance_id,
-            created_at
-          `)
-          .eq('document_id', document.id)
-          .eq('organisation_id', organisation.id)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: true });
-
-        if (actionsError) throw actionsError;
-
-        const actionIds = (actions || []).map((a: any) => a.id);
+        let moduleInstances: any[] = [];
+        let enrichedActions: any[] = [];
         let actionRatings: any[] = [];
-        if (actionIds.length > 0) {
-          const { data: ratings } = await supabase
-            .from('action_ratings')
-            .select('action_id, likelihood, impact, score, rated_at')
-            .in('action_id', actionIds)
-            .order('rated_at', { ascending: false });
 
-          actionRatings = ratings || [];
+        if (document.issue_status !== 'draft') {
+          // Load snapshot data for issued documents
+          const { data: latestRevision, error: revError } = await supabase
+            .from('document_revisions')
+            .select('snapshot')
+            .eq('document_id', document.id)
+            .eq('status', 'issued')
+            .order('revision_number', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (revError) throw revError;
+
+          if (latestRevision?.snapshot) {
+            moduleInstances = latestRevision.snapshot.modules || [];
+            enrichedActions = latestRevision.snapshot.actions || [];
+          } else {
+            // Fallback to tables if no snapshot
+            const { data: modules } = await supabase
+              .from('module_instances')
+              .select('*')
+              .eq('document_id', document.id)
+              .eq('organisation_id', organisation.id);
+
+            moduleInstances = modules || [];
+
+            const { data: actions } = await supabase
+              .from('actions')
+              .select(`*`)
+              .eq('document_id', document.id)
+              .eq('organisation_id', organisation.id)
+              .is('deleted_at', null);
+
+            enrichedActions = actions || [];
+          }
+        } else {
+          // Load live data for draft documents
+          const { data: modules, error: moduleError } = await supabase
+            .from('module_instances')
+            .select('*')
+            .eq('document_id', document.id)
+            .eq('organisation_id', organisation.id);
+
+          if (moduleError) throw moduleError;
+          moduleInstances = modules || [];
+
+          const { data: actions, error: actionsError } = await supabase
+            .from('actions')
+            .select(`
+              id,
+              recommended_action,
+              priority_band,
+              status,
+              owner_user_id,
+              target_date,
+              module_instance_id,
+              created_at
+            `)
+            .eq('document_id', document.id)
+            .eq('organisation_id', organisation.id)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: true });
+
+          if (actionsError) throw actionsError;
+
+          const actionIds = (actions || []).map((a: any) => a.id);
+          if (actionIds.length > 0) {
+            const { data: ratings } = await supabase
+              .from('action_ratings')
+              .select('action_id, likelihood, impact, score, rated_at')
+              .in('action_id', actionIds)
+              .order('rated_at', { ascending: false });
+
+            actionRatings = ratings || [];
+          }
+
+          const ownerUserIds = (actions || []).map((a: any) => a.owner_user_id).filter(Boolean);
+          const uniqueOwnerIds = [...new Set(ownerUserIds)];
+          const userNameMap = new Map<string, string>();
+
+          if (uniqueOwnerIds.length > 0) {
+            const { data: profiles } = await supabase
+              .from('user_profiles')
+              .select('user_id, name')
+              .in('user_id', uniqueOwnerIds);
+
+            (profiles || []).forEach((p: any) => {
+              if (p?.name) userNameMap.set(p.user_id, p.name);
+            });
+          }
+
+          enrichedActions = (actions || []).map((a: any) => ({
+            ...a,
+            owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
+          }));
         }
-
-        const ownerUserIds = (actions || []).map((a: any) => a.owner_user_id).filter(Boolean);
-        const uniqueOwnerIds = [...new Set(ownerUserIds)];
-        const userNameMap = new Map<string, string>();
-
-        if (uniqueOwnerIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('user_profiles')
-            .select('user_id, name')
-            .in('user_id', uniqueOwnerIds);
-
-          (profiles || []).forEach((p: any) => {
-            if (p?.name) userNameMap.set(p.user_id, p.name);
-          });
-        }
-
-        const enrichedActions = (actions || []).map((a: any) => ({
-          ...a,
-          owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
-        }));
 
         const pdfOptions = {
           document: document,
@@ -362,7 +429,7 @@ export default function DocumentPreviewPage() {
           </button>
 
           <div className="flex items-center gap-4">
-            {availableModes.length > 1 && document?.issue_status === 'draft' && (
+            {availableModes.length > 1 && (
               <div className="flex items-center gap-2">
                 <label htmlFor="outputMode" className="text-sm font-medium text-neutral-700">
                   Output Mode:

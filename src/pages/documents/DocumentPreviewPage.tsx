@@ -6,8 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
+import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
 import { downloadLockedPdf, getLockedPdfInfo } from '../../utils/pdfLocking';
 import { saveAs } from 'file-saver';
+
+type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED';
 
 export default function DocumentPreviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +23,8 @@ export default function DocumentPreviewPage() {
   const [document, setDocument] = useState<any>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [filename, setFilename] = useState<string>('document.pdf');
+  const [outputMode, setOutputMode] = useState<OutputMode>('FRA');
+  const [availableModes, setAvailableModes] = useState<OutputMode[]>(['FRA']);
 
   useEffect(() => {
     return () => {
@@ -27,13 +32,38 @@ export default function DocumentPreviewPage() {
     };
   }, [pdfUrl]);
 
-  const formatFilename = (doc: any) => {
+  const getAvailableOutputModes = (doc: any): OutputMode[] => {
+    const enabledModules = doc.enabled_modules || [doc.document_type];
+    const modes: OutputMode[] = [];
+
+    if (enabledModules.includes('FRA')) modes.push('FRA');
+    if (enabledModules.includes('FSD')) modes.push('FSD');
+    if (enabledModules.includes('DSEAR')) modes.push('DSEAR');
+
+    if (enabledModules.length > 1 && (enabledModules.includes('FRA') && enabledModules.includes('FSD'))) {
+      modes.push('COMBINED');
+    }
+
+    return modes.length > 0 ? modes : [doc.document_type as OutputMode];
+  };
+
+  const getDefaultOutputMode = (doc: any): OutputMode => {
+    const enabledModules = doc.enabled_modules || [doc.document_type];
+
+    if (enabledModules.length > 1 && enabledModules.includes('FRA') && enabledModules.includes('FSD')) {
+      return 'COMBINED';
+    }
+
+    return enabledModules[0] as OutputMode;
+  };
+
+  const formatFilename = (doc: any, mode: OutputMode) => {
     const siteName = (doc.title || 'document')
       .replace(/[^a-z0-9]/gi, '_')
       .replace(/_+/g, '_')
       .toLowerCase();
     const dateStr = doc.assessment_date ? new Date(doc.assessment_date).toISOString().split('T')[0] : 'date';
-    const docType = doc.document_type || 'DOC';
+    const docType = mode === 'COMBINED' ? 'COMBINED' : (doc.document_type || 'DOC');
     const v = doc.version_number || doc.version || 1;
     return `${docType}_${siteName}_${dateStr}_v${v}.pdf`;
   };
@@ -61,7 +91,14 @@ export default function DocumentPreviewPage() {
         }
 
         setDocument(doc);
-        const fname = formatFilename(doc);
+
+        const modes = getAvailableOutputModes(doc);
+        setAvailableModes(modes);
+
+        const defaultMode = getDefaultOutputMode(doc);
+        setOutputMode(defaultMode);
+
+        const fname = formatFilename(doc, defaultMode);
         setFilename(fname);
 
         if (doc.issue_status !== 'draft') {
@@ -152,9 +189,15 @@ export default function DocumentPreviewPage() {
         };
 
         let pdfBytes: Uint8Array;
-        if (doc.document_type === 'FSD') pdfBytes = await buildFsdPdf(pdfOptions);
-        else if (doc.document_type === 'DSEAR') pdfBytes = await buildDsearPdf(pdfOptions);
-        else pdfBytes = await buildFraPdf(pdfOptions);
+        if (defaultMode === 'COMBINED') {
+          pdfBytes = await buildCombinedPdf(pdfOptions);
+        } else if (defaultMode === 'FSD') {
+          pdfBytes = await buildFsdPdf(pdfOptions);
+        } else if (defaultMode === 'DSEAR') {
+          pdfBytes = await buildDsearPdf(pdfOptions);
+        } else {
+          pdfBytes = await buildFraPdf(pdfOptions);
+        }
 
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
@@ -169,6 +212,103 @@ export default function DocumentPreviewPage() {
 
     run();
   }, [id, organisation?.id]);
+
+  useEffect(() => {
+    if (!document || !organisation?.id || document.issue_status !== 'draft') return;
+
+    const regeneratePdf = async () => {
+      try {
+        const { data: moduleInstances, error: moduleError } = await supabase
+          .from('module_instances')
+          .select('*')
+          .eq('document_id', document.id)
+          .eq('organisation_id', organisation.id);
+
+        if (moduleError) throw moduleError;
+
+        const { data: actions, error: actionsError } = await supabase
+          .from('actions')
+          .select(`
+            id,
+            recommended_action,
+            priority_band,
+            status,
+            owner_user_id,
+            target_date,
+            module_instance_id,
+            created_at
+          `)
+          .eq('document_id', document.id)
+          .eq('organisation_id', organisation.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: true });
+
+        if (actionsError) throw actionsError;
+
+        const actionIds = (actions || []).map((a: any) => a.id);
+        let actionRatings: any[] = [];
+        if (actionIds.length > 0) {
+          const { data: ratings } = await supabase
+            .from('action_ratings')
+            .select('action_id, likelihood, impact, score, rated_at')
+            .in('action_id', actionIds)
+            .order('rated_at', { ascending: false });
+
+          actionRatings = ratings || [];
+        }
+
+        const ownerUserIds = (actions || []).map((a: any) => a.owner_user_id).filter(Boolean);
+        const uniqueOwnerIds = [...new Set(ownerUserIds)];
+        const userNameMap = new Map<string, string>();
+
+        if (uniqueOwnerIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('user_profiles')
+            .select('user_id, name')
+            .in('user_id', uniqueOwnerIds);
+
+          (profiles || []).forEach((p: any) => {
+            if (p?.name) userNameMap.set(p.user_id, p.name);
+          });
+        }
+
+        const enrichedActions = (actions || []).map((a: any) => ({
+          ...a,
+          owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
+        }));
+
+        const pdfOptions = {
+          document: document,
+          moduleInstances: moduleInstances || [],
+          actions: enrichedActions,
+          actionRatings,
+          organisation: { id: organisation.id, name: organisation.name },
+        };
+
+        let pdfBytes: Uint8Array;
+        if (outputMode === 'COMBINED') {
+          pdfBytes = await buildCombinedPdf(pdfOptions);
+        } else if (outputMode === 'FSD') {
+          pdfBytes = await buildFsdPdf(pdfOptions);
+        } else if (outputMode === 'DSEAR') {
+          pdfBytes = await buildDsearPdf(pdfOptions);
+        } else {
+          pdfBytes = await buildFraPdf(pdfOptions);
+        }
+
+        if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        setPdfUrl(url);
+        setFilename(formatFilename(document, outputMode));
+      } catch (e: any) {
+        console.error('[PDF Regeneration Error]', e);
+      }
+    };
+
+    regeneratePdf();
+  }, [outputMode]);
 
   const handleDownload = async () => {
     if (!pdfUrl) return;
@@ -221,14 +361,36 @@ export default function DocumentPreviewPage() {
             Back
           </button>
 
-          <button
-            onClick={handleDownload}
-            disabled={!pdfUrl}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <FileDown className="w-4 h-4" />
-            Download PDF
-          </button>
+          <div className="flex items-center gap-4">
+            {availableModes.length > 1 && document?.issue_status === 'draft' && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="outputMode" className="text-sm font-medium text-neutral-700">
+                  Output Mode:
+                </label>
+                <select
+                  id="outputMode"
+                  value={outputMode}
+                  onChange={(e) => setOutputMode(e.target.value as OutputMode)}
+                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {availableModes.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode === 'COMBINED' ? 'Combined FRA + FSD' : `${mode} Report`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              onClick={handleDownload}
+              disabled={!pdfUrl}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileDown className="w-4 h-4" />
+              Download PDF
+            </button>
+          </div>
         </div>
 
         <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden" style={{ height: '80vh' }}>

@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
+import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
 
 interface IssueDocumentModalProps {
   documentId: string;
@@ -109,7 +110,14 @@ export default function IssueDocumentModal({
         organisation: org,
       };
 
-      if (document.document_type === 'FRA') {
+      const enabledModules = document.enabled_modules || [document.document_type];
+      const isCombined = enabledModules.length > 1 &&
+                         enabledModules.includes('FRA') &&
+                         enabledModules.includes('FSD');
+
+      if (isCombined) {
+        pdfBytes = await buildCombinedPdf(buildOptions);
+      } else if (document.document_type === 'FRA') {
         pdfBytes = await buildFraPdf(buildOptions);
       } else if (document.document_type === 'FSD') {
         pdfBytes = await buildFsdPdf(buildOptions);

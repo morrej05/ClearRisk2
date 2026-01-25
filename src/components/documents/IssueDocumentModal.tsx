@@ -8,6 +8,7 @@ import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
+import { Button, Callout } from '../ui/DesignSystem';
 
 interface IssueDocumentModalProps {
   documentId: string;
@@ -171,9 +172,9 @@ export default function IssueDocumentModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-lg border border-neutral-200 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
-          <h2 className="text-xl font-bold text-neutral-900">Issue Document</h2>
+          <h2 className="text-xl font-semibold text-neutral-900">Issue Document</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
@@ -192,119 +193,89 @@ export default function IssueDocumentModal({
           </div>
 
           {!validated ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-amber-900 mb-1">
-                    Validation Required
-                  </p>
-                  <p className="text-sm text-amber-800">
-                    Before issuing, the document must pass server-side validation checks including:
-                  </p>
-                  <ul className="text-sm text-amber-800 mt-2 space-y-1 ml-4">
-                    <li>• Permissions verification</li>
-                    <li>• Module completeness check</li>
-                    <li>• Approval workflow compliance</li>
-                    <li>• Lifecycle state validation</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <Callout variant="warning" title="Validation Required" className="mb-6">
+              <p className="mb-2">
+                Before issuing, the document must pass server-side validation checks including:
+              </p>
+              <ul className="space-y-1 ml-4">
+                <li>• Permissions verification</li>
+                <li>• Module completeness check</li>
+                <li>• Approval workflow compliance</li>
+                <li>• Lifecycle state validation</li>
+              </ul>
+            </Callout>
           ) : !validationError ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-green-900 mb-1">Validation Passed</p>
-                  <p className="text-sm text-green-800">
-                    All checks passed. This document is ready to be issued.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <Callout variant="success" title="Validation Passed" className="mb-6">
+              All checks passed. This document is ready to be issued.
+            </Callout>
           ) : (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-red-900 mb-2">Cannot Issue Document</p>
-                  <p className="text-sm text-red-800">{validationError}</p>
-                  {validationErrorCode === 'APPROVAL_REQUIRED' && (
-                    <p className="text-sm text-red-700 mt-2">
-                      Go to Document Overview → Request Approval
-                    </p>
-                  )}
-                  {validationErrorCode === 'NO_PERMISSION' && (
-                    <p className="text-sm text-red-700 mt-2">
-                      Only users with edit permissions can issue documents.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+            <Callout variant="danger" title="Cannot Issue Document" className="mb-6">
+              <p className="mb-2">{validationError}</p>
+              {validationErrorCode === 'APPROVAL_REQUIRED' && (
+                <p className="mt-2 text-sm">
+                  Go to Document Overview → Request Approval
+                </p>
+              )}
+              {validationErrorCode === 'NO_PERMISSION' && (
+                <p className="mt-2 text-sm">
+                  Only users with edit permissions can issue documents.
+                </p>
+              )}
+            </Callout>
           )}
 
           {isIssuing && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <Callout variant="info" className="mb-4">
               <div className="flex items-center gap-3">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
                 <div>
-                  <p className="font-medium text-blue-900">Issuing Document...</p>
-                  <p className="text-sm text-blue-800">{issueProgress}</p>
+                  <p className="font-medium">Issuing Document...</p>
+                  <p className="text-sm mt-1">{issueProgress}</p>
                 </div>
               </div>
-            </div>
+            </Callout>
           )}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <FileCheck className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-blue-900 font-medium mb-2">What happens when you issue:</p>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• A locked PDF will be generated and stored</li>
-                  <li>• The document will be marked as issued with today's date</li>
-                  <li>• All editing will be locked to preserve integrity</li>
-                  <li>• The PDF cannot change unless you create a new version</li>
-                  <li>• The document will be available for client sharing</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          <Callout variant="info" title="What happens when you issue:">
+            <ul className="space-y-1">
+              <li>• A locked PDF will be generated and stored</li>
+              <li>• The document will be marked as issued with today's date</li>
+              <li>• All editing will be locked to preserve integrity</li>
+              <li>• The PDF cannot change unless you create a new version</li>
+              <li>• The document will be available for client sharing</li>
+            </ul>
+          </Callout>
         </div>
 
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-neutral-200 bg-neutral-50">
-          <button
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-neutral-200 bg-white">
+          <Button
+            variant="secondary"
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 hover:bg-neutral-200 rounded-lg transition-colors font-medium"
             disabled={isValidating || isIssuing}
           >
             Cancel
-          </button>
+          </Button>
           {!validated ? (
-            <button
+            <Button
               onClick={handleValidate}
               disabled={isValidating}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isValidating ? 'Validating...' : 'Validate Document'}
-            </button>
+            </Button>
           ) : !validationError ? (
-            <button
+            <Button
               onClick={handleIssue}
               disabled={isIssuing}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isIssuing ? 'Issuing...' : 'Issue Document'}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
+              variant="secondary"
               onClick={onClose}
-              className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors font-medium"
             >
               Close
-            </button>
+            </Button>
           )}
         </div>
       </div>

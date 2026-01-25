@@ -414,12 +414,12 @@ export default function DocumentOverview() {
     if (firstIncomplete) {
       // Navigate to workspace with the specific module
       navigate(`/documents/${id}/workspace?module=${firstIncomplete.module_key}`, {
-        state: { returnTo: `/documents/${id}/overview` }
+        state: { returnTo: `/documents/${id}` }
       });
     } else {
       // All modules complete, just go to workspace
       navigate(`/documents/${id}/workspace`, {
-        state: { returnTo: `/documents/${id}/overview` }
+        state: { returnTo: `/documents/${id}` }
       });
     }
   };

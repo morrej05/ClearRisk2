@@ -196,7 +196,7 @@ export default function DocumentEvidenceV2() {
       <div className="bg-white border-b border-neutral-200 px-6 py-4">
         <div className="max-w-7xl mx-auto">
           <button
-            onClick={() => navigate(`/documents/${id}/overview`)}
+            onClick={() => navigate(`/documents/${id}`)}
             className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

@@ -31,7 +31,7 @@ export default function DashboardPage() {
   }
 
   function handleContinue(assessmentId: string) {
-    navigate(`/documents/${assessmentId}/overview`, { state: { returnTo: '/dashboard' } });
+    navigate(`/documents/${assessmentId}`, { state: { returnTo: '/dashboard' } });
   }
 
   return (

@@ -33,8 +33,9 @@ export interface CreateNewVersionResult {
 export async function validateDocumentForIssue(
   documentId: string,
   organisationId: string
-): Promise<{ valid: boolean; errors: string[] }> {
+): Promise<{ valid: boolean; errors: string[]; warnings?: string[] }> {
   const errors: string[] = [];
+  const warnings: string[] = [];
 
   try {
     // 1) Document exists + accessible
@@ -76,23 +77,60 @@ export async function validateDocumentForIssue(
     if (!modules || modules.length === 0) {
       errors.push('Document must have at least one module');
     } else {
+      // Define required modules for FRA (minimum for professional completeness)
+      const REQUIRED_FRA_MODULES = [
+        'A1_DOC_CONTROL',
+        'A2_BUILDING_PROFILE',
+        'A3_PERSONS_AT_RISK',
+        'A5_EMERGENCY_ARRANGEMENTS',
+        'FRA_4_SIGNIFICANT_FINDINGS'
+      ];
+
       const isEmptyObject = (v: any) =>
         !v || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
 
-      for (const m of modules) {
-        const hasJson = !isEmptyObject((m as any).data);
+      const moduleHasData = (m: any) => {
+        const hasJson = !isEmptyObject(m.data);
         const hasNotes =
-          typeof (m as any).assessor_notes === 'string' &&
-          (m as any).assessor_notes.trim().length > 0;
-        const isCompleted = !!(m as any).completed_at;
+          typeof m.assessor_notes === 'string' &&
+          m.assessor_notes.trim().length > 0;
+        const isCompleted = !!m.completed_at;
 
-        if (!hasJson && !hasNotes && !isCompleted) {
-          errors.push(`Module ${m.module_key} has no data`);
+        return hasJson || hasNotes || isCompleted;
+      };
+
+      // For FRA documents, only require the minimum set
+      if (document.document_type === 'FRA') {
+        const requiredModuleKeys = new Set(REQUIRED_FRA_MODULES);
+        const modulesMap = new Map(modules.map(m => [m.module_key, m]));
+
+        // Check required modules
+        for (const requiredKey of requiredModuleKeys) {
+          const module = modulesMap.get(requiredKey);
+          if (!module) {
+            errors.push(`Required module ${requiredKey} is missing`);
+          } else if (!moduleHasData(module)) {
+            errors.push(`Required module ${requiredKey} has no data`);
+          }
+        }
+
+        // Check optional modules - add warnings but don't block
+        for (const m of modules) {
+          if (!requiredModuleKeys.has(m.module_key) && !moduleHasData(m)) {
+            warnings.push(`Optional module ${m.module_key} has no data`);
+          }
+        }
+      } else {
+        // For non-FRA documents (FSD, DSEAR), check all modules
+        for (const m of modules) {
+          if (!moduleHasData(m)) {
+            errors.push(`Module ${m.module_key} has no data`);
+          }
         }
       }
     }
 
-    return { valid: errors.length === 0, errors };
+    return { valid: errors.length === 0, errors, warnings: warnings.length > 0 ? warnings : undefined };
   } catch (e: any) {
     const msg =
       e?.message ||

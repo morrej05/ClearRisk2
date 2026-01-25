@@ -31,6 +31,7 @@ export default function IssueDocumentModal({
   const [isIssuing, setIsIssuing] = useState(false);
   const [validationError, setValidationError] = useState<string>('');
   const [validationErrorCode, setValidationErrorCode] = useState<string>('');
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [validated, setValidated] = useState(false);
   const [issueProgress, setIssueProgress] = useState<string>('');
 
@@ -43,16 +44,19 @@ export default function IssueDocumentModal({
       if (result.valid) {
         setValidationError('');
         setValidationErrorCode('');
+        setValidationWarnings(result.warnings || []);
         setValidated(true);
       } else {
         setValidationError(result.errors.join(', '));
         setValidationErrorCode('VALIDATION_FAILED');
+        setValidationWarnings(result.warnings || []);
         setValidated(true);
       }
     } catch (error) {
       console.error('Error validating document:', error);
       setValidationError('Failed to validate document. Please try again.');
       setValidationErrorCode('VALIDATION_FAILED');
+      setValidationWarnings([]);
       setValidated(true);
     } finally {
       setIsValidating(false);
@@ -222,9 +226,23 @@ export default function IssueDocumentModal({
               </ul>
             </Callout>
           ) : !validationError ? (
-            <Callout variant="success" title="Validation Passed" className="mb-6">
-              All checks passed. This document is ready to be issued.
-            </Callout>
+            <>
+              <Callout variant="success" title="Validation Passed" className="mb-6">
+                All required checks passed. This document is ready to be issued.
+              </Callout>
+              {validationWarnings.length > 0 && (
+                <Callout variant="warning" title="Optional Modules Incomplete" className="mb-6">
+                  <p className="mb-2 text-sm">
+                    The following optional modules have no data. You can still issue the document, but consider completing them:
+                  </p>
+                  <ul className="space-y-1 ml-4 text-sm">
+                    {validationWarnings.map((warning, idx) => (
+                      <li key={idx}>• {warning}</li>
+                    ))}
+                  </ul>
+                </Callout>
+              )}
+            </>
           ) : (
             <Callout variant="danger" title="Cannot Issue Document" className="mb-6">
               <p className="mb-2">{validationError}</p>

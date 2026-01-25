@@ -94,12 +94,20 @@ export default function DocumentWorkspace() {
       const moduleExists = modules.find((m) => m.id === moduleParam);
       if (moduleExists) {
         setSelectedModuleId(moduleParam);
+        // Save to localStorage when navigating to a specific module
+        if (id) {
+          localStorage.setItem(`ezirisk:lastModule:${id}`, moduleParam);
+        }
       }
     } else if (modules.length > 0 && !selectedModuleId) {
       setSelectedModuleId(modules[0].id);
       setSearchParams({ m: modules[0].id });
+      // Save first module to localStorage
+      if (id) {
+        localStorage.setItem(`ezirisk:lastModule:${id}`, modules[0].id);
+      }
     }
-  }, [searchParams, modules, selectedModuleId]);
+  }, [searchParams, modules, selectedModuleId, id]);
 
   const fetchDocument = async () => {
     if (!id || !organisation?.id) return;
@@ -157,6 +165,11 @@ export default function DocumentWorkspace() {
   const handleModuleSelect = (moduleId: string) => {
     setSelectedModuleId(moduleId);
     setSearchParams({ m: moduleId });
+
+    // Save last visited module to localStorage
+    if (id) {
+      localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
+    }
   };
 
   const handleModuleSaved = () => {

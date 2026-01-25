@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, CheckCircle, AlertCircle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { ChangeSummary, getChangeSummary, getChangeSummaryStats, formatChangeSummaryText } from '../../utils/changeSummary';
 
 interface ChangeSummaryPanelProps {
   documentId: string;
+  versionNumber: number;
   className?: string;
 }
 
-export default function ChangeSummaryPanel({ documentId, className = '' }: ChangeSummaryPanelProps) {
+export default function ChangeSummaryPanel({ documentId, versionNumber, className = '' }: ChangeSummaryPanelProps) {
   const [summary, setSummary] = useState<ChangeSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     fetchSummary();
@@ -50,29 +52,15 @@ export default function ChangeSummaryPanel({ documentId, className = '' }: Chang
     );
   }
 
-  // Check if this is an initial issue
-  const isInitialIssue = !summary.previous_document_id;
+  // Check if this is version 1 (initial issue)
+  const isInitialIssue = versionNumber === 1 || !summary.previous_document_id;
 
   if (isInitialIssue) {
+    // For version 1, show a minimal muted line
     return (
-      <div className={`bg-blue-50 rounded-lg border border-blue-200 p-6 ${className}`}>
-        <div className="flex items-start gap-3">
-          <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div className="flex-1">
-            <h3 className="font-semibold text-blue-900">Initial Issue</h3>
-            <p className="text-sm text-blue-700 mt-1">
-              This is the first issued version of this document.
-            </p>
-            {summary.outstanding_actions_count > 0 && (
-              <div className="mt-3 pt-3 border-t border-blue-200">
-                <p className="text-sm font-medium text-blue-900">
-                  {summary.outstanding_actions_count} {summary.outstanding_actions_count === 1 ? 'action' : 'actions'} identified
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <p className={`text-xs text-neutral-500 ${className}`}>
+        No change summary (first issued version)
+      </p>
     );
   }
 
@@ -81,25 +69,28 @@ export default function ChangeSummaryPanel({ documentId, className = '' }: Chang
 
   return (
     <div className={`bg-white rounded-lg border border-neutral-200 ${className}`}>
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-neutral-200">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            {stats.improvement ? (
-              <TrendingUp className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-            ) : stats.deterioration ? (
-              <TrendingDown className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-            ) : (
-              <Minus className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            )}
-            <div>
-              <h3 className="font-semibold text-neutral-900">Changes Since Last Issue</h3>
-              <p className="text-sm text-neutral-600 mt-1">
-                Generated {new Date(summary.generated_at).toLocaleDateString()}
-              </p>
-            </div>
+      {/* Collapsible Header */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full px-6 py-4 flex items-center justify-between hover:bg-neutral-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          {stats.improvement ? (
+            <TrendingUp className="w-5 h-5 text-green-600 flex-shrink-0" />
+          ) : stats.deterioration ? (
+            <TrendingDown className="w-5 h-5 text-amber-600 flex-shrink-0" />
+          ) : (
+            <Minus className="w-5 h-5 text-blue-600 flex-shrink-0" />
+          )}
+          <div className="text-left">
+            <h3 className="font-semibold text-neutral-900">Changes Since Last Issue</h3>
+            <p className="text-xs text-neutral-600">
+              {summary.new_actions_count} new · {summary.closed_actions_count} closed · {summary.outstanding_actions_count} outstanding
+            </p>
           </div>
+        </div>
 
+        <div className="flex items-center gap-3">
           {summary.has_material_changes ? (
             <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded">
               Material Changes
@@ -109,8 +100,17 @@ export default function ChangeSummaryPanel({ documentId, className = '' }: Chang
               No Material Changes
             </span>
           )}
+          {isExpanded ? (
+            <ChevronUp className="w-5 h-5 text-neutral-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-neutral-400" />
+          )}
         </div>
-      </div>
+      </button>
+
+      {/* Expandable Content */}
+      {isExpanded && (
+        <div className="border-t border-neutral-200">
 
       {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-4 px-6 py-4 bg-neutral-50 border-b border-neutral-200">
@@ -202,6 +202,8 @@ export default function ChangeSummaryPanel({ documentId, className = '' }: Chang
             <AlertCircle className="w-4 h-4" />
             This change summary is hidden from client view
           </p>
+        </div>
+      )}
         </div>
       )}
     </div>

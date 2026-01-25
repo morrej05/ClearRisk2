@@ -13,24 +13,9 @@ export default function EditLockBanner({
   onNavigateToSuccessor,
   className = '',
 }: EditLockBannerProps) {
-  if (issueStatus === 'draft') {
+  // Only show banner for superseded documents (issued documents show lock status in compact banner)
+  if (issueStatus !== 'superseded') {
     return null;
-  }
-
-  if (issueStatus === 'issued') {
-    return (
-      <div className={`bg-blue-50 border-l-4 border-blue-500 p-4 ${className}`}>
-        <div className="flex items-start gap-3">
-          <Lock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-blue-900">Document Locked</p>
-            <p className="text-sm text-blue-800 mt-1">
-              This document has been issued and is locked to preserve integrity. To make changes, create a new version.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   if (issueStatus === 'superseded') {

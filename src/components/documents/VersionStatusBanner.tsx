@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle, Clock, FileText } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Lock, Info } from 'lucide-react';
 
 interface VersionStatusBannerProps {
   versionNumber: number;
@@ -13,47 +13,43 @@ export default function VersionStatusBanner({
   issueDate,
   supersededByDocumentId,
 }: VersionStatusBannerProps) {
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   const getStatusConfig = () => {
     switch (issueStatus) {
       case 'draft':
         return {
           icon: Clock,
-          bgColor: 'bg-amber-50',
-          borderColor: 'border-amber-200',
-          textColor: 'text-amber-900',
           iconColor: 'text-amber-600',
-          label: 'Draft',
-          message: 'This document is in draft and can be edited',
+          textColor: 'text-neutral-700',
+          statusLabel: 'DRAFT',
         };
       case 'issued':
         return {
           icon: CheckCircle,
-          bgColor: 'bg-green-50',
-          borderColor: 'border-green-200',
-          textColor: 'text-green-900',
           iconColor: 'text-green-600',
-          label: 'Issued',
-          message: `Issued on ${issueDate ? new Date(issueDate).toLocaleDateString('en-GB') : 'N/A'} - This document is locked and cannot be edited`,
+          textColor: 'text-neutral-700',
+          statusLabel: 'ISSUED',
         };
       case 'superseded':
         return {
           icon: AlertCircle,
-          bgColor: 'bg-neutral-50',
-          borderColor: 'border-neutral-300',
-          textColor: 'text-neutral-700',
           iconColor: 'text-neutral-500',
-          label: 'Superseded',
-          message: 'This document has been superseded by a newer version and is locked',
+          textColor: 'text-neutral-600',
+          statusLabel: 'SUPERSEDED',
         };
       default:
         return {
-          icon: FileText,
-          bgColor: 'bg-neutral-50',
-          borderColor: 'border-neutral-200',
-          textColor: 'text-neutral-900',
+          icon: Info,
           iconColor: 'text-neutral-600',
-          label: 'Unknown',
-          message: 'Document status unknown',
+          textColor: 'text-neutral-700',
+          statusLabel: 'UNKNOWN',
         };
     }
   };
@@ -62,30 +58,33 @@ export default function VersionStatusBanner({
   const Icon = config.icon;
 
   return (
-    <div
-      className={`${config.bgColor} border ${config.borderColor} rounded-lg p-4 mb-6`}
-    >
-      <div className="flex items-start gap-3">
-        <Icon className={`w-5 h-5 ${config.iconColor} mt-0.5 flex-shrink-0`} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-1">
-            <span className={`font-bold ${config.textColor}`}>
-              Version {versionNumber}
+    <div className="flex items-center gap-2 px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg mb-4 text-sm">
+      <Icon className={`w-4 h-4 ${config.iconColor} flex-shrink-0`} />
+      <div className={`flex items-center gap-2 ${config.textColor}`}>
+        <span className="font-medium">Version {versionNumber}</span>
+        <span className="text-neutral-400">·</span>
+        <span className="font-semibold">{config.statusLabel}</span>
+        {issueDate && issueStatus === 'issued' && (
+          <>
+            <span className="text-neutral-400">·</span>
+            <span>{formatDate(issueDate)}</span>
+          </>
+        )}
+        {issueStatus !== 'draft' && (
+          <>
+            <span className="text-neutral-400">·</span>
+            <span className="flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              Locked
             </span>
-            <span
-              className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${config.bgColor} ${config.borderColor} border ${config.textColor}`}
-            >
-              {config.label}
-            </span>
-          </div>
-          <p className={`text-sm ${config.textColor}`}>{config.message}</p>
-          {supersededByDocumentId && (
-            <p className="text-xs text-neutral-600 mt-1">
-              Superseded by newer version
-            </p>
-          )}
-        </div>
+          </>
+        )}
       </div>
+      {supersededByDocumentId && (
+        <span className="ml-auto text-xs text-neutral-500 italic">
+          Superseded by newer version
+        </span>
+      )}
     </div>
   );
 }

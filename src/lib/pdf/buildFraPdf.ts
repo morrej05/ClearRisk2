@@ -748,7 +748,7 @@ function drawRiskRatingExplanation(
     yPosition = PAGE_HEIGHT - MARGIN - 20;
   }
 
-  page.drawText('How the fire risk rating is determined', {
+  page.drawText('How the Overall Risk Rating Is Determined', {
     x: MARGIN,
     y: yPosition,
     size: 14,
@@ -759,9 +759,10 @@ function drawRiskRatingExplanation(
   yPosition -= 25;
 
   const explanationText =
-    'The overall fire risk rating reflects the assessor\'s professional judgement of the likelihood ' +
-    'of a fire occurring and the potential consequences should a fire occur, taking into account ' +
-    'existing control measures and any outstanding actions.';
+    'The overall fire risk rating reflects the assessor\'s professional judgement based on hazards identified, ' +
+    'fire protection measures observed, management arrangements, and the prioritised actions in this report. ' +
+    'Individual recommendations are prioritised to support risk reduction, but the overall rating is not ' +
+    'calculated from a numerical formula.';
 
   const explLines = wrapText(explanationText, CONTENT_WIDTH, 10, font);
   for (const line of explLines) {
@@ -817,7 +818,7 @@ function drawRiskRatingExplanation(
     yPosition -= 10;
     const overrideText =
       'Where shown, an overridden rating reflects the assessor\'s professional judgement, ' +
-      'taking account of factors not fully captured by the scoring model.';
+      'taking account of specific site factors and context.';
 
     const overrideLines = wrapText(overrideText, CONTENT_WIDTH, 10, font);
     for (const line of overrideLines) {

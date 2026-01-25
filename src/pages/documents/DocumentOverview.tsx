@@ -633,7 +633,11 @@ export default function DocumentOverview() {
         )}
 
         {SHOW_CHANGE_SUMMARY && document.issue_status === 'issued' && (
-          <ChangeSummaryPanel documentId={id!} className="mb-6" />
+          <ChangeSummaryPanel
+            documentId={id!}
+            versionNumber={document.version_number}
+            className="mb-6"
+          />
         )}
 
         {['FRA', 'DSEAR', 'FSD'].includes(document.document_type) && organisation && (

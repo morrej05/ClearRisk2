@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, AlertTriangle, CheckCircle, FileCheck, Shield } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle, FileCheck, Shield, ArrowRight } from 'lucide-react';
 import { issueDocument, validateDocumentForIssue } from '../../utils/documentVersioning';
 import { generateAndLockPdf } from '../../utils/pdfLocking';
 import { supabase } from '../../lib/supabase';
@@ -8,6 +8,7 @@ import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
+import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { Button, Callout } from '../ui/DesignSystem';
 
 interface IssueDocumentModalProps {
@@ -32,10 +33,25 @@ export default function IssueDocumentModal({
   const [validationError, setValidationError] = useState<string>('');
   const [validationErrorCode, setValidationErrorCode] = useState<string>('');
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [missingRequiredModules, setMissingRequiredModules] = useState<string[]>([]);
   const [validated, setValidated] = useState(false);
   const [issueProgress, setIssueProgress] = useState<string>('');
 
   const navigate = useNavigate();
+
+  // Helper to extract module keys from error messages
+  const extractMissingModules = (errors: string[]): string[] => {
+    const moduleKeys: string[] = [];
+    errors.forEach(error => {
+      // Match patterns like "Required module A1_DOC_CONTROL has no data"
+      const match = error.match(/module ([A-Z0-9_]+)/i);
+      if (match && match[1]) {
+        moduleKeys.push(match[1]);
+      }
+    });
+    return moduleKeys;
+  };
+
   const handleValidate = async () => {
     setIsValidating(true);
     try {
@@ -45,11 +61,13 @@ export default function IssueDocumentModal({
         setValidationError('');
         setValidationErrorCode('');
         setValidationWarnings(result.warnings || []);
+        setMissingRequiredModules([]);
         setValidated(true);
       } else {
         setValidationError(result.errors.join(', '));
         setValidationErrorCode('VALIDATION_FAILED');
         setValidationWarnings(result.warnings || []);
+        setMissingRequiredModules(extractMissingModules(result.errors));
         setValidated(true);
       }
     } catch (error) {
@@ -57,9 +75,32 @@ export default function IssueDocumentModal({
       setValidationError('Failed to validate document. Please try again.');
       setValidationErrorCode('VALIDATION_FAILED');
       setValidationWarnings([]);
+      setMissingRequiredModules([]);
       setValidated(true);
     } finally {
       setIsValidating(false);
+    }
+  };
+
+  const handleNavigateToModule = async (moduleKey: string) => {
+    try {
+      // Fetch module instance ID for this module key
+      const { data: moduleInstance } = await supabase
+        .from('module_instances')
+        .select('id')
+        .eq('document_id', documentId)
+        .eq('organisation_id', organisationId)
+        .eq('module_key', moduleKey)
+        .maybeSingle();
+
+      if (moduleInstance) {
+        onClose();
+        navigate(`/documents/${documentId}/workspace?m=${moduleInstance.id}`, {
+          state: { returnTo: `/documents/${documentId}` }
+        });
+      }
+    } catch (error) {
+      console.error('Error navigating to module:', error);
     }
   };
 
@@ -245,16 +286,43 @@ export default function IssueDocumentModal({
             </>
           ) : (
             <Callout variant="danger" title="Cannot Issue Document" className="mb-6">
-              <p className="mb-2">{validationError}</p>
-              {validationErrorCode === 'APPROVAL_REQUIRED' && (
-                <p className="mt-2 text-sm">
-                  Go to Document Overview → Request Approval
-                </p>
-              )}
-              {validationErrorCode === 'NO_PERMISSION' && (
-                <p className="mt-2 text-sm">
-                  Only users with edit permissions can issue documents.
-                </p>
+              {missingRequiredModules.length > 0 ? (
+                <>
+                  <p className="mb-3 font-medium">
+                    This document can't be issued yet. The following required sections are incomplete:
+                  </p>
+                  <div className="space-y-2">
+                    {missingRequiredModules.map((moduleKey) => (
+                      <button
+                        key={moduleKey}
+                        onClick={() => handleNavigateToModule(moduleKey)}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-white border border-red-200 rounded-md hover:bg-red-50 hover:border-red-300 transition-colors text-left group"
+                      >
+                        <span className="font-medium text-neutral-900">
+                          {getModuleName(moduleKey)}
+                        </span>
+                        <ArrowRight className="w-4 h-4 text-red-600 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-sm text-neutral-600">
+                    Click on a section above to complete it, then return here to issue.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mb-2">{validationError}</p>
+                  {validationErrorCode === 'APPROVAL_REQUIRED' && (
+                    <p className="mt-2 text-sm">
+                      Go to Document Overview → Request Approval
+                    </p>
+                  )}
+                  {validationErrorCode === 'NO_PERMISSION' && (
+                    <p className="mt-2 text-sm">
+                      Only users with edit permissions can issue documents.
+                    </p>
+                  )}
+                </>
               )}
             </Callout>
           )}

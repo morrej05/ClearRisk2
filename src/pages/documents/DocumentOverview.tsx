@@ -412,37 +412,37 @@ export default function DocumentOverview() {
   };
 
   const handleDeleteDocument = async () => {
-    if (!id) return;
+    if (!id || !user?.id || !organisation?.id) return;
 
     setIsDeleting(true);
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        alert('You must be logged in to delete documents');
+      // Only allow deleting draft documents
+      if (document?.issue_status !== 'draft') {
+        alert('Only draft documents can be deleted');
         return;
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/delete-document`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ document_id: id }),
-      });
+      // Soft delete: set deleted_at and deleted_by
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user.id
+        })
+        .eq('id', id)
+        .eq('organisation_id', organisation.id)
+        .eq('issue_status', 'draft');
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete document');
+      if (error) {
+        console.error('Error deleting document:', error);
+        throw new Error(error.message || 'Failed to delete document');
       }
 
+      // Navigate back to dashboard
       navigate(getDashboardRoute(), { replace: true });
     } catch (error: any) {
       console.error('Error deleting document:', error);
       alert(error.message || 'Failed to delete document');
-    } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
@@ -786,6 +786,10 @@ export default function DocumentOverview() {
               <Button variant="secondary" onClick={handleOpenWorkspace}>
                 <Edit3 className="w-4 h-4 mr-2" />
                 Open Workspace
+              </Button>
+              <Button variant="secondary" onClick={() => navigate(`/documents/${id}/preview`)}>
+                <FileText className="w-4 h-4 mr-2" />
+                Preview Report
               </Button>
               {organisation && canUseApprovalWorkflow(organisation) && (
                 <Button variant="secondary" onClick={() => setShowApprovalModal(true)}>

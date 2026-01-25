@@ -110,14 +110,22 @@ export async function issueDocument(documentId: string, userId: string, organisa
       return { success: false, error: validation.errors.join(', ') };
     }
 
-    // Get document to check for previous version
+    // Get document to check for previous version AND locked PDF
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('base_document_id')
+      .select('base_document_id, locked_pdf_path')
       .eq('id', documentId)
       .single();
 
     if (docError) throw docError;
+
+    // CRITICAL: Validate that a locked PDF exists before issuing
+    if (!document.locked_pdf_path) {
+      return {
+        success: false,
+        error: 'Cannot issue document without a locked PDF. The PDF must be generated and locked before the document can be issued.'
+      };
+    }
 
     // Find previously issued document in this chain
     const { data: previousIssued } = await supabase
@@ -325,7 +333,8 @@ const { data: modules, error: moduleError } = await supabase
 export async function supersedeDocumentAndIssueNew(
   oldDocumentId: string,
   newDocumentId: string,
-  userId: string
+  userId: string,
+  organisationId: string
 ): Promise<IssueDocumentResult> {
   try {
     const { error: supersedeError } = await supabase
@@ -341,7 +350,7 @@ export async function supersedeDocumentAndIssueNew(
 
     if (supersedeError) throw supersedeError;
 
-    const issueResult = await issueDocument(newDocumentId, userId);
+    const issueResult = await issueDocument(newDocumentId, userId, organisationId);
     return issueResult;
   } catch (error) {
     console.error('Error superseding document:', error);

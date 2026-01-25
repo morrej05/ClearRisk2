@@ -46,6 +46,7 @@ interface Document {
   executive_summary_author?: string | null;
   executive_summary_mode?: string | null;
   enabled_modules?: string[];
+  jurisdiction?: 'UK' | 'IE';
 }
 
 interface ModuleInstance {
@@ -202,13 +203,14 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   const fraRegResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraRegResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawTextSection(page, 'Regulatory Framework', fraRegulatoryFrameworkText(), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  const jurisdiction = (document.jurisdiction || 'UK') as 'UK' | 'IE';
+  yPosition = drawTextSection(page, 'Regulatory Framework', fraRegulatoryFrameworkText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // FRA Responsible Person Duties
   const fraRespResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraRespResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawTextSection(page, 'Responsible Person Duties', fraResponsiblePersonDutiesText(), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  yPosition = drawTextSection(page, 'Responsible Person Duties', fraResponsiblePersonDutiesText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // FRA Modules
   const fraModules = sortModulesByOrder(
@@ -233,7 +235,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   const fsdPurposeResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fsdPurposeResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawTextSection(page, 'Purpose and Scope', fsdPurposeAndScopeText(), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  yPosition = drawTextSection(page, 'Purpose and Scope', fsdPurposeAndScopeText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // FSD Modules
   const fsdModules = sortModulesByOrder(
@@ -274,7 +276,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   const fsdLimResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fsdLimResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawTextSection(page, 'Fire Strategy Limitations', fsdLimitationsText(), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  yPosition = drawTextSection(page, 'Fire Strategy Limitations', fsdLimitationsText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // Add page numbers and footers
   const today = new Date().toLocaleDateString('en-GB', {

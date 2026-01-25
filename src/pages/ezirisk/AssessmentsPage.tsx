@@ -1,15 +1,17 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, MoreVertical, TrendingUp, FileText, CheckCircle } from 'lucide-react';
+import { Plus, Search, MoreVertical, TrendingUp, FileText, CheckCircle, Trash2 } from 'lucide-react';
 import { useAssessments, AssessmentViewModel } from '../../hooks/useAssessments';
 import { useAuth } from '../../contexts/AuthContext';
 import { canCreateSurveys, isSubscriptionActive } from '../../utils/entitlements';
+import { DeleteDocumentModal } from '../../components/DeleteDocumentModal';
 
 export default function AssessmentsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { assessments, loading } = useAssessments();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { assessments, loading } = useAssessments({ refreshKey });
   const { user, organisation } = useAuth();
 
   const canCreate = user && organisation && canCreateSurveys(user as any, organisation) && isSubscriptionActive(organisation);
@@ -19,6 +21,8 @@ export default function AssessmentsPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [sortBy, setSortBy] = useState('updated');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{ id: string; title: string } | null>(null);
 
   // Sync discipline filter with URL params
   useEffect(() => {
@@ -96,6 +100,36 @@ export default function AssessmentsPage() {
 
   function handleContinue(assessmentId: string, status: string) {
     navigate(`/documents/${assessmentId}/workspace`, { state: { returnTo: '/assessments' } });
+  }
+
+  function handleDeleteClick(assessment: AssessmentViewModel) {
+    setDocumentToDelete({ id: assessment.id, title: assessment.siteName });
+    setDeleteModalOpen(true);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!documentToDelete) return;
+
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-document`;
+    const headers = {
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+    };
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ document_id: documentToDelete.id }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete document');
+    }
+
+    setRefreshKey(prev => prev + 1);
+    setDeleteModalOpen(false);
+    setDocumentToDelete(null);
   }
 
   // Calculate metrics for Risk Engineering overview
@@ -360,6 +394,18 @@ export default function AssessmentsPage() {
                                 >
                                   Export
                                 </button>
+                                {assessment.issueStatus !== 'issued' && (
+                                  <>
+                                    <div className="border-t border-slate-200 my-1"></div>
+                                    <button
+                                      onClick={() => handleDeleteClick(assessment)}
+                                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -372,6 +418,17 @@ export default function AssessmentsPage() {
             </table>
           </div>
         </div>
+
+        <DeleteDocumentModal
+          isOpen={deleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setDocumentToDelete(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          documentTitle={documentToDelete?.title || ''}
+          requireConfirmation={true}
+        />
       </div>
   );
 }

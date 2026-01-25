@@ -8,6 +8,7 @@ export interface Document {
   document_type: 'FRA' | 'FSD' | 'DSEAR';
   title: string;
   status: 'draft' | 'issued' | 'superseded';
+  issue_status: 'draft' | 'issued' | 'superseded';
   version: number;
   created_at: string;
   updated_at: string;
@@ -21,6 +22,7 @@ export interface AssessmentViewModel {
   discipline: string;
   type: string;
   status: string;
+  issueStatus: 'draft' | 'issued' | 'superseded';
   updatedAt: Date;
   createdAt: Date;
 }
@@ -41,6 +43,7 @@ function mapDocumentToViewModel(document: Document): AssessmentViewModel {
     discipline: typeInfo.discipline,
     type: typeInfo.display,
     status: document.status.charAt(0).toUpperCase() + document.status.slice(1),
+    issueStatus: document.issue_status,
     updatedAt: new Date(document.updated_at),
     createdAt: new Date(document.created_at),
   };
@@ -49,10 +52,11 @@ function mapDocumentToViewModel(document: Document): AssessmentViewModel {
 export interface UseAssessmentsOptions {
   limit?: number;
   activeOnly?: boolean;
+  refreshKey?: number;
 }
 
 export function useAssessments(options: UseAssessmentsOptions = {}) {
-  const { limit, activeOnly } = options;
+  const { limit, activeOnly, refreshKey } = options;
   const { organisation } = useAuth();
   const [assessments, setAssessments] = useState<AssessmentViewModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,8 +75,9 @@ export function useAssessments(options: UseAssessmentsOptions = {}) {
 
         let query = supabase
           .from('documents')
-          .select('id, organisation_id, document_type, title, status, version, created_at, updated_at, assessor_name')
+          .select('id, organisation_id, document_type, title, status, version, created_at, updated_at, assessor_name, issue_status')
           .eq('organisation_id', organisation.id)
+          .is('deleted_at', null)
           .order('updated_at', { ascending: false });
 
         if (activeOnly) {
@@ -98,7 +103,7 @@ export function useAssessments(options: UseAssessmentsOptions = {}) {
     }
 
     fetchAssessments();
-  }, [organisation?.id, limit, activeOnly]);
+  }, [organisation?.id, limit, activeOnly, refreshKey]);
 
   return { assessments, loading, error };
 }

@@ -221,7 +221,6 @@ export async function createNewVersion(
         title,
         document_type,
         assessor_name,
-        assessor_company,
         assessment_date,
         issue_date,
         review_date,

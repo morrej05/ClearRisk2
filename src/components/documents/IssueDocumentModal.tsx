@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, AlertTriangle, CheckCircle, FileCheck, Shield } from 'lucide-react';
 import { issueDocument, validateDocumentForIssue } from '../../utils/documentVersioning';
 import { generateAndLockPdf } from '../../utils/pdfLocking';

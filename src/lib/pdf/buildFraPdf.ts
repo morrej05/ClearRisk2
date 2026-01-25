@@ -89,6 +89,7 @@ interface BuildPdfOptions {
   actions: Action[];
   actionRatings: ActionRating[];
   organisation: Organisation;
+  renderMode?: 'preview' | 'issued';
 }
 
 const MODULE_ORDER = [
@@ -103,7 +104,7 @@ const MODULE_ORDER = [
 ];
 
 export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array> {
-  const { document, moduleInstances, actions, actionRatings, organisation } = options;
+  const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
 
   console.log('[PDF] Building PDF with:', {
     modules: moduleInstances.length,
@@ -144,7 +145,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
   // Status is shown prominently on cover page - no need for watermark
 
-  yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition);
+  yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition, renderMode);
 
   addExecutiveSummaryPages(
     pdfDoc,
@@ -276,7 +277,8 @@ function drawCoverPage(
   organisation: Organisation,
   font: any,
   fontBold: any,
-  yPosition: number
+  yPosition: number,
+  renderMode?: 'preview' | 'issued'
 ): number {
   const centerX = PAGE_WIDTH / 2;
 
@@ -321,7 +323,8 @@ function drawCoverPage(
 
   // Status badge - shown ONCE prominently on cover
   yPosition -= 30;
-  const issueStatus = (document as any).issue_status || document.status;
+  // Use renderMode to override status if provided
+  let issueStatus = renderMode === 'issued' ? 'issued' : ((document as any).issue_status || document.status);
   const isIssued = issueStatus === 'issued';
   const isSuperseded = issueStatus === 'superseded';
   const statusColor = isIssued ? rgb(0.13, 0.55, 0.13) : isSuperseded ? rgb(0.7, 0.5, 0) : rgb(0.5, 0.5, 0.5);
@@ -1046,7 +1049,7 @@ function drawModuleSummary(
   yPosition = drawModuleKeyDetails(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // Draw info gap quick actions if detected
-  yPosition = drawInfoGapQuickActions(page, module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   return yPosition;
 }
@@ -1250,6 +1253,7 @@ function drawModuleKeyDetails(
 function drawInfoGapQuickActions(
   page: PDFPage,
   module: ModuleInstance,
+  document: Document,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1257,7 +1261,15 @@ function drawInfoGapQuickActions(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
-  const detection = detectInfoGaps(module.module_key, module.data, module.outcome);
+  const detection = detectInfoGaps(
+    module.module_key,
+    module.data,
+    module.outcome,
+    {
+      responsible_person: document.responsible_person || undefined,
+      standards_selected: document.standards_selected || []
+    }
+  );
 
   if (!detection.hasInfoGap) {
     return yPosition;

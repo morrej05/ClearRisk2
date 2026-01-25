@@ -366,23 +366,23 @@ export default function DocumentOverview() {
   const handleContinueAssessment = () => {
     if (!id) return;
 
-    // Find first incomplete module
+    // Find first incomplete REQUIRED module
     const firstIncomplete = modules.find(m => !m.completed_at);
 
     if (firstIncomplete) {
-      saveLastVisitedModule(firstIncomplete.id);
+      // Don't save to localStorage - let workspace save it when loaded
+      // This keeps Continue and Open Workspace destinations separate
       navigate(`/documents/${id}/workspace?m=${firstIncomplete.id}`, {
         state: { returnTo: `/documents/${id}` }
       });
     } else {
-      // All modules complete, go to first module or last visited
+      // All modules complete, go to last visited or first module
       const lastVisited = getLastVisitedModule();
       const targetModule = lastVisited && modules.find(m => m.id === lastVisited)
         ? lastVisited
         : modules[0]?.id;
 
       if (targetModule) {
-        saveLastVisitedModule(targetModule);
         navigate(`/documents/${id}/workspace?m=${targetModule}`, {
           state: { returnTo: `/documents/${id}` }
         });
@@ -393,14 +393,14 @@ export default function DocumentOverview() {
   const handleOpenWorkspace = () => {
     if (!id) return;
 
-    // Check last visited module first
+    // Check last visited module first, or fall back to first module
     const lastVisited = getLastVisitedModule();
     const targetModule = lastVisited && modules.find(m => m.id === lastVisited)
       ? lastVisited
       : modules[0]?.id;
 
     if (targetModule) {
-      saveLastVisitedModule(targetModule);
+      // Don't save to localStorage - let workspace save it when loaded
       navigate(`/documents/${id}/workspace?m=${targetModule}`, {
         state: { returnTo: `/documents/${id}` }
       });
@@ -835,25 +835,14 @@ export default function DocumentOverview() {
               )}
               <Button
                 variant="secondary"
-                onClick={defencePack ? handleDownloadDefencePack : handleBuildDefencePack}
-                disabled={isBuildingDefencePack || !document.locked_pdf_path}
+                disabled={true}
+                title="Defence Pack export will be available post-launch"
               >
-                {isBuildingDefencePack ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent mr-2"></div>
-                    Building...
-                  </>
-                ) : defencePack ? (
-                  <>
-                    <Package className="w-4 h-4 mr-2" />
-                    Download Defence Pack
-                  </>
-                ) : (
-                  <>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Generate Defence Pack
-                  </>
-                )}
+                <Shield className="w-4 h-4 mr-2" />
+                Generate Defence Pack
+                <Badge className="ml-2 text-xs bg-neutral-200 text-neutral-600">
+                  Coming Soon
+                </Badge>
               </Button>
               <Button onClick={() => setShowNewVersionModal(true)}>
                 <FileText className="w-4 h-4 mr-2" />
@@ -978,7 +967,7 @@ export default function DocumentOverview() {
                   key={module.id}
                   className="px-6 py-4 hover:bg-neutral-50 transition-colors cursor-pointer"
                   onClick={() => {
-                    saveLastVisitedModule(module.id);
+                    // Don't save here - workspace will save when loaded
                     navigate(`/documents/${id}/workspace?m=${module.id}`);
                   }}
                 >

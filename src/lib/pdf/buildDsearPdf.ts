@@ -92,6 +92,7 @@ interface BuildPdfOptions {
   actions: Action[];
   actionRatings: ActionRating[];
   organisation: Organisation;
+  renderMode?: 'preview' | 'issued';
 }
 
 const MODULE_ORDER = [
@@ -109,7 +110,7 @@ const MODULE_ORDER = [
 ];
 
 export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Array> {
-  const { document, moduleInstances, actions, actionRatings, organisation } = options;
+  const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
 
   let attachments: Attachment[] = [];
   try {
@@ -135,7 +136,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   }
 
   // SECTION 1: Cover Page
-  yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition);
+  yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition, renderMode);
 
   // SECTION 2: Executive Summary (AI/Author/Both/None)
   addExecutiveSummaryPages(
@@ -188,7 +189,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
     yPosition = PAGE_HEIGHT - MARGIN;
-    yPosition = drawModuleSection(page, module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleSection(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
   // SECTION 12: References and Compliance (Jurisdiction-specific)
@@ -209,15 +210,6 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     page = result2b.page;
     yPosition = PAGE_HEIGHT - MARGIN;
     yPosition = drawAttachmentsIndex(page, attachments, sortedModules, actions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
-  }
-
-  // SECTION 14: Information Gaps Appendix
-  const infoGaps = detectInfoGaps(moduleInstances);
-  if (infoGaps.length > 0) {
-    const result3 = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result3.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
-    yPosition = drawInfoGapsAppendix(page, infoGaps, actions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
   // Add footers to all pages
@@ -249,7 +241,8 @@ function drawCoverPage(
   organisation: Organisation,
   font: any,
   fontBold: any,
-  yPosition: number
+  yPosition: number,
+  renderMode?: 'preview' | 'issued'
 ): number {
   const centerX = PAGE_WIDTH / 2;
   const reportTitle = getAssessmentDisplayName('DSEAR', document.jurisdiction);
@@ -273,11 +266,14 @@ function drawCoverPage(
   yPosition -= 60;
 
   const a2Module = [];
+  // Use renderMode to override status if provided
+  let issueStatus = renderMode === 'issued' ? 'issued' : ((document as any).issue_status || document.status);
+
   const metadata = [
     ['Organisation', organisation.name],
     ['Assessment Date', formatDate(document.assessment_date)],
     ['Version', `v${document.version}`],
-    ['Status', document.status.toUpperCase()],
+    ['Status', issueStatus.toUpperCase()],
     ['Assessor', document.assessor_name || '-'],
     ['Role', document.assessor_role || '-'],
     ['Responsible Person', document.responsible_person || '-'],
@@ -420,6 +416,7 @@ function drawExecutiveSummary(
 function drawModuleSection(
   page: PDFPage,
   module: ModuleInstance,
+  document: Document,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -475,6 +472,9 @@ function drawModuleSection(
       yPosition -= 12;
     });
   }
+
+  // Draw info gap quick actions if detected
+  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   return yPosition;
 }
@@ -814,10 +814,10 @@ function drawActionRegister(
   return yPosition;
 }
 
-function drawInfoGapsAppendix(
+function drawInfoGapQuickActions(
   page: PDFPage,
-  infoGaps: any[],
-  actions: Action[],
+  module: ModuleInstance,
+  document: Document,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -825,50 +825,206 @@ function drawInfoGapsAppendix(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
-  page.drawText(sanitizePdfText('Appendix: Information Gaps'), {
+  const detection = detectInfoGaps(
+    module.module_key,
+    module.data,
+    module.outcome,
+    {
+      responsible_person: document.responsible_person || undefined,
+      standards_selected: document.standards_selected || []
+    }
+  );
+
+  if (!detection.hasInfoGap) {
+    return yPosition;
+  }
+
+  // Check if we need a new page
+  if (yPosition < MARGIN + 200) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_HEIGHT - MARGIN;
+  }
+
+  yPosition -= 20;
+
+  // Neutral callout - light border instead of warning banner
+  // Draw subtle border box
+  const boxStartY = yPosition + 5;
+  page.drawRectangle({
     x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
+    y: yPosition - (detection.reasons.length * 18) - 45,
+    width: CONTENT_WIDTH,
+    height: (detection.reasons.length * 18) + 55,
+    borderColor: rgb(0.7, 0.7, 0.7),
+    borderWidth: 1,
+    color: rgb(0.98, 0.98, 0.98),
   });
+
+  yPosition -= 5;
+
+  // Title section with neutral info icon
+  page.drawText(sanitizePdfText('i'), {
+    x: MARGIN + 8,
+    y: yPosition,
+    size: 11,
+    font: fontBold,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  page.drawText(sanitizePdfText('Assessment notes (incomplete information)'), {
+    x: MARGIN + 25,
+    y: yPosition,
+    size: 11,
+    font: fontBold,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+
   yPosition -= 25;
 
-  infoGaps.forEach((gap, idx) => {
-    if (yPosition < 100) {
+  // Reasons - neutral styling
+  if (detection.reasons.length > 0) {
+    for (const reason of detection.reasons) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN;
+      }
+
+      page.drawText(sanitizePdfText('•'), {
+        x: MARGIN + 8,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+
+      const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
+      for (const line of reasonLines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN;
+        }
+        page.drawText(line, {
+          x: MARGIN + 18,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        yPosition -= 13;
+      }
+    }
+    yPosition -= 10;
+  }
+
+  // Quick Actions - neutral styling
+  if (detection.quickActions.length > 0) {
+    if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
       yPosition = PAGE_HEIGHT - MARGIN;
     }
 
-    page.drawText(sanitizePdfText(`${idx + 1}. ${gap.moduleName || 'Unknown Module'}`), {
-      x: MARGIN,
+    page.drawText('Recommended actions:', {
+      x: MARGIN + 8,
       y: yPosition,
       size: 10,
       font: fontBold,
-      color: rgb(0, 0, 0),
+      color: rgb(0.4, 0.4, 0.4),
     });
-    yPosition -= 14;
 
-    const wrapped = wrapText(gap.description || 'No description', CONTENT_WIDTH - 20, 9, font);
-    wrapped.forEach(line => {
-      if (yPosition < 80) {
+    yPosition -= 20;
+
+    for (const quickAction of detection.quickActions) {
+      if (yPosition < MARGIN + 100) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
         yPosition = PAGE_HEIGHT - MARGIN;
       }
-      page.drawText(sanitizePdfText(line), {
-        x: MARGIN + 20,
+
+      // Priority badge
+      const priorityColor = quickAction.priority === 'P2' ? rgb(0.9, 0.5, 0.13) : rgb(0.85, 0.65, 0.13);
+      page.drawRectangle({
+        x: MARGIN + 10,
+        y: yPosition - 3,
+        width: 25,
+        height: 14,
+        color: priorityColor,
+      });
+      page.drawText(quickAction.priority, {
+        x: MARGIN + 13,
         y: yPosition,
-        size: 9,
-        font: font,
-        color: rgb(0.3, 0.3, 0.3),
+        size: 8,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+      });
+
+      yPosition -= 18;
+
+      // Action text
+      const actionLines = wrapText(quickAction.action, CONTENT_WIDTH - 30, 10, font);
+      for (const line of actionLines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN;
+        }
+        page.drawText(line, {
+          x: MARGIN + 15,
+          y: yPosition,
+          size: 10,
+          font: fontBold,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 14;
+      }
+
+      // Reason (why)
+      const reasonText = `Why: ${quickAction.reason}`;
+      const reasonLines = wrapText(reasonText, CONTENT_WIDTH - 30, 9, font);
+      for (const line of reasonLines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN;
+        }
+        page.drawText(line, {
+          x: MARGIN + 15,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        yPosition -= 13;
+      }
+
+      yPosition -= 10;
+    }
+
+    // Tip at the bottom
+    yPosition -= 5;
+    const tipText = 'Tip: Address these information gaps to improve assessment completeness and reduce risk uncertainty.';
+    const tipLines = wrapText(tipText, CONTENT_WIDTH - 20, 8, font);
+    for (const line of tipLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN;
+      }
+      page.drawText(line, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 8,
+        font,
+        color: rgb(0.6, 0.4, 0),
       });
       yPosition -= 12;
-    });
-    yPosition -= 5;
-  });
+    }
+  }
 
+  yPosition -= 15;
   return yPosition;
 }
 

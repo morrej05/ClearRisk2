@@ -15,7 +15,8 @@ export interface InfoGapDetection {
 export function detectInfoGaps(
   moduleKey: string,
   moduleData: Record<string, any>,
-  outcome: string | null
+  outcome: string | null,
+  documentData?: { responsible_person?: string; standards_selected?: string[] }
 ): InfoGapDetection {
   const reasons: string[] = [];
   const quickActions: InfoGapQuickAction[] = [];
@@ -28,21 +29,24 @@ export function detectInfoGaps(
   // Module-specific info gap detection
   switch (moduleKey) {
     case 'A1_DOC_CONTROL':
-      if (!moduleData.responsible_person || !moduleData.responsible_person.trim()) {
-        reasons.push('Responsible person not identified');
-        quickActions.push({
-          action: 'Identify and document the responsible person for fire safety',
-          reason: 'Legal requirement under Regulatory Reform (Fire Safety) Order 2005',
-          priority: 'P2',
-        });
-      }
-      if (!moduleData.standards_selected || moduleData.standards_selected.length === 0) {
-        reasons.push('No assessment standards selected');
-        quickActions.push({
-          action: 'Select and document applicable fire safety standards (e.g., BS 9999, BS 9991)',
-          reason: 'Defines assessment methodology and compliance framework',
-          priority: 'P3',
-        });
+      // Check document-level fields (not module data) for A1_DOC_CONTROL
+      if (documentData) {
+        if (!documentData.responsible_person || !documentData.responsible_person.trim()) {
+          reasons.push('Responsible person not identified');
+          quickActions.push({
+            action: 'Identify and document the responsible person for fire safety',
+            reason: 'Legal requirement under Regulatory Reform (Fire Safety) Order 2005',
+            priority: 'P2',
+          });
+        }
+        if (!documentData.standards_selected || documentData.standards_selected.length === 0) {
+          reasons.push('No assessment standards selected');
+          quickActions.push({
+            action: 'Select and document applicable fire safety standards (e.g., BS 9999, BS 9991)',
+            reason: 'Defines assessment methodology and compliance framework',
+            priority: 'P3',
+          });
+        }
       }
       break;
 

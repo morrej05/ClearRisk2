@@ -156,6 +156,7 @@ export default function IssueDocumentModal({
         actions: actions || [],
         actionRatings: [],
         organisation: org,
+        renderMode: 'issued' as const,
       };
 
       const enabledModules = document.enabled_modules || [document.document_type];

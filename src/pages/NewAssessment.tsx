@@ -28,7 +28,18 @@ export default function NewAssessment() {
       case 'fra': return 'FRA';
       case 'fire_strategy': return 'FSD';
       case 'dsear': return 'DSEAR';
+      case 'fra_fsd': return 'FRA';
       default: return 'FRA';
+    }
+  };
+
+  const getEnabledModules = (type: string): string[] => {
+    switch (type) {
+      case 'fra': return ['FRA'];
+      case 'fire_strategy': return ['FSD'];
+      case 'dsear': return ['DSEAR'];
+      case 'fra_fsd': return ['FRA', 'FSD'];
+      default: return ['FRA'];
     }
   };
 
@@ -49,7 +60,10 @@ export default function NewAssessment() {
 
     try {
       const docType = mapToDocType(formData.type);
-      const title = `${formData.site_name} — ${docType}`;
+      const enabledModules = getEnabledModules(formData.type);
+      const title = formData.type === 'fra_fsd'
+        ? `${formData.site_name} — FRA + FSD`
+        : `${formData.site_name} — ${docType}`;
 
       // Create the document
       const { data: document, error: docError } = await supabase
@@ -57,6 +71,7 @@ export default function NewAssessment() {
         .insert({
           organisation_id: organisation.id,
           document_type: docType,
+          enabled_modules: enabledModules,
           title: title,
           assessment_date: formData.assessment_date,
           assessor_name: formData.assessor_name,
@@ -76,8 +91,13 @@ export default function NewAssessment() {
 
       if (updateError) throw updateError;
 
-      // Get module keys for this document type
-      const moduleKeys = getModuleKeysForDocType(docType);
+      // Get module keys for all enabled module types
+      const allModuleKeys: string[] = [];
+      for (const moduleType of enabledModules) {
+        const keys = getModuleKeysForDocType(moduleType);
+        allModuleKeys.push(...keys);
+      }
+      const moduleKeys = [...new Set(allModuleKeys)];
 
       // Insert module instances
       const moduleInstances = moduleKeys.map(moduleKey => ({
@@ -160,7 +180,8 @@ export default function NewAssessment() {
                   className="w-full border border-neutral-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="fra">Fire Risk Assessment (FRA)</option>
-                  <option value="fire_strategy">Fire Strategy Document</option>
+                  <option value="fire_strategy">Fire Strategy Document (FSD)</option>
+                  <option value="fra_fsd">Combined FRA + FSD</option>
                   <option value="dsear">{getAssessmentDisplayName('dsear', formData.jurisdiction)}</option>
                 </select>
               </div>

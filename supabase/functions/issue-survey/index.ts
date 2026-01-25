@@ -181,8 +181,13 @@ Deno.serve(async (req: Request) => {
       .eq('survey_id', survey_id);
 
     // 6. Server-side validation
-    const validation = validateIssueEligibility(
-      survey.document_type as SurveyType,
+    // Determine which modules need validation
+    const modulesToValidate = survey.enabled_modules && survey.enabled_modules.length > 0
+      ? survey.enabled_modules
+      : [survey.document_type as SurveyType];
+
+    const validation = validateIssueEligibilityForModules(
+      modulesToValidate as SurveyType[],
       ctx,
       survey.form_data || {},
       moduleProgress,
@@ -335,6 +340,28 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// Combined validation for multiple modules (supports FRA+FSD)
+function validateIssueEligibilityForModules(
+  types: SurveyType[],
+  ctx: IssueCtx,
+  answers: any,
+  moduleProgress: ModuleProgress,
+  actions: Array<{ status: string }>
+): ValidationResult {
+  const allBlockers: Blocker[] = [];
+
+  // Validate each module type
+  for (const type of types) {
+    const validation = validateIssueEligibility(type, ctx, answers, moduleProgress, actions);
+    allBlockers.push(...validation.blockers);
+  }
+
+  return {
+    eligible: allBlockers.length === 0,
+    blockers: allBlockers,
+  };
+}
 
 // Validation logic (server-side copy from issueValidation.ts)
 function validateIssueEligibility(

@@ -40,6 +40,37 @@ export type ModuleProgress = Record<string, 'not_started' | 'in_progress' | 'com
 export type ActionStatus = 'open' | 'closed' | string;
 
 /**
+ * Validation for combined surveys (e.g., FRA + FSD)
+ *
+ * @param types - Array of survey types (e.g., ['FRA', 'FSD'])
+ * @param ctx - Issue context with scope, engineered solutions, etc.
+ * @param answers - Survey answers/form data
+ * @param moduleProgress - Module completion status map
+ * @param actions - List of actions/recommendations
+ * @returns ValidationResult with eligible flag and list of blockers from ALL modules
+ */
+export function validateIssueEligibilityForModules(
+  types: SurveyType[],
+  ctx: IssueCtx,
+  answers: any,
+  moduleProgress: ModuleProgress,
+  actions: Array<{ status: ActionStatus }>
+): ValidationResult {
+  const allBlockers: Blocker[] = [];
+
+  // Validate each module type
+  for (const type of types) {
+    const validation = validateIssueEligibility(type, ctx, answers, moduleProgress, actions);
+    allBlockers.push(...validation.blockers);
+  }
+
+  return {
+    eligible: allBlockers.length === 0,
+    blockers: allBlockers,
+  };
+}
+
+/**
  * Main validation function - checks if survey is eligible for issuance
  *
  * @param type - Survey type (FRA, FSD, DSEAR)

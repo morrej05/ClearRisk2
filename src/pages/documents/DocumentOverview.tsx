@@ -8,6 +8,7 @@ import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { saveAs } from 'file-saver';
+import { getAssessmentShortName } from '../../utils/displayNames';
 import VersionStatusBanner from '../../components/documents/VersionStatusBanner';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
 import CreateNewVersionModal from '../../components/documents/CreateNewVersionModal';
@@ -658,7 +659,7 @@ export default function DocumentOverview() {
               </div>
               <div className="flex items-center gap-4 text-sm text-neutral-600">
                 <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
-                  {document.document_type}
+                  {getAssessmentShortName(document.document_type, document.jurisdiction)}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-neutral-500">Approval:</span>
@@ -972,7 +973,7 @@ export default function DocumentOverview() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-neutral-600">Type:</span>
                 <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
-                  {document.document_type}
+                  {getAssessmentShortName(document.document_type, document.jurisdiction)}
                 </span>
               </div>
             </div>

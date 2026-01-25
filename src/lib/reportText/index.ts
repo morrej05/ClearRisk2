@@ -5,3 +5,4 @@ export { hazardousAreaClassificationText } from './explosion/hazardousAreaClassi
 export { zoneDefinitionsText } from './explosion/zoneDefinitions';
 export { fsdPurposeAndScopeText } from './fsd/purposeAndScope';
 export { fsdLimitationsText } from './fsd/limitations';
+export { getExplosiveAtmospheresReferences, type Jurisdiction, type ReferenceItem } from './references';

@@ -6,6 +6,8 @@ import {
   explosiveAtmospheresPurposeText,
   hazardousAreaClassificationText,
   zoneDefinitionsText,
+  getExplosiveAtmospheresReferences,
+  type Jurisdiction,
 } from '../reportText';
 import { getAssessmentDisplayName } from '../../utils/displayNames';
 import {
@@ -188,6 +190,12 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     yPosition = PAGE_HEIGHT - MARGIN;
     yPosition = drawModuleSection(page, module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
+
+  // SECTION 12: References and Compliance (Jurisdiction-specific)
+  const refResult = addNewPage(pdfDoc, isDraft, totalPages);
+  page = refResult.page;
+  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = drawReferencesAndCompliance(page, document.jurisdiction as Jurisdiction, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // SECTION 13: Action Register
   const result2 = addNewPage(pdfDoc, isDraft, totalPages);
@@ -1254,6 +1262,70 @@ function drawLimitations(
       color: rgb(0.1, 0.1, 0.1),
     });
     yPosition -= 16;
+  }
+
+  return yPosition;
+}
+
+function drawReferencesAndCompliance(
+  page: PDFPage,
+  jurisdiction: Jurisdiction,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  yPosition -= 20;
+  page.drawText('REFERENCES AND COMPLIANCE', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const references = getExplosiveAtmospheresReferences(jurisdiction);
+
+  for (const ref of references) {
+    if (yPosition < MARGIN + 80) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText(sanitizePdfText(`• ${ref.label}`), {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 16;
+
+    if (ref.detail) {
+      const detailLines = wrapText(sanitizePdfText(ref.detail), CONTENT_WIDTH - 20, 10, font);
+      for (const line of detailLines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+        page.drawText(line, {
+          x: MARGIN + 15,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
+    }
+
+    yPosition -= 8;
   }
 
   return yPosition;

@@ -3,6 +3,8 @@
  *
  * Displays required modules, conditional requirements, and overall readiness status
  * for survey issuance. Uses client-side validation for UX; server is source of truth.
+ *
+ * Supports combined surveys (e.g., FRA + FSD) - validates all enabled modules.
  */
 
 import { CheckCircle2, Circle, AlertCircle } from 'lucide-react';
@@ -14,13 +16,15 @@ import {
 } from '../../utils/issueRequirements';
 import {
   validateIssueEligibility,
+  validateIssueEligibilityForModules,
   getValidationSummary,
   type ModuleProgress,
 } from '../../utils/issueValidation';
 
 interface IssueReadinessPanelProps {
   surveyId: string;
-  surveyType: SurveyType;
+  surveyType?: SurveyType;
+  enabledModules?: SurveyType[];
   ctx: IssueCtx;
   moduleProgress: ModuleProgress;
   answers: any;
@@ -30,28 +34,47 @@ interface IssueReadinessPanelProps {
 
 export default function IssueReadinessPanel({
   surveyType,
+  enabledModules,
   ctx,
   moduleProgress,
   answers,
   actions,
   canIssue,
 }: IssueReadinessPanelProps) {
-  const requiredModules = getRequiredModules(surveyType, ctx);
-  const validation = validateIssueEligibility(surveyType, ctx, answers, moduleProgress, actions);
+  const modulesToValidate = enabledModules && enabledModules.length > 0
+    ? enabledModules
+    : surveyType ? [surveyType] : [];
 
-  const completedCount = requiredModules.filter(
+  const validation = modulesToValidate.length > 1
+    ? validateIssueEligibilityForModules(modulesToValidate, ctx, answers, moduleProgress, actions)
+    : validateIssueEligibility(modulesToValidate[0] || 'FRA', ctx, answers, moduleProgress, actions);
+
+  const allRequiredModules = new Map<string, ReturnType<typeof getRequiredModules>>();
+  modulesToValidate.forEach((type) => {
+    allRequiredModules.set(type, getRequiredModules(type, ctx));
+  });
+
+  const requiredModules = Array.from(allRequiredModules.values()).flat();
+  const uniqueRequiredModules = Array.from(
+    new Map(requiredModules.map(m => [m.key, m])).values()
+  );
+
+  const completedCount = uniqueRequiredModules.filter(
     (m) => isModuleRequired(m, ctx) && moduleProgress[m.key] === 'complete'
   ).length;
-  const totalRequired = requiredModules.filter((m) => isModuleRequired(m, ctx)).length;
+  const totalRequired = uniqueRequiredModules.filter((m) => isModuleRequired(m, ctx)).length;
 
   const getConditionalRequirements = () => {
-    const conditionals: Array<{ label: string; met: boolean }> = [];
+    const conditionals: Array<{ label: string; met: boolean; moduleType?: string }> = [];
 
-    if (surveyType === 'FRA') {
+    if (modulesToValidate.includes('FRA')) {
+      const fraLabel = modulesToValidate.length > 1 ? '[FRA] ' : '';
+
       if (ctx.scope_type && ['limited', 'desktop'].includes(ctx.scope_type)) {
         conditionals.push({
-          label: 'Scope & Limitations text required',
+          label: `${fraLabel}Scope & Limitations text required`,
           met: !!answers?.scope_limitations?.trim(),
+          moduleType: 'FRA',
         });
       }
 
@@ -59,47 +82,55 @@ export default function IssueReadinessPanel({
       const noSignificantFindings = answers?.no_significant_findings === true;
 
       conditionals.push({
-        label: 'Recommendations OR "No Significant Findings" confirmed',
+        label: `${fraLabel}Recommendations OR "No Significant Findings" confirmed`,
         met: hasRecommendations || noSignificantFindings,
+        moduleType: 'FRA',
       });
     }
 
-    if (surveyType === 'FSD') {
+    if (modulesToValidate.includes('FSD')) {
+      const fsdLabel = modulesToValidate.length > 1 ? '[FSD] ' : '';
       if (ctx.engineered_solutions_used) {
         conditionals.push({
-          label: 'Limitations documented (engineered solutions)',
+          label: `${fsdLabel}Limitations documented (engineered solutions)`,
           met: !!answers?.limitations_text?.trim(),
+          moduleType: 'FSD',
         });
         conditionals.push({
-          label: 'Management assumptions documented (engineered solutions)',
+          label: `${fsdLabel}Management assumptions documented (engineered solutions)`,
           met: !!answers?.management_assumptions_text?.trim(),
+          moduleType: 'FSD',
         });
       }
     }
 
-    if (surveyType === 'DSEAR') {
+    if (modulesToValidate.includes('DSEAR')) {
+      const dsearLabel = modulesToValidate.length > 1 ? '[DSEAR] ' : '';
       const substances = answers?.substances;
       const noDangerousSubstances = answers?.no_dangerous_substances === true;
 
       conditionals.push({
-        label: 'Dangerous substances identified OR "No dangerous substances" confirmed',
+        label: `${dsearLabel}Dangerous substances identified OR "No dangerous substances" confirmed`,
         met: (substances && substances.length > 0) || noDangerousSubstances,
+        moduleType: 'DSEAR',
       });
 
       const zones = answers?.zones;
       const noZonedAreas = answers?.no_zoned_areas === true;
 
       conditionals.push({
-        label: 'Zone classification OR "No zoned areas" confirmed',
+        label: `${dsearLabel}Zone classification OR "No zoned areas" confirmed`,
         met: (zones && zones.length > 0) || noZonedAreas,
+        moduleType: 'DSEAR',
       });
 
       const hasActions = actions.filter((a) => a.status !== 'closed').length > 0;
       const controlsAdequate = answers?.controls_adequate_confirmed === true;
 
       conditionals.push({
-        label: 'Actions OR "Controls adequate" confirmed',
+        label: `${dsearLabel}Actions OR "Controls adequate" confirmed`,
         met: hasActions || controlsAdequate,
+        moduleType: 'DSEAR',
       });
     }
 
@@ -151,7 +182,7 @@ export default function IssueReadinessPanel({
               </span>
             </div>
             <div className="space-y-2">
-              {requiredModules.map((module) => {
+              {uniqueRequiredModules.map((module) => {
                 if (!isModuleRequired(module, ctx)) return null;
 
                 const status = moduleProgress[module.key];

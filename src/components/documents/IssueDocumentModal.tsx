@@ -106,7 +106,7 @@ export default function IssueDocumentModal({
         document,
         moduleInstances: modules || [],
         actions: actions || [],
-        actionRatings: {},
+        actionRatings: [],
         organisation: org,
       };
 

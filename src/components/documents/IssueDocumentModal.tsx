@@ -33,6 +33,7 @@ export default function IssueDocumentModal({
   const [validated, setValidated] = useState(false);
   const [issueProgress, setIssueProgress] = useState<string>('');
 
+  const navigate = useNavigate();
   const handleValidate = async () => {
     setIsValidating(true);
     try {

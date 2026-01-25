@@ -157,9 +157,7 @@ export function drawDraftWatermark(page: PDFPage) {
 export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PDFPage[]): { page: PDFPage } {
   const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   totalPages.push(page);
-  if (isDraft) {
-    drawDraftWatermark(page);
-  }
+  // Status is shown prominently on cover page - no need for repeated watermark
   return { page };
 }
 

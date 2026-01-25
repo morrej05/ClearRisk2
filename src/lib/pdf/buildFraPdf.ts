@@ -142,9 +142,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   totalPages.push(page);
   let yPosition = PAGE_HEIGHT - MARGIN;
 
-  if (isDraft) {
-    drawDraftWatermark(page);
-  }
+  // Status is shown prominently on cover page - no need for watermark
 
   yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition);
 
@@ -251,6 +249,18 @@ function sortModules(moduleInstances: ModuleInstance[]): ModuleInstance[] {
   });
 }
 
+function getOrganisationDisplayName(organisation: Organisation): string {
+  // Check if name looks like an email (contains @ and .)
+  const isEmail = organisation.name && organisation.name.includes('@') && organisation.name.includes('.');
+
+  // If name is missing or looks like an email, return placeholder
+  if (!organisation.name || isEmail) {
+    return 'Organisation (name not set)';
+  }
+
+  return organisation.name;
+}
+
 function drawCoverPage(
   page: PDFPage,
   document: Document,
@@ -261,91 +271,149 @@ function drawCoverPage(
 ): number {
   const centerX = PAGE_WIDTH / 2;
 
-  yPosition -= 80;
+  // Title - larger and more prominent
+  yPosition -= 100;
   page.drawText('FIRE RISK ASSESSMENT', {
-    x: centerX - 150,
+    x: centerX - 170,
     y: yPosition,
-    size: 24,
+    size: 28,
     font: fontBold,
-    color: rgb(0, 0, 0),
+    color: rgb(0.7, 0.1, 0.1), // Brand red for title
   });
 
-  yPosition -= 60;
-  const titleLines = wrapText(document.title, CONTENT_WIDTH - 100, 18, font);
+  // Site name
+  yPosition -= 50;
+  const titleLines = wrapText(document.title, CONTENT_WIDTH - 100, 20, font);
   for (const line of titleLines) {
     page.drawText(line, {
-      x: centerX - (font.widthOfTextAtSize(line, 18) / 2),
+      x: centerX - (font.widthOfTextAtSize(line, 20) / 2),
       y: yPosition,
-      size: 18,
+      size: 20,
       font: fontBold,
-      color: rgb(0.2, 0.2, 0.2),
+      color: rgb(0.15, 0.15, 0.15),
     });
-    yPosition -= 25;
+    yPosition -= 28;
   }
 
-  yPosition -= 40;
-  const statusColor = document.status === 'issued' ? rgb(0.13, 0.55, 0.13) : rgb(0.5, 0.5, 0.5);
+  // Client name - proper display, no email
+  yPosition -= 15;
+  const orgDisplayName = getOrganisationDisplayName(organisation);
+  const orgLines = wrapText(orgDisplayName, CONTENT_WIDTH - 100, 14, font);
+  for (const line of orgLines) {
+    page.drawText(line, {
+      x: centerX - (font.widthOfTextAtSize(line, 14) / 2),
+      y: yPosition,
+      size: 14,
+      font,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+    yPosition -= 20;
+  }
+
+  // Status badge - shown ONCE prominently on cover
+  yPosition -= 30;
+  const issueStatus = (document as any).issue_status || document.status;
+  const isIssued = issueStatus === 'issued';
+  const isSuperseded = issueStatus === 'superseded';
+  const statusColor = isIssued ? rgb(0.13, 0.55, 0.13) : isSuperseded ? rgb(0.7, 0.5, 0) : rgb(0.5, 0.5, 0.5);
+  const statusText = sanitizePdfText(issueStatus ? issueStatus.toUpperCase() : 'DRAFT');
+  const statusWidth = font.widthOfTextAtSize(statusText, 13) + 30;
+
   page.drawRectangle({
-    x: centerX - 50,
+    x: centerX - statusWidth / 2,
     y: yPosition - 5,
-    width: 100,
-    height: 25,
+    width: statusWidth,
+    height: 28,
     color: statusColor,
   });
-  const statusText = sanitizePdfText(document.status.toUpperCase());
   page.drawText(statusText, {
-    x: centerX - font.widthOfTextAtSize(statusText, 12) / 2,
-    y: yPosition,
-    size: 12,
+    x: centerX - font.widthOfTextAtSize(statusText, 13) / 2,
+    y: yPosition + 2,
+    size: 13,
     font: fontBold,
     color: rgb(1, 1, 1),
   });
 
-  yPosition -= 80;
+  // Divider line
+  yPosition -= 50;
   page.drawLine({
-    start: { x: MARGIN, y: yPosition },
-    end: { x: PAGE_WIDTH - MARGIN, y: yPosition },
-    thickness: 1,
-    color: rgb(0.8, 0.8, 0.8),
+    start: { x: MARGIN + 40, y: yPosition },
+    end: { x: PAGE_WIDTH - MARGIN - 40, y: yPosition },
+    thickness: 1.5,
+    color: rgb(0.7, 0.7, 0.7),
   });
 
-  yPosition -= 30;
-  const infoItems = [
-    ['Organisation:', organisation.name],
-    ['Document Type:', 'Fire Risk Assessment (FRA)'],
+  // Metadata - clean 2-column layout
+  yPosition -= 35;
+  const col1X = MARGIN + 50;
+  const col2X = PAGE_WIDTH / 2 + 20;
+  const labelSize = 10;
+  const valueSize = 11;
+  const rowHeight = 24;
+
+  // Get jurisdiction display name
+  const jurisdictionName = document.jurisdiction === 'UK' ? 'United Kingdom' : document.jurisdiction === 'IE' ? 'Ireland' : document.jurisdiction || 'Not specified';
+
+  const leftColumn = [
     ['Assessment Date:', formatDate(document.assessment_date)],
-    ['Assessor:', document.assessor_name || 'Not recorded'],
-    ['Assessor Role:', document.assessor_role || 'Not recorded'],
-    ['Responsible Person:', document.responsible_person || 'Not recorded'],
+    ['Assessor:', document.assessor_name || '—'],
     ['Version:', `v${document.version}`],
-    ['Status:', document.status.toUpperCase()],
   ];
 
-  for (const [label, value] of infoItems) {
+  const rightColumn = [
+    ['Jurisdiction:', jurisdictionName],
+    ['Responsible Person:', document.responsible_person || '—'],
+    ['Review Date:', document.review_date ? formatDate(document.review_date) : '—'],
+  ];
+
+  // Draw left column
+  for (const [label, value] of leftColumn) {
     page.drawText(sanitizePdfText(label), {
-      x: MARGIN + 20,
+      x: col1X,
       y: yPosition,
-      size: 11,
+      size: labelSize,
       font: fontBold,
-      color: rgb(0.3, 0.3, 0.3),
+      color: rgb(0.5, 0.5, 0.5),
     });
     page.drawText(sanitizePdfText(value), {
-      x: MARGIN + 180,
-      y: yPosition,
-      size: 11,
+      x: col1X,
+      y: yPosition - 14,
+      size: valueSize,
       font,
-      color: rgb(0.1, 0.1, 0.1),
+      color: rgb(0.15, 0.15, 0.15),
     });
-    yPosition -= 22;
+    yPosition -= rowHeight;
   }
 
-  yPosition -= 40;
+  // Reset y for right column
+  yPosition += (rowHeight * leftColumn.length);
+
+  // Draw right column
+  for (const [label, value] of rightColumn) {
+    page.drawText(sanitizePdfText(label), {
+      x: col2X,
+      y: yPosition,
+      size: labelSize,
+      font: fontBold,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    page.drawText(sanitizePdfText(value), {
+      x: col2X,
+      y: yPosition - 14,
+      size: valueSize,
+      font,
+      color: rgb(0.15, 0.15, 0.15),
+    });
+    yPosition -= rowHeight;
+  }
+
+  // Footer
   page.drawText('Generated by ClearRisk', {
-    x: centerX - 80,
+    x: centerX - 70,
     y: MARGIN + 10,
-    size: 10,
+    size: 9,
     font,
-    color: rgb(0.5, 0.5, 0.5),
+    color: rgb(0.6, 0.6, 0.6),
   });
 
   return yPosition;
@@ -881,13 +949,9 @@ function drawModuleKeyDetails(
   }
 
   if (keyDetails.length === 0) {
-    page.drawText('No structured details recorded in this module.', {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font,
-      color: rgb(0.5, 0.5, 0.5),
-    });
+    // Skip empty message - will be handled in appendix
+    // Just add minimal space
+    yPosition -= 10;
     return yPosition - 20;
   }
 
@@ -963,26 +1027,41 @@ function drawInfoGapQuickActions(
 
   yPosition -= 20;
 
-  // Title section with warning icon (using exclamation mark instead of Unicode warning)
-  page.drawText(sanitizePdfText('⚠'), {
+  // Neutral callout - light border instead of warning banner
+  // Draw subtle border box
+  const boxStartY = yPosition + 5;
+  page.drawRectangle({
     x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font,
-    color: rgb(0.9, 0.6, 0),
+    y: yPosition - (detection.reasons.length * 18) - 45,
+    width: CONTENT_WIDTH,
+    height: (detection.reasons.length * 18) + 55,
+    borderColor: rgb(0.7, 0.7, 0.7),
+    borderWidth: 1,
+    color: rgb(0.98, 0.98, 0.98),
   });
 
-  page.drawText(sanitizePdfText('Information Gaps Detected'), {
-    x: MARGIN + 20,
+  yPosition -= 5;
+
+  // Title section with neutral info icon
+  page.drawText(sanitizePdfText('i'), {
+    x: MARGIN + 8,
     y: yPosition,
-    size: 12,
+    size: 11,
     font: fontBold,
-    color: rgb(0.9, 0.6, 0),
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  page.drawText(sanitizePdfText('Assessment notes (incomplete information)'), {
+    x: MARGIN + 25,
+    y: yPosition,
+    size: 11,
+    font: fontBold,
+    color: rgb(0.4, 0.4, 0.4),
   });
 
   yPosition -= 25;
 
-  // Reasons
+  // Reasons - neutral styling
   if (detection.reasons.length > 0) {
     for (const reason of detection.reasons) {
       if (yPosition < MARGIN + 50) {
@@ -992,14 +1071,14 @@ function drawInfoGapQuickActions(
       }
 
       page.drawText(sanitizePdfText('•'), {
-        x: MARGIN + 5,
+        x: MARGIN + 8,
         y: yPosition,
         size: 10,
         font,
-        color: rgb(0.6, 0.4, 0),
+        color: rgb(0.5, 0.5, 0.5),
       });
 
-      const reasonLines = wrapText(reason, CONTENT_WIDTH - 25, 10, font);
+      const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
       for (const line of reasonLines) {
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
@@ -1007,19 +1086,19 @@ function drawInfoGapQuickActions(
           yPosition = PAGE_HEIGHT - MARGIN - 20;
         }
         page.drawText(line, {
-          x: MARGIN + 15,
+          x: MARGIN + 18,
           y: yPosition,
-          size: 10,
+          size: 9,
           font,
-          color: rgb(0.5, 0.3, 0),
+          color: rgb(0.4, 0.4, 0.4),
         });
-        yPosition -= 14;
+        yPosition -= 13;
       }
     }
     yPosition -= 10;
   }
 
-  // Quick Actions
+  // Quick Actions - neutral styling
   if (detection.quickActions.length > 0) {
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
@@ -1027,12 +1106,12 @@ function drawInfoGapQuickActions(
       yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
-    page.drawText('Recommended Actions to Resolve:', {
-      x: MARGIN + 5,
+    page.drawText('Recommended actions:', {
+      x: MARGIN + 8,
       y: yPosition,
-      size: 11,
+      size: 10,
       font: fontBold,
-      color: rgb(0.9, 0.6, 0),
+      color: rgb(0.4, 0.4, 0.4),
     });
 
     yPosition -= 20;

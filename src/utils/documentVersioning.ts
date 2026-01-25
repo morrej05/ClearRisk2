@@ -307,6 +307,7 @@ export async function createNewVersion(
         organisation_id: organisationId,
         document_id: newDocument.id,
         module_key: m.module_key,
+        module_scope: m.module_scope,
         data: m.data,
         outcome: m.outcome,
         assessor_notes: m.assessor_notes,

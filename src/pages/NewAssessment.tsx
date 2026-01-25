@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccessPillarB } from '../utils/entitlements';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { getModuleKeysForDocType } from '../lib/modules/moduleCatalog';
+import { getAssessmentDisplayName } from '../utils/displayNames';
 
 export default function NewAssessment() {
   const { user, userProfile, organisation } = useAuth();
@@ -60,6 +61,7 @@ export default function NewAssessment() {
           assessment_date: formData.assessment_date,
           assessor_name: formData.assessor_name,
           standards_selected: [],
+          jurisdiction: formData.jurisdiction === 'UK-EN' ? 'UK' : 'IE',
         })
         .select()
         .single();
@@ -159,7 +161,7 @@ export default function NewAssessment() {
                 >
                   <option value="fra">Fire Risk Assessment (FRA)</option>
                   <option value="fire_strategy">Fire Strategy Document</option>
-                  <option value="dsear">Explosive Atmospheres Risk Assessment</option>
+                  <option value="dsear">{getAssessmentDisplayName('dsear', formData.jurisdiction)}</option>
                 </select>
               </div>
 
@@ -173,8 +175,8 @@ export default function NewAssessment() {
                   required
                   className="w-full border border-neutral-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="UK-EN">UK-EN</option>
-                  <option value="GENERIC">GENERIC</option>
+                  <option value="UK-EN">United Kingdom</option>
+                  <option value="IE">Ireland</option>
                 </select>
               </div>
             </div>

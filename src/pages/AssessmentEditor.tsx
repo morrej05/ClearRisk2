@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPillarB } from '../utils/entitlements';
 import { ArrowLeft, Save, FileText, ListChecks, Lock, CheckCircle2 } from 'lucide-react';
+import { getAssessmentDisplayName } from '../utils/displayNames';
 
 interface Section {
   id: string;
@@ -191,19 +192,8 @@ export default function AssessmentEditor() {
     }));
   };
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'fra':
-        return 'Fire Risk Assessment';
-      case 'fire_strategy':
-        return 'Fire Strategy Document';
-      case 'dsear':
-        return 'Explosive Atmospheres Risk Assessment';
-      case 'wildfire':
-        return 'Wildfire Risk Assessment';
-      default:
-        return type;
-    }
+  const getTypeLabel = (type: string, jurisdiction?: string) => {
+    return getAssessmentDisplayName(type, jurisdiction);
   };
 
   if (isLoading) {
@@ -263,7 +253,7 @@ export default function AssessmentEditor() {
               </button>
               <div>
                 <h1 className="text-xl font-bold text-neutral-900">{assessment.site_name}</h1>
-                <p className="text-sm text-neutral-600">{getTypeLabel(assessment.type)}</p>
+                <p className="text-sm text-neutral-600">{getTypeLabel(assessment.type, assessment.jurisdiction)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">

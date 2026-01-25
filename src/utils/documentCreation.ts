@@ -47,12 +47,14 @@ interface CreateDocumentParams {
   organisationId: string;
   documentType: DocumentType;
   title?: string;
+  jurisdiction?: string;
 }
 
 export async function createDocument({
   organisationId,
   documentType,
-  title
+  title,
+  jurisdiction = 'UK'
 }: CreateDocumentParams): Promise<string> {
   const documentTitle = title || `New ${documentType}`;
   const assessmentDate = new Date().toISOString().split('T')[0];
@@ -64,6 +66,7 @@ export async function createDocument({
     status: 'draft',
     version: 1,
     assessment_date: assessmentDate,
+    jurisdiction,
   };
 
   const { data: document, error: docError } = await supabase

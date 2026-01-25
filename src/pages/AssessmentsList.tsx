@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccessPillarB } from '../utils/entitlements';
 import { Plus, FileText, ListChecks, Lock, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getAssessmentDisplayName } from '../utils/displayNames';
 
 interface Assessment {
   id: string;
@@ -69,19 +70,8 @@ export default function AssessmentsList() {
     }
   }, [filterType, filterStatus]);
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'fra':
-        return 'Fire Risk Assessment';
-      case 'fire_strategy':
-        return 'Fire Strategy Document';
-      case 'dsear':
-        return 'Explosive Atmospheres Risk Assessment';
-      case 'wildfire':
-        return 'Wildfire Risk Assessment';
-      default:
-        return type;
-    }
+  const getTypeLabel = (type: string, jurisdiction?: string) => {
+    return getAssessmentDisplayName(type, jurisdiction);
   };
 
   const formatDate = (dateString: string) => {
@@ -233,7 +223,7 @@ export default function AssessmentsList() {
                       {formatDate(assessment.assessment_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                      {getTypeLabel(assessment.type)}
+                      {getTypeLabel(assessment.type, assessment.jurisdiction)}
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-900">
                       <div className="font-medium">{assessment.site_name}</div>

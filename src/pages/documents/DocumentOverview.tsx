@@ -63,6 +63,7 @@ interface Document {
   locked_pdf_generated_at: string | null;
   locked_pdf_size_bytes: number | null;
   locked_pdf_sha256: string | null;
+  jurisdiction: string;
 }
 
 interface ModuleInstance {

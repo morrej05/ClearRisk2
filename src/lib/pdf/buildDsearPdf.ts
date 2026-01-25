@@ -6,6 +6,7 @@ import {
   hazardousAreaClassificationText,
   zoneDefinitionsText,
 } from '../reportText';
+import { getAssessmentDisplayName } from '../../utils/displayNames';
 import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
@@ -44,6 +45,7 @@ interface Document {
   executive_summary_author: string | null;
   executive_summary_mode: string | null;
   issue_status: string;
+  jurisdiction: string;
 }
 
 interface ModuleInstance {
@@ -235,9 +237,10 @@ function drawCoverPage(
   yPosition: number
 ): number {
   const centerX = PAGE_WIDTH / 2;
+  const reportTitle = getAssessmentDisplayName('DSEAR', document.jurisdiction);
 
-  page.drawText(sanitizePdfText('DSEAR / Explosion Risk Assessment'), {
-    x: centerX - fontBold.widthOfTextAtSize(sanitizePdfText('DSEAR / Explosion Risk Assessment'), 24) / 2,
+  page.drawText(sanitizePdfText(reportTitle), {
+    x: centerX - fontBold.widthOfTextAtSize(sanitizePdfText(reportTitle), 24) / 2,
     y: yPosition,
     size: 24,
     font: fontBold,

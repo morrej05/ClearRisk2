@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FileText, CheckCircle } from 'lucide-react';
+import { FileText, CheckCircle, Building2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import OutcomePanel from '../OutcomePanel';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface Document {
   id: string;
@@ -15,6 +16,7 @@ interface Document {
   limitations_assumptions: string | null;
   standards_selected: string[];
   jurisdiction: string;
+  organisation_id: string;
 }
 
 interface ModuleInstance {
@@ -46,10 +48,12 @@ export default function A1DocumentControlForm({
   document,
   onSaved,
 }: A1DocumentControlFormProps) {
+  const { organisation } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
 
   const [documentFields, setDocumentFields] = useState({
+    title: document.title || '',
     assessmentDate: document.assessment_date || '',
     assessorName: document.assessor_name || '',
     assessorRole: document.assessor_role || '',
@@ -74,6 +78,7 @@ export default function A1DocumentControlForm({
 
   useEffect(() => {
     setDocumentFields({
+      title: document.title || '',
       assessmentDate: document.assessment_date || '',
       assessorName: document.assessor_name || '',
       assessorRole: document.assessor_role || '',
@@ -101,6 +106,7 @@ export default function A1DocumentControlForm({
       const { error: docError } = await supabase
         .from('documents')
         .update({
+          title: documentFields.title || 'Untitled Assessment',
           assessment_date: documentFields.assessmentDate,
           assessor_name: documentFields.assessorName || null,
           assessor_role: documentFields.assessorRole || null,
@@ -164,6 +170,40 @@ export default function A1DocumentControlForm({
             Core Document Information
           </h3>
           <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <Building2 className="w-4 h-4 inline mr-1" />
+                  Client (Organisation)
+                </label>
+                <div className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-700">
+                  {organisation?.name || 'Loading...'}
+                </div>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Organisation is set at document creation
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Site Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={documentFields.title}
+                  onChange={(e) =>
+                    setDocumentFields({ ...documentFields, title: e.target.value })
+                  }
+                  placeholder="e.g., Building A, Main Office, Factory Site"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  required
+                />
+                <p className="mt-1 text-xs text-neutral-500">
+                  Identifies the specific site or location for this assessment
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">

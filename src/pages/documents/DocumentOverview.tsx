@@ -542,7 +542,7 @@ export default function DocumentOverview() {
     }
   };
 
-  const completedModules = modules.filter((m) => m.completed_at !== null).length;
+  const completedModules = modules.filter((m) => m.outcome !== null || m.completed_at !== null).length;
   const totalModules = modules.length;
   const completionPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 

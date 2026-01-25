@@ -13,6 +13,9 @@ export interface Document {
   created_at: string;
   updated_at: string;
   assessor_name: string | null;
+  organisations?: {
+    name: string;
+  };
 }
 
 export interface AssessmentViewModel {
@@ -38,7 +41,7 @@ function mapDocumentToViewModel(document: Document): AssessmentViewModel {
 
   return {
     id: document.id,
-    clientName: '—',
+    clientName: document.organisations?.name || 'Unassigned',
     siteName: document.title,
     discipline: typeInfo.discipline,
     type: typeInfo.display,
@@ -75,7 +78,19 @@ export function useAssessments(options: UseAssessmentsOptions = {}) {
 
         let query = supabase
           .from('documents')
-          .select('id, organisation_id, document_type, title, status, version, created_at, updated_at, assessor_name, issue_status')
+          .select(`
+            id,
+            organisation_id,
+            document_type,
+            title,
+            status,
+            version,
+            created_at,
+            updated_at,
+            assessor_name,
+            issue_status,
+            organisations (name)
+          `)
           .eq('organisation_id', organisation.id)
           .is('deleted_at', null)
           .order('updated_at', { ascending: false });

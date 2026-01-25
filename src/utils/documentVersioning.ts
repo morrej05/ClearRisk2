@@ -213,7 +213,23 @@ export async function createNewVersion(
   try {
     const { data: currentIssued, error: currentError } = await supabase
       .from('documents')
-      .select('*')
+      .select(`
+        id,
+        organisation_id,
+        base_document_id,
+        version_number,
+        title,
+        document_type,
+        assessor_name,
+        assessor_company,
+        assessment_date,
+        review_date,
+        scope_description,
+        limitations_assumptions,
+        standards_selected,
+        enabled_modules,
+        jurisdiction
+      `)
       .eq('base_document_id', baseDocumentId)
       .eq('issue_status', 'issued')
       .maybeSingle();
@@ -245,42 +261,55 @@ export async function createNewVersion(
       version_number: newVersionNumber,
       title: currentIssued.title,
       document_type: currentIssued.document_type,
+      assessor_name: currentIssued.assessor_name,
+      assessor_company: currentIssued.assessor_company,
+      assessment_date: currentIssued.assessment_date,
+      review_date: currentIssued.review_date,
+      scope_description: currentIssued.scope_description,
+      limitations_assumptions: currentIssued.limitations_assumptions,
+      standards_selected: currentIssued.standards_selected,
+      enabled_modules: currentIssued.enabled_modules,
+      jurisdiction: currentIssued.jurisdiction,
       issue_status: 'draft',
       issue_date: null,
       issued_by: null,
       status: 'draft',
       executive_summary_ai: null,
       executive_summary_author: null,
-      executive_summary_mode: 'ai',
+      executive_summary_mode: currentIssued.executive_summary_mode || 'ai',
       approval_status: 'not_submitted',
       locked_pdf_path: null,
       locked_pdf_generated_at: null,
       locked_pdf_size_bytes: null,
+      locked_pdf_sha256: null,
+      is_immutable: false,
     };
 
     const { data: newDocument, error: newDocError } = await supabase
       .from('documents')
       .insert([newDocData])
-      .select()
+      .select('id, version_number')
       .single();
 
     if (newDocError) throw newDocError;
 
-const { data: modules, error: moduleError } = await supabase
-  .from('module_instances')
-  .select('id, module_key')
-  .eq('document_id', documentId)
-  .eq('organisation_id', organisationId);
+    const { data: modules, error: moduleError } = await supabase
+      .from('module_instances')
+      .select('id, module_key, data, outcome, assessor_notes, completed_at')
+      .eq('document_id', currentIssued.id)
+      .eq('organisation_id', organisationId);
 
-    if (modulesError) throw modulesError;
+    if (moduleError) throw moduleError;
 
     if (modules && modules.length > 0) {
       const newModules = modules.map((m) => ({
         organisation_id: organisationId,
         document_id: newDocument.id,
         module_key: m.module_key,
-        payload: m.payload,
+        data: m.data,
         outcome: m.outcome,
+        assessor_notes: m.assessor_notes,
+        completed_at: m.completed_at,
       }));
 
       const { error: moduleInsertError } = await supabase
@@ -292,7 +321,22 @@ const { data: modules, error: moduleError } = await supabase
 
     const { data: actions, error: actionsError } = await supabase
       .from('actions')
-      .select('*')
+      .select(`
+        id,
+        organisation_id,
+        document_id,
+        source_document_id,
+        module_instance_id,
+        recommended_action,
+        status,
+        priority_band,
+        timescale,
+        target_date,
+        override_justification,
+        source,
+        owner_user_id,
+        origin_action_id
+      `)
       .eq('document_id', currentIssued.id)
       .in('status', ['open', 'in_progress', 'deferred'])
       .is('deleted_at', null);
@@ -310,18 +354,25 @@ const { data: modules, error: moduleError } = await supabase
         moduleKeyToNewId[m.module_key] = m.id;
       });
 
+      const { data: oldModuleInstances } = await supabase
+        .from('module_instances')
+        .select('id, module_key')
+        .eq('document_id', currentIssued.id);
+
+      const oldModuleIdToKey: Record<string, string> = {};
+      oldModuleInstances?.forEach((m) => {
+        oldModuleIdToKey[m.id] = m.module_key;
+      });
+
       const carriedActions = actions.map((action) => {
-        const { data: oldModule } = supabase
-          .from('module_instances')
-          .select('module_key')
-          .eq('id', action.module_instance_id)
-          .single();
+        const oldModuleKey = oldModuleIdToKey[action.module_instance_id];
+        const newModuleInstanceId = oldModuleKey ? moduleKeyToNewId[oldModuleKey] : action.module_instance_id;
 
         return {
           organisation_id: organisationId,
           document_id: newDocument.id,
-          source_document_id: action.source_document_id,
-          module_instance_id: action.module_instance_id,
+          source_document_id: action.source_document_id || currentIssued.id,
+          module_instance_id: newModuleInstanceId,
           recommended_action: action.recommended_action,
           status: action.status,
           priority_band: action.priority_band,
@@ -345,16 +396,26 @@ const { data: modules, error: moduleError } = await supabase
     }
 
     if (shouldCarryForwardEvidence) {
-      const evidenceResult = await carryForwardEvidence(
-        currentIssued.id,
-        newDocument.id,
-        baseDocumentId,
-        organisationId
-      );
+      try {
+        const evidenceResult = await carryForwardEvidence(
+          currentIssued.id,
+          newDocument.id,
+          baseDocumentId,
+          organisationId
+        );
 
-      if (!evidenceResult.success) {
-        console.error('Error carrying forward evidence:', evidenceResult.error);
+        if (!evidenceResult.success) {
+          console.error('Error carrying forward evidence:', evidenceResult.error);
+        }
+      } catch (evidenceError) {
+        console.error('Exception carrying forward evidence:', evidenceError);
       }
+    }
+
+    try {
+      await createInitialIssueSummary(newDocument.id, userId);
+    } catch (summaryError) {
+      console.error('Error creating initial summary (non-blocking):', summaryError);
     }
 
     return {
@@ -362,9 +423,10 @@ const { data: modules, error: moduleError } = await supabase
       newDocumentId: newDocument.id,
       newVersionNumber: newVersionNumber,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating new version:', error);
-    return { success: false, error: 'Failed to create new version' };
+    const errorMessage = error?.message || 'Failed to create new version';
+    return { success: false, error: errorMessage };
   }
 }
 

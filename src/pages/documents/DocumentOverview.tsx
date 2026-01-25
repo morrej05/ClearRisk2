@@ -32,6 +32,7 @@ import {
   formatFileSize,
   type DefencePack,
 } from '../../utils/defencePack';
+import { Button, Badge, Card, Callout } from '../../components/ui/DesignSystem';
 
 interface Document {
   id: string;
@@ -322,20 +323,19 @@ export default function DocumentOverview() {
     }
   };
 
-  const getOutcomeColor = (outcome: string | null) => {
+  const getOutcomeBadgeVariant = (outcome: string | null): 'neutral' | 'risk-low' | 'risk-medium' | 'risk-high' | 'info' => {
     switch (outcome) {
       case 'compliant':
-        return 'bg-green-100 text-green-700';
+      case 'satisfactory':
+        return 'risk-low';
       case 'minor_def':
-        return 'bg-amber-100 text-amber-700';
+        return 'risk-medium';
       case 'material_def':
-        return 'bg-red-100 text-red-700';
+        return 'risk-high';
       case 'info_gap':
-        return 'bg-blue-100 text-blue-700';
-      case 'na':
-        return 'bg-neutral-100 text-neutral-600';
+        return 'info';
       default:
-        return 'bg-neutral-100 text-neutral-500';
+        return 'neutral';
     }
   };
 
@@ -343,6 +343,8 @@ export default function DocumentOverview() {
     switch (outcome) {
       case 'compliant':
         return 'Compliant';
+      case 'satisfactory':
+        return 'Satisfactory';
       case 'minor_def':
         return 'Minor Deficiency';
       case 'material_def':
@@ -376,6 +378,17 @@ export default function DocumentOverview() {
       month: 'short',
       year: 'numeric',
     });
+  };
+
+  const getStatusBadgeVariant = (status: string): 'neutral' | 'success' | 'warning' => {
+    switch (status) {
+      case 'issued':
+        return 'success';
+      case 'superseded':
+        return 'warning';
+      default:
+        return 'neutral';
+    }
   };
 
   const handleIssueSuccess = () => {
@@ -552,36 +565,33 @@ export default function DocumentOverview() {
 
   if (documentNotFound) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="max-w-md mx-auto p-8 bg-white rounded-lg shadow-sm border border-neutral-200 text-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Card className="max-w-md mx-auto text-center">
           <div className="mb-4">
-            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+            <AlertCircle className="w-12 h-12 text-amber-600 mx-auto" />
           </div>
           <h2 className="text-xl font-semibold text-neutral-900 mb-2">Document Not Found</h2>
           <p className="text-neutral-600 mb-6">
             This document doesn't exist or you don't have permission to access it.
           </p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-neutral-900 text-white text-sm font-medium rounded-md hover:bg-neutral-800 transition-colors"
-          >
+          <Button onClick={() => navigate('/dashboard')}>
             Back to Dashboard
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
     );
   }
 
   if (isLoading || !document) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-300 border-t-neutral-900"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-red-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <button
@@ -651,7 +661,7 @@ export default function DocumentOverview() {
           />
         )}
 
-        <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6 mb-6">
+        <Card className="mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
@@ -659,112 +669,100 @@ export default function DocumentOverview() {
                 <h1 className="text-2xl font-bold text-neutral-900">{document.title}</h1>
               </div>
               <div className="flex items-center gap-4 text-sm text-neutral-600">
-                <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                <Badge variant="info">
                   {getAssessmentShortName(document.document_type, document.jurisdiction)}
-                </span>
+                </Badge>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-neutral-500">Approval:</span>
                   <ApprovalStatusBadge status={document.approval_status} size="sm" />
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {document.issue_status === 'draft' && organisation && canUseApprovalWorkflow(organisation) && (
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => setShowApprovalModal(true)}
-                  className="px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="w-4 h-4 mr-2" />
                   Manage Approval
-                </button>
+                </Button>
               )}
               {document.issue_status === 'issued' && organisation && canShareWithClients(organisation) && (
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => setShowClientAccessModal(true)}
-                  className="px-4 py-2 border-2 border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center gap-2"
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-4 h-4 mr-2" />
                   Share with Clients
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => setShowVersionHistoryModal(true)}
-                className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors flex items-center gap-2"
               >
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 mr-2" />
                 Version History
-              </button>
+              </Button>
               {document.issue_status === 'draft' && (
-                <button
+                <Button
                   onClick={() => setShowIssueModal(true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
                 >
-                  <FileCheck className="w-4 h-4" />
+                  <FileCheck className="w-4 h-4 mr-2" />
                   Issue Document
-                </button>
+                </Button>
               )}
               {document.issue_status === 'issued' && (
-                <button
+                <Button
                   onClick={() => setShowNewVersionModal(true)}
-                  className="px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors flex items-center gap-2"
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-4 h-4 mr-2" />
                   Create New Version
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => navigate(`/documents/${id}/workspace`)}
-                className="px-4 py-2 bg-neutral-900 text-white rounded-lg font-medium hover:bg-neutral-800 transition-colors flex items-center gap-2"
               >
-                <Edit3 className="w-4 h-4" />
+                <Edit3 className="w-4 h-4 mr-2" />
                 Open Workspace
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => navigate(`/documents/${id}/evidence`)}
-                className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors flex items-center gap-2"
               >
-                <Image className="w-4 h-4" />
+                <Image className="w-4 h-4 mr-2" />
                 Evidence
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => navigate(`/documents/${id}/preview`)}
-                className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors flex items-center gap-2"
               >
-                <FileText className="w-4 h-4" />
+                <FileText className="w-4 h-4 mr-2" />
                 Preview Report
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={handleGeneratePdf}
                 disabled={isGeneratingPdf}
-                className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${
-                  isGeneratingPdf
-                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
               >
                 {isGeneratingPdf ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent mr-2"></div>
                     {document.issue_status === 'draft' ? 'Generating...' : 'Downloading...'}
                   </>
                 ) : (
                   <>
-                    <FileDown className="w-4 h-4" />
+                    <FileDown className="w-4 h-4 mr-2" />
                     {document.issue_status === 'draft' ? 'Generate PDF' : 'Download Issued PDF'}
                   </>
                 )}
-              </button>
+              </Button>
               {document.issue_status === 'issued' && (
-                <button
+                <Button
+                  variant="secondary"
                   onClick={defencePack ? handleDownloadDefencePack : handleBuildDefencePack}
                   disabled={isBuildingDefencePack || (!document.locked_pdf_path && !defencePack)}
-                  className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${
-                    isBuildingDefencePack || (!document.locked_pdf_path && !defencePack)
-                      ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                      : defencePack
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-purple-600 text-white hover:bg-purple-700'
-                  }`}
                   title={
                     !document.locked_pdf_path
                       ? 'Locked PDF required to create defence pack'
@@ -775,58 +773,63 @@ export default function DocumentOverview() {
                 >
                   {isBuildingDefencePack ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent mr-2"></div>
                       Building Pack...
                     </>
                   ) : defencePack ? (
                     <>
-                      <Package className="w-4 h-4" />
+                      <Package className="w-4 h-4 mr-2" />
                       Download Defence Pack
                     </>
                   ) : (
                     <>
-                      <Shield className="w-4 h-4" />
+                      <Shield className="w-4 h-4 mr-2" />
                       Generate Defence Pack
                     </>
                   )}
-                </button>
+                </Button>
               )}
             </div>
           </div>
 
           {defencePack && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center gap-3">
-              <Shield className="w-5 h-5 text-purple-600" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-purple-900">Defence Pack Available</p>
-                <p className="text-xs text-purple-700">
-                  Created {formatDate(defencePack.created_at)}
-                  {defencePack.size_bytes && ` • ${formatFileSize(defencePack.size_bytes)}`}
-                  {' • '}
-                  v{defencePack.version_number}
-                </p>
+            <Callout variant="info" className="mb-4">
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-blue-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Defence Pack Available</p>
+                  <p className="text-xs text-neutral-600 mt-1">
+                    Created {formatDate(defencePack.created_at)}
+                    {defencePack.size_bytes && ` • ${formatFileSize(defencePack.size_bytes)}`}
+                    {' • '}
+                    v{defencePack.version_number}
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={handleDownloadDefencePack}
+                  className="text-sm"
+                >
+                  <Package className="w-4 h-4 mr-2" />
+                  Download
+                </Button>
               </div>
-              <button
-                onClick={handleDownloadDefencePack}
-                className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors flex items-center gap-2"
-              >
-                <Package className="w-4 h-4" />
-                Download
-              </button>
-            </div>
+            </Callout>
           )}
 
           {document.locked_pdf_path && document.issue_status !== 'draft' && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-3">
-              <FileCheck className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium text-green-900">PDF Locked</p>
-                <p className="text-xs text-green-700">
-                  Issued {formatDate(document.locked_pdf_generated_at)}
-                  {document.locked_pdf_size_bytes && ` • ${(document.locked_pdf_size_bytes / 1024).toFixed(0)} KB`}
-                </p>
+            <Callout variant="success" className="mb-4">
+              <div className="flex items-center gap-3">
+                <FileCheck className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium">PDF Locked</p>
+                  <p className="text-xs text-neutral-600 mt-1">
+                    Issued {formatDate(document.locked_pdf_generated_at)}
+                    {document.locked_pdf_size_bytes && ` • ${(document.locked_pdf_size_bytes / 1024).toFixed(0)} KB`}
+                  </p>
+                </div>
               </div>
-            </div>
+            </Callout>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-neutral-200">
@@ -834,7 +837,7 @@ export default function DocumentOverview() {
               <Calendar className="w-5 h-5 text-neutral-400 mt-0.5" />
               <div>
                 <p className="text-xs font-medium text-neutral-500 uppercase">Assessment Date</p>
-                <p className="text-sm font-semibold text-neutral-900">{formatDate(document.assessment_date)}</p>
+                <p className="text-sm text-neutral-900">{formatDate(document.assessment_date)}</p>
               </div>
             </div>
 
@@ -843,7 +846,7 @@ export default function DocumentOverview() {
                 <User className="w-5 h-5 text-neutral-400 mt-0.5" />
                 <div>
                   <p className="text-xs font-medium text-neutral-500 uppercase">Assessor</p>
-                  <p className="text-sm font-semibold text-neutral-900">{document.assessor_name}</p>
+                  <p className="text-sm text-neutral-900">{document.assessor_name}</p>
                   {document.assessor_role && (
                     <p className="text-xs text-neutral-600">{document.assessor_role}</p>
                   )}
@@ -855,7 +858,7 @@ export default function DocumentOverview() {
               <Clock className="w-5 h-5 text-neutral-400 mt-0.5" />
               <div>
                 <p className="text-xs font-medium text-neutral-500 uppercase">Last Updated</p>
-                <p className="text-sm font-semibold text-neutral-900">{formatDate(document.updated_at)}</p>
+                <p className="text-sm text-neutral-900">{formatDate(document.updated_at)}</p>
               </div>
             </div>
           </div>
@@ -872,26 +875,23 @@ export default function DocumentOverview() {
               <p className="text-xs font-medium text-neutral-500 uppercase mb-2">Standards & References</p>
               <div className="flex flex-wrap gap-2">
                 {document.standards_selected.map((standard) => (
-                  <span
-                    key={standard}
-                    className="inline-flex px-2 py-1 text-xs font-medium rounded bg-neutral-100 text-neutral-700"
-                  >
+                  <Badge key={standard} variant="neutral">
                     {standard}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             </div>
           )}
-        </div>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
+          <Card>
+            <div className="mb-4">
               <h3 className="text-sm font-medium text-neutral-500 uppercase">Module Progress</h3>
             </div>
             <div className="mb-3">
               <div className="flex items-end justify-between mb-1">
-                <span className="text-3xl font-bold text-neutral-900">{completionPercentage}%</span>
+                <span className="text-3xl font-semibold text-neutral-900">{completionPercentage}%</span>
                 <span className="text-sm text-neutral-600">
                   {completedModules}/{totalModules}
                 </span>
@@ -906,97 +906,97 @@ export default function DocumentOverview() {
             {(infoGapModules > 0 || materialDefModules > 0) && (
               <div className="flex flex-wrap gap-2 text-xs">
                 {materialDefModules > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded">
-                    <AlertCircle className="w-3 h-3" />
+                  <Badge variant="risk-high">
+                    <AlertCircle className="w-3 h-3 mr-1 inline" />
                     {materialDefModules} Material Def
-                  </span>
+                  </Badge>
                 )}
                 {infoGapModules > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded">
-                    <AlertCircle className="w-3 h-3" />
+                  <Badge variant="info">
+                    <AlertCircle className="w-3 h-3 mr-1 inline" />
                     {infoGapModules} Info Gap
-                  </span>
+                  </Badge>
                 )}
               </div>
             )}
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
+          <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-neutral-500 uppercase">Open Actions</h3>
               <button
                 onClick={() => navigate(`/dashboard/actions?document=${id}`)}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                className="text-xs text-neutral-600 hover:text-neutral-900 font-medium flex items-center gap-1"
               >
                 <List className="w-3 h-3" />
                 View Register
               </button>
             </div>
             <div className="mb-3">
-              <div className="text-3xl font-bold text-neutral-900 mb-1">{totalOpenActions}</div>
+              <div className="text-3xl font-semibold text-neutral-900 mb-1">{totalOpenActions}</div>
               <div className="text-sm text-neutral-600">Total open actions</div>
             </div>
             <div className="grid grid-cols-4 gap-2">
               <div className="text-center">
-                <div className="text-lg font-bold text-red-700">{actionCounts.P1}</div>
+                <div className="text-lg font-semibold text-red-700">{actionCounts.P1}</div>
                 <div className="text-xs text-neutral-500">P1</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-orange-700">{actionCounts.P2}</div>
+                <div className="text-lg font-semibold text-orange-700">{actionCounts.P2}</div>
                 <div className="text-xs text-neutral-500">P2</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-amber-700">{actionCounts.P3}</div>
+                <div className="text-lg font-semibold text-amber-700">{actionCounts.P3}</div>
                 <div className="text-xs text-neutral-500">P3</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-blue-700">{actionCounts.P4}</div>
+                <div className="text-lg font-semibold text-neutral-700">{actionCounts.P4}</div>
                 <div className="text-xs text-neutral-500">P4</div>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
+          <Card>
+            <div className="mb-4">
               <h3 className="text-sm font-medium text-neutral-500 uppercase">Document Status</h3>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-neutral-600">Status:</span>
-                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full     ${getStatusColor(document.issue_status)}`}>
-  {document.issue_status}
-              </span>
+                <Badge variant={getStatusBadgeVariant(document.issue_status)}>
+                  {document.issue_status}
+                </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-neutral-600">Version:</span>
-                <span className="text-sm font-medium text-neutral-900">v{document.version}</span>
+                <span className="text-sm text-neutral-900">v{document.version}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-neutral-600">Type:</span>
-                <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                <Badge variant="info">
                   {getAssessmentShortName(document.document_type, document.jurisdiction)}
-                </span>
+                </Badge>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
-        <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 bg-neutral-50 border-b border-neutral-200">
-            <h2 className="text-lg font-bold text-neutral-900">Modules</h2>
+        <Card className="overflow-hidden">
+          <div className="px-6 py-4 border-b border-neutral-200">
+            <h2 className="text-lg font-semibold text-neutral-900">Modules</h2>
             <p className="text-sm text-neutral-600 mt-1">
-              Click on a module to open its workspace (coming in Phase 3)
+              Click on a module to open its workspace
             </p>
           </div>
 
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-300 border-t-neutral-900"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-red-600"></div>
             </div>
           ) : modules.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
               <AlertCircle className="w-12 h-12 text-neutral-400 mb-3" />
-              <p className="text-neutral-500">No modules found for this document</p>
+              <p className="text-neutral-600">No modules found for this document</p>
             </div>
           ) : (
             <div className="divide-y divide-neutral-200">
@@ -1027,16 +1027,16 @@ export default function DocumentOverview() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getOutcomeColor(module.outcome)}`}>
+                      <Badge variant={getOutcomeBadgeVariant(module.outcome)}>
                         {getOutcomeLabel(module.outcome)}
-                      </span>
+                      </Badge>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {showIssueModal && user?.id && organisation?.id && (

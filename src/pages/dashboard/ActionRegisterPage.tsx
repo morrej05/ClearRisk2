@@ -25,6 +25,7 @@ import {
   getUniqueDocumentTypes,
   getModuleKeyLabel,
 } from '../../utils/actionRegister';
+import { Button, Card } from '../../components/ui/DesignSystem';
 
 export default function ActionRegisterPage() {
   const { organisation } = useAuth();
@@ -128,14 +129,14 @@ export default function ActionRegisterPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-300 border-t-neutral-900"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-red-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white border-b border-neutral-200 px-6 py-4">
         <div className="max-w-7xl mx-auto">
@@ -161,22 +162,19 @@ export default function ActionRegisterPage() {
 
             <div className="flex items-center gap-3">
               {documentFilter && (
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => navigate('/dashboard/actions')}
-                  className="px-4 py-2 border-2 border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors"
                 >
                   View All Actions
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => setShowFilters(!showFilters)}
-                className={`px-4 py-2 rounded-lg border font-medium transition-colors ${
-                  hasActiveFilters
-                    ? 'bg-blue-50 border-blue-300 text-blue-700'
-                    : 'bg-white border-neutral-300 text-neutral-700 hover:bg-neutral-50'
-                }`}
+                className={hasActiveFilters ? 'bg-blue-50 border-blue-300 text-blue-700' : ''}
               >
-                <Filter className="w-4 h-4 inline mr-2" />
+                <Filter className="w-4 h-4 mr-2" />
                 Filter {hasActiveFilters && `(${
                   filters.status.length +
                   filters.priority.length +
@@ -184,15 +182,14 @@ export default function ActionRegisterPage() {
                   filters.documentType.length +
                   filters.moduleKey.length
                 })`}
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={handleExportCSV}
-                className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors font-medium"
               >
-                <Download className="w-4 h-4 inline mr-2" />
+                <Download className="w-4 h-4 mr-2" />
                 Export CSV
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -201,48 +198,48 @@ export default function ActionRegisterPage() {
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+          <Card>
             <div className="flex items-center gap-3 mb-2">
-              <FileText className="w-5 h-5 text-blue-600" />
+              <FileText className="w-5 h-5 text-neutral-600" />
               <span className="text-sm font-medium text-neutral-700">Total Actions</span>
             </div>
-            <p className="text-3xl font-bold text-neutral-900">{stats.total}</p>
-          </div>
+            <p className="text-3xl font-semibold text-neutral-900">{stats.total}</p>
+          </Card>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+          <Card>
             <div className="flex items-center gap-3 mb-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
               <span className="text-sm font-medium text-neutral-700">Overdue</span>
             </div>
-            <p className="text-3xl font-bold text-red-600">{stats.overdue}</p>
-          </div>
+            <p className="text-3xl font-semibold text-red-600">{stats.overdue}</p>
+          </Card>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+          <Card>
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-5 h-5 text-amber-600" />
               <span className="text-sm font-medium text-neutral-700">In Progress</span>
             </div>
-            <p className="text-3xl font-bold text-amber-600">{stats.inProgress}</p>
-          </div>
+            <p className="text-3xl font-semibold text-amber-600">{stats.inProgress}</p>
+          </Card>
 
-          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+          <Card>
             <div className="flex items-center gap-3 mb-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
               <span className="text-sm font-medium text-neutral-700">Closed</span>
             </div>
-            <p className="text-3xl font-bold text-green-600">{stats.closed}</p>
-          </div>
+            <p className="text-3xl font-semibold text-green-600">{stats.closed}</p>
+          </Card>
         </div>
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="bg-white rounded-lg border border-neutral-200 p-6 mb-6">
+          <Card className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-neutral-900">Filters</h3>
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-sm text-neutral-600 hover:text-neutral-900 font-medium"
                 >
                   Clear All
                 </button>
@@ -362,19 +359,19 @@ export default function ActionRegisterPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
         )}
 
         {/* Actions Table */}
-        <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-neutral-50 border-b border-neutral-200">
+              <thead className="border-b border-neutral-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">
                     Document
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">
                     Action
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
@@ -483,7 +480,7 @@ export default function ActionRegisterPage() {
               </p>
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

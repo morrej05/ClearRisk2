@@ -294,7 +294,7 @@ export async function createNewVersion(
     const { data: newDocument, error: newDocError } = await supabase
       .from('documents')
       .insert([newDocData])
-      .select('id, version_number')
+      .select('*')
       .single();
 
     if (newDocError) throw newDocError;

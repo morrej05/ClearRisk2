@@ -296,7 +296,7 @@ export async function createNewVersion(
 
     const { data: modules, error: moduleError } = await supabase
       .from('module_instances')
-      .select('id, module_key, data, outcome, assessor_notes, completed_at')
+      .select('id, module_key, module_scope, data, outcome, assessor_notes, completed_at')
       .eq('document_id', currentIssued.id)
       .eq('organisation_id', organisationId);
 

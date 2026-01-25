@@ -77,7 +77,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
   }
 
   const [formData, setFormData] = useState({
-    documentType: availableTypes[0],
+    enabledModules: [availableTypes[0]] as string[],
     title: '',
     assessmentDate: new Date().toISOString().split('T')[0],
     assessorName: '',
@@ -88,6 +88,25 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
     standardsSelected: [] as string[],
     jurisdiction: 'UK',
   });
+
+  const handleModuleToggle = (moduleType: string) => {
+    setFormData((prev) => {
+      const isCurrentlyEnabled = prev.enabledModules.includes(moduleType);
+
+      if (isCurrentlyEnabled) {
+        const newModules = prev.enabledModules.filter((m) => m !== moduleType);
+        return {
+          ...prev,
+          enabledModules: newModules.length > 0 ? newModules : prev.enabledModules,
+        };
+      } else {
+        return {
+          ...prev,
+          enabledModules: [...prev.enabledModules, moduleType],
+        };
+      }
+    });
+  };
 
   const handleStandardToggle = (standard: string) => {
     setFormData((prev) => ({
@@ -111,12 +130,23 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
       return;
     }
 
+    if (formData.enabledModules.length === 0) {
+      alert('Please select at least one assessment type.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const enabledModules = formData.enabledModules;
+      const primaryDocumentType = enabledModules.includes('FRA') ? 'FRA' :
+                                  enabledModules.includes('FSD') ? 'FSD' :
+                                  enabledModules.includes('DSEAR') ? 'DSEAR' : 'FRA';
+
       const documentData = {
         organisation_id: organisation.id,
-        document_type: formData.documentType,
+        document_type: primaryDocumentType,
+        enabled_modules: enabledModules,
         title: formData.title.trim(),
         status: 'draft',
         version: 1,
@@ -138,9 +168,13 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
 
       if (docError) throw docError;
 
-      const moduleKeys = MODULE_SKELETONS[formData.documentType as keyof typeof MODULE_SKELETONS] || [];
+      const allModuleKeys = new Set<string>();
+      enabledModules.forEach((moduleType) => {
+        const skeleton = MODULE_SKELETONS[moduleType as keyof typeof MODULE_SKELETONS] || [];
+        skeleton.forEach((key) => allModuleKeys.add(key));
+      });
 
-      const moduleInstances = moduleKeys.map((moduleKey) => ({
+      const moduleInstances = Array.from(allModuleKeys).map((moduleKey) => ({
         organisation_id: organisation.id,
         document_id: document.id,
         module_key: moduleKey,
@@ -184,24 +218,77 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Document Type <span className="text-red-600">*</span>
+            <label className="block text-sm font-medium text-neutral-700 mb-3">
+              Assessment Type <span className="text-red-600">*</span>
             </label>
-            <select
-              value={formData.documentType}
-              onChange={(e) => setFormData({ ...formData, documentType: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              required
-            >
-              <option value="FRA">Fire Risk Assessment</option>
-              <option value="FSD" disabled={!canAccessEngineering}>
-                Fire Strategy Document {!canAccessEngineering ? '(Professional plan)' : ''}
-              </option>
-              <option value="DSEAR" disabled={!canAccessEngineering}>
-                Explosive Atmospheres Risk Assessment {!canAccessEngineering ? '(Professional plan)' : ''}
-              </option>
-            </select>
-            {!canAccessEngineering && (
+            <div className="space-y-2">
+              <label className="flex items-start gap-3 px-4 py-3 border-2 border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={formData.enabledModules.includes('FRA')}
+                  onChange={() => handleModuleToggle('FRA')}
+                  className="mt-0.5 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500"
+                />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-neutral-900">Fire Risk Assessment (FRA)</span>
+                  <p className="text-xs text-neutral-600 mt-0.5">Regulatory compliance assessment under RRO</p>
+                </div>
+              </label>
+
+              <label className={`flex items-start gap-3 px-4 py-3 border-2 rounded-lg transition-colors ${
+                canAccessEngineering
+                  ? 'border-neutral-200 hover:bg-neutral-50 cursor-pointer'
+                  : 'border-neutral-100 bg-neutral-50 cursor-not-allowed opacity-60'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={formData.enabledModules.includes('FSD')}
+                  onChange={() => handleModuleToggle('FSD')}
+                  disabled={!canAccessEngineering}
+                  className="mt-0.5 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500 disabled:opacity-50"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-neutral-900">Fire Strategy Document (FSD)</span>
+                    {!canAccessEngineering && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs rounded">
+                        <Lock className="w-3 h-3" />
+                        Pro
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-neutral-600 mt-0.5">Design-stage fire engineering documentation</p>
+                </div>
+              </label>
+
+              <label className={`flex items-start gap-3 px-4 py-3 border-2 rounded-lg transition-colors ${
+                canAccessEngineering
+                  ? 'border-neutral-200 hover:bg-neutral-50 cursor-pointer'
+                  : 'border-neutral-100 bg-neutral-50 cursor-not-allowed opacity-60'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={formData.enabledModules.includes('DSEAR')}
+                  onChange={() => handleModuleToggle('DSEAR')}
+                  disabled={!canAccessEngineering}
+                  className="mt-0.5 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500 disabled:opacity-50"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-neutral-900">Explosive Atmospheres (DSEAR)</span>
+                    {!canAccessEngineering && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs rounded">
+                        <Lock className="w-3 h-3" />
+                        Pro
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-neutral-600 mt-0.5">Dangerous substances and explosive atmospheres assessment</p>
+                </div>
+              </label>
+            </div>
+
+            {!canAccessEngineering && (formData.enabledModules.includes('FSD') || formData.enabledModules.includes('DSEAR')) && (
               <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
                 <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">

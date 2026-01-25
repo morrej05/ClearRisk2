@@ -13,6 +13,7 @@ import ExecutiveSummaryPanel from '../../components/documents/ExecutiveSummaryPa
 interface Document {
   id: string;
   document_type: string;
+  enabled_modules?: string[];
   title: string;
   status: string;
   version: number;
@@ -41,6 +42,25 @@ interface ModuleInstance {
   data: Record<string, any>;
   updated_at: string;
 }
+
+const getDocumentTypeLabel = (document: Document): string => {
+  const enabledModules = document.enabled_modules || [document.document_type];
+
+  if (enabledModules.length > 1) {
+    const labels = enabledModules.map((mod) => {
+      if (mod === 'FRA') return 'Fire Risk Assessment';
+      if (mod === 'FSD') return 'Fire Strategy Document';
+      if (mod === 'DSEAR') return 'Explosive Atmospheres';
+      return mod;
+    });
+    return labels.join(' + ');
+  }
+
+  if (enabledModules.includes('FRA')) return 'Fire Risk Assessment';
+  if (enabledModules.includes('FSD')) return 'Fire Strategy Document';
+  if (enabledModules.includes('DSEAR')) return 'Explosive Atmospheres';
+  return document.document_type;
+};
 
 export default function DocumentWorkspace() {
   const { id } = useParams<{ id: string }>();
@@ -262,7 +282,7 @@ export default function DocumentWorkspace() {
               <div>
                 <h1 className="text-lg font-bold text-neutral-900">{document.title}</h1>
                 <p className="text-xs text-neutral-500">
-                  {document.document_type} • v{document.version} • {document.status}
+                  {getDocumentTypeLabel(document)} • v{document.version} • {document.status}
                 </p>
               </div>
             </div>

@@ -36,6 +36,7 @@ import {
 interface Document {
   id: string;
   document_type: string;
+  enabled_modules?: string[];
   title: string;
   status: string;
   version: number;

@@ -148,16 +148,16 @@ export default function IssueDocumentModal({
       const issueResult = await issueDocument(documentId, userId, organisationId);
 
       if (issueResult.success) {
-  setIssueProgress('Complete!');
-  setTimeout(() => {
-    // Keep existing callbacks, but don't let them break navigation
-    try { onSuccess(); } catch (e) { console.warn('onSuccess failed', e); }
-    try { onClose(); } catch (e) { console.warn('onClose failed', e); }
-
-    // Safe navigation (relative URL only; avoids local-credentialless absolute URL failures)
-    navigate(`/documents/${documentId}/workspace`, { replace: true });
-  }, 500);
-} else {
+      setIssueProgress('Complete!');
+      setTimeout(() => {
+        // Keep existing callbacks, but don't let them break navigation
+        try { onSuccess(); } catch (e) { console.warn('onSuccess failed', e); }
+        try { onClose(); } catch (e) { console.warn('onClose failed', e); }
+    
+        // Safe navigation (relative URL only; avoids local-credentialless absolute URL failures)
+        navigate(`/documents/${documentId}/workspace`, { replace: true });
+      }, 500);
+      } else {
 
         throw new Error(issueResult.error || 'Failed to issue document');
       }

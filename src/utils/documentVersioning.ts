@@ -281,10 +281,7 @@ export async function createNewVersion(
       approval_status: 'not_submitted' as const,
       locked_pdf_path: null,
       locked_pdf_generated_at: null,
-      locked_pdf_size_bytes: null,
-      locked_pdf_sha256: null,
-      pdf_generation_error: null,
-      is_immutable: false,
+      locked_pdf_size_bytes: null,      
     };
 
     console.log('[createNewVersion] insert keys', Object.keys(newDocData), 'assessment_date=', newDocData.assessment_date, newDocData);

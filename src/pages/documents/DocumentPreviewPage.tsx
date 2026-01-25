@@ -102,48 +102,31 @@ export default function DocumentPreviewPage() {
         const fname = formatFilename(doc, defaultMode);
         setFilename(fname);
 
-        // For issued documents, load snapshot data to allow different output modes
+        // Load module and action data for PDF generation
         let moduleInstances: any[] = [];
         let enrichedActions: any[] = [];
         let actionRatings: any[] = [];
 
         if (doc.issue_status !== 'draft') {
-          // Load the latest issued revision to get snapshot data
-          const { data: latestRevision, error: revError } = await supabase
-            .from('document_revisions')
-            .select('snapshot')
+          // For issued documents, load from live tables for preview
+          // Note: The locked PDF is the source of truth, but this preview allows
+          // viewing different output modes (FRA, FSD, Combined) on-the-fly
+          const { data: modules } = await supabase
+            .from('module_instances')
+            .select('*')
             .eq('document_id', id)
-            .eq('status', 'issued')
-            .order('revision_number', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .eq('organisation_id', organisation.id);
 
-          if (revError) throw revError;
+          moduleInstances = modules || [];
 
-          if (latestRevision?.snapshot) {
-            // Use snapshot data
-            moduleInstances = latestRevision.snapshot.modules || [];
-            enrichedActions = latestRevision.snapshot.actions || [];
-            // Note: action ratings are part of actions in newer snapshots
-          } else {
-            // Fallback: try to load from tables
-            const { data: modules } = await supabase
-              .from('module_instances')
-              .select('*')
-              .eq('document_id', id)
-              .eq('organisation_id', organisation.id);
+          const { data: actions } = await supabase
+            .from('actions')
+            .select(`*`)
+            .eq('document_id', id)
+            .eq('organisation_id', organisation.id)
+            .is('deleted_at', null);
 
-            moduleInstances = modules || [];
-
-            const { data: actions } = await supabase
-              .from('actions')
-              .select(`*`)
-              .eq('document_id', id)
-              .eq('organisation_id', organisation.id)
-              .is('deleted_at', null);
-
-            enrichedActions = actions || [];
-          }
+          enrichedActions = actions || [];
         } else {
           // Draft document: load live data
           const { data: modules, error: moduleError } = await supabase
@@ -249,40 +232,23 @@ export default function DocumentPreviewPage() {
         let actionRatings: any[] = [];
 
         if (document.issue_status !== 'draft') {
-          // Load snapshot data for issued documents
-          const { data: latestRevision, error: revError } = await supabase
-            .from('document_revisions')
-            .select('snapshot')
+          // For issued documents, load from live tables for preview
+          const { data: modules } = await supabase
+            .from('module_instances')
+            .select('*')
             .eq('document_id', document.id)
-            .eq('status', 'issued')
-            .order('revision_number', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .eq('organisation_id', organisation.id);
 
-          if (revError) throw revError;
+          moduleInstances = modules || [];
 
-          if (latestRevision?.snapshot) {
-            moduleInstances = latestRevision.snapshot.modules || [];
-            enrichedActions = latestRevision.snapshot.actions || [];
-          } else {
-            // Fallback to tables if no snapshot
-            const { data: modules } = await supabase
-              .from('module_instances')
-              .select('*')
-              .eq('document_id', document.id)
-              .eq('organisation_id', organisation.id);
+          const { data: actions } = await supabase
+            .from('actions')
+            .select(`*`)
+            .eq('document_id', document.id)
+            .eq('organisation_id', organisation.id)
+            .is('deleted_at', null);
 
-            moduleInstances = modules || [];
-
-            const { data: actions } = await supabase
-              .from('actions')
-              .select(`*`)
-              .eq('document_id', document.id)
-              .eq('organisation_id', organisation.id)
-              .is('deleted_at', null);
-
-            enrichedActions = actions || [];
-          }
+          enrichedActions = actions || [];
         } else {
           // Load live data for draft documents
           const { data: modules, error: moduleError } = await supabase

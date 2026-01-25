@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
@@ -135,6 +135,8 @@ export default function DocumentOverview() {
   const [showClientAccessModal, setShowClientAccessModal] = useState(false);
   const [defencePack, setDefencePack] = useState<DefencePack | null>(null);
   const [isBuildingDefencePack, setIsBuildingDefencePack] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
@@ -401,6 +403,65 @@ export default function DocumentOverview() {
 
   const handleNavigateToVersion = (documentId: string) => {
     navigate(`/documents/${documentId}`);
+  };
+
+  const handleContinueAssessment = () => {
+    if (!id) return;
+
+    // Find first incomplete module
+    const firstIncomplete = modules.find(m => !m.completed_at);
+
+    if (firstIncomplete) {
+      // Navigate to workspace with the specific module
+      navigate(`/documents/${id}/workspace?module=${firstIncomplete.module_key}`, {
+        state: { returnTo: `/documents/${id}/overview` }
+      });
+    } else {
+      // All modules complete, just go to workspace
+      navigate(`/documents/${id}/workspace`, {
+        state: { returnTo: `/documents/${id}/overview` }
+      });
+    }
+  };
+
+  const handleDeleteDocument = async () => {
+    if (!id) return;
+
+    setIsDeleting(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('You must be logged in to delete documents');
+        return;
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/delete-document`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ document_id: id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete document');
+      }
+
+      // Navigate back to dashboard
+      navigate(getDashboardRoute(), { replace: true });
+    } catch (error: any) {
+      console.error('Error deleting document:', error);
+      alert(error.message || 'Failed to delete document');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   const handleGeneratePdf = async () => {
@@ -679,6 +740,15 @@ export default function DocumentOverview() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
+              {document.issue_status === 'draft' && (
+                <Button
+                  variant="primary"
+                  onClick={handleContinueAssessment}
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Continue Assessment
+                </Button>
+              )}
               {document.issue_status === 'draft' && organisation && canUseApprovalWorkflow(organisation) && (
                 <Button
                   variant="secondary"
@@ -705,12 +775,22 @@ export default function DocumentOverview() {
                 Version History
               </Button>
               {document.issue_status === 'draft' && (
-                <Button
-                  onClick={() => setShowIssueModal(true)}
-                >
-                  <FileCheck className="w-4 h-4 mr-2" />
-                  Issue Document
-                </Button>
+                <>
+                  <Button
+                    onClick={() => setShowIssueModal(true)}
+                  >
+                    <FileCheck className="w-4 h-4 mr-2" />
+                    Issue Document
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="!text-red-600 hover:!text-red-700 hover:!bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Draft
+                  </Button>
+                </>
               )}
               {document.issue_status === 'issued' && (
                 <Button
@@ -1095,6 +1175,46 @@ export default function DocumentOverview() {
           onClose={() => setShowVersionHistoryModal(false)}
           onNavigateToVersion={handleNavigateToVersion}
         />
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+              <h2 className="text-xl font-bold text-neutral-900">Delete Draft Document</h2>
+            </div>
+            <p className="text-neutral-700 mb-6">
+              Are you sure you want to delete this draft document? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900 transition-colors"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteDocument}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

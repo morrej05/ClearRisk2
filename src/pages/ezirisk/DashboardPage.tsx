@@ -31,7 +31,7 @@ export default function DashboardPage() {
   }
 
   function handleContinue(assessmentId: string) {
-    navigate(`/documents/${assessmentId}/workspace`, { state: { returnTo: '/dashboard' } });
+    navigate(`/documents/${assessmentId}/overview`, { state: { returnTo: '/dashboard' } });
   }
 
   return (
@@ -97,10 +97,10 @@ export default function DashboardPage() {
                         Client / Site
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Discipline(s)
+                        Type
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Type
+                        Surveyor
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Status
@@ -136,10 +136,10 @@ export default function DashboardPage() {
                             <div className="text-sm text-slate-500">{assessment.siteName}</div>
                           </td>
                           <td className="px-6 py-4 text-sm text-slate-900">
-                            {assessment.discipline}
+                            {assessment.type}
                           </td>
                           <td className="px-6 py-4 text-sm text-slate-900">
-                            {assessment.type}
+                            {assessment.surveyor || '—'}
                           </td>
                           <td className="px-6 py-4">
                             <span

@@ -26,6 +26,7 @@ export interface AssessmentViewModel {
   type: string;
   status: string;
   issueStatus: 'draft' | 'issued' | 'superseded';
+  surveyor: string | null;
   updatedAt: Date;
   createdAt: Date;
 }
@@ -47,6 +48,7 @@ function mapDocumentToViewModel(document: Document): AssessmentViewModel {
     type: typeInfo.display,
     status: document.status.charAt(0).toUpperCase() + document.status.slice(1),
     issueStatus: document.issue_status,
+    surveyor: document.assessor_name,
     updatedAt: new Date(document.updated_at),
     createdAt: new Date(document.created_at),
   };

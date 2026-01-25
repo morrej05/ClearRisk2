@@ -29,6 +29,7 @@ interface Document {
   executive_summary_ai?: string | null;
   executive_summary_author?: string | null;
   executive_summary_mode?: string | null;
+  jurisdiction: string;
 }
 
 interface ModuleInstance {

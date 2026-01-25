@@ -86,6 +86,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
     scopeDescription: '',
     limitationsAssumptions: '',
     standardsSelected: [] as string[],
+    jurisdiction: 'UK',
   });
 
   const handleStandardToggle = (standard: string) => {
@@ -126,6 +127,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
         scope_description: formData.scopeDescription.trim() || null,
         limitations_assumptions: formData.limitationsAssumptions.trim() || null,
         standards_selected: formData.standardsSelected,
+        jurisdiction: formData.jurisdiction,
       };
 
       const { data: document, error: docError } = await supabase
@@ -237,17 +239,34 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Assessment Date <span className="text-red-600">*</span>
-            </label>
-            <input
-              type="date"
-              value={formData.assessmentDate}
-              onChange={(e) => setFormData({ ...formData, assessmentDate: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Assessment Date <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="date"
+                value={formData.assessmentDate}
+                onChange={(e) => setFormData({ ...formData, assessmentDate: e.target.value })}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Jurisdiction <span className="text-red-600">*</span>
+              </label>
+              <select
+                value={formData.jurisdiction}
+                onChange={(e) => setFormData({ ...formData, jurisdiction: e.target.value })}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent bg-white"
+                required
+              >
+                <option value="UK">United Kingdom</option>
+                <option value="IE">Ireland</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

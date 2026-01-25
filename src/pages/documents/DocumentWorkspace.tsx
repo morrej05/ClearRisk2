@@ -9,6 +9,8 @@ import IssueDocumentModal from '../../components/IssueDocumentModal';
 import EditLockBanner from '../../components/EditLockBanner';
 import { isEditableStatus } from '../../utils/lifecycleGuards';
 import ExecutiveSummaryPanel from '../../components/documents/ExecutiveSummaryPanel';
+import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
+import { JurisdictionSelector } from '../../components/JurisdictionSelector';
 
 interface Document {
   id: string;
@@ -208,6 +210,54 @@ export default function DocumentWorkspace() {
     }
   };
 
+  const ModuleNavItem = ({ module }: { module: ModuleInstance }) => (
+    <button
+      onClick={() => handleModuleSelect(module.id)}
+      className={`w-full text-left px-4 py-3 transition-colors ${
+        selectedModuleId === module.id
+          ? 'bg-neutral-100 border-l-4 border-neutral-900'
+          : 'hover:bg-neutral-50 border-l-4 border-transparent'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 mt-0.5">
+          {module.outcome && module.outcome !== 'info_gap' ? (
+            <CheckCircle className="w-5 h-5 text-green-600" />
+          ) : module.outcome === 'info_gap' ? (
+            <AlertCircle className="w-5 h-5 text-blue-600" />
+          ) : (
+            <div className="w-5 h-5 rounded-full border-2 border-neutral-300" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-neutral-900 mb-1">
+            {getModuleName(module.module_key)}
+          </p>
+          {module.outcome && (
+            <div className="flex flex-col gap-1">
+              <span
+                className={`inline-flex px-2 py-0.5 text-xs font-medium rounded border ${getOutcomeColor(
+                  module.outcome
+                )}`}
+              >
+                {module.outcome === 'compliant' && 'Compliant'}
+                {module.outcome === 'minor_def' && 'Minor Def'}
+                {module.outcome === 'material_def' && 'Material Def'}
+                {module.outcome === 'info_gap' && 'Info Gap'}
+                {module.outcome === 'na' && 'N/A'}
+              </span>
+              {module.outcome === 'info_gap' && (
+                <span className="text-xs text-blue-600 font-medium">
+                  Completed with gaps
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+
   const selectedModule = modules.find((m) => m.id === selectedModuleId);
 
   if (documentNotFound) {
@@ -282,7 +332,7 @@ export default function DocumentWorkspace() {
               <div>
                 <h1 className="text-lg font-bold text-neutral-900">{document.title}</h1>
                 <p className="text-xs text-neutral-500">
-                  {getDocumentTypeLabel(document)} • v{document.version} • {document.status}
+                  {getDocumentTypeLabel(document)} • v{document.version}
                 </p>
               </div>
             </div>
@@ -297,6 +347,19 @@ export default function DocumentWorkspace() {
             </button>
           )}
         </div>
+        <div className="max-w-[1800px] mx-auto flex items-center justify-between pt-3">
+          <SurveyBadgeRow
+            status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
+            jurisdiction={document.jurisdiction as 'UK' | 'IE'}
+            enabledModules={document.enabled_modules}
+          />
+          <JurisdictionSelector
+            documentId={document.id}
+            currentJurisdiction={document.jurisdiction as 'UK' | 'IE'}
+            status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
+            onUpdate={fetchDocument}
+          />
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden max-w-[1800px] mx-auto w-full">
@@ -307,54 +370,58 @@ export default function DocumentWorkspace() {
             </h2>
           </div>
           <div className="divide-y divide-neutral-200">
-            {modules.map((module) => (
-              <button
-                key={module.id}
-                onClick={() => handleModuleSelect(module.id)}
-                className={`w-full text-left px-4 py-3 transition-colors ${
-                  selectedModuleId === module.id
-                    ? 'bg-neutral-100 border-l-4 border-neutral-900'
-                    : 'hover:bg-neutral-50 border-l-4 border-transparent'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-0.5">
-                    {module.outcome && module.outcome !== 'info_gap' ? (
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                    ) : module.outcome === 'info_gap' ? (
-                      <AlertCircle className="w-5 h-5 text-blue-600" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-neutral-300" />
+            {(() => {
+              const hasFRA = modules.some(m => m.module_key.startsWith('FRA_'));
+              const hasFSD = modules.some(m => m.module_key.startsWith('FSD_'));
+              const isCombined = hasFRA && hasFSD;
+
+              const COMMON_MODULES = ['A1_DOC_CONTROL', 'A2_BUILDING_PROFILE', 'A3_PERSONS_AT_RISK'];
+
+              if (isCombined) {
+                const sharedModules = modules.filter(m => COMMON_MODULES.includes(m.module_key));
+                const fraModules = modules.filter(m => m.module_key.startsWith('FRA_'));
+                const fsdModules = modules.filter(m => m.module_key.startsWith('FSD_'));
+
+                return (
+                  <>
+                    {sharedModules.length > 0 && (
+                      <>
+                        <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                          <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Shared</h3>
+                        </div>
+                        {sharedModules.map((module) => (
+                          <ModuleNavItem key={module.id} module={module} />
+                        ))}
+                      </>
                     )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-neutral-900 mb-1">
-                      {getModuleName(module.module_key)}
-                    </p>
-                    {module.outcome && (
-                      <div className="flex flex-col gap-1">
-                        <span
-                          className={`inline-flex px-2 py-0.5 text-xs font-medium rounded border ${getOutcomeColor(
-                            module.outcome
-                          )}`}
-                        >
-                          {module.outcome === 'compliant' && 'Compliant'}
-                          {module.outcome === 'minor_def' && 'Minor Def'}
-                          {module.outcome === 'material_def' && 'Material Def'}
-                          {module.outcome === 'info_gap' && 'Info Gap'}
-                          {module.outcome === 'na' && 'N/A'}
-                        </span>
-                        {module.outcome === 'info_gap' && (
-                          <span className="text-xs text-blue-600 font-medium">
-                            Completed with gaps
-                          </span>
-                        )}
-                      </div>
+                    {fraModules.length > 0 && (
+                      <>
+                        <div className="px-4 py-2 bg-orange-50 border-b border-orange-200">
+                          <h3 className="text-xs font-bold text-orange-700 uppercase tracking-wider">Fire Risk Assessment (FRA)</h3>
+                        </div>
+                        {fraModules.map((module) => (
+                          <ModuleNavItem key={module.id} module={module} />
+                        ))}
+                      </>
                     )}
-                  </div>
-                </div>
-              </button>
-            ))}
+                    {fsdModules.length > 0 && (
+                      <>
+                        <div className="px-4 py-2 bg-cyan-50 border-b border-cyan-200">
+                          <h3 className="text-xs font-bold text-cyan-700 uppercase tracking-wider">Fire Strategy Document (FSD)</h3>
+                        </div>
+                        {fsdModules.map((module) => (
+                          <ModuleNavItem key={module.id} module={module} />
+                        ))}
+                      </>
+                    )}
+                  </>
+                );
+              }
+
+              return modules.map((module) => (
+                <ModuleNavItem key={module.id} module={module} />
+              ));
+            })()}
           </div>
         </div>
 

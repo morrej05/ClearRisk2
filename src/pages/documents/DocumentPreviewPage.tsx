@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileDown } from 'lucide-react';
+import { ArrowLeft, FileDown, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
@@ -9,6 +9,7 @@ import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
 import { downloadLockedPdf, getLockedPdfInfo } from '../../utils/pdfLocking';
 import { saveAs } from 'file-saver';
+import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
 
 type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED';
 
@@ -429,26 +430,6 @@ export default function DocumentPreviewPage() {
           </button>
 
           <div className="flex items-center gap-4">
-            {availableModes.length > 1 && (
-              <div className="flex items-center gap-2">
-                <label htmlFor="outputMode" className="text-sm font-medium text-neutral-700">
-                  Output Mode:
-                </label>
-                <select
-                  id="outputMode"
-                  value={outputMode}
-                  onChange={(e) => setOutputMode(e.target.value as OutputMode)}
-                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {availableModes.map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode === 'COMBINED' ? 'Combined FRA + FSD' : `${mode} Report`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             <button
               onClick={handleDownload}
               disabled={!pdfUrl}
@@ -459,6 +440,55 @@ export default function DocumentPreviewPage() {
             </button>
           </div>
         </div>
+
+        {document && (
+          <div className="mb-4">
+            <SurveyBadgeRow
+              status={document.issue_status as 'draft' | 'in_review' | 'approved' | 'issued'}
+              jurisdiction={document.jurisdiction as 'UK' | 'IE'}
+              enabledModules={document.enabled_modules}
+            />
+          </div>
+        )}
+
+        {document && document.issue_status !== 'draft' && (
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                Issued v{document.version_number || document.version} (Immutable)
+              </h3>
+              <p className="text-sm text-blue-700">
+                This is a locked revision. The content cannot be edited. Create a new revision to make changes.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {availableModes.length > 1 && (
+          <div className="mb-4 bg-white border border-neutral-200 rounded-lg p-4">
+            <label htmlFor="outputMode" className="block text-sm font-semibold text-neutral-900 mb-2">
+              Output Mode
+            </label>
+            <select
+              id="outputMode"
+              value={outputMode}
+              onChange={(e) => setOutputMode(e.target.value as OutputMode)}
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {availableModes.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode === 'COMBINED' ? 'Combined FRA + FSD Report' : `${mode} Report Only`}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-neutral-600">
+              {outputMode === 'COMBINED'
+                ? 'Viewing combined report with both FRA and FSD sections.'
+                : `Viewing ${outputMode} report only.`}
+            </p>
+          </div>
+        )}
 
         <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden" style={{ height: '80vh' }}>
           {pdfUrl && (

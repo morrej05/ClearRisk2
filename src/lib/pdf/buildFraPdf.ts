@@ -5,6 +5,7 @@ import { listAttachments, type Attachment } from '../supabase/attachments';
 import {
   fraRegulatoryFrameworkText,
   fraResponsiblePersonDutiesText,
+  type Jurisdiction,
 } from '../reportText';
 import {
   PAGE_WIDTH,
@@ -44,6 +45,7 @@ interface Document {
   executive_summary_ai?: string | null;
   executive_summary_author?: string | null;
   executive_summary_mode?: string | null;
+  jurisdiction?: string;
 }
 
 interface ModuleInstance {
@@ -159,12 +161,12 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   const regFrameworkResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = regFrameworkResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawRegulatoryFramework(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  yPosition = drawRegulatoryFramework(page, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   const respPersonResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = respPersonResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawResponsiblePersonDuties(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  yPosition = drawResponsiblePersonDuties(page, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   if (document.scope_description) {
     const scopeResult = addNewPage(pdfDoc, isDraft, totalPages);
@@ -1435,6 +1437,7 @@ function drawAssumptionsAndLimitations(
 
 function drawRegulatoryFramework(
   page: PDFPage,
+  document: Document,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1453,7 +1456,9 @@ function drawRegulatoryFramework(
 
   yPosition -= 30;
 
-  const paragraphs = fraRegulatoryFrameworkText.split('\n\n');
+  const jurisdiction = (document.jurisdiction as Jurisdiction) || 'UK';
+  const frameworkText = fraRegulatoryFrameworkText(jurisdiction);
+  const paragraphs = frameworkText.split('\n\n');
   for (const paragraph of paragraphs) {
     if (!paragraph.trim()) continue;
 
@@ -1482,6 +1487,7 @@ function drawRegulatoryFramework(
 
 function drawResponsiblePersonDuties(
   page: PDFPage,
+  document: Document,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1500,7 +1506,9 @@ function drawResponsiblePersonDuties(
 
   yPosition -= 30;
 
-  const paragraphs = fraResponsiblePersonDutiesText.split('\n\n');
+  const jurisdiction = (document.jurisdiction as Jurisdiction) || 'UK';
+  const dutiesText = fraResponsiblePersonDutiesText(jurisdiction);
+  const paragraphs = dutiesText.split('\n\n');
   for (const paragraph of paragraphs) {
     if (!paragraph.trim()) continue;
 

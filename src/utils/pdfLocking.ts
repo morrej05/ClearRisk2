@@ -190,6 +190,8 @@ export async function generateAndLockPdf(
   pdfBytes: Uint8Array
 ): Promise<{ success: boolean; path?: string; checksum?: string; error?: string }> {
   try {
+    console.log(`[PDF Lock] Starting PDF upload for document ${documentId}, size: ${pdfBytes.length} bytes`);
+
     const uploadResult = await uploadLockedPdf(
       pdfBytes,
       organisationId,
@@ -199,6 +201,7 @@ export async function generateAndLockPdf(
     );
 
     if (!uploadResult.success || !uploadResult.path || !uploadResult.checksum) {
+      console.error('[PDF Lock] Upload failed:', uploadResult.error);
       await recordPdfGenerationError(
         documentId,
         uploadResult.error || 'Failed to upload PDF'
@@ -209,6 +212,9 @@ export async function generateAndLockPdf(
       };
     }
 
+    console.log(`[PDF Lock] Upload succeeded, path: ${uploadResult.path}, checksum: ${uploadResult.checksum}`);
+    console.log(`[PDF Lock] Locking PDF to document ${documentId}...`);
+
     const lockResult = await lockPdfToDocument(
       documentId,
       uploadResult.path,
@@ -217,11 +223,15 @@ export async function generateAndLockPdf(
     );
 
     if (!lockResult.success) {
+      console.error('[PDF Lock] Database update failed:', lockResult.error);
+      await recordPdfGenerationError(documentId, lockResult.error || 'Failed to lock PDF to document');
       return {
         success: false,
         error: lockResult.error || 'Failed to lock PDF to document',
       };
     }
+
+    console.log(`[PDF Lock] Successfully locked PDF to document ${documentId}`);
 
     return {
       success: true,
@@ -229,7 +239,7 @@ export async function generateAndLockPdf(
       checksum: uploadResult.checksum,
     };
   } catch (error: any) {
-    console.error('Error in generateAndLockPdf:', error);
+    console.error('[PDF Lock] Exception in generateAndLockPdf:', error);
     const errorMessage = error.message || 'Failed to generate and lock PDF';
     await recordPdfGenerationError(documentId, errorMessage);
     return { success: false, error: errorMessage };

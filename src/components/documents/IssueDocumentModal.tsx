@@ -144,6 +144,23 @@ export default function IssueDocumentModal({
         throw new Error(lockResult.error || 'Failed to lock PDF');
       }
 
+      // Verify the locked PDF path was actually saved to the database
+      setIssueProgress('Verifying PDF lock...');
+
+      const { data: verifyDoc, error: verifyError } = await supabase
+        .from('documents')
+        .select('locked_pdf_path')
+        .eq('id', documentId)
+        .single();
+
+      if (verifyError) {
+        throw new Error(`Failed to verify PDF lock: ${verifyError.message}`);
+      }
+
+      if (!verifyDoc?.locked_pdf_path) {
+        throw new Error('Locked PDF path was not saved; cannot issue. Please try again.');
+      }
+
       setIssueProgress('Updating document status...');
 
       const issueResult = await issueDocument(documentId, userId, organisationId);

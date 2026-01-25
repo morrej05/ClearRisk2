@@ -3,6 +3,7 @@ import { getModuleName } from '../modules/moduleCatalog';
 import { detectInfoGaps } from '../../utils/infoGapQuickActions';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import {
+  explosiveAtmospheresPurposeText,
   hazardousAreaClassificationText,
   zoneDefinitionsText,
 } from '../reportText';
@@ -145,19 +146,25 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     { bold: fontBold, regular: font }
   );
 
-  // SECTION 3: Hazardous Area Classification Methodology (Canned Text)
+  // SECTION 3: Purpose and Introduction (Neutral)
+  const purposeResult = addNewPage(pdfDoc, isDraft, totalPages);
+  page = purposeResult.page;
+  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = drawPurposeAndIntroduction(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+  // SECTION 4: Hazardous Area Classification Methodology (Canned Text)
   const hacResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = hacResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
   yPosition = drawHazardousAreaClassification(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
-  // SECTION 4: Zone Definitions (Canned Text)
+  // SECTION 5: Zone Definitions (Canned Text)
   const zoneResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = zoneResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
   yPosition = drawZoneDefinitions(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
-  // SECTION 5: Scope
+  // SECTION 6: Scope
   if (document.scope_description) {
     const scopeResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = scopeResult.page;
@@ -165,7 +172,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     yPosition = drawScope(page, document.scope_description, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
-  // SECTION 6: Limitations and Assumptions
+  // SECTION 7: Limitations and Assumptions
   if (document.limitations_assumptions) {
     const limResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = limResult.page;
@@ -173,7 +180,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     yPosition = drawLimitations(page, document.limitations_assumptions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
-  // SECTION 7+: Module Sections
+  // SECTION 8+: Module Sections
   const sortedModules = sortModules(moduleInstances);
   for (const module of sortedModules) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
@@ -1167,6 +1174,48 @@ function drawScope(
   return yPosition;
 }
 
+function drawPurposeAndIntroduction(
+  page: PDFPage,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  yPosition -= 20;
+  page.drawText('PURPOSE AND INTRODUCTION', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const sanitized = sanitizePdfText(explosiveAtmospheresPurposeText);
+  const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
+
+  for (const line of lines) {
+    if (yPosition < MARGIN + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 16;
+  }
+
+  return yPosition;
+}
+
 function drawLimitations(
   page: PDFPage,
   limitationsText: string,
@@ -1190,7 +1239,7 @@ function drawLimitations(
 
   const sanitized = sanitizePdfText(limitationsText);
   const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
-  
+
   for (const line of lines) {
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);

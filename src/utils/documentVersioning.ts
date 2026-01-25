@@ -278,7 +278,7 @@ export async function createNewVersion(
       executive_summary_ai: null,
       executive_summary_author: null,
       executive_summary_mode: currentIssued.executive_summary_mode || 'ai',
-      approval_status: currentIssued.approval_status,
+      approval_status: currentIssued.approval_status ?? 'approved',
       locked_pdf_path: null,
       locked_pdf_generated_at: null,
       locked_pdf_size_bytes: null,      

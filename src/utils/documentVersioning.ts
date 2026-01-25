@@ -265,7 +265,7 @@ export async function createNewVersion(
       document_type: currentIssued.document_type,
       assessor_name: currentIssued.assessor_name,
       assessor_company: currentIssued.assessor_company,
-      assessment_date: currentIssued.assessment_date || currentDate,
+      assessment_date: currentIssued.assessment_date ?? currentDate,
       review_date: currentIssued.review_date,
       scope_description: currentIssued.scope_description,
       limitations_assumptions: currentIssued.limitations_assumptions,

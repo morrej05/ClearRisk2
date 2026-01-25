@@ -198,7 +198,7 @@ export default function AssessmentEditor() {
       case 'fire_strategy':
         return 'Fire Strategy Document';
       case 'dsear':
-        return 'ATEX/DSEAR';
+        return 'Explosive Atmospheres Risk Assessment';
       case 'wildfire':
         return 'Wildfire Risk Assessment';
       default:

@@ -71,7 +71,7 @@ export default function NewAssessmentPage() {
     },
     {
       id: 'dsear',
-      title: 'DSEAR / ATEX',
+      title: 'Explosive Atmospheres Risk Assessment',
       description: 'Explosion risk assessment and controls.',
       enabled: hasExplosion,
       requiresUpgrade: !hasExplosion,
@@ -125,7 +125,7 @@ export default function NewAssessmentPage() {
         documentId = await createDocument({
           organisationId: organisation.id,
           documentType: 'DSEAR',
-          title: 'New DSEAR Assessment',
+          title: 'New Explosive Atmospheres Assessment',
         });
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'property') {

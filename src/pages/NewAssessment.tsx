@@ -159,7 +159,7 @@ export default function NewAssessment() {
                 >
                   <option value="fra">Fire Risk Assessment (FRA)</option>
                   <option value="fire_strategy">Fire Strategy Document</option>
-                  <option value="dsear">ATEX/DSEAR Assessment</option>
+                  <option value="dsear">Explosive Atmospheres Risk Assessment</option>
                 </select>
               </div>
 

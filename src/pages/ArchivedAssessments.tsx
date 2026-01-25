@@ -23,7 +23,7 @@ export default function ArchivedAssessments() {
           </p>
           <p className="text-amber-800 text-sm">
             The legacy assessment interface has been replaced with a new modular document system
-            that provides better flexibility and supports FRA, Fire Strategies, and DSEAR assessments.
+            that provides better flexibility and supports FRA, Fire Strategies, and Explosive Atmospheres assessments.
           </p>
         </div>
 

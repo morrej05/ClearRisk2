@@ -76,7 +76,7 @@ export default function AssessmentsList() {
       case 'fire_strategy':
         return 'Fire Strategy Document';
       case 'dsear':
-        return 'ATEX/DSEAR';
+        return 'Explosive Atmospheres Risk Assessment';
       case 'wildfire':
         return 'Wildfire Risk Assessment';
       default:
@@ -136,7 +136,7 @@ export default function AssessmentsList() {
           <div>
             <h1 className="text-3xl font-bold text-neutral-900">Assessments</h1>
             <p className="text-neutral-600 mt-1">
-              Manage your FRA, Fire Strategy, DSEAR, and Wildfire assessments
+              Manage your FRA, Fire Strategy, Explosive Atmospheres, and Wildfire assessments
             </p>
           </div>
           <button
@@ -162,7 +162,7 @@ export default function AssessmentsList() {
                   <option value="all">All Types</option>
                   <option value="fra">FRA</option>
                   <option value="fire_strategy">Fire Strategy</option>
-                  <option value="dsear">DSEAR</option>
+                  <option value="dsear">Explosive Atmospheres</option>
                   <option value="wildfire">Wildfire</option>
                 </select>
               </div>

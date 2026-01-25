@@ -121,7 +121,7 @@ export default function ExplosionDashboard() {
             </button>
 
             <h1 className="text-3xl font-bold text-neutral-900">Explosion Safety</h1>
-            <p className="text-neutral-600 mt-1">DSEAR & ATEX Assessments</p>
+            <p className="text-neutral-600 mt-1">Explosive Atmospheres Assessments</p>
           </div>
 
           <div className="bg-white rounded-lg border-2 border-amber-200 p-8 text-center">
@@ -130,7 +130,7 @@ export default function ExplosionDashboard() {
             </div>
             <h2 className="text-xl font-bold text-neutral-900 mb-2">Pro Feature</h2>
             <p className="text-neutral-600 mb-6 max-w-md mx-auto">
-              Explosion Safety assessments (DSEAR & ATEX) are available on Pro and Enterprise plans.
+              Explosive Atmospheres assessments are available on Pro and Enterprise plans.
               Upgrade to unlock this feature.
             </p>
             <button
@@ -160,14 +160,14 @@ export default function ExplosionDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-neutral-900">Explosion Safety</h1>
-              <p className="text-neutral-600 mt-1">Manage DSEAR and ATEX assessments</p>
+              <p className="text-neutral-600 mt-1">Manage Explosive Atmospheres assessments</p>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white font-medium rounded-lg hover:bg-neutral-800 transition-colors shadow-sm"
             >
               <Plus className="w-5 h-5" />
-              Create DSEAR Document
+              Create Document
             </button>
           </div>
         </div>
@@ -181,9 +181,9 @@ export default function ExplosionDashboard() {
             <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
               <FileText className="w-8 h-8 text-neutral-400" />
             </div>
-            <p className="text-neutral-500 text-lg mb-2">No DSEAR documents yet</p>
+            <p className="text-neutral-500 text-lg mb-2">No Explosive Atmospheres documents yet</p>
             <p className="text-neutral-400 text-sm mb-4">
-              Create your first DSEAR assessment to get started
+              Create your first Explosive Atmospheres assessment to get started
             </p>
             <button
               onClick={() => setShowCreateModal(true)}

@@ -196,7 +196,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
                 Fire Strategy Document {!canAccessEngineering ? '(Professional plan)' : ''}
               </option>
               <option value="DSEAR" disabled={!canAccessEngineering}>
-                DSEAR Assessment {!canAccessEngineering ? '(Professional plan)' : ''}
+                Explosive Atmospheres Risk Assessment {!canAccessEngineering ? '(Professional plan)' : ''}
               </option>
             </select>
             {!canAccessEngineering && (
@@ -205,7 +205,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
                 <div className="flex-1">
                   <p className="text-xs font-medium text-amber-900 mb-1">Fire Risk Engineering Features</p>
                   <p className="text-xs text-amber-700">
-                    Fire Strategy Documents and DSEAR Assessments are available on the Professional plan.
+                    Fire Strategy Documents and Explosive Atmospheres Assessments are available on the Professional plan.
                   </p>
                   <button
                     type="button"

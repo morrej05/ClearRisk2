@@ -219,7 +219,7 @@ export default function CommonDashboard() {
 
           <DashboardTile
             title="Explosion Safety"
-            description="DSEAR & ATEX assessments"
+            description="Explosive Atmospheres assessments"
             icon={<Zap className="w-6 h-6" />}
             onClick={() => canAccessExplosion ? navigate('/dashboard/explosion') : navigate('/upgrade')}
             disabled={!canAccessExplosion}
@@ -245,7 +245,7 @@ export default function CommonDashboard() {
                   Unlock Explosion Safety Assessments
                 </h3>
                 <p className="text-neutral-700 mb-4">
-                  Upgrade to Pro to access DSEAR and ATEX assessment capabilities, along with advanced features and unlimited documents.
+                  Upgrade to Pro to access Explosive Atmospheres assessment capabilities, along with advanced features and unlimited documents.
                 </p>
                 <button
                   onClick={() => navigate('/upgrade')}

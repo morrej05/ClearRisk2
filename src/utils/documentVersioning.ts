@@ -247,6 +247,8 @@ export async function createNewVersion(
       .select('id')
       .eq('base_document_id', baseDocumentId)
       .eq('issue_status', 'draft')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (draftError) throw draftError;

@@ -1,4 +1,4 @@
-import { PDFDocument, PDFPage, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFPage } from 'pdf-lib';
 import { supabase } from '../supabase';
 import {
   PAGE_WIDTH,

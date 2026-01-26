@@ -1,211 +1,197 @@
-import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, CheckCircle, AlertCircle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
-import { ChangeSummary, getChangeSummary, getChangeSummaryStats, formatChangeSummaryText } from '../../utils/changeSummary';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  getChangeSummary,
+  formatChangeSummaryText,
+  updateChangeSummaryText,
+  setChangeSummaryClientVisibility,
+  type ChangeSummary,
+} from '../../utils/changeSummary';
 
 interface ChangeSummaryPanelProps {
   documentId: string;
-  versionNumber: number;
-  className?: string;
+  canEdit?: boolean; // pass true for admins
 }
 
-export default function ChangeSummaryPanel({ documentId, versionNumber, className = '' }: ChangeSummaryPanelProps) {
-  const [summary, setSummary] = useState<ChangeSummary | null>(null);
+export default function ChangeSummaryPanel({
+  documentId,
+  canEdit = false,
+}: ChangeSummaryPanelProps) {
   const [isLoading, setIsLoading] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [summary, setSummary] = useState<ChangeSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [draftText, setDraftText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+
+  const computedMarkdown = useMemo(() => {
+    if (!summary) return '';
+    // If user wrote custom text, show that, otherwise generate a readable markdown view
+    return summary.summary_text?.trim()
+      ? summary.summary_text
+      : formatChangeSummaryText(summary);
+  }, [summary]);
+
+  async function load() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const s = await getChangeSummary(documentId);
+      setSummary(s);
+      setDraftText(s?.summary_text ?? '');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load change summary');
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    fetchSummary();
+    if (!documentId) return;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
 
-  const fetchSummary = async () => {
-    setIsLoading(true);
-    const data = await getChangeSummary(documentId);
-    setSummary(data);
-    setIsLoading(false);
+  const handleSave = async () => {
+    if (!summary?.id) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const res = await updateChangeSummaryText(summary.id, draftText);
+      if (!res.success) throw new Error(res.error || 'Save failed');
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  if (isLoading) {
-    return (
-      <div className={`bg-white rounded-lg border border-neutral-200 p-6 ${className}`}>
-        <div className="animate-pulse">
-          <div className="h-6 bg-neutral-200 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-neutral-200 rounded w-full mb-2"></div>
-          <div className="h-4 bg-neutral-200 rounded w-5/6"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!summary) {
-    return (
-      <div className={`bg-neutral-50 rounded-lg border border-neutral-200 p-6 ${className}`}>
-        <div className="flex items-start gap-3">
-          <FileText className="w-5 h-5 text-neutral-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-neutral-700">No Change Summary</p>
-            <p className="text-sm text-neutral-600 mt-1">
-              This is the first issued version or change tracking was not available.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if this is version 1 (initial issue)
-  const isInitialIssue = versionNumber === 1 || !summary.previous_document_id;
-
-  if (isInitialIssue) {
-    // For version 1, show a minimal muted line
-    return (
-      <p className={`text-xs text-neutral-500 ${className}`}>
-        No change summary (first issued version)
-      </p>
-    );
-  }
-
-  const stats = getChangeSummaryStats(summary);
-  const formattedText = formatChangeSummaryText(summary);
+  const handleToggleVisible = async () => {
+    if (!summary?.id) return;
+    setIsToggling(true);
+    setError(null);
+    try {
+      const res = await setChangeSummaryClientVisibility(
+        summary.id,
+        !summary.visible_to_client
+      );
+      if (!res.success) throw new Error(res.error || 'Update failed');
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update visibility');
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   return (
-    <div className={`bg-white rounded-lg border border-neutral-200 ${className}`}>
-      {/* Collapsible Header */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-neutral-50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          {stats.improvement ? (
-            <TrendingUp className="w-5 h-5 text-green-600 flex-shrink-0" />
-          ) : stats.deterioration ? (
-            <TrendingDown className="w-5 h-5 text-amber-600 flex-shrink-0" />
-          ) : (
-            <Minus className="w-5 h-5 text-blue-600 flex-shrink-0" />
-          )}
-          <div className="text-left">
-            <h3 className="font-semibold text-neutral-900">Changes Since Last Issue</h3>
-            <p className="text-xs text-neutral-600">
-              {summary.new_actions_count} new · {summary.closed_actions_count} closed · {summary.outstanding_actions_count} outstanding
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {summary.has_material_changes ? (
-            <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded">
-              Material Changes
-            </span>
-          ) : (
-            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
-              No Material Changes
-            </span>
-          )}
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-neutral-400" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-neutral-400" />
-          )}
-        </div>
-      </button>
-
-      {/* Expandable Content */}
-      {isExpanded && (
-        <div className="border-t border-neutral-200">
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4 px-6 py-4 bg-neutral-50 border-b border-neutral-200">
+    <div className="border border-neutral-200 rounded-lg bg-white overflow-hidden">
+      <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <AlertCircle className="w-4 h-4 text-red-600" />
-            <span className="text-sm font-medium text-neutral-700">New Actions</span>
-          </div>
-          <p className="text-2xl font-bold text-neutral-900">{summary.new_actions_count}</p>
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <CheckCircle className="w-4 h-4 text-green-600" />
-            <span className="text-sm font-medium text-neutral-700">Closed Actions</span>
-          </div>
-          <p className="text-2xl font-bold text-neutral-900">{summary.closed_actions_count}</p>
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-medium text-neutral-700">Outstanding</span>
-          </div>
-          <p className="text-2xl font-bold text-neutral-900">{summary.outstanding_actions_count}</p>
-        </div>
-      </div>
-
-      {/* New Actions */}
-      {summary.new_actions.length > 0 && (
-        <div className="px-6 py-4 border-b border-neutral-200">
-          <h4 className="font-medium text-neutral-900 mb-3">
-            New Actions ({summary.new_actions.length})
-          </h4>
-          <div className="space-y-2">
-            {summary.new_actions.map((action: any, index: number) => (
-              <div key={index} className="flex items-start gap-2 text-sm">
-                <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 mt-0.5 ${
-                  action.priority_band === 'P1' ? 'bg-red-100 text-red-700' :
-                  action.priority_band === 'P2' ? 'bg-amber-100 text-amber-700' :
-                  action.priority_band === 'P3' ? 'bg-blue-100 text-blue-700' :
-                  'bg-neutral-100 text-neutral-700'
-                }`}>
-                  {action.priority_band}
-                </span>
-                <p className="text-neutral-700 flex-1">{action.recommended_action}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Closed Actions */}
-      {summary.closed_actions.length > 0 && (
-        <div className="px-6 py-4 border-b border-neutral-200">
-          <h4 className="font-medium text-neutral-900 mb-3">
-            Closed Actions ({summary.closed_actions.length})
-          </h4>
-          <div className="space-y-2">
-            {summary.closed_actions.map((action: any, index: number) => (
-              <div key={index} className="flex items-start gap-2 text-sm">
-                <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 mt-0.5 ${
-                  action.priority_band === 'P1' ? 'bg-red-100 text-red-700' :
-                  action.priority_band === 'P2' ? 'bg-amber-100 text-amber-700' :
-                  action.priority_band === 'P3' ? 'bg-blue-100 text-blue-700' :
-                  'bg-neutral-100 text-neutral-700'
-                }`}>
-                  {action.priority_band}
-                </span>
-                <p className="text-neutral-700 flex-1 line-through opacity-70">{action.recommended_action}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Summary Text */}
-      {summary.summary_text && (
-        <div className="px-6 py-4 bg-neutral-50">
-          <h4 className="font-medium text-neutral-900 mb-2">Summary Notes</h4>
-          <p className="text-sm text-neutral-700 whitespace-pre-wrap">{summary.summary_text}</p>
-        </div>
-      )}
-
-      {/* Client Visibility Badge */}
-      {!summary.visible_to_client && (
-        <div className="px-6 py-3 bg-amber-50 border-t border-amber-200">
-          <p className="text-sm text-amber-800 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            This change summary is hidden from client view
+          <h3 className="font-semibold text-neutral-900">Change Summary</h3>
+          <p className="text-xs text-neutral-500">
+            Latest summary for this document
           </p>
         </div>
-      )}
-        </div>
-      )}
+
+        {summary && (
+          <div className="text-xs text-neutral-500">
+            {summary.created_at
+              ? new Date(summary.created_at).toLocaleString()
+              : ''}
+          </div>
+        )}
+      </div>
+
+      <div className="p-4">
+        {isLoading && (
+          <div className="text-sm text-neutral-600">Loading…</div>
+        )}
+
+        {!isLoading && error && (
+          <div className="text-sm text-red-600">{error}</div>
+        )}
+
+        {!isLoading && !error && !summary && (
+          <div className="text-sm text-neutral-600">
+            No change summary found yet.
+          </div>
+        )}
+
+        {!isLoading && !error && summary && (
+          <>
+            <div className="mb-3 flex flex-wrap gap-2 text-xs">
+              <span className="px-2 py-1 rounded bg-neutral-100 text-neutral-700">
+                New: {summary.new_actions_count}
+              </span>
+              <span className="px-2 py-1 rounded bg-neutral-100 text-neutral-700">
+                Closed: {summary.closed_actions_count}
+              </span>
+              <span className="px-2 py-1 rounded bg-neutral-100 text-neutral-700">
+                Outstanding: {summary.outstanding_actions_count}
+              </span>
+              <span className="px-2 py-1 rounded bg-neutral-100 text-neutral-700">
+                Material: {summary.has_material_changes ? 'Yes' : 'No'}
+              </span>
+            </div>
+
+            {canEdit ? (
+              <>
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  Summary text (shown instead of auto-generated markdown)
+                </label>
+                <textarea
+                  value={draftText}
+                  onChange={(e) => setDraftText(e.target.value)}
+                  className="w-full min-h-[140px] rounded border border-neutral-300 p-2 text-sm"
+                  placeholder="Optional: write a custom summary for this issue…"
+                />
+
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <button
+                    onClick={handleToggleVisible}
+                    disabled={isToggling}
+                    className="px-3 py-2 rounded border border-neutral-300 text-sm hover:bg-neutral-50 disabled:opacity-50"
+                  >
+                    {summary.visible_to_client ? 'Visible to client' : 'Hidden from client'}
+                  </button>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={load}
+                      disabled={isSaving || isToggling}
+                      className="px-3 py-2 rounded border border-neutral-300 text-sm hover:bg-neutral-50 disabled:opacity-50"
+                    >
+                      Refresh
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving || isToggling}
+                      className="px-3 py-2 rounded bg-neutral-900 text-white text-sm hover:bg-neutral-800 disabled:opacity-50"
+                    >
+                      {isSaving ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-xs font-medium text-neutral-700 mb-1">
+                    Preview (what users will read)
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm bg-neutral-50 border border-neutral-200 rounded p-3">
+                    {draftText?.trim() ? draftText : computedMarkdown}
+                  </pre>
+                </div>
+              </>
+            ) : (
+              <pre className="whitespace-pre-wrap text-sm bg-neutral-50 border border-neutral-200 rounded p-3">
+                {computedMarkdown}
+              </pre>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

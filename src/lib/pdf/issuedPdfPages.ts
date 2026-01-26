@@ -1,3 +1,4 @@
+const ENABLE_PDF_IMAGE_LOGOS = false; // TEMP: disable image embedding (webcontainer fix)
 import { PDFDocument, PDFPage, StandardFonts } from 'pdf-lib';
 import { supabase } from '../supabase';
 import {

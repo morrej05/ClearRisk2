@@ -154,7 +154,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
         document_type: 'FRA',
         version_number: (document as any).version_number || document.version || 1,
         issue_date: (document as any).issue_date || new Date().toISOString(),
-        issue_status: (document as any).issue_status || 'issued',
+        issue_status: 'issued',
         assessor_name: document.assessor_name,
         base_document_id: (document as any).base_document_id,
       },

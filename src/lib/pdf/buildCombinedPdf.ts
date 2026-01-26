@@ -158,7 +158,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
         document_type: 'combined',
         version_number: document.version_number || document.version || 1,
         issue_date: document.issue_date || new Date().toISOString(),
-        issue_status: document.issue_status || 'issued',
+        issue_status: 'issued',
         assessor_name: document.assessor_name,
         base_document_id: document.base_document_id,
       },

@@ -68,7 +68,7 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
   let logoData: { image: any; width: number; height: number } | null = null;
 
   // Try to load organization logo with timeout
-  if (organisation.branding_logo_path) {
+  if (ENABLE_PDF_IMAGE_LOGOS && organisation.branding_logo_path) {
     try {
       console.log('[PDF Logo] Attempting to load org logo:', organisation.branding_logo_path);
 

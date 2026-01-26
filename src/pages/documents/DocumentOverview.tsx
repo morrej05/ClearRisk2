@@ -9,6 +9,7 @@ import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
 import { saveAs } from 'file-saver';
+import { withTimeout, isTimeoutError } from '../../utils/withTimeout';
 import { getAssessmentShortName } from '../../utils/displayNames';
 import VersionStatusBanner from '../../components/documents/VersionStatusBanner';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
@@ -518,37 +519,79 @@ export default function DocumentOverview() {
         renderMode: (document.issue_status === 'issued' || document.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
       };
 
+      console.log('[PDF Download] Starting PDF generation');
+      console.log('[PDF Download] Document type:', document.document_type);
+      console.log('[PDF Download] Render mode:', pdfOptions.renderMode);
+
       let pdfBytes;
       const enabledModules = document.enabled_modules || [document.document_type];
       const isCombined = enabledModules.length > 1 &&
                          enabledModules.includes('FRA') &&
                          enabledModules.includes('FSD');
 
-      if (isCombined) {
-        pdfBytes = await buildCombinedPdf(pdfOptions);
-      } else if (document.document_type === 'FSD') {
-        pdfBytes = await buildFsdPdf(pdfOptions);
-      } else if (document.document_type === 'DSEAR') {
-        pdfBytes = await buildDsearPdf(pdfOptions);
-      } else {
-        pdfBytes = await buildFraPdf(pdfOptions);
+      console.log('[PDF Download] Enabled modules:', enabledModules);
+      console.log('[PDF Download] Is combined:', isCombined);
+
+      const PDF_GENERATION_TIMEOUT = 30000;
+
+      try {
+        if (isCombined) {
+          console.log('[PDF Download] Building combined FRA+FSD PDF');
+          pdfBytes = await withTimeout(
+            buildCombinedPdf(pdfOptions),
+            PDF_GENERATION_TIMEOUT,
+            'Combined PDF generation timed out after 30 seconds'
+          );
+        } else if (document.document_type === 'FSD') {
+          console.log('[PDF Download] Building FSD PDF');
+          pdfBytes = await withTimeout(
+            buildFsdPdf(pdfOptions),
+            PDF_GENERATION_TIMEOUT,
+            'FSD PDF generation timed out after 30 seconds'
+          );
+        } else if (document.document_type === 'DSEAR') {
+          console.log('[PDF Download] Building DSEAR PDF');
+          pdfBytes = await withTimeout(
+            buildDsearPdf(pdfOptions),
+            PDF_GENERATION_TIMEOUT,
+            'DSEAR PDF generation timed out after 30 seconds'
+          );
+        } else {
+          console.log('[PDF Download] Building FRA PDF');
+          pdfBytes = await withTimeout(
+            buildFraPdf(pdfOptions),
+            PDF_GENERATION_TIMEOUT,
+            'FRA PDF generation timed out after 30 seconds'
+          );
+        }
+
+        console.log('[PDF Download] PDF generation complete, size:', pdfBytes.length, 'bytes');
+
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const siteName = document.title
+          .replace(/[^a-z0-9]/gi, '_')
+          .replace(/_+/g, '_')
+          .toLowerCase();
+        const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
+        const docType = document.document_type || 'FRA';
+        const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
+
+        console.log('[PDF Download] Downloading file:', filename);
+        saveAs(blob, filename);
+        console.log('[PDF Download] Download initiated successfully');
+      } catch (pdfError) {
+        if (isTimeoutError(pdfError)) {
+          console.error('[PDF Download] PDF generation timed out');
+          throw new Error('PDF generation timed out. Please try again or contact support if this persists.');
+        }
+        throw pdfError;
       }
-
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const siteName = document.title
-        .replace(/[^a-z0-9]/gi, '_')
-        .replace(/_+/g, '_')
-        .toLowerCase();
-      const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
-      const docType = document.document_type || 'FRA';
-      const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
-
-      saveAs(blob, filename);
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error('[PDF Download] Error generating PDF:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       alert(`Failed to generate PDF: ${errorMessage}`);
     } finally {
+      console.log('[PDF Download] Resetting UI state');
       setIsGeneratingPdf(false);
     }
   };

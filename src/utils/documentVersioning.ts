@@ -143,43 +143,38 @@ export async function validateDocumentForIssue(
 
 export async function issueDocument(documentId: string, userId: string, organisationId: string): Promise<IssueDocumentResult> {
   try {
+    console.log('[issueDocument] Validating document:', documentId);
     const validation = await validateDocumentForIssue(documentId, organisationId);
     if (!validation.valid) {
+      console.log('[issueDocument] Validation failed:', validation.errors);
       return { success: false, error: validation.errors.join(', ') };
     }
 
-    // Get document to check for previous version AND locked PDF
+    console.log('[issueDocument] Validation passed, fetching document');
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('base_document_id, locked_pdf_path')
+      .select('base_document_id')
       .eq('id', documentId)
       .single();
 
     if (docError) throw docError;
 
-    // CRITICAL: Validate that a locked PDF exists before issuing
-    if (!document.locked_pdf_path) {
-      return {
-        success: false,
-        error: 'Cannot issue document without a locked PDF. The PDF must be generated and locked before the document can be issued.'
-      };
-    }
+    console.log('[issueDocument] Finding previously issued document in chain');
+    const { data: previousIssued, error: prevErr } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('base_document_id', document.base_document_id)
+      .eq('issue_status', 'issued')
+      .neq('id', documentId)
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    // Find previously issued document in this chain
-const { data: previousIssued, error: prevErr } = await supabase
-  .from('documents')
-  .select('id')
-  .eq('base_document_id', document.base_document_id)
-  .eq('issue_status', 'issued')
-  .neq('id', documentId)
-  .order('version_number', { ascending: false })
-  .limit(1)
-  .maybeSingle();
-
-if (prevErr) throw prevErr;
+    if (prevErr) throw prevErr;
 
     // Supersede previous issued document FIRST (DB requires this)
     if (previousIssued?.id) {
+      console.log('[issueDocument] Superseding previous issued document:', previousIssued.id);
       const { error: supersedePrevError } = await supabase
         .from('documents')
         .update({
@@ -190,11 +185,11 @@ if (prevErr) throw prevErr;
           updated_at: new Date().toISOString(),
         })
         .eq('id', previousIssued.id);
-    
+
       if (supersedePrevError) throw supersedePrevError;
     }
-    
-    // Issue the document
+
+    console.log('[issueDocument] Marking document as issued');
     const { error } = await supabase
       .from('documents')
       .update({
@@ -205,21 +200,20 @@ if (prevErr) throw prevErr;
         updated_at: new Date().toISOString(),
       })
       .eq('id', documentId);
-    
+
     if (error) throw error;
 
-    // Generate change summary
+    console.log('[issueDocument] Generating change summary');
     if (previousIssued) {
-      // Compare with previous issued version
       await generateChangeSummary(documentId, previousIssued.id, userId);
     } else {
-      // First issue - create initial summary
       await createInitialIssueSummary(documentId, userId);
     }
 
+    console.log('[issueDocument] Document issued successfully');
     return { success: true, documentId };
   } catch (error) {
-    console.error('Error issuing document:', error);
+    console.error('[issueDocument] Error issuing document:', error);
     return { success: false, error: 'Failed to issue document' };
   }
 }

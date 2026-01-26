@@ -54,6 +54,7 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
   coverPage: PDFPage;
   docControlPage: PDFPage;
 }> {
+  console.log('[PDF Issued Pages] Starting issued pages generation');
   const { pdfDoc, document, organisation, client, fonts } = options;
 
   let logoData: { image: any; width: number; height: number } | null = null;
@@ -68,6 +69,7 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
       if (error) {
         console.warn('[PDF Logo] Failed to create signed URL for org logo:', error);
       } else if (data?.signedUrl) {
+        console.log('[PDF Logo] Got signed URL, fetching and embedding...');
         logoData = await fetchAndEmbedLogo(
           pdfDoc,
           organisation.branding_logo_path,
@@ -93,6 +95,7 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
     console.log('[PDF Logo] Embedded logo failed, will use text fallback "EziRisk"');
   }
 
+  console.log('[PDF Issued Pages] Creating cover page');
   const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
 
   await drawCoverPage(
@@ -167,5 +170,6 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
     revisionHistory
   );
 
+  console.log('[PDF Issued Pages] Issued pages generation complete');
   return { coverPage, docControlPage };
 }

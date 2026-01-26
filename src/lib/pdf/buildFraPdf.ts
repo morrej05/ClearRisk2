@@ -106,9 +106,13 @@ const MODULE_ORDER = [
 ];
 
 export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array> {
+  console.log('[PDF FRA] Starting FRA PDF build');
   const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
 
-  console.log('[PDF] Building PDF with:', {
+  console.log('[PDF FRA] Build options:', {
+    documentId: document.id,
+    title: document.title,
+    renderMode,
     modules: moduleInstances.length,
     actions: actions.length,
     ratings: actionRatings.length,
@@ -126,17 +130,20 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     expected: '£100',
   });
 
+  console.log('[PDF FRA] Fetching attachments...');
   let attachments: Attachment[] = [];
   try {
     attachments = await listAttachments(document.id);
-    console.log('[PDF] Fetched', attachments.length, 'attachments');
+    console.log('[PDF FRA] Fetched', attachments.length, 'attachments');
   } catch (error) {
-    console.warn('[PDF] Failed to fetch attachments:', error);
+    console.warn('[PDF FRA] Failed to fetch attachments:', error);
   }
 
+  console.log('[PDF FRA] Creating PDF document and embedding fonts');
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  console.log('[PDF FRA] Fonts embedded successfully');
 
   const isIssuedMode = renderMode === 'issued';
   const isDraft = !isIssuedMode;
@@ -145,7 +152,10 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   let page: PDFPage;
   let yPosition: number;
 
+  console.log('[PDF FRA] Render mode:', isIssuedMode ? 'ISSUED' : 'DRAFT');
+
   if (isIssuedMode) {
+    console.log('[PDF FRA] Adding issued report pages (cover + doc control)');
     const { coverPage, docControlPage } = await addIssuedReportPages({
       pdfDoc,
       document: {
@@ -285,16 +295,21 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   });
   const footerText = `FRA Report — ${document.title} — v${document.version} — Generated ${today}`;
 
+  console.log('[PDF FRA] Drawing footers for', totalPages.length, 'pages');
   const startPageForFooters = isIssuedMode ? 2 : 1;
   for (let i = startPageForFooters; i < totalPages.length; i++) {
     drawFooter(totalPages[i], footerText, i, totalPages.length - 1, font);
   }
 
   if ((document as any).issue_status === 'superseded') {
+    console.log('[PDF FRA] Adding superseded watermark');
     await addSupersededWatermark(pdfDoc);
   }
 
+  console.log('[PDF FRA] Saving PDF document...');
   const pdfBytes = await pdfDoc.save();
+  console.log('[PDF FRA] PDF saved successfully,', pdfBytes.length, 'bytes');
+  console.log('[PDF FRA] Build complete');
   return pdfBytes;
 }
 

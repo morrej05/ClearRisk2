@@ -2,13 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, AlertTriangle, CheckCircle, FileCheck, Shield, ArrowRight, Lock } from 'lucide-react';
 import { issueDocument, validateDocumentForIssue } from '../../utils/documentVersioning';
-import { generateAndLockPdf } from '../../utils/pdfLocking';
 import { assignActionReferenceNumbers } from '../../utils/actionReferenceNumbers';
 import { supabase } from '../../lib/supabase';
-import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
-import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
-import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
-import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
 import { Button, Callout } from '../ui/DesignSystem';
 
@@ -120,9 +115,11 @@ export default function IssueDocumentModal({
 
   const handleIssue = async () => {
     setIsIssuing(true);
-    setIssueProgress('Fetching document data...');
+    setIssueProgress('Preparing to issue document...');
 
     try {
+      console.log('[Issue] Starting issue process for document:', documentId);
+
       const { data: document, error: docError } = await supabase
         .from('documents')
         .select('*')
@@ -131,127 +128,39 @@ export default function IssueDocumentModal({
 
       if (docError) throw docError;
 
+      console.log('[Issue] Document fetched:', document.id, 'status:', document.issue_status);
       setIssueProgress('Assigning recommendation reference numbers...');
 
       const actualBaseDocumentId = document.base_document_id || document.id;
       try {
         await assignActionReferenceNumbers(documentId, actualBaseDocumentId);
+        console.log('[Issue] Reference numbers assigned');
       } catch (refError) {
-        console.warn('Failed to assign reference numbers (non-fatal):', refError);
-      }
-
-      setIssueProgress('Loading modules and actions...');
-
-      const { data: modules, error: moduleError } = await supabase
-        .from('module_instances')
-        .select('*')
-        .eq('document_id', documentId)
-        .eq('organisation_id', organisationId)
-        .order('created_at', { ascending: true });
-
-      if (moduleError) throw moduleError;
-
-      const { data: actions, error: actionError } = await supabase
-        .from('actions')
-        .select('*')
-        .eq('document_id', documentId)
-        .eq('organisation_id', organisationId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: true });
-
-      if (actionError) throw actionError;
-
-      const { data: org, error: orgError } = await supabase
-        .from('organisations')
-        .select('*')
-        .eq('id', organisationId)
-        .single();
-
-      if (orgError) throw orgError;
-
-      setIssueProgress('Generating PDF...');
-
-      let pdfBytes: Uint8Array;
-
-      const buildOptions = {
-        document,
-        moduleInstances: modules || [],
-        actions: actions || [],
-        actionRatings: [],
-        organisation: org,
-        renderMode: 'issued' as const,
-      };
-
-      const enabledModules = document.enabled_modules || [document.document_type];
-      const isCombined = enabledModules.length > 1 &&
-                         enabledModules.includes('FRA') &&
-                         enabledModules.includes('FSD');
-
-      if (isCombined) {
-        pdfBytes = await buildCombinedPdf(buildOptions);
-      } else if (document.document_type === 'FRA') {
-        pdfBytes = await buildFraPdf(buildOptions);
-      } else if (document.document_type === 'FSD') {
-        pdfBytes = await buildFsdPdf(buildOptions);
-      } else if (document.document_type === 'DSEAR') {
-        pdfBytes = await buildDsearPdf(buildOptions);
-      } else {
-        throw new Error('Unsupported document type');
-      }
-
-      setIssueProgress('Uploading and locking PDF...');
-
-      const lockResult = await generateAndLockPdf(
-        documentId,
-        organisationId,
-        document.title,
-        document.version_number,
-        pdfBytes
-      );
-
-      if (!lockResult.success) {
-        throw new Error(lockResult.error || 'Failed to lock PDF');
-      }
-
-      // Verify the locked PDF path was actually saved to the database
-      setIssueProgress('Verifying PDF lock...');
-
-      const { data: verifyDoc, error: verifyError } = await supabase
-        .from('documents')
-        .select('locked_pdf_path')
-        .eq('id', documentId)
-        .single();
-
-      if (verifyError) {
-        throw new Error(`Failed to verify PDF lock: ${verifyError.message}`);
-      }
-
-      if (!verifyDoc?.locked_pdf_path) {
-        throw new Error('Locked PDF path was not saved; cannot issue. Please try again.');
+        console.warn('[Issue] Failed to assign reference numbers (non-fatal):', refError);
       }
 
       setIssueProgress('Updating document status...');
+      console.log('[Issue] Calling issueDocument()');
 
       const issueResult = await issueDocument(documentId, userId, organisationId);
 
       if (issueResult.success) {
+        console.log('[Issue] Document issued successfully');
         setIssueProgress('Complete!');
         setTimeout(() => {
-          // Keep existing callbacks, but don't let them break navigation
           try { onSuccess(); } catch (e) { console.warn('onSuccess failed', e); }
           try { onClose(); } catch (e) { console.warn('onClose failed', e); }
-
-          // Safe navigation (relative URL only; avoids local-credentialless absolute URL failures)
           navigate(`/documents/${documentId}/workspace`, { replace: true });
         }, 500);
       } else {
         throw new Error(issueResult.error || 'Failed to issue document');
       }
     } catch (error: any) {
-      console.error('Error issuing document:', error);
+      console.error('[Issue] Error issuing document:', error);
       alert(error.message || 'Failed to issue document. Document remains in draft.');
       setIssueProgress('');
     } finally {
+      console.log('[Issue] Issue process complete, resetting UI state');
       setIsIssuing(false);
     }
   };
@@ -372,10 +281,10 @@ export default function IssueDocumentModal({
 
           <Callout variant="info" title="What happens when you issue:">
             <ul className="space-y-1">
-              <li>• A locked PDF will be generated and stored</li>
               <li>• The document will be marked as issued with today's date</li>
               <li>• All editing will be locked to preserve integrity</li>
-              <li>• The PDF cannot change unless you create a new version</li>
+              <li>• Action reference numbers will be assigned</li>
+              <li>• You can download a PDF after issuing</li>
               <li>• The document will be available for client sharing</li>
             </ul>
           </Callout>

@@ -337,10 +337,16 @@ export async function fetchAndEmbedLogo(
   if (!logoPath || !signedUrl) return null;
 
   try {
-    const response = await fetch(signedUrl);
+    // Add timeout to fetch operation
+    const response = await Promise.race([
+      fetch(signedUrl),
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error('Logo fetch timed out after 3 seconds')), 3000)
+      )
+    ]);
 
     if (!response.ok) {
-      console.warn('Failed to fetch logo:', response.statusText);
+      console.warn('[PDF Logo] Failed to fetch logo:', response.statusText);
       return null;
     }
 
@@ -349,18 +355,31 @@ export async function fetchAndEmbedLogo(
 
     let image;
     if (logoPath.toLowerCase().endsWith('.png')) {
-      image = await pdfDoc.embedPng(uint8Array);
+      // Add timeout to embed operation
+      image = await Promise.race([
+        pdfDoc.embedPng(uint8Array),
+        new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error('PNG embed timed out after 2 seconds')), 2000)
+        )
+      ]);
     } else if (logoPath.toLowerCase().endsWith('.jpg') || logoPath.toLowerCase().endsWith('.jpeg')) {
-      image = await pdfDoc.embedJpg(uint8Array);
+      // Add timeout to embed operation
+      image = await Promise.race([
+        pdfDoc.embedJpg(uint8Array),
+        new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error('JPG embed timed out after 2 seconds')), 2000)
+        )
+      ]);
     } else {
-      console.warn('Unsupported logo format:', logoPath);
+      console.warn('[PDF Logo] Unsupported logo format:', logoPath);
       return null;
     }
 
     const dims = image.scale(1);
     return { image, width: dims.width, height: dims.height };
   } catch (error) {
-    console.error('Error embedding logo:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[PDF Logo] Error embedding logo:', errorMsg);
     return null;
   }
 }

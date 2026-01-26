@@ -9,16 +9,37 @@ import {
 } from './pdfUtils';
 import { getEziRiskLogoBytes } from './eziRiskLogo';
 
+/**
+ * Wraps a promise with a timeout
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    )
+  ]);
+}
+
 async function getEmbeddedEziRiskLogo(pdfDoc: PDFDocument): Promise<{ image: any; width: number; height: number } | null> {
   try {
     console.log('[PDF Logo] Loading embedded EziRisk logo');
     const logoBytes = getEziRiskLogoBytes();
-    const image = await pdfDoc.embedPng(logoBytes);
+
+    // Add 2-second timeout to prevent hanging
+    const image = await withTimeout(
+      pdfDoc.embedPng(logoBytes),
+      2000,
+      'EziRisk logo embedding timed out'
+    );
+
     const dims = image.scale(1);
     console.log('[PDF Logo] Successfully embedded EziRisk logo:', dims.width, 'x', dims.height);
     return { image, width: dims.width, height: dims.height };
   } catch (error) {
-    console.error('[PDF Logo] Error embedding EziRisk logo:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[PDF Logo] Error embedding EziRisk logo:', errorMsg);
+    console.log('[PDF Logo] Will use text fallback');
     return null;
   }
 }
@@ -59,40 +80,64 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
 
   let logoData: { image: any; width: number; height: number } | null = null;
 
+  // Try to load organization logo with timeout
   if (organisation.branding_logo_path) {
     try {
       console.log('[PDF Logo] Attempting to load org logo:', organisation.branding_logo_path);
-      const { data, error } = await supabase.storage
-        .from('org-assets')
-        .createSignedUrl(organisation.branding_logo_path, 3600);
 
-      if (error) {
-        console.warn('[PDF Logo] Failed to create signed URL for org logo:', error);
-      } else if (data?.signedUrl) {
-        console.log('[PDF Logo] Got signed URL, fetching and embedding...');
-        logoData = await fetchAndEmbedLogo(
-          pdfDoc,
-          organisation.branding_logo_path,
-          data.signedUrl
-        );
-        if (logoData) {
-          console.log('[PDF Logo] Successfully loaded org logo');
-        } else {
-          console.warn('[PDF Logo] Org logo failed to embed');
-        }
-      }
+      // Wrap entire org logo loading in timeout
+      logoData = await withTimeout(
+        (async () => {
+          const { data, error } = await supabase.storage
+            .from('org-assets')
+            .createSignedUrl(organisation.branding_logo_path!, 3600);
+
+          if (error) {
+            console.warn('[PDF Logo] Failed to create signed URL for org logo:', error);
+            return null;
+          }
+
+          if (!data?.signedUrl) {
+            console.warn('[PDF Logo] No signed URL returned');
+            return null;
+          }
+
+          console.log('[PDF Logo] Got signed URL, fetching and embedding...');
+          const result = await fetchAndEmbedLogo(
+            pdfDoc,
+            organisation.branding_logo_path!,
+            data.signedUrl
+          );
+
+          if (result) {
+            console.log('[PDF Logo] Successfully loaded org logo');
+          } else {
+            console.warn('[PDF Logo] Org logo failed to embed');
+          }
+
+          return result;
+        })(),
+        5000, // 5-second timeout for org logo (includes fetch + embed)
+        'Organization logo loading timed out'
+      );
     } catch (error) {
-      console.warn('[PDF Logo] Exception loading org logo, will try fallback:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.warn('[PDF Logo] Exception loading org logo:', errorMsg);
+      logoData = null;
     }
   }
 
+  // Fallback to embedded EziRisk logo
   if (!logoData) {
     console.log('[PDF Logo] No org logo available, using embedded EziRisk logo');
     logoData = await getEmbeddedEziRiskLogo(pdfDoc);
   }
 
+  // Final fallback message
   if (!logoData) {
-    console.log('[PDF Logo] Embedded logo failed, will use text fallback "EziRisk"');
+    console.log('[PDF Logo] All logo loading failed, using text fallback "EziRisk"');
+  } else {
+    console.log('[PDF Logo] Logo ready for use');
   }
 
   console.log('[PDF Issued Pages] Creating cover page');

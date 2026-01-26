@@ -273,11 +273,11 @@ export async function createNewVersion(
 
     if (draftError) throw draftError;
 
-    if (existingDraft) {
+    if (existingDraft?.id) {
       return {
         success: true,
         newDocumentId: existingDraft.id,
-        newVersionNumber: currentIssued.version_number + 1,
+        newVersionNumber: existingDraft.version_number ?? (currentIssued.version_number + 1),
       };
     }
 

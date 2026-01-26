@@ -29,57 +29,70 @@ export default function IssueSurveyModal({
   const canIssue = blockers.length === 0 && confirmChecked;
   const groupedBlockers = groupBlockersByModule(blockers);
 
-  const handleIssue = async () => {
-    if (!canIssue) return;
+const handleIssue = async () => {
+  if (!canIssue) return;
 
-    setIsIssuing(true);
-    setError(null);
+  setIsIssuing(true);
+  setError(null);
 
-    try {
-      // First, update the confirmed flag if not already set
-      if (!isConfirmed) {
-        const { error: updateError } = await supabase
-          .from('survey_reports')
-          .update({ issued_confirmed: true })
-          .eq('id', surveyId);
+  try {
+    // Update confirmed flag
+    if (!isConfirmed) {
+      const { error: updateError } = await supabase
+        .from("survey_reports")
+        .update({ issued_confirmed: true })
+        .eq("id", surveyId);
 
-        if (updateError) throw updateError;
-      }
-
-      // Call the issue-survey edge function
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No active session');
-      }
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/issue-survey`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          survey_id: surveyId,
-          change_log: changeLog || 'Initial issue',
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to issue survey');
-      }
-
-      // Success!
-      onSuccess();
-    } catch (err: any) {
-      console.error('Error issuing survey:', err);
-      setError(err.message || 'Failed to issue survey');
-    } finally {
-      setIsIssuing(false);
+      if (updateError) throw updateError;
     }
-  };
+
+    // Session
+    const { data, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    const session = data?.session;
+    if (!session) throw new Error("No active session");
+
+    // Call edge function
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const resp = await fetch(`${supabaseUrl}/functions/v1/issue-survey`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        survey_id: surveyId,
+        change_log: changeLog || "Initial issue",
+      }),
+    });
+
+    // Robust body handling (prevents json() hangs / throws leaving spinner on)
+    const raw = await resp.text();
+    let result: any = null;
+    try {
+      result = raw ? JSON.parse(raw) : null;
+    } catch {
+      // non-json response (e.g. html error page)
+      result = { error: raw || "Non-JSON response from issue-survey" };
+    }
+
+    if (!resp.ok) {
+      throw new Error(result?.error || `Failed to issue survey (${resp.status})`);
+    }
+
+    // SUCCESS: do something deterministic
+    // e.g. refresh the report, close modal, show toast, navigate
+    // await refetchSurvey();
+    // setIsOpen(false);
+    // toast.success("Survey issued");
+
+  } catch (err: any) {
+    console.error("[Issue] failed", err);
+    setError(err?.message || "Failed to issue survey");
+  } finally {
+    setIsIssuing(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

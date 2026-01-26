@@ -28,8 +28,8 @@ export default function CreateNewVersionModal({
     setIsCreating(true);
     try {
       const result = await createNewVersion(baseDocumentId, userId, organisationId, carryForwardEvidence);
-      if (result.success && result.newDocumentId && result.newVersionNumber) {
-        onSuccess(result.newDocumentId, result.newVersionNumber);
+      if (result.success && result.newDocumentId) {
+        onSuccess(result.newDocumentId, result.newVersionNumber ?? 0);
       } else {
         alert(result.error || 'Failed to create new version');
       }

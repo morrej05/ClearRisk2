@@ -33,6 +33,11 @@ export interface ChangeSummary {
   updated_at: string;
 }
 
+/**
+ * Create the FIRST issue summary for a document.
+ * Any existing summaries for this document are deleted first
+ * to prevent duplicates.
+ */
 export async function createInitialIssueSummary(
   documentId: string,
   userId: string
@@ -54,9 +59,10 @@ export async function createInitialIssueSummary(
 
     if (actionsError) throw actionsError;
 
-    const openActions = actions?.filter(a =>
-      ['open', 'in_progress', 'deferred'].includes(a.status)
-    ) || [];
+    const openActions =
+      actions?.filter(a =>
+        ['open', 'in_progress', 'deferred'].includes(a.status)
+      ) || [];
 
     const summaryData = {
       organisation_id: document.organisation_id,
@@ -71,18 +77,25 @@ export async function createInitialIssueSummary(
         id: a.id,
         recommended_action: a.recommended_action,
         priority_band: a.priority_band,
-        status: a.status
+        status: a.status,
       })),
       closed_actions: [],
       reopened_actions: [],
       risk_rating_changes: [],
       material_field_changes: [],
       summary_text: null,
-      summary_markdown: 'Initial issue – no previous version.',
       has_material_changes: false,
       visible_to_client: true,
       generated_by: userId,
     };
+
+    // 🔥 IMPORTANT: remove any existing summaries for this document
+    const { error: deleteError } = await supabase
+      .from('document_change_summaries')
+      .delete()
+      .eq('document_id', documentId);
+
+    if (deleteError) throw deleteError;
 
     const { data: summary, error: insertError } = await supabase
       .from('document_change_summaries')
@@ -99,12 +112,22 @@ export async function createInitialIssueSummary(
   }
 }
 
+/**
+ * Generate a change summary between two issued versions
+ * (uses Postgres RPC)
+ */
 export async function generateChangeSummary(
   newDocumentId: string,
   oldDocumentId: string,
   userId: string
 ): Promise<{ success: boolean; summaryId?: string; error?: string }> {
   try {
+    // Defensive cleanup in case this gets called twice
+    await supabase
+      .from('document_change_summaries')
+      .delete()
+      .eq('document_id', newDocumentId);
+
     const { data, error } = await supabase.rpc('generate_change_summary', {
       p_new_document_id: newDocumentId,
       p_old_document_id: oldDocumentId,
@@ -120,6 +143,9 @@ export async function generateChangeSummary(
   }
 }
 
+/**
+ * Get the most recent change summary for a document
+ */
 export async function getChangeSummary(
   documentId: string
 ): Promise<ChangeSummary | null> {
@@ -140,6 +166,9 @@ export async function getChangeSummary(
   }
 }
 
+/**
+ * Get all change summaries for an organisation
+ */
 export async function getChangeSummaries(
   organisationId: string
 ): Promise<ChangeSummary[]> {
@@ -158,6 +187,9 @@ export async function getChangeSummaries(
   }
 }
 
+/**
+ * Format a change summary as markdown text
+ */
 export function formatChangeSummaryText(summary: ChangeSummary): string {
   const lines: string[] = [];
 
@@ -165,7 +197,7 @@ export function formatChangeSummaryText(summary: ChangeSummary): string {
 
   if (summary.new_actions_count > 0) {
     lines.push(`## New Actions (${summary.new_actions_count})\n`);
-    summary.new_actions.forEach((action) => {
+    summary.new_actions.forEach(action => {
       lines.push(`- [${action.priority_band}] ${action.recommended_action}`);
     });
     lines.push('');
@@ -173,14 +205,16 @@ export function formatChangeSummaryText(summary: ChangeSummary): string {
 
   if (summary.closed_actions_count > 0) {
     lines.push(`## Closed Actions (${summary.closed_actions_count})\n`);
-    summary.closed_actions.forEach((action) => {
+    summary.closed_actions.forEach(action => {
       lines.push(`- [${action.priority_band}] ${action.recommended_action}`);
     });
     lines.push('');
   }
 
   if (summary.outstanding_actions_count > 0) {
-    lines.push(`## Outstanding Actions: ${summary.outstanding_actions_count}\n`);
+    lines.push(
+      `## Outstanding Actions: ${summary.outstanding_actions_count}\n`
+    );
   }
 
   if (!summary.has_material_changes) {
@@ -192,7 +226,10 @@ export function formatChangeSummaryText(summary: ChangeSummary): string {
 
 export function getChangeSummaryStats(summary: ChangeSummary) {
   return {
-    totalChanges: summary.new_actions_count + summary.closed_actions_count + summary.reopened_actions_count,
+    totalChanges:
+      summary.new_actions_count +
+      summary.closed_actions_count +
+      summary.reopened_actions_count,
     newActions: summary.new_actions_count,
     closedActions: summary.closed_actions_count,
     outstandingActions: summary.outstanding_actions_count,
@@ -209,7 +246,10 @@ export async function updateChangeSummaryText(
   try {
     const { error } = await supabase
       .from('document_change_summaries')
-      .update({ summary_text: text, updated_at: new Date().toISOString() })
+      .update({
+        summary_text: text,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', summaryId);
 
     if (error) throw error;
@@ -227,7 +267,10 @@ export async function setChangeSummaryClientVisibility(
   try {
     const { error } = await supabase
       .from('document_change_summaries')
-      .update({ visible_to_client: visible, updated_at: new Date().toISOString() })
+      .update({
+        visible_to_client: visible,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', summaryId);
 
     if (error) throw error;

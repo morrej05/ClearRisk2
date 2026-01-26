@@ -195,7 +195,7 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
       issue_date: document.issue_date,
       issue_status: document.issue_status,
       assessor_name: document.assessor_name,
-      issued_by_name: null,
+      issued_by_name: document.assessor_name || null,
     },
     organisation,
     client || null,

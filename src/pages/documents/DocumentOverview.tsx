@@ -514,7 +514,8 @@ export default function DocumentOverview() {
         moduleInstances: moduleInstances || [],
         actions: actions || [],
         actionRatings,
-        organisation: { id: organisation.id, name: organisation.name },
+        organisation: { id: organisation.id, name: organisation.name, branding_logo_path: organisation.branding_logo_path },
+        renderMode: (document.issue_status === 'issued' || document.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
       };
 
       let pdfBytes;

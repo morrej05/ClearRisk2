@@ -24,7 +24,9 @@ import {
   drawFooter,
   addSupersededWatermark,
   addExecutiveSummaryPages,
+  drawRecommendationsSection,
 } from './pdfUtils';
+import { addIssuedReportPages } from './issuedPdfPages';
 
 interface Document {
   id: string;
@@ -137,15 +139,44 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   const isDraft = document.status !== 'issued';
+  const isIssuedMode = renderMode === 'issued' && !isDraft;
   const totalPages: PDFPage[] = [];
 
-  let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  totalPages.push(page);
-  let yPosition = PAGE_HEIGHT - MARGIN;
+  let page: PDFPage;
+  let yPosition: number;
 
-  // Status is shown prominently on cover page - no need for watermark
+  if (isIssuedMode) {
+    const { coverPage, docControlPage } = await addIssuedReportPages({
+      pdfDoc,
+      document: {
+        id: document.id,
+        title: document.title,
+        document_type: 'FRA',
+        version_number: (document as any).version_number || document.version || 1,
+        issue_date: (document as any).issue_date || new Date().toISOString(),
+        issue_status: (document as any).issue_status || 'issued',
+        assessor_name: document.assessor_name,
+        base_document_id: (document as any).base_document_id,
+      },
+      organisation: {
+        id: organisation.id,
+        name: organisation.name,
+        branding_logo_path: (organisation as any).branding_logo_path,
+      },
+      client: {
+        name: document.responsible_person,
+        site: document.scope_description,
+      },
+      fonts: { bold: fontBold, regular: font },
+    });
+    totalPages.push(coverPage, docControlPage);
+  } else {
+    page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    totalPages.push(page);
+    yPosition = PAGE_HEIGHT - MARGIN;
 
-  yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition, renderMode);
+    yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition, renderMode);
+  }
 
   addExecutiveSummaryPages(
     pdfDoc,
@@ -203,16 +234,37 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     yPosition = drawModuleSummary(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
-  // Add Likelihood & Consequence scale explanation before Action Register
-  const resultLI = addNewPage(pdfDoc, isDraft, totalPages);
-  page = resultLI.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawLikelihoodConsequenceExplanation(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  if (isIssuedMode && actions.length > 0) {
+    const actionsForPdf = actions.map((action: any) => ({
+      id: action.id,
+      reference_number: action.reference_number || null,
+      recommended_action: action.recommended_action,
+      priority_band: action.priority_band,
+      status: action.status,
+      first_raised_in_version: action.first_raised_in_version || null,
+      closed_at: action.closed_at || null,
+      superseded_by_action_id: action.superseded_by_action_id || null,
+      superseded_at: action.superseded_at || null,
+    }));
 
-  const result1 = addNewPage(pdfDoc, isDraft, totalPages);
-  page = result1.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
-  yPosition = drawActionRegister(page, actions, actionRatings, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    drawRecommendationsSection(
+      pdfDoc,
+      actionsForPdf,
+      { bold: fontBold, regular: font },
+      isDraft,
+      totalPages
+    );
+  } else {
+    const resultLI = addNewPage(pdfDoc, isDraft, totalPages);
+    page = resultLI.page;
+    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = drawLikelihoodConsequenceExplanation(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+    const result1 = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result1.page;
+    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = drawActionRegister(page, actions, actionRatings, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
 
   if (attachments.length > 0) {
     const result1b = addNewPage(pdfDoc, isDraft, totalPages);
@@ -226,7 +278,6 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   yPosition = PAGE_HEIGHT - MARGIN;
   yPosition = drawAssumptionsAndLimitations(page, document, fra4Module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
-  // Add page numbers and footers to all pages except cover
   const today = new Date().toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
@@ -234,11 +285,12 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   });
   const footerText = `FRA Report — ${document.title} — v${document.version} — Generated ${today}`;
 
-  for (let i = 1; i < totalPages.length; i++) {
+  const startPageForFooters = isIssuedMode ? 2 : 1;
+  for (let i = startPageForFooters; i < totalPages.length; i++) {
     drawFooter(totalPages[i], footerText, i, totalPages.length - 1, font);
   }
 
-  if (document.issue_status === 'superseded') {
+  if ((document as any).issue_status === 'superseded') {
     await addSupersededWatermark(pdfDoc);
   }
 

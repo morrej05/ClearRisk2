@@ -10,7 +10,7 @@ import {
 
 async function fetchEziRiskFallbackLogo(pdfDoc: PDFDocument): Promise<{ image: any; width: number; height: number } | null> {
   try {
-    const response = await fetch('/ezirisk-logo-primary.png.png');
+    const response = await fetch('/ezirisk-logo-primary.png');
     if (!response.ok) {
       console.warn('Failed to fetch EziRisk fallback logo');
       return null;

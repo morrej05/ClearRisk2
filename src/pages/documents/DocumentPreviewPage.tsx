@@ -194,7 +194,8 @@ export default function DocumentPreviewPage() {
           moduleInstances: moduleInstances || [],
           actions: enrichedActions,
           actionRatings,
-          organisation: { id: organisation.id, name: organisation.name },
+          organisation: { id: organisation.id, name: organisation.name, branding_logo_path: (organisation as any).branding_logo_path },
+          renderMode: (doc.issue_status === 'issued' || doc.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
         };
 
         let pdfBytes: Uint8Array;
@@ -316,7 +317,8 @@ export default function DocumentPreviewPage() {
           moduleInstances: moduleInstances || [],
           actions: enrichedActions,
           actionRatings,
-          organisation: { id: organisation.id, name: organisation.name },
+          organisation: { id: organisation.id, name: organisation.name, branding_logo_path: (organisation as any).branding_logo_path },
+          renderMode: (document.issue_status === 'issued' || document.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
         };
 
         let pdfBytes: Uint8Array;

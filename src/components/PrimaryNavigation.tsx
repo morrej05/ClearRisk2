@@ -42,7 +42,7 @@ export default function PrimaryNavigation() {
             >
               {!logoError ? (
                 <img
-                  src="/ezirisk-logo-primary.png.png"
+                  src="/ezirisk-logo-primary.png"
                   alt="EziRisk"
                   className="h-8"
                   onError={() => setLogoError(true)}

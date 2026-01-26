@@ -135,7 +135,8 @@ export default function ClientDocumentView() {
         moduleInstances: modules || [],
         actions: actions || [],
         actionRatings: {},
-        organisation: org,
+        organisation: { ...org, branding_logo_path: org.branding_logo_path },
+        renderMode: 'issued' as const,
       };
 
       if (document.document_type === 'FRA') {

@@ -274,7 +274,11 @@ export async function createNewVersion(
     if (draftError) throw draftError;
 
     if (existingDraft) {
-      return { success: false, error: 'A draft version already exists for this document' };
+      return {
+        success: true,
+        newDocumentId: existingDraft.id,
+        newVersionNumber: currentIssued.version_number + 1,
+      };
     }
 
     const newVersionNumber = currentIssued.version_number + 1;

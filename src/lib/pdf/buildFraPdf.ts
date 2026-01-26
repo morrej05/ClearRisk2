@@ -138,8 +138,8 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const isDraft = document.status !== 'issued';
-  const isIssuedMode = renderMode === 'issued' && !isDraft;
+  const isIssuedMode = renderMode === 'issued';
+  const isDraft = !isIssuedMode;
   const totalPages: PDFPage[] = [];
 
   let page: PDFPage;

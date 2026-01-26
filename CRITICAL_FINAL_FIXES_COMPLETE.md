@@ -47,8 +47,6 @@ This module provides:
 
 #### Updated: `src/lib/pdf/issuedPdfPages.ts`
 ```typescript
-import { getEziRiskLogoBytes } from './eziRiskLogo';
-
 async function getEmbeddedEziRiskLogo(pdfDoc: PDFDocument) {
   try {
     console.log('[PDF Logo] Loading embedded EziRisk logo');

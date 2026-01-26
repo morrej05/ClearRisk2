@@ -3,10 +3,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { LogOut } from 'lucide-react';
 import { isFeatureEnabled } from '../utils/featureFlags';
 import { canAccessAdmin, canAccessPlatformSettings } from '../utils/entitlements';
+import { useState } from 'react';
 
 export default function PrimaryNavigation() {
   const location = useLocation();
   const { signOut, user } = useAuth();
+  const [logoError, setLogoError] = useState(false);
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -34,7 +36,21 @@ export default function PrimaryNavigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
-            <div className="text-xl font-bold text-slate-900">EZIRisk</div>
+            <Link
+              to="/dashboard"
+              className="flex items-center transition-opacity hover:opacity-80"
+            >
+              {!logoError ? (
+                <img
+                  src="/ezirisk-logo-primary.png.png"
+                  alt="EziRisk"
+                  className="h-8"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <div className="text-xl font-bold text-slate-900">EziRisk</div>
+              )}
+            </Link>
 
             {import.meta.env.DEV && user ? (
               <div className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-700">

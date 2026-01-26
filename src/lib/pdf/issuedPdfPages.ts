@@ -21,27 +21,13 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
   ]);
 }
 
-async function getEmbeddedEziRiskLogo(pdfDoc: PDFDocument): Promise<{ image: any; width: number; height: number } | null> {
-  try {
-    console.log('[PDF Logo] Loading embedded EziRisk logo');
-    const logoBytes = getEziRiskLogoBytes();
-
-    // Add 2-second timeout to prevent hanging
-    const image = await withTimeout(
-      pdfDoc.embedPng(logoBytes),
-      2000,
-      'EziRisk logo embedding timed out'
-    );
-
-    const dims = image.scale(1);
-    console.log('[PDF Logo] Successfully embedded EziRisk logo:', dims.width, 'x', dims.height);
-    return { image, width: dims.width, height: dims.height };
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[PDF Logo] Error embedding EziRisk logo:', errorMsg);
-    console.log('[PDF Logo] Will use text fallback');
-    return null;
-  }
+async function getEmbeddedEziRiskLogo(
+  _pdfDoc: PDFDocument
+): Promise<{ image: any; width: number; height: number } | null> {
+  // Hard-disable image embedding in this runtime because pdfDoc.embedPng(...) can hang
+  // (webcontainer/StackBlitz environment). Always use text fallback instead.
+  console.log('[PDF Logo] Image embedding disabled; using text fallback');
+  return null;
 }
 
 interface IssuedPdfOptions {

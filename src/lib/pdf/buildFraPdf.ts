@@ -293,7 +293,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     month: 'short',
     year: 'numeric',
   });
-  const footerText = `FRA Report — ${document.title} — v${document.version} — Generated ${today}`;
+  const footerText = `FRA Report — ${document.title} —     v${document.version_number}.0 — Generated ${today}`;
 
   console.log('[PDF FRA] Drawing footers for', totalPages.length, 'pages');
   const startPageForFooters = isIssuedMode ? 2 : 1;

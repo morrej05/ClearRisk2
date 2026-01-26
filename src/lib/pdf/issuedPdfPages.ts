@@ -3,7 +3,6 @@ import { supabase } from '../supabase';
 import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
-  fetchAndEmbedLogo,
   drawCoverPage,
   drawDocumentControlPage,
 } from './pdfUtils';

@@ -232,6 +232,8 @@ export async function createNewVersion(
       `)
       .eq('base_document_id', baseDocumentId)
       .eq('issue_status', 'issued')
+      .order('version_number', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (currentError) throw currentError;

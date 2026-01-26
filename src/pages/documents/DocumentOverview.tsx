@@ -454,30 +454,32 @@ export default function DocumentOverview() {
 
     setIsGeneratingPdf(true);
     try {
+      console.log('[PDF Download] Document status:', document.issue_status);
       const pdfInfo = await getLockedPdfInfo(id);
 
-      if (document.issue_status !== 'draft') {
-        if (pdfInfo?.locked_pdf_path) {
-          const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
+      // If document has a pre-generated locked PDF, download it directly
+      if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
+        console.log('[PDF Download] Found locked PDF, downloading:', pdfInfo.locked_pdf_path);
+        const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
 
-          if (downloadResult.success && downloadResult.data) {
-            const siteName = document.title
-              .replace(/[^a-z0-9]/gi, '_')
-              .replace(/_+/g, '_')
-              .toLowerCase();
-            const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
-            const docType = document.document_type || 'FRA';
-            const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
+        if (downloadResult.success && downloadResult.data) {
+          const siteName = document.title
+            .replace(/[^a-z0-9]/gi, '_')
+            .replace(/_+/g, '_')
+            .toLowerCase();
+          const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
+          const docType = document.document_type || 'FRA';
+          const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
 
-            saveAs(downloadResult.data, filename);
-            setIsGeneratingPdf(false);
-            return;
-          } else {
-            throw new Error(`Failed to download locked PDF: ${downloadResult.error || 'Unknown error'}.`);
-          }
+          console.log('[PDF Download] Locked PDF downloaded successfully');
+          saveAs(downloadResult.data, filename);
+          setIsGeneratingPdf(false);
+          return;
         } else {
-          throw new Error('This document has been issued but does not have a locked PDF.');
+          console.warn('[PDF Download] Failed to download locked PDF, will generate on-demand:', downloadResult.error);
         }
+      } else if (document.issue_status !== 'draft') {
+        console.log('[PDF Download] No locked PDF found for issued document, generating on-demand');
       }
 
       const { data: moduleInstances, error: moduleError } = await supabase
@@ -566,6 +568,7 @@ export default function DocumentOverview() {
         }
 
         console.log('[PDF Download] PDF generation complete, size:', pdfBytes.length, 'bytes');
+        console.log('[PDF Download] Generated for', document.issue_status === 'issued' ? 'ISSUED' : 'DRAFT', 'document');
 
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const siteName = document.title
@@ -578,7 +581,7 @@ export default function DocumentOverview() {
 
         console.log('[PDF Download] Downloading file:', filename);
         saveAs(blob, filename);
-        console.log('[PDF Download] Download initiated successfully');
+        console.log('[PDF Download] Download complete');
       } catch (pdfError) {
         if (isTimeoutError(pdfError)) {
           console.error('[PDF Download] PDF generation timed out');

@@ -7,7 +7,6 @@ import {
   drawCoverPage,
   drawDocumentControlPage,
 } from './pdfUtils';
-import { getEziRiskLogoBytes } from './eziRiskLogo';
 const ENABLE_PDF_IMAGE_LOGOS = false; // TEMP: disable image embedding (webcontainer fix)
 
 /**

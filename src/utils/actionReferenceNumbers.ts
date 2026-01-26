@@ -5,6 +5,15 @@ export async function assignActionReferenceNumbers(
   baseDocumentId: string
 ): Promise<void> {
   try {
+    if (typeof documentId !== 'string' || !documentId) {
+      throw new Error(`Invalid documentId: expected string UUID, got ${typeof documentId}: ${documentId}`);
+    }
+    if (typeof baseDocumentId !== 'string' || !baseDocumentId) {
+      throw new Error(`Invalid baseDocumentId: expected string UUID, got ${typeof baseDocumentId}: ${baseDocumentId}`);
+    }
+
+    console.log('[Action Ref] Assigning reference numbers for document:', documentId);
+
     const { data: actions, error: actionsError } = await supabase
       .from('actions')
       .select('id, reference_number, status')
@@ -12,21 +21,42 @@ export async function assignActionReferenceNumbers(
       .order('created_at', { ascending: true });
 
     if (actionsError) throw actionsError;
-    if (!actions || actions.length === 0) return;
+    if (!actions || actions.length === 0) {
+      console.log('[Action Ref] No actions found for document');
+      return;
+    }
 
-    const { data: existingRefs, error: refsError } = await supabase
-      .from('actions')
-      .select('reference_number')
-      .not('reference_number', 'is', null)
-      .in('document_id', [
-        await supabase
-          .from('documents')
-          .select('id')
-          .eq('base_document_id', baseDocumentId)
-      ]);
+    console.log('[Action Ref] Found', actions.length, 'actions');
+
+    const { data: relatedDocs, error: docsError } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('base_document_id', baseDocumentId);
+
+    if (docsError) {
+      console.warn('[Action Ref] Failed to fetch related documents:', docsError);
+    }
+
+    const documentIds = relatedDocs?.map(doc => doc.id).filter(id => typeof id === 'string') || [];
+    console.log('[Action Ref] Found', documentIds.length, 'related documents in series');
+
+    let existingRefs = [];
+    if (documentIds.length > 0) {
+      const { data: refs, error: refsError } = await supabase
+        .from('actions')
+        .select('reference_number')
+        .not('reference_number', 'is', null)
+        .in('document_id', documentIds);
+
+      if (refsError) {
+        console.warn('[Action Ref] Failed to fetch existing reference numbers:', refsError);
+      } else {
+        existingRefs = refs || [];
+      }
+    }
 
     let maxNumber = 0;
-    if (existingRefs) {
+    if (existingRefs.length > 0) {
       for (const ref of existingRefs) {
         const match = ref.reference_number?.match(/R-(\d+)/);
         if (match) {
@@ -36,6 +66,7 @@ export async function assignActionReferenceNumbers(
       }
     }
 
+    console.log('[Action Ref] Max existing reference number:', maxNumber);
     let nextNumber = maxNumber + 1;
 
     for (const action of actions) {
@@ -48,14 +79,17 @@ export async function assignActionReferenceNumbers(
           .eq('id', action.id);
 
         if (updateError) {
-          console.error('Failed to assign reference number:', updateError);
+          console.error('[Action Ref] Failed to assign reference number:', updateError);
         } else {
+          console.log('[Action Ref] Assigned', refNumber, 'to action', action.id);
           nextNumber++;
         }
       }
     }
+
+    console.log('[Action Ref] Reference number assignment complete');
   } catch (error) {
-    console.error('Error assigning action reference numbers:', error);
+    console.error('[Action Ref] Error assigning action reference numbers:', error);
     throw error;
   }
 }

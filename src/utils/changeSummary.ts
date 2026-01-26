@@ -128,6 +128,8 @@ export async function getChangeSummary(
       .from('document_change_summaries')
       .select('*')
       .eq('document_id', documentId)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) throw error;

@@ -8,6 +8,25 @@ import {
   drawDocumentControlPage,
 } from './pdfUtils';
 
+async function fetchEziRiskFallbackLogo(pdfDoc: PDFDocument): Promise<{ image: any; width: number; height: number } | null> {
+  try {
+    const response = await fetch('/ezirisk-logo-primary.png.png');
+    if (!response.ok) {
+      console.warn('Failed to fetch EziRisk fallback logo');
+      return null;
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    const image = await pdfDoc.embedPng(uint8Array);
+    const dims = image.scale(1);
+    return { image, width: dims.width, height: dims.height };
+  } catch (error) {
+    console.error('Error loading EziRisk fallback logo:', error);
+    return null;
+  }
+}
+
 interface IssuedPdfOptions {
   pdfDoc: PDFDocument;
   document: {
@@ -42,7 +61,6 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
   const { pdfDoc, document, organisation, client, fonts } = options;
 
   let logoData: { image: any; width: number; height: number } | null = null;
-  let logoSignedUrl: string | null = null;
 
   if (organisation.branding_logo_path) {
     try {
@@ -51,16 +69,20 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
         .createSignedUrl(organisation.branding_logo_path, 3600);
 
       if (!error && data?.signedUrl) {
-        logoSignedUrl = data.signedUrl;
         logoData = await fetchAndEmbedLogo(
           pdfDoc,
           organisation.branding_logo_path,
-          logoSignedUrl
+          data.signedUrl
         );
       }
     } catch (error) {
-      console.warn('[Issued PDF] Failed to load logo, falling back to default:', error);
+      console.warn('[Issued PDF] Failed to load org logo, will try fallback:', error);
     }
+  }
+
+  if (!logoData) {
+    console.log('[Issued PDF] Using EziRisk fallback logo');
+    logoData = await fetchEziRiskFallbackLogo(pdfDoc);
   }
 
   const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);

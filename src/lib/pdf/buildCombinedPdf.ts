@@ -25,7 +25,9 @@ import {
   drawFooter,
   addSupersededWatermark,
   addExecutiveSummaryPages,
+  drawRecommendationsSection,
 } from './pdfUtils';
+import { addIssuedReportPages } from './issuedPdfPages';
 
 interface Document {
   id: string;
@@ -141,18 +143,48 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   const isDraft = document.status !== 'issued';
+  const isIssuedMode = renderMode === 'issued' && !isDraft;
   const totalPages: PDFPage[] = [];
 
-  // Cover Page
-  let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  totalPages.push(page);
-  let yPosition = PAGE_HEIGHT - MARGIN;
+  let page: PDFPage;
+  let yPosition: number;
 
-  if (isDraft) {
-    drawDraftWatermark(page);
+  if (isIssuedMode) {
+    const { coverPage, docControlPage } = await addIssuedReportPages({
+      pdfDoc,
+      document: {
+        id: document.id,
+        title: document.title,
+        document_type: 'combined',
+        version_number: document.version_number || document.version || 1,
+        issue_date: document.issue_date || new Date().toISOString(),
+        issue_status: document.issue_status || 'issued',
+        assessor_name: document.assessor_name,
+        base_document_id: document.base_document_id,
+      },
+      organisation: {
+        id: organisation.id,
+        name: organisation.name,
+        branding_logo_path: organisation.branding_logo_path,
+      },
+      client: {
+        name: document.responsible_person,
+        site: document.scope_description,
+      },
+      fonts: { bold: fontBold, regular: font },
+    });
+    totalPages.push(coverPage, docControlPage);
+  } else {
+    page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    totalPages.push(page);
+    yPosition = PAGE_HEIGHT - MARGIN;
+
+    if (isDraft) {
+      drawDraftWatermark(page);
+    }
+
+    yPosition = drawCombinedCoverPage(page, document, organisation, font, fontBold, yPosition, renderMode);
   }
-
-  yPosition = drawCombinedCoverPage(page, document, organisation, font, fontBold, yPosition, renderMode);
 
   // Executive Summary
   addExecutiveSummaryPages(
@@ -280,7 +312,28 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   yPosition = PAGE_HEIGHT - MARGIN;
   yPosition = drawTextSection(page, 'Fire Strategy Limitations', fsdLimitationsText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
-  // Add page numbers and footers
+  if (isIssuedMode && actions.length > 0) {
+    const actionsForPdf = actions.map((action: any) => ({
+      id: action.id,
+      reference_number: action.reference_number || null,
+      recommended_action: action.recommended_action,
+      priority_band: action.priority_band,
+      status: action.status,
+      first_raised_in_version: action.first_raised_in_version || null,
+      closed_at: action.closed_at || null,
+      superseded_by_action_id: action.superseded_by_action_id || null,
+      superseded_at: action.superseded_at || null,
+    }));
+
+    drawRecommendationsSection(
+      pdfDoc,
+      actionsForPdf,
+      { bold: fontBold, regular: font },
+      isDraft,
+      totalPages
+    );
+  }
+
   const today = new Date().toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
@@ -288,14 +341,13 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   });
   const footerText = `Combined FRA + FSD Report — ${document.title} — v${document.version} — Generated ${today}`;
 
-  for (let i = 1; i < totalPages.length; i++) {
+  const startPageForFooters = isIssuedMode ? 2 : 1;
+  for (let i = startPageForFooters; i < totalPages.length; i++) {
     drawFooter(totalPages[i], footerText, i, totalPages.length - 1, font);
   }
 
   if (document.status === 'superseded') {
-    for (const p of totalPages) {
-      addSupersededWatermark(p);
-    }
+    await addSupersededWatermark(pdfDoc);
   }
 
   return await pdfDoc.save();

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, AlertTriangle, CheckCircle, FileCheck, Shield, ArrowRight } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle, FileCheck, Shield, ArrowRight, Lock } from 'lucide-react';
 import { issueDocument, validateDocumentForIssue } from '../../utils/documentVersioning';
 import { generateAndLockPdf } from '../../utils/pdfLocking';
+import { assignActionReferenceNumbers } from '../../utils/actionReferenceNumbers';
 import { supabase } from '../../lib/supabase';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
@@ -36,6 +37,8 @@ export default function IssueDocumentModal({
   const [missingRequiredModules, setMissingRequiredModules] = useState<string[]>([]);
   const [validated, setValidated] = useState(false);
   const [issueProgress, setIssueProgress] = useState<string>('');
+  const [documentVersion, setDocumentVersion] = useState<number>(1);
+  const [baseDocumentId, setBaseDocumentId] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -55,6 +58,17 @@ export default function IssueDocumentModal({
   const handleValidate = async () => {
     setIsValidating(true);
     try {
+      const { data: doc } = await supabase
+        .from('documents')
+        .select('version_number, base_document_id')
+        .eq('id', documentId)
+        .single();
+
+      if (doc) {
+        setDocumentVersion(doc.version_number);
+        setBaseDocumentId(doc.base_document_id || documentId);
+      }
+
       const result = await validateDocumentForIssue(documentId, organisationId);
 
       if (result.valid) {
@@ -116,6 +130,15 @@ export default function IssueDocumentModal({
         .single();
 
       if (docError) throw docError;
+
+      setIssueProgress('Assigning recommendation reference numbers...');
+
+      const actualBaseDocumentId = document.base_document_id || document.id;
+      try {
+        await assignActionReferenceNumbers(documentId, actualBaseDocumentId);
+      } catch (refError) {
+        console.warn('Failed to assign reference numbers (non-fatal):', refError);
+      }
 
       setIssueProgress('Loading modules and actions...');
 
@@ -249,10 +272,17 @@ export default function IssueDocumentModal({
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-6">
             <h3 className="font-semibold text-neutral-900 mb-2">{documentTitle}</h3>
-            <p className="text-sm text-neutral-600">
-              Issuing this document will lock it from further editing and make it available
-              for download. This action will set the issue date to today.
+            <p className="text-sm text-neutral-600 mb-4">
+              You are about to issue <strong>Version {documentVersion}.0</strong> of this document.
             </p>
+            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <Lock className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-900">
+                <strong className="font-semibold">Once issued, this version cannot be edited.</strong>
+                <br />
+                Any changes will require creating a new version.
+              </div>
+            </div>
           </div>
 
           {!validated ? (

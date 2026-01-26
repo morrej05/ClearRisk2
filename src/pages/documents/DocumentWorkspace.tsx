@@ -5,12 +5,13 @@ import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck } from '
 import { supabase } from '../../lib/supabase';
 import { getModuleName, sortModulesByOrder } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
-import IssueDocumentModal from '../../components/IssueDocumentModal';
+import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
 import EditLockBanner from '../../components/EditLockBanner';
 import { isEditableStatus } from '../../utils/lifecycleGuards';
 import ExecutiveSummaryPanel from '../../components/documents/ExecutiveSummaryPanel';
 import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
 import { JurisdictionSelector } from '../../components/JurisdictionSelector';
+import DocumentStatusBadge from '../../components/documents/DocumentStatusBadge';
 
 interface Document {
   id: string;
@@ -342,11 +343,14 @@ export default function DocumentWorkspace() {
             <div className="h-6 w-px bg-neutral-300" />
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-neutral-600" />
-              <div>
-                <h1 className="text-lg font-bold text-neutral-900">{document.title}</h1>
-                <p className="text-xs text-neutral-500">
-                  {getDocumentTypeLabel(document)} • v{document.version}
-                </p>
+              <div className="flex items-center gap-3">
+                <div>
+                  <h1 className="text-lg font-bold text-neutral-900">{document.title}</h1>
+                  <p className="text-xs text-neutral-500">
+                    {getDocumentTypeLabel(document)} • v{document.version}
+                  </p>
+                </div>
+                <DocumentStatusBadge status={document.issue_status} />
               </div>
             </div>
           </div>
@@ -472,12 +476,19 @@ export default function DocumentWorkspace() {
         </div>
       </div>
 
-      <IssueDocumentModal
-        isOpen={showIssueModal}
-        onClose={() => setShowIssueModal(false)}
-        onConfirm={handleIssueDocument}
-        isProcessing={isIssuing}
-      />
+      {showIssueModal && document && user && organisation && (
+        <IssueDocumentModal
+          documentId={document.id}
+          documentTitle={document.title}
+          userId={user.id}
+          organisationId={organisation.id}
+          onClose={() => setShowIssueModal(false)}
+          onSuccess={() => {
+            fetchDocument();
+            fetchModules();
+          }}
+        />
+      )}
     </div>
   );
 }

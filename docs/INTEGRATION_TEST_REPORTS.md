@@ -439,6 +439,38 @@ Before marking integration complete, verify:
 
 ---
 
+## Test Suite 7: Web Application Branding
+
+### Test 7.1: Header Logo Visibility
+
+**Purpose:** Verify that the EziRisk logo is visible in the web application header on all authenticated pages.
+
+**Steps:**
+1. Sign in to the application
+2. Navigate to Dashboard
+3. **Expected:** EziRisk logo visible in top-left corner of header
+4. Click on the logo
+5. **Expected:** Navigates to dashboard
+6. Navigate to Assessments page
+7. **Expected:** Logo still visible in header
+8. Navigate to a document/survey page
+9. **Expected:** Logo still visible in header
+
+**Pass Criteria:**
+- Logo is visible on all authenticated pages (Dashboard, Assessments, Reports, Library, Admin, Document pages)
+- Logo is appropriately sized (~32px height)
+- Logo is clickable and navigates to dashboard
+- If SVG fails to load, fallback shield icon + "EziRisk" text is displayed
+- Branding is consistent across all pages
+
+**Verification:**
+- Logo should appear as either:
+  - SVG graphic with shield icon and "EziRisk" text, OR
+  - Fallback: Blue gradient shield icon + "EziRisk" text
+- Never blank or broken image icon
+
+---
+
 ## Reporting Issues
 
 When reporting test failures, include:

@@ -7,29 +7,18 @@ import {
   drawCoverPage,
   drawDocumentControlPage,
 } from './pdfUtils';
+import { getEziRiskLogoBytes } from './eziRiskLogo';
 
-async function fetchEziRiskFallbackLogo(pdfDoc: PDFDocument): Promise<{ image: any; width: number; height: number } | null> {
+async function getEmbeddedEziRiskLogo(pdfDoc: PDFDocument): Promise<{ image: any; width: number; height: number } | null> {
   try {
-    const response = await fetch('/ezirisk-logo-primary.png');
-    if (!response.ok) {
-      console.warn('[PDF Logo] Failed to fetch EziRisk logo from /ezirisk-logo-primary.png:', response.status);
-      return null;
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-
-    if (uint8Array.byteLength < 100) {
-      console.warn('[PDF Logo] Logo file too small (likely missing):', uint8Array.byteLength, 'bytes');
-      return null;
-    }
-
-    const image = await pdfDoc.embedPng(uint8Array);
+    console.log('[PDF Logo] Loading embedded EziRisk logo');
+    const logoBytes = getEziRiskLogoBytes();
+    const image = await pdfDoc.embedPng(logoBytes);
     const dims = image.scale(1);
-    console.log('[PDF Logo] Successfully loaded EziRisk logo:', dims.width, 'x', dims.height);
+    console.log('[PDF Logo] Successfully embedded EziRisk logo:', dims.width, 'x', dims.height);
     return { image, width: dims.width, height: dims.height };
   } catch (error) {
-    console.error('[PDF Logo] Error loading EziRisk fallback logo:', error);
+    console.error('[PDF Logo] Error embedding EziRisk logo:', error);
     return null;
   }
 }
@@ -96,12 +85,12 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
   }
 
   if (!logoData) {
-    console.log('[PDF Logo] No org logo available, trying EziRisk fallback logo');
-    logoData = await fetchEziRiskFallbackLogo(pdfDoc);
+    console.log('[PDF Logo] No org logo available, using embedded EziRisk logo');
+    logoData = await getEmbeddedEziRiskLogo(pdfDoc);
   }
 
   if (!logoData) {
-    console.log('[PDF Logo] No logo available, will use text fallback "EziRisk"');
+    console.log('[PDF Logo] Embedded logo failed, will use text fallback "EziRisk"');
   }
 
   const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
@@ -151,11 +140,12 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
   }
 
   if (revisionHistory.length === 0 && document.issue_date) {
+    const isInitialVersion = !document.base_document_id || document.version_number === 1;
     revisionHistory.push({
       version_number: document.version_number,
       issue_date: document.issue_date,
-      change_summary: 'Initial issue',
-      issued_by_name: null,
+      change_summary: isInitialVersion ? 'Initial issue' : 'Revision issued',
+      issued_by_name: document.assessor_name || null,
     });
   }
 

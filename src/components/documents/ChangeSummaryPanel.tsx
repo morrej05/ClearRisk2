@@ -26,7 +26,6 @@ export default function ChangeSummaryPanel({
 
   const computedMarkdown = useMemo(() => {
     if (!summary) return '';
-    // If user wrote custom text, show that, otherwise generate a readable markdown view
     return summary.summary_text?.trim()
       ? summary.summary_text
       : formatChangeSummaryText(summary);
@@ -37,10 +36,20 @@ export default function ChangeSummaryPanel({
     setError(null);
     try {
       const s = await getChangeSummary(documentId);
+
+      // Important: handle "no rows" cleanly
+      if (!s) {
+        setSummary(null);
+        setDraftText('');
+        return;
+      }
+
       setSummary(s);
-      setDraftText(s?.summary_text ?? '');
+      setDraftText(s.summary_text ?? s.summary_markdown ?? '');
     } catch (e: any) {
       setError(e?.message || 'Failed to load change summary');
+      setSummary(null);
+      setDraftText('');
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +124,7 @@ export default function ChangeSummaryPanel({
 
         {!isLoading && !error && !summary && (
           <div className="text-sm text-neutral-600">
-            No change summary found yet.
+            No change summary found yet. (It’s created when a document is issued.)
           </div>
         )}
 
@@ -154,7 +163,9 @@ export default function ChangeSummaryPanel({
                     disabled={isToggling}
                     className="px-3 py-2 rounded border border-neutral-300 text-sm hover:bg-neutral-50 disabled:opacity-50"
                   >
-                    {summary.visible_to_client ? 'Visible to client' : 'Hidden from client'}
+                    {summary.visible_to_client
+                      ? 'Visible to client'
+                      : 'Hidden from client'}
                   </button>
 
                   <div className="flex gap-2">

@@ -166,14 +166,34 @@ export async function issueDocument(documentId: string, userId: string, organisa
     }
 
     // Find previously issued document in this chain
-    const { data: previousIssued } = await supabase
-      .from('documents')
-      .select('id')
-      .eq('base_document_id', document.base_document_id)
-      .eq('issue_status', 'issued')
-      .neq('id', documentId)
-      .maybeSingle();
+const { data: previousIssued, error: prevErr } = await supabase
+  .from('documents')
+  .select('id')
+  .eq('base_document_id', document.base_document_id)
+  .eq('issue_status', 'issued')
+  .neq('id', documentId)
+  .order('version_number', { ascending: false })
+  .limit(1)
+  .maybeSingle();
 
+if (prevErr) throw prevErr;
+
+    // Supersede previous issued document FIRST (DB requires this)
+    if (previousIssued?.id) {
+      const { error: supersedePrevError } = await supabase
+        .from('documents')
+        .update({
+          issue_status: 'superseded',
+          status: 'superseded',
+          superseded_by_document_id: documentId,
+          superseded_date: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', previousIssued.id);
+    
+      if (supersedePrevError) throw supersedePrevError;
+    }
+    
     // Issue the document
     const { error } = await supabase
       .from('documents')
@@ -185,7 +205,7 @@ export async function issueDocument(documentId: string, userId: string, organisa
         updated_at: new Date().toISOString(),
       })
       .eq('id', documentId);
-
+    
     if (error) throw error;
 
     // Generate change summary

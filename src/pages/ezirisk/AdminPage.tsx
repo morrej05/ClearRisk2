@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import OrganisationBranding from '../../components/OrganisationBranding';
 
 type AdminTab = 'organisation' | 'users' | 'assessment-settings' | 'recommendations' | 'document-control' | 'audit-log';
 
@@ -59,10 +60,7 @@ export default function AdminPage() {
 
         <div className="bg-white rounded-lg shadow-sm border border-slate-200">
           {activeTab === 'organisation' && (
-            <div className="p-8">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">Organisation Settings</h2>
-              <p className="text-sm text-slate-600">Organisation configuration will be managed here.</p>
-            </div>
+            <OrganisationBranding />
           )}
 
           {activeTab === 'users' && (

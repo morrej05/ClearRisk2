@@ -25,6 +25,35 @@ import {
 } from '../utils/issueValidation';
 import { isOrgAdmin } from '../utils/entitlements';
 
+async function generateIssuedPdf(surveyReportId: string) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error("Not authenticated");
+  }
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-issued-pdf`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ survey_report_id: surveyReportId }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to generate PDF");
+  }
+
+  return res.json();
+}
+
 type TabType = 'survey' | 'recommendations';
 
 interface Survey {

@@ -723,6 +723,22 @@ export default function ReportPreviewPage() {
                             'Issue Survey'
                           )}
                         </button>
+                        <button
+                            onClick={async () => {
+                              try {
+                                const result = await generateIssuedPdf(surveyId!);
+                                if (result?.signed_url) {
+                                  window.open(result.signed_url, "_blank", "noopener,noreferrer");
+                                }
+                              } catch (e: any) {
+                                alert(e.message || "Failed to open issued PDF");
+                              }
+                            }}
+                            className="px-4 py-2 border border-slate-300 rounded hover:bg-slate-50"
+                          >
+                            View issued PDF
+                          </button>
+
                         {isDisabled && !isIssuing && (
                           <button
                             onClick={handleExplainBlockers}

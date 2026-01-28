@@ -82,16 +82,20 @@ const handleIssue = async () => {
 
     // Call generate-issued-pdf (locked PDF + signed URL) - non-fatal
     try {
-      const resp2 = await fetch(`${supabaseUrl}/functions/v1/generate-issued-pdf`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          survey_report_id: surveyId,
-        }),
-      });
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const resp2 = await fetch(`${supabaseUrl}/functions/v1/generate-issued-pdf`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "apikey": anonKey,
+    "Authorization": `Bearer ${session.access_token}`,
+  },
+  body: JSON.stringify({
+    survey_report_id: surveyId,
+  }),
+});
+
 
       const raw2 = await resp2.text();
       let result2: any = null;

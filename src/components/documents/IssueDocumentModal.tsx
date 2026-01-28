@@ -152,20 +152,25 @@ export default function IssueDocumentModal({
         try {
           const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
           if (sessionError) throw sessionError;
+          
           const session = sessionData?.session;
           if (!session) throw new Error('No active session');
-
+          
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+          
           const pdfResp = await fetch(`${supabaseUrl}/functions/v1/generate-issued-pdf`, {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
               'Content-Type': 'application/json',
+              'apikey': anonKey,
+              'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              document_id: documentId,
+              survey_report_id: documentId, // IMPORTANT: this key name
             }),
           });
+
 
           // Robust body handling
           const rawPdf = await pdfResp.text();

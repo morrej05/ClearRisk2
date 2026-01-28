@@ -150,61 +150,38 @@ export default function IssueDocumentModal({
 
         // Call generate-issued-pdf edge function to get signed URL
         try {
-          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-          if (sessionError) throw sessionError;
-          
-          const session = sessionData?.session;
-          if (!session) throw new Error('No active session');
-          
+          console.log('[generate-issued-pdf] sending survey_report_id', documentId);
+
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData.session?.access_token;
+
+          if (!accessToken) {
+            throw new Error('No access token (user not signed in)');
+          }
+
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-          console.log('[generate-issued-pdf] sending survey_report_id', documentId);
-          
-          // Get a fresh access token
-          const { data: sess, error: sessErr } = await supabase.auth.getSession();
-          if (sessErr || !sess.session?.access_token) {
-            throw new Error('No active session / access token available');
-          }
-          
-          const token = sess.session.access_token;
-          
-          const { data, error } = await supabase.functions.invoke('generate-issued-pdf', {
-            body: { survey_report_id: documentId },
+          const pdfResp = await fetch(`${supabaseUrl}/functions/v1/generate-issued-pdf`, {
+            method: 'POST',
             headers: {
-              Authorization: `Bearer ${token}`,
-              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Content-Type': 'application/json',
+              'apikey': anonKey,
+              'Authorization': `Bearer ${accessToken}`,
             },
+            body: JSON.stringify({ survey_report_id: documentId }),
           });
-          
-          if (error) {
-            console.error('[generate-issued-pdf] error', error);
-            throw error;
-          }
-          
-          console.log('[generate-issued-pdf] success', data);
-          
-          if (data?.signed_url) {
-            window.open(data.signed_url, '_blank', 'noopener,noreferrer');
-          }
-                  
-          const pdfData = JSON.parse(respText);
-          // use pdfData.signed_url (or whatever your function returns)
-          // Robust body handling
-          const rawPdf = await pdfResp.text();
-          let pdfResult: any = null;
-          try {
-            pdfResult = rawPdf ? JSON.parse(rawPdf) : null;
-          } catch {
-            pdfResult = { error: rawPdf || 'Non-JSON response from generate-issued-pdf' };
+
+          const respJson = await pdfResp.json().catch(() => null);
+
+          console.log('[generate-issued-pdf] status', pdfResp.status, respJson);
+
+          if (!pdfResp.ok) {
+            throw new Error(`generate-issued-pdf failed (${pdfResp.status}): ${JSON.stringify(respJson)}`);
           }
 
-          if (pdfResp.ok && pdfResult?.signed_url) {
-            console.log('[Issue] PDF generated, opening in new tab');
-            window.open(pdfResult.signed_url, '_blank', 'noopener,noreferrer');
-          } else {
-            console.warn('[Issue] PDF generation failed (non-fatal):', pdfResult?.error);
-            // Don't fail the entire issue process if PDF generation fails
+          if (respJson?.signed_url) {
+            window.open(respJson.signed_url, '_blank', 'noopener,noreferrer');
           }
         } catch (pdfError) {
           console.warn('[Issue] Failed to generate PDF (non-fatal):', pdfError);

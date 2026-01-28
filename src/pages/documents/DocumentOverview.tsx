@@ -452,24 +452,27 @@ export default function DocumentOverview() {
   const handleGeneratePdf = async () => {
     if (!id || !document || !organisation) return;
 
-    setIsGeneratingPdf(true);
-    try {
-      console.log('[PDF Download] Document status:', document.issue_status);
-      const pdfInfo = await getLockedPdfInfo(id);
+setIsGeneratingPdf(true);
+try {
+  console.log('[PDF Download] Document status:', document.issue_status);
+  const pdfInfo = await getLockedPdfInfo(id);
 
-// If document has a pre-generated locked PDF, open it via signed URL
-if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
-  console.log('[PDF Download] Found locked PDF, requesting signed URL:', pdfInfo.locked_pdf_path);
+  // If document has a pre-generated locked PDF, open it via signed URL
+  if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
+    console.log('[PDF Download] Found locked PDF, requesting signed URL:', pdfInfo.locked_pdf_path);
 
-  const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
+    const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
 
-  if (downloadResult.success && downloadResult.signedUrl) {
-    window.open(downloadResult.signedUrl, '_blank');
-    return; // IMPORTANT: stop here, do NOT fall through to regeneration
+    if (downloadResult.success && downloadResult.signedUrl) {
+      window.open(downloadResult.signedUrl, '_blank');
+      setIsGeneratingPdf(false);
+      return; // IMPORTANT: stop here
+    }
+
+    console.warn('[PDF Download] Failed to get signed URL, falling back to regeneration:', downloadResult.error);
+  } else if (document.issue_status !== 'draft') {
+    console.log('[PDF Download] No locked PDF found for issued document, generating on-demand');
   }
-
-  console.warn('[PDF Download] Failed to get signed URL, falling back to regeneration');
-}
 
       const { data: moduleInstances, error: moduleError } = await supabase
         .from('module_instances')

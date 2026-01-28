@@ -471,17 +471,6 @@ if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
   console.warn('[PDF Download] Failed to get signed URL, falling back to regeneration');
 }
 
-          console.log('[PDF Download] Locked PDF downloaded successfully');
-          saveAs(downloadResult.data, filename);
-          setIsGeneratingPdf(false);
-          return;
-        } else {
-          console.warn('[PDF Download] Failed to download locked PDF, will generate on-demand:', downloadResult.error);
-        }
-      } else if (document.issue_status !== 'draft') {
-        console.log('[PDF Download] No locked PDF found for issued document, generating on-demand');
-      }
-
       const { data: moduleInstances, error: moduleError } = await supabase
         .from('module_instances')
         .select('*')

@@ -80,7 +80,39 @@ const handleIssue = async () => {
       throw new Error(result?.error || `Failed to issue survey (${resp.status})`);
     }
 
-    // SUCCESS: do something deterministic
+    // Call generate-issued-pdf (locked PDF + signed URL)
+const resp2 = await fetch(`${supabaseUrl}/functions/v1/generate-issued-pdf`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${session.access_token}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    survey_report_id: surveyId,
+  }),
+});
+
+const raw2 = await resp2.text();
+let result2: any = null;
+try {
+  result2 = raw2 ? JSON.parse(raw2) : null;
+} catch {
+  result2 = { error: raw2 || "Non-JSON response from generate-issued-pdf" };
+}
+
+if (!resp2.ok) {
+  throw new Error(result2?.error || `Failed to generate issued PDF (${resp2.status})`);
+}
+
+// Optional: open signed url immediately (for testing)
+if (result2?.signed_url) {
+  window.open(result2.signed_url, "_blank", "noopener,noreferrer");
+}
+
+// Finish flow
+onSuccess();
+onClose();
+
     // e.g. refresh the report, close modal, show toast, navigate
     // await refetchSurvey();
     // setIsOpen(false);

@@ -457,19 +457,19 @@ export default function DocumentOverview() {
       console.log('[PDF Download] Document status:', document.issue_status);
       const pdfInfo = await getLockedPdfInfo(id);
 
-      // If document has a pre-generated locked PDF, download it directly
-      if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
-        console.log('[PDF Download] Found locked PDF, downloading:', pdfInfo.locked_pdf_path);
-        const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
+// If document has a pre-generated locked PDF, open it via signed URL
+if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
+  console.log('[PDF Download] Found locked PDF, requesting signed URL:', pdfInfo.locked_pdf_path);
 
-        if (downloadResult.success && downloadResult.data) {
-          const siteName = document.title
-            .replace(/[^a-z0-9]/gi, '_')
-            .replace(/_+/g, '_')
-            .toLowerCase();
-          const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
-          const docType = document.document_type || 'FRA';
-          const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
+  const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
+
+  if (downloadResult.success && downloadResult.signedUrl) {
+    window.open(downloadResult.signedUrl, '_blank');
+    return; // IMPORTANT: stop here, do NOT fall through to regeneration
+  }
+
+  console.warn('[PDF Download] Failed to get signed URL, falling back to regeneration');
+}
 
           console.log('[PDF Download] Locked PDF downloaded successfully');
           saveAs(downloadResult.data, filename);

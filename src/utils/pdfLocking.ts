@@ -49,23 +49,44 @@ export async function uploadLockedPdf(
   }
 }
 
+/**
+ * IMPORTANT CHANGE:
+ * Instead of trying to download the file from Storage directly (which often returns
+ * 404/400 for private buckets), we request a signed URL from the Edge Function
+ * `get-locked-pdf-url` and let the browser open that URL.
+ *
+ * Your path format is: `${organisationId}/${documentId}/${filename}`
+ * so we can derive documentId as path.split('/')[1].
+ */
 export async function downloadLockedPdf(
   path: string
-): Promise<{ success: boolean; data?: Blob; error?: string }> {
+): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
   try {
-    const { data, error } = await supabase.storage
-      .from('document-pdfs')
-      .download(path);
+    const parts = (path || '').split('/');
+    const documentId = parts.length >= 2 ? parts[1] : null;
+
+    if (!documentId) {
+      return { success: false, error: 'Could not derive documentId from path' };
+    }
+
+    const { data, error } = await supabase.functions.invoke('get-locked-pdf-url', {
+      body: { document_id: documentId },
+    });
 
     if (error) {
-      console.error('Error downloading PDF:', error);
+      console.error('Error getting signed URL:', error);
       return { success: false, error: error.message };
     }
 
-    return { success: true, data };
+    const signedUrl = data?.signed_url;
+    if (!signedUrl) {
+      return { success: false, error: 'No signed_url returned from get-locked-pdf-url' };
+    }
+
+    return { success: true, signedUrl };
   } catch (error: any) {
     console.error('Error in downloadLockedPdf:', error);
-    return { success: false, error: error.message || 'Failed to download PDF' };
+    return { success: false, error: error.message || 'Failed to get signed URL' };
   }
 }
 

@@ -146,6 +146,48 @@ export default function IssueDocumentModal({
 
       if (issueResult.success) {
         console.log('[Issue] Document issued successfully');
+        setIssueProgress('Generating locked PDF...');
+
+        // Call generate-issued-pdf edge function to get signed URL
+        try {
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) throw sessionError;
+          const session = sessionData?.session;
+          if (!session) throw new Error('No active session');
+
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const pdfResp = await fetch(`${supabaseUrl}/functions/v1/generate-issued-pdf`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              document_id: documentId,
+            }),
+          });
+
+          // Robust body handling
+          const rawPdf = await pdfResp.text();
+          let pdfResult: any = null;
+          try {
+            pdfResult = rawPdf ? JSON.parse(rawPdf) : null;
+          } catch {
+            pdfResult = { error: rawPdf || 'Non-JSON response from generate-issued-pdf' };
+          }
+
+          if (pdfResp.ok && pdfResult?.signed_url) {
+            console.log('[Issue] PDF generated, opening in new tab');
+            window.open(pdfResult.signed_url, '_blank', 'noopener,noreferrer');
+          } else {
+            console.warn('[Issue] PDF generation failed (non-fatal):', pdfResult?.error);
+            // Don't fail the entire issue process if PDF generation fails
+          }
+        } catch (pdfError) {
+          console.warn('[Issue] Failed to generate PDF (non-fatal):', pdfError);
+          // Don't fail the entire issue process if PDF generation fails
+        }
+
         setIssueProgress('Complete!');
         setTimeout(() => {
           try { onSuccess(); } catch (e) { console.warn('onSuccess failed', e); }

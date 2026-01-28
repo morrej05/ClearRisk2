@@ -158,20 +158,38 @@ export default function IssueDocumentModal({
           
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+          console.log('[generate-issued-pdf] sending survey_report_id', documentId);
           
-          const pdfResp = await fetch(`${supabaseUrl}/functions/v1/generate-issued-pdf`, {
-            method: 'POST',
+          // Get a fresh access token
+          const { data: sess, error: sessErr } = await supabase.auth.getSession();
+          if (sessErr || !sess.session?.access_token) {
+            throw new Error('No active session / access token available');
+          }
+          
+          const token = sess.session.access_token;
+          
+          const { data, error } = await supabase.functions.invoke('generate-issued-pdf', {
+            body: { survey_report_id: documentId },
             headers: {
-              'Content-Type': 'application/json',
-              'apikey': anonKey,
-              'Authorization': `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
             },
-            body: JSON.stringify({
-              survey_report_id: documentId, // IMPORTANT: this key name
-            }),
           });
-
-
+          
+          if (error) {
+            console.error('[generate-issued-pdf] error', error);
+            throw error;
+          }
+          
+          console.log('[generate-issued-pdf] success', data);
+          
+          if (data?.signed_url) {
+            window.open(data.signed_url, '_blank', 'noopener,noreferrer');
+          }
+                  
+          const pdfData = JSON.parse(respText);
+          // use pdfData.signed_url (or whatever your function returns)
           // Robust body handling
           const rawPdf = await pdfResp.text();
           let pdfResult: any = null;

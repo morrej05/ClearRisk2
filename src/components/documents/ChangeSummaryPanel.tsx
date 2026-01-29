@@ -4,7 +4,7 @@ import {
   formatChangeSummaryText,
   updateChangeSummaryText,
   setChangeSummaryClientVisibility,
-  type ChangeSummary,
+  type ChangeSummaryViewRow,
 } from '../../utils/changeSummary';
 
 interface ChangeSummaryPanelProps {

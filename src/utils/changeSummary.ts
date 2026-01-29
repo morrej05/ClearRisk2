@@ -151,10 +151,10 @@ export async function getChangeSummary(
 ): Promise<ChangeSummary | null> {
   try {
     const { data, error } = await supabase
-      .from('document_change_summaries')
-      .select('*')
-      .eq('document_id', documentId)
-      .order('created_at', { ascending: false })
+      .from('change_summaries')
+      .select('version_number, created_at, summary_text, full_name, created_by, base_document_id')
+      .eq('base_document_id', documentId)
+      .order('version_number', { ascending: false })
       .limit(1)
       .maybeSingle();
 

@@ -50,54 +50,56 @@ export async function uploadLockedPdf(
 }
 
 /**
- * IMPORTANT CHANGE:
- * Instead of trying to download the file from Storage directly (which often returns
- * 404/400 for private buckets), we request a signed URL from the Edge Function
- * `get-locked-pdf-url` and let the browser open that URL.
- *
- * Your path format is: `${organisationId}/${documentId}/${filename}`
- * so we can derive documentId as path.split('/')[1].
+ * Downloads a locked PDF by requesting a signed URL from the Edge Function.
+ * Uses document_id instead of path for security and simplicity.
  */
 export async function downloadLockedPdf(
-  path: string
+  documentId: string
 ): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
   try {
-    // Explicitly fetch session so we always have a JWT
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
+    console.log('[downloadLockedPdf] Requesting signed URL for document:', documentId);
 
-    if (sessionError) {
-      console.error('Error getting session:', sessionError);
-      return { success: false, error: sessionError.message };
-    }
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
 
-    const token = session?.access_token;
-    if (!token) {
+    if (!accessToken) {
+      console.error('[downloadLockedPdf] No access token available');
       return { success: false, error: 'Not authenticated (no access token)' };
     }
 
-    const { data, error } = await supabase.functions.invoke('get-locked-pdf-url', {
-      body: { path },
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/get-locked-pdf-url`, {
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'apikey': anonKey,
+        'Authorization': `Bearer ${accessToken}`,
       },
+      body: JSON.stringify({ document_id: documentId }),
     });
 
-    if (error) {
-      console.error('Error getting signed URL:', error);
-      return { success: false, error: 'Edge Function returned a non-2xx status code' };
+    const respJson = await response.json().catch(() => null);
+
+    console.log('[downloadLockedPdf] Response status:', response.status, respJson);
+
+    if (!response.ok) {
+      const errorMsg = respJson?.error || `Failed to get signed URL (${response.status})`;
+      console.error('[downloadLockedPdf] Error:', errorMsg);
+      return { success: false, error: errorMsg };
     }
 
-    const signedUrl = data?.signed_url ?? data?.signedUrl;
+    const signedUrl = respJson?.signed_url;
     if (!signedUrl) {
+      console.error('[downloadLockedPdf] No signed URL in response');
       return { success: false, error: 'No signed URL returned from function' };
     }
 
+    console.log('[downloadLockedPdf] Success! Signed URL received');
     return { success: true, signedUrl };
   } catch (err: any) {
-    console.error('Error in downloadLockedPdf:', err);
+    console.error('[downloadLockedPdf] Exception:', err);
     return { success: false, error: err?.message || 'Failed to get signed URL' };
   }
 }

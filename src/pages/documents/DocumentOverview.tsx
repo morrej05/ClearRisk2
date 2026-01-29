@@ -459,14 +459,15 @@ try {
 
   // If document has a pre-generated locked PDF, open it via signed URL
   if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
-    console.log('[PDF Download] Found locked PDF, requesting signed URL:', pdfInfo.locked_pdf_path);
+    console.log('[PDF Download] Found locked PDF, requesting signed URL for document:', id);
 
-    const downloadResult = await downloadLockedPdf(pdfInfo.locked_pdf_path);
+    const downloadResult = await downloadLockedPdf(id);
 
     if (downloadResult.success && downloadResult.signedUrl) {
-      window.open(downloadResult.signedUrl, '_blank');
+      console.log('[PDF Download] Opening signed URL in new tab');
+      window.open(downloadResult.signedUrl, '_blank', 'noopener,noreferrer');
       setIsGeneratingPdf(false);
-      return; // IMPORTANT: stop here
+      return;
     }
 
     console.warn('[PDF Download] Failed to get signed URL, falling back to regeneration:', downloadResult.error);

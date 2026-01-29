@@ -17,7 +17,7 @@ export default function ChangeSummaryPanel({
   canEdit = false,
 }: ChangeSummaryPanelProps) {
   const [isLoading, setIsLoading] = useState(true);
-  const [summary, setSummary] = useState<ChangeSummary | null>(null);
+  const [summary, setSummary] = useState<ChangeSummaryViewRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [draftText, setDraftText] = useState('');

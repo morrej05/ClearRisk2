@@ -34,6 +34,20 @@ export interface ChangeSummary {
 }
 
 /**
+ * Row returned from the public.change_summaries VIEW
+ * (This is what the ChangeSummaryPanel needs.)
+ */
+export interface ChangeSummaryViewRow {
+  id: string;
+  base_document_id: string;
+  version_number: number;
+  created_at: string;
+  created_by: string | null;
+  full_name: string | null;
+  summary_text: string | null;
+}
+
+/**
  * Create the FIRST issue summary for a document.
  * Any existing summaries for this document are deleted first
  * to prevent duplicates.
@@ -60,9 +74,7 @@ export async function createInitialIssueSummary(
     if (actionsError) throw actionsError;
 
     const openActions =
-      actions?.filter(a =>
-        ['open', 'in_progress', 'deferred'].includes(a.status)
-      ) || [];
+      actions?.filter(a => ['open', 'in_progress', 'deferred'].includes(a.status)) || [];
 
     const summaryData = {
       organisation_id: document.organisation_id,
@@ -123,10 +135,7 @@ export async function generateChangeSummary(
 ): Promise<{ success: boolean; summaryId?: string; error?: string }> {
   try {
     // Defensive cleanup in case this gets called twice
-    await supabase
-      .from('document_change_summaries')
-      .delete()
-      .eq('document_id', newDocumentId);
+    await supabase.from('document_change_summaries').delete().eq('document_id', newDocumentId);
 
     const { data, error } = await supabase.rpc('generate_change_summary', {
       p_new_document_id: newDocumentId,
@@ -144,22 +153,32 @@ export async function generateChangeSummary(
 }
 
 /**
- * Get the most recent change summary for a document
+ * Get the most recent change summary for a document (by documentId).
+ *
+ * NOTE: ChangeSummaryPanel passes the current *document id*,
+ * but the view is keyed by base_document_id. So we resolve base_document_id first.
  */
-export async function getChangeSummary(
-  documentId: string
-): Promise<ChangeSummary | null> {
+export async function getChangeSummary(documentId: string): Promise<ChangeSummaryViewRow | null> {
   try {
+    const { data: doc, error: docErr } = await supabase
+      .from('documents')
+      .select('base_document_id')
+      .eq('id', documentId)
+      .maybeSingle();
+
+    if (docErr) throw docErr;
+    if (!doc?.base_document_id) return null;
+
     const { data, error } = await supabase
       .from('change_summaries')
-      .select('version_number, created_at, summary_text, full_name, created_by, base_document_id')
-      .eq('base_document_id', documentId)
+      .select('id, base_document_id, version_number, created_at, created_by, full_name, summary_text')
+      .eq('base_document_id', doc.base_document_id)
       .order('version_number', { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (error) throw error;
-    return data;
+    return data as ChangeSummaryViewRow | null;
   } catch (error) {
     console.error('Error fetching change summary:', error);
     return null;
@@ -167,11 +186,9 @@ export async function getChangeSummary(
 }
 
 /**
- * Get all change summaries for an organisation
+ * Get all change summaries for an organisation (raw table)
  */
-export async function getChangeSummaries(
-  organisationId: string
-): Promise<ChangeSummary[]> {
+export async function getChangeSummaries(organisationId: string): Promise<ChangeSummary[]> {
   try {
     const { data, error } = await supabase
       .from('document_change_summaries')
@@ -190,14 +207,14 @@ export async function getChangeSummaries(
 /**
  * Format a change summary as markdown text
  */
-export function formatChangeSummaryText(summary: ChangeSummary): string {
+export function formatChangeSummaryText(summary: any): string {
   const lines: string[] = [];
 
   lines.push('# Changes Since Last Issue\n');
 
   if (summary.new_actions_count > 0) {
     lines.push(`## New Actions (${summary.new_actions_count})\n`);
-    summary.new_actions.forEach(action => {
+    summary.new_actions.forEach((action: any) => {
       lines.push(`- [${action.priority_band}] ${action.recommended_action}`);
     });
     lines.push('');
@@ -205,16 +222,14 @@ export function formatChangeSummaryText(summary: ChangeSummary): string {
 
   if (summary.closed_actions_count > 0) {
     lines.push(`## Closed Actions (${summary.closed_actions_count})\n`);
-    summary.closed_actions.forEach(action => {
+    summary.closed_actions.forEach((action: any) => {
       lines.push(`- [${action.priority_band}] ${action.recommended_action}`);
     });
     lines.push('');
   }
 
   if (summary.outstanding_actions_count > 0) {
-    lines.push(
-      `## Outstanding Actions: ${summary.outstanding_actions_count}\n`
-    );
+    lines.push(`## Outstanding Actions: ${summary.outstanding_actions_count}\n`);
   }
 
   if (!summary.has_material_changes) {
@@ -224,18 +239,18 @@ export function formatChangeSummaryText(summary: ChangeSummary): string {
   return lines.join('\n');
 }
 
-export function getChangeSummaryStats(summary: ChangeSummary) {
+export function getChangeSummaryStats(summary: any) {
   return {
     totalChanges:
-      summary.new_actions_count +
-      summary.closed_actions_count +
-      summary.reopened_actions_count,
-    newActions: summary.new_actions_count,
-    closedActions: summary.closed_actions_count,
-    outstandingActions: summary.outstanding_actions_count,
-    hasMaterialChanges: summary.has_material_changes,
-    improvement: summary.closed_actions_count > summary.new_actions_count,
-    deterioration: summary.new_actions_count > summary.closed_actions_count,
+      (summary.new_actions_count || 0) +
+      (summary.closed_actions_count || 0) +
+      (summary.reopened_actions_count || 0),
+    newActions: summary.new_actions_count || 0,
+    closedActions: summary.closed_actions_count || 0,
+    outstandingActions: summary.outstanding_actions_count || 0,
+    hasMaterialChanges: summary.has_material_changes || false,
+    improvement: (summary.closed_actions_count || 0) > (summary.new_actions_count || 0),
+    deterioration: (summary.new_actions_count || 0) > (summary.closed_actions_count || 0),
   };
 }
 

@@ -62,33 +62,46 @@ export async function downloadLockedPdf(
   path: string
 ): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
   try {
-    const parts = (path || '').split('/');
-    const documentId = parts.length >= 2 ? parts[1] : null;
+    // Explicitly fetch session so we always have a JWT
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-    if (!documentId) {
-      return { success: false, error: 'Could not derive documentId from path' };
+    if (sessionError) {
+      console.error('Error getting session:', sessionError);
+      return { success: false, error: sessionError.message };
+    }
+
+    const token = session?.access_token;
+    if (!token) {
+      return { success: false, error: 'Not authenticated (no access token)' };
     }
 
     const { data, error } = await supabase.functions.invoke('get-locked-pdf-url', {
-      body: { document_id: documentId },
+      body: { path },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (error) {
       console.error('Error getting signed URL:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Edge Function returned a non-2xx status code' };
     }
 
-    const signedUrl = data?.signed_url;
+    const signedUrl = data?.signed_url ?? data?.signedUrl;
     if (!signedUrl) {
-      return { success: false, error: 'No signed_url returned from get-locked-pdf-url' };
+      return { success: false, error: 'No signed URL returned from function' };
     }
 
     return { success: true, signedUrl };
-  } catch (error: any) {
-    console.error('Error in downloadLockedPdf:', error);
-    return { success: false, error: error.message || 'Failed to get signed URL' };
+  } catch (err: any) {
+    console.error('Error in downloadLockedPdf:', err);
+    return { success: false, error: err?.message || 'Failed to get signed URL' };
   }
 }
+
 
 export async function lockPdfToDocument(
   documentId: string,

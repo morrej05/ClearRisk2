@@ -34,24 +34,32 @@ async function generateIssuedPdf(surveyReportId: string) {
     throw new Error("Not authenticated");
   }
 
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-issued-pdf`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ survey_report_id: surveyReportId }),
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Failed to generate PDF");
+const res = await fetch(
+  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-locked-pdf-url`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      document_id: surveyReportId, // IMPORTANT: document_id, not survey_report_id
+    }),
   }
+);
 
-  return res.json();
+if (!res.ok) {
+  const err = await res.json();
+  throw new Error(err.error || "Failed to fetch locked PDF");
+}
+
+const { signed_url } = await res.json();
+
+if (!signed_url) {
+  throw new Error("No signed URL returned");
+}
+
+window.open(signed_url, "_blank", "noopener,noreferrer");
 }
 
 type TabType = 'survey' | 'recommendations';

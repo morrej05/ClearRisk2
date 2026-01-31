@@ -189,39 +189,52 @@ export default function DocumentWorkspace() {
     }
   }, [id, organisation?.id]);
 
+  // Validate and correct module selection to only allow visible modules
   useEffect(() => {
-    const moduleParam = searchParams.get('m');
-    if (moduleParam && modules.length > 0) {
-      const moduleExists = modules.find((m) => m.id === moduleParam);
-      if (moduleExists) {
-        setSelectedModuleId(moduleParam);
-        // Save to localStorage when navigating to a specific module
-        if (id) {
-          localStorage.setItem(`ezirisk:lastModule:${id}`, moduleParam);
-        }
-      }
-    } else if (modules.length > 0 && !selectedModuleId) {
-      setSelectedModuleId(modules[0].id);
-      setSearchParams({ m: modules[0].id });
-      // Save first module to localStorage
-      if (id) {
-        localStorage.setItem(`ezirisk:lastModule:${id}`, modules[0].id);
-      }
-    }
-  }, [searchParams, modules, selectedModuleId, id]);
+    if (modules.length === 0) return;
 
-  // Auto-select first incomplete module (or first module) after modules load
-  useEffect(() => {
-    if (!selectedModuleId && modules.length > 0) {
+    const moduleParam = searchParams.get('m');
+    const savedModuleId = id ? localStorage.getItem(`ezirisk:lastModule:${id}`) : null;
+
+    // Try URL param first, then localStorage, then null
+    const requestedModuleId = moduleParam || savedModuleId;
+
+    // Check if requested module exists in visible modules
+    const requestedModule = requestedModuleId
+      ? modules.find((m) => m.id === requestedModuleId)
+      : null;
+
+    if (requestedModule) {
+      // Valid module - set it
+      if (selectedModuleId !== requestedModule.id) {
+        setSelectedModuleId(requestedModule.id);
+      }
+      // Ensure URL and localStorage are in sync
+      if (moduleParam !== requestedModule.id) {
+        setSearchParams({ m: requestedModule.id }, { replace: true });
+      }
+      if (id && savedModuleId !== requestedModule.id) {
+        localStorage.setItem(`ezirisk:lastModule:${id}`, requestedModule.id);
+      }
+    } else {
+      // Invalid or missing module - auto-correct to first visible module
       const firstIncomplete = modules.find((m) => !m.completed_at);
       const targetModule = firstIncomplete ?? modules[0];
-      setSelectedModuleId(targetModule.id);
-      setSearchParams({ m: targetModule.id });
+
+      if (selectedModuleId !== targetModule.id) {
+        console.warn(
+          `[DocumentWorkspace] Invalid module selection (${requestedModuleId}). Auto-correcting to first visible module (${targetModule.id})`
+        );
+        setSelectedModuleId(targetModule.id);
+      }
+
+      // Force update URL and localStorage with valid module
+      setSearchParams({ m: targetModule.id }, { replace: true });
       if (id) {
         localStorage.setItem(`ezirisk:lastModule:${id}`, targetModule.id);
       }
     }
-  }, [modules, selectedModuleId, id]);
+  }, [modules, id, searchParams, selectedModuleId]);
 
   const fetchDocument = async () => {
     if (!id || !organisation?.id) {

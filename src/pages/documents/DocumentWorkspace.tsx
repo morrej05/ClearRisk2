@@ -65,6 +65,88 @@ const getDocumentTypeLabel = (document: Document): string => {
   return document.document_type;
 };
 
+const isREKey = (k: string) =>
+  k === 'RISK_ENGINEERING' ||
+  k.startsWith('RE_') ||
+  k.startsWith('RE-') ||
+  k.toLowerCase().includes('risk_engineering'); // safety
+
+function getExpectedKeysForDocument(document: Document): string[] {
+  // IMPORTANT: use enabled_modules to decide what should exist
+  const enabled = document.enabled_modules ?? [document.document_type];
+
+  const expected: string[] = [];
+
+  // FRA baseline
+  if (enabled.includes('FRA') || document.document_type === 'FRA') {
+    expected.push(
+      'A1_DOC_CONTROL',
+      'A2_BUILDING_PROFILE',
+      'A3_PERSONS_AT_RISK',
+      'A4_MANAGEMENT_CONTROLS',
+      'A5_EMERGENCY_ARRANGEMENTS',
+      'A7_REVIEW_ASSURANCE',
+      'FRA_1_HAZARDS',
+      'FRA_2_ESCAPE_ASIS',
+      'FRA_3_PROTECTION_ASIS',
+      'FRA_4_SIGNIFICANT_FINDINGS',
+      'FRA_5_EXTERNAL_FIRE_SPREAD'
+    );
+  }
+
+  // FSD baseline
+  if (enabled.includes('FSD') || document.document_type === 'FSD') {
+    expected.push(
+      'A1_DOC_CONTROL',
+      'A2_BUILDING_PROFILE',
+      'A3_PERSONS_AT_RISK',
+      'FSD_1_REG_BASIS',
+      'FSD_2_EVAC_STRATEGY',
+      'FSD_3_ESCAPE_DESIGN',
+      'FSD_4_PASSIVE_PROTECTION',
+      'FSD_5_ACTIVE_SYSTEMS',
+      'FSD_6_FRS_ACCESS',
+      'FSD_7_DRAWINGS',
+      'FSD_8_SMOKE_CONTROL',
+      'FSD_9_CONSTRUCTION_PHASE'
+    );
+  }
+
+  // DSEAR baseline
+  if (enabled.includes('DSEAR') || document.document_type === 'DSEAR') {
+    expected.push(
+      'A1_DOC_CONTROL',
+      'A2_BUILDING_PROFILE',
+      'A3_PERSONS_AT_RISK',
+      'DSEAR_1_DANGEROUS_SUBSTANCES',
+      'DSEAR_2_PROCESS_RELEASES',
+      'DSEAR_3_HAZARDOUS_AREA_CLASSIFICATION',
+      'DSEAR_4_IGNITION_SOURCES',
+      'DSEAR_5_EXPLOSION_PROTECTION',
+      'DSEAR_6_RISK_ASSESSMENT',
+      'DSEAR_10_HIERARCHY_OF_CONTROL',
+      'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE'
+    );
+  }
+
+  // Risk Engineering overlay (ONLY if enabled)
+  // ⚠️ Put your real legacy RE keys here.
+  if (enabled.includes('RISK_ENGINEERING')) {
+    expected.push(
+      'RISK_ENGINEERING'
+      // add your legacy keys, e.g.
+      // 'RE_CONSTRUCTION_CALCS',
+      // 'RE_MANAGEMENT_SYSTEMS',
+      // 'RE_NATURAL_HAZARDS',
+      // ...
+    );
+  }
+
+  // De-dupe while preserving order
+  return [...new Set(expected)];
+}
+
+
 export default function DocumentWorkspace() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -141,27 +223,73 @@ export default function DocumentWorkspace() {
     }
   };
 
-  const fetchModules = async () => {
-    if (!id || !organisation?.id) return;
+const fetchModules = async () => {
+  if (!id || !organisation?.id) return;
 
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
+  setIsLoading(true);
+  try {
+    // Need the document first so we know enabled_modules
+    const { data: doc, error: docErr } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', id)
+      .eq('organisation_id', organisation.id)
+      .single();
+
+    if (docErr) throw docErr;
+
+    setDocument(doc);
+
+    const { data: existing, error } = await supabase
+      .from('module_instances')
+      .select('*')
+      .eq('document_id', id)
+      .eq('organisation_id', organisation.id);
+
+    if (error) throw error;
+
+    const existingKeys = new Set((existing || []).map((m: any) => m.module_key));
+    const expectedKeys = getExpectedKeysForDocument(doc);
+
+    const missingKeys = expectedKeys.filter((k) => !existingKeys.has(k));
+
+    // Seed missing module instances (only if any missing)
+    if (missingKeys.length > 0) {
+      const rows = missingKeys.map((k) => ({
+        organisation_id: organisation.id,
+        document_id: id,
+        module_key: k,
+        module_scope: 'document',
+        data: {},
+        assessor_notes: '',
+      }));
+
+      const { error: insErr } = await supabase.from('module_instances').insert(rows);
+      if (insErr) throw insErr;
+
+      // Re-fetch after seeding
+      const { data: seeded, error: seededErr } = await supabase
         .from('module_instances')
         .select('*')
         .eq('document_id', id)
         .eq('organisation_id', organisation.id);
 
-      if (error) throw error;
+      if (seededErr) throw seededErr;
 
-      const sorted = sortModulesByOrder(data || []);
+      const sorted = sortModulesByOrder(seeded || []);
       setModules(sorted as ModuleInstance[]);
-    } catch (error) {
-      console.error('Error fetching modules:', error);
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  };
+
+    const sorted = sortModulesByOrder(existing || []);
+    setModules(sorted as ModuleInstance[]);
+  } catch (error) {
+    console.error('Error fetching modules:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleModuleSelect = (moduleId: string) => {
     setSelectedModuleId(moduleId);

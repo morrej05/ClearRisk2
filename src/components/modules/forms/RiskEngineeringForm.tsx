@@ -406,6 +406,188 @@ export default function RiskEngineeringForm({
           </button>
         </div>
 
+        {/* FORCE RENDER TEST - ALL FEATURES UNCONDITIONALLY */}
+        <div className="space-y-6 mb-8">
+          {/* Construction Table */}
+          <div className="bg-blue-50 border-4 border-blue-600 p-6 rounded-lg">
+            <h2 className="text-2xl font-bold text-blue-900 mb-4">FORCE RENDER: Construction Table</h2>
+            <div className="overflow-x-auto bg-white p-4 rounded">
+              <table className="w-full border border-neutral-300 text-sm">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Element</th>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Type/Material</th>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Fire Resistance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Frame</td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., Steel, Concrete, Timber"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., 60 min, 120 min"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Walls</td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., Brick cavity, Concrete block"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., 60 min, 120 min"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Roof</td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., Profiled metal, Concrete slab"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., 30 min, 60 min"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Floors</td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., Concrete slab, Composite deck"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., 60 min, 90 min"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Fire Protection Table */}
+          <div className="bg-green-50 border-4 border-green-600 p-6 rounded-lg">
+            <h2 className="text-2xl font-bold text-green-900 mb-4">FORCE RENDER: Fire Protection Table</h2>
+            <div className="overflow-x-auto bg-white p-4 rounded">
+              <table className="w-full border border-neutral-300 text-sm">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">System Type</th>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Coverage</th>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Standard/Specification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Sprinklers</td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., Full, Partial (70%), None"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., BS EN 12845 OH1"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Detection</td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., Full, Partial, None"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., BS 5839-1 Category L1"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Suppression</td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., Kitchen areas, Server room"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                    <td className="border border-neutral-300 px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="e.g., FM-200, CO2, Ansul"
+                        className="w-full px-2 py-1 border border-neutral-200 rounded"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Management Systems Grade */}
+          <div className="bg-amber-50 border-4 border-amber-600 p-6 rounded-lg">
+            <h2 className="text-2xl font-bold text-amber-900 mb-4">FORCE RENDER: Management Systems Grade</h2>
+            <div className="bg-white p-4 rounded">
+              <SectionGrade
+                sectionKey="management_test"
+                sectionTitle="Management Systems Quality"
+                value={sectionGrades.management || 3}
+                onChange={(value) => handleSectionGradeChange('management', value)}
+              />
+            </div>
+          </div>
+
+          {/* Recommendations/Actions */}
+          <div className="bg-rose-50 border-4 border-rose-600 p-6 rounded-lg">
+            <h2 className="text-2xl font-bold text-rose-900 mb-4">FORCE RENDER: Recommendations/Actions</h2>
+            <div className="bg-white p-4 rounded">
+              <ModuleActions
+                documentId={document.id}
+                moduleInstanceId={moduleInstance.id}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-4">
           {/* Occupancy Section */}
           <div className="bg-white rounded-lg border border-neutral-200">

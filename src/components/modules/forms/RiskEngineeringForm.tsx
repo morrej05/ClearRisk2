@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { supabase } from "../../../lib/supabase";
+import { useMemo, useState } from 'react';
+import { supabase } from '../../../lib/supabase';
 
 interface Document {
   id: string;
@@ -24,32 +24,44 @@ interface ModuleInstance {
   updated_at: string;
 }
 
+interface RiskEngineeringFormProps {
+  moduleInstance: ModuleInstance;
+  document: Document;
+  onSaved: () => void;
+}
+
+/**
+ * Minimal wiring form for Risk Engineering:
+ * - Renders 3 placeholder fields
+ * - Saves to module_instances.data
+ * - Reload/reopen persists
+ *
+ * This is intentionally minimal. Help text / HRG / scoring comes later.
+ */
 export default function RiskEngineeringForm({
   moduleInstance,
   document,
   onSaved,
-}: {
-  moduleInstance: ModuleInstance;
-  document: Document;
-  onSaved: () => void;
-}) {
+}: RiskEngineeringFormProps) {
   const [isSaving, setIsSaving] = useState(false);
 
+  // Read initial values from the existing module JSON data
   const initial = useMemo(() => {
     const d = moduleInstance.data || {};
     return {
-      occupancy: d.occupancy ?? "",
-      construction: d.construction ?? "",
-      protection: d.protection ?? "",
+      occupancy: d.occupancy ?? '',
+      construction: d.construction ?? '',
+      protection: d.protection ?? '',
     };
   }, [moduleInstance.data]);
 
-  const [occupancy, setOccupancy] = useState(initial.occupancy);
-  const [construction, setConstruction] = useState(initial.construction);
-  const [protection, setProtection] = useState(initial.protection);
+  const [occupancy, setOccupancy] = useState<string>(initial.occupancy);
+  const [construction, setConstruction] = useState<string>(initial.construction);
+  const [protection, setProtection] = useState<string>(initial.protection);
 
   const handleSave = async () => {
     setIsSaving(true);
+
     try {
       const nextData = {
         ...(moduleInstance.data || {}),
@@ -59,19 +71,19 @@ export default function RiskEngineeringForm({
       };
 
       const { error } = await supabase
-        .from("module_instances")
+        .from('module_instances')
         .update({
           data: nextData,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", moduleInstance.id);
+        .eq('id', moduleInstance.id);
 
       if (error) throw error;
 
       onSaved();
-    } catch (e) {
-      console.error("Error saving Risk Engineering:", e);
-      alert("Failed to save Risk Engineering. Please try again.");
+    } catch (err) {
+      console.error('Error saving Risk Engineering module:', err);
+      alert('Failed to save Risk Engineering. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -79,10 +91,10 @@ export default function RiskEngineeringForm({
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-neutral-900">Risk Engineering</h2>
-          <p className="text-neutral-600 text-sm">
+          <p className="text-sm text-neutral-600">
             Minimal wiring form (save → reload → reopen)
           </p>
         </div>
@@ -90,9 +102,9 @@ export default function RiskEngineeringForm({
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-50"
+          className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-50 transition-colors"
         >
-          {isSaving ? "Saving…" : "Save"}
+          {isSaving ? 'Saving…' : 'Save'}
         </button>
       </div>
 
@@ -103,6 +115,7 @@ export default function RiskEngineeringForm({
             className="w-full border border-neutral-300 rounded-lg px-3 py-2"
             value={occupancy}
             onChange={(e) => setOccupancy(e.target.value)}
+            placeholder="e.g. Warehouse / Office / Manufacturing"
           />
         </label>
 
@@ -112,6 +125,7 @@ export default function RiskEngineeringForm({
             className="w-full border border-neutral-300 rounded-lg px-3 py-2"
             value={construction}
             onChange={(e) => setConstruction(e.target.value)}
+            placeholder="e.g. Steel frame / RC / Timber"
           />
         </label>
 
@@ -121,12 +135,20 @@ export default function RiskEngineeringForm({
             className="w-full border border-neutral-300 rounded-lg px-3 py-2"
             value={protection}
             onChange={(e) => setProtection(e.target.value)}
+            placeholder="e.g. Sprinklers / Hydrants / Detection"
           />
         </label>
 
-        <div className="text-xs text-neutral-500 pt-2 border-t border-neutral-200">
-          <strong>Module Key:</strong> {moduleInstance.module_key} &nbsp;|&nbsp;
-          <strong>Doc Type:</strong> {document.document_type}
+        <div className="pt-4 border-t border-neutral-200 text-xs text-neutral-500 space-y-1">
+          <div>
+            <strong>Module Key:</strong> {moduleInstance.module_key}
+          </div>
+          <div>
+            <strong>Document Type:</strong> {document.document_type}
+          </div>
+          <div>
+            <strong>Document:</strong> {document.title}
+          </div>
         </div>
       </div>
     </div>

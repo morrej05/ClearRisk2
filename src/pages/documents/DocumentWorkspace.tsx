@@ -133,7 +133,7 @@ function getExpectedKeysForDocument(document: Document): string[] {
   }
 
   // DSEAR baseline
-  if (enabled.includes('DSEAR') || document.document_type === 'DSEAR') {
+  if (enabled.includes('DSEAR') && document.document_type !== 'DSEAR') {
     expected.push(
       'A1_DOC_CONTROL',
       'A2_BUILDING_PROFILE',
@@ -146,19 +146,6 @@ function getExpectedKeysForDocument(document: Document): string[] {
       'DSEAR_6_RISK_ASSESSMENT',
       'DSEAR_10_HIERARCHY_OF_CONTROL',
       'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE'
-    );
-  }
-
-  // Risk Engineering overlay (ONLY if enabled)
-  // ⚠️ Put your real legacy RE keys here.
-  if (enabled.includes('RISK_ENGINEERING')) {
-    expected.push(
-      'RISK_ENGINEERING'
-      // add your legacy keys, e.g.
-      // 'RE_CONSTRUCTION_CALCS',
-      // 'RE_MANAGEMENT_SYSTEMS',
-      // 'RE_NATURAL_HAZARDS',
-      // ...
     );
   }
 
@@ -326,12 +313,16 @@ const fetchModules = async () => {
 
       if (seededErr) throw seededErr;
 
-      const sorted = sortModulesByOrder(seeded || []);
+      // Filter modules to only expected keys (hide unwanted modules for RE docs)
+      const filtered = (seeded || []).filter((m: any) => expectedKeys.includes(m.module_key));
+      const sorted = sortModulesByOrder(filtered);
       setModules(sorted as ModuleInstance[]);
       return;
     }
 
-    const sorted = sortModulesByOrder(existing || []);
+    // Filter modules to only expected keys (hide unwanted modules for RE docs)
+    const filtered = (existing || []).filter((m: any) => expectedKeys.includes(m.module_key));
+    const sorted = sortModulesByOrder(filtered);
     setModules(sorted as ModuleInstance[]);
   } catch (error) {
     console.error('Error fetching modules:', error);

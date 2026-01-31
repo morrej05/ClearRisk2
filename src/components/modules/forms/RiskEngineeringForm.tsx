@@ -467,8 +467,86 @@ export default function RiskEngineeringForm({
             <SectionHeader title="Construction" sectionKey="construction" />
             {expandedSections.construction && (
               <div className="p-6 space-y-4 border-t border-neutral-200">
-                <div className="bg-pink-100 border-2 border-pink-500 p-3 rounded font-bold text-pink-900">
-                  DEBUG: Construction table should render here
+                <div className="overflow-x-auto">
+                  <table className="w-full border border-neutral-300 text-sm">
+                    <thead className="bg-neutral-50">
+                      <tr>
+                        <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Element</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Type/Material</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Fire Resistance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Frame</td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., Steel, Concrete, Timber"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., 60 min, 120 min"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Walls</td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., Brick cavity, Concrete block"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., 60 min, 120 min"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Roof</td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., Profiled metal, Concrete slab"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., 30 min, 60 min"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Floors</td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., Concrete slab, Composite deck"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., 60 min, 90 min"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
 
                 <label className="block">
@@ -496,10 +574,6 @@ export default function RiskEngineeringForm({
             <SectionHeader title="Management Systems" sectionKey="management" />
             {expandedSections.management && (
               <div className="p-6 space-y-6 border-t border-neutral-200">
-                <div className="bg-pink-100 border-2 border-pink-500 p-3 rounded font-bold text-pink-900">
-                  DEBUG: Management systems grading should render here
-                </div>
-
                 <div className="space-y-4">
                   <h4 className="font-semibold text-neutral-900 pb-2 border-b border-neutral-300">Fire Safety & Housekeeping</h4>
 
@@ -639,8 +713,86 @@ export default function RiskEngineeringForm({
             <SectionHeader title="Fire Protection Systems" sectionKey="fireProtection" />
             {expandedSections.fireProtection && (
               <div className="p-6 space-y-4 border-t border-neutral-200">
-                <div className="bg-pink-100 border-2 border-pink-500 p-3 rounded font-bold text-pink-900">
-                  DEBUG: Fire protection table should render here
+                <div className="overflow-x-auto">
+                  <table className="w-full border border-neutral-300 text-sm">
+                    <thead className="bg-neutral-50">
+                      <tr>
+                        <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">System Type</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Coverage</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-left font-semibold">Standard/Specification</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Sprinklers</td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., Full, Partial (70%), None"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., BS EN 12845 OH1"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Detection</td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., Full, Partial, None"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., BS 5839-1 Category L1"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Suppression</td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., Kitchen areas, Server room"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., FM-200, CO2, Ansul"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">Hydrants</td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., 4 external, 8 internal"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                        <td className="border border-neutral-300 px-3 py-2">
+                          <input
+                            type="text"
+                            placeholder="e.g., BS 5306-1"
+                            className="w-full px-2 py-1 border border-neutral-200 rounded"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
 
                 <label className="block">
@@ -1051,10 +1203,6 @@ export default function RiskEngineeringForm({
 
       {/* Outcome Panel and Actions */}
       <div className="px-6 max-w-5xl mx-auto mt-6">
-        <div className="bg-pink-100 border-2 border-pink-500 p-3 rounded font-bold text-pink-900 mb-6">
-          DEBUG: Recommendation buttons should render here
-        </div>
-
         <OutcomePanel
           outcome={outcome}
           assessorNotes={assessorNotes}

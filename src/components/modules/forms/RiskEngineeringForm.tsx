@@ -1642,9 +1642,8 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
         </div>
 
         <ModuleActions
-          moduleInstance={moduleInstance}
-          document={document}
-          onUpdate={onSaved}
+          documentId={document.id}
+          moduleInstanceId={moduleInstance.id}
         />
 
         <OutcomePanel

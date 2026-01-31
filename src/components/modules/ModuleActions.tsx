@@ -36,21 +36,43 @@ interface ModuleActionsProps {
   moduleInstanceId: string;
 }
 
+const isValidUUID = (id: string | undefined | null): boolean => {
+  if (!id) return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
 export default function ModuleActions({ documentId, moduleInstanceId }: ModuleActionsProps) {
   const { user } = useAuth();
   const [actions, setActions] = useState<Action[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
   const [documentStatus, setDocumentStatus] = useState<string>('draft');
   const [actionToDelete, setActionToDelete] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isValidUUID(documentId)) {
+      console.warn('ModuleActions: Invalid documentId provided:', documentId);
+      setIsLoading(false);
+      return;
+    }
+    if (!isValidUUID(moduleInstanceId)) {
+      console.warn('ModuleActions: Invalid moduleInstanceId provided:', moduleInstanceId);
+      setIsLoading(false);
+      return;
+    }
     fetchActions();
     fetchDocumentStatus();
   }, [moduleInstanceId, documentId]);
 
   const fetchActions = async () => {
+    if (!isValidUUID(moduleInstanceId)) {
+      console.error('ModuleActions.fetchActions: Invalid moduleInstanceId:', moduleInstanceId);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -98,6 +120,11 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
   };
 
   const fetchDocumentStatus = async () => {
+    if (!isValidUUID(documentId)) {
+      console.error('ModuleActions.fetchDocumentStatus: Invalid documentId:', documentId);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('documents')
@@ -189,6 +216,27 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
   };
 
   const isDeletable = documentStatus === 'draft';
+  const hasValidIds = isValidUUID(documentId) && isValidUUID(moduleInstanceId);
+
+  if (!hasValidIds) {
+    return (
+      <div className="bg-red-50 rounded-lg border border-red-200 p-6 mt-6">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-bold text-red-900 mb-1">Invalid Module Configuration</h3>
+            <p className="text-sm text-red-700">
+              Cannot load actions: Missing or invalid document ID or module instance ID.
+            </p>
+            <div className="mt-2 text-xs font-mono text-red-600 space-y-1">
+              <div>documentId: {documentId || '(missing)'}</div>
+              <div>moduleInstanceId: {moduleInstanceId || '(missing)'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-6 mt-6">

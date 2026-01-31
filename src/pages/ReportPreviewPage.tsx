@@ -456,7 +456,7 @@ export default function ReportPreviewPage() {
 if (survey.survey_type !== 'fra') {
   return (
     <Navigate
-      to={`/documents/${survey.id}/workspace`}
+      to={`/documents/${survey.document_id}/workspace`}
       replace
     />
   );

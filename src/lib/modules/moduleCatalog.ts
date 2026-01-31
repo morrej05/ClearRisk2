@@ -13,12 +13,12 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
 
   A1_DOC_CONTROL: {
     name: 'A1 - Document Control & Governance',
-    docTypes: ['FRA', 'FSD', 'DSEAR'],
+    docTypes: ['FRA', 'FSD', 'DSEAR', 'RE'],
     order: 1,
   },
   A2_BUILDING_PROFILE: {
     name: 'A2 - Building Profile',
-    docTypes: ['FRA', 'FSD', 'DSEAR'],
+    docTypes: ['FRA', 'FSD', 'DSEAR', 'RE'],
     order: 2,
   },
   A3_PERSONS_AT_RISK: {
@@ -150,6 +150,63 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     name: 'DSEAR-11 - Explosion Emergency Response',
     docTypes: ['DSEAR'],
     order: 37,
+  },
+
+  // Risk Engineering (Property Survey) Modules
+  RE_01_LOCATION: {
+    name: 'RE-1 - Location & Occupancy',
+    docTypes: ['RE'],
+    order: 40,
+  },
+  RE_02_CONSTRUCTION: {
+    name: 'RE-2 - Construction',
+    docTypes: ['RE'],
+    order: 41,
+  },
+  RE_03_COMPARTMENTATION: {
+    name: 'RE-3 - Compartmentation',
+    docTypes: ['RE'],
+    order: 42,
+  },
+  RE_04_EXTERNAL_FIRE: {
+    name: 'RE-4 - External Fire Spread',
+    docTypes: ['RE'],
+    order: 43,
+  },
+  RE_05_INTERNAL_FINISH: {
+    name: 'RE-5 - Internal Finish',
+    docTypes: ['RE'],
+    order: 44,
+  },
+  RE_06_FIRE_PROTECTION: {
+    name: 'RE-6 - Fire Protection Systems',
+    docTypes: ['RE'],
+    order: 45,
+  },
+  RE_07_FIREFIGHTING_ACCESS: {
+    name: 'RE-7 - Firefighting Access & Equipment',
+    docTypes: ['RE'],
+    order: 46,
+  },
+  RE_08_MEANS_OF_ESCAPE: {
+    name: 'RE-8 - Means of Escape',
+    docTypes: ['RE'],
+    order: 47,
+  },
+  RE_09_MANAGEMENT: {
+    name: 'RE-9 - Fire Safety Management',
+    docTypes: ['RE'],
+    order: 48,
+  },
+  RE_10_PROCESS_RISK: {
+    name: 'RE-10 - Process Risk Assessment',
+    docTypes: ['RE'],
+    order: 49,
+  },
+  RE_11_SUMMARY: {
+    name: 'RE-11 - Summary & Recommendations',
+    docTypes: ['RE'],
+    order: 50,
   },
 };
 

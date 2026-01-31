@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation } from 'react-rout
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getModuleName, sortModulesByOrder } from '../../lib/modules/moduleCatalog';
+import { getModuleName, sortModulesByOrder, getModuleKeysForDocType } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
 import EditLockBanner from '../../components/EditLockBanner';
@@ -54,6 +54,7 @@ const getDocumentTypeLabel = (document: Document): string => {
       if (mod === 'FRA') return 'Fire Risk Assessment';
       if (mod === 'FSD') return 'Fire Strategy Document';
       if (mod === 'DSEAR') return 'Explosive Atmospheres';
+      if (mod === 'RE') return 'Risk Engineering Assessment';
       return mod;
     });
     return labels.join(' + ');
@@ -62,6 +63,7 @@ const getDocumentTypeLabel = (document: Document): string => {
   if (enabledModules.includes('FRA')) return 'Fire Risk Assessment';
   if (enabledModules.includes('FSD')) return 'Fire Strategy Document';
   if (enabledModules.includes('DSEAR')) return 'Explosive Atmospheres';
+  if (enabledModules.includes('RE') || document.document_type === 'RE') return 'Risk Engineering Assessment';
   return document.document_type;
 };
 
@@ -77,8 +79,26 @@ function getExpectedKeysForDocument(document: Document): string[] {
 
   const expected: string[] = [];
 
+  // Use module catalog for base document types
+  if (document.document_type === 'FRA') {
+    expected.push(...getModuleKeysForDocType('FRA'));
+  }
+
+  if (document.document_type === 'FSD') {
+    expected.push(...getModuleKeysForDocType('FSD'));
+  }
+
+  if (document.document_type === 'DSEAR') {
+    expected.push(...getModuleKeysForDocType('DSEAR'));
+  }
+
+  if (document.document_type === 'RE') {
+    expected.push(...getModuleKeysForDocType('RE'));
+  }
+
+  // Additional modules from enabled_modules (for combined assessments)
   // FRA baseline
-  if (enabled.includes('FRA') || document.document_type === 'FRA') {
+  if (enabled.includes('FRA') && document.document_type !== 'FRA') {
     expected.push(
       'A1_DOC_CONTROL',
       'A2_BUILDING_PROFILE',
@@ -95,7 +115,7 @@ function getExpectedKeysForDocument(document: Document): string[] {
   }
 
   // FSD baseline
-  if (enabled.includes('FSD') || document.document_type === 'FSD') {
+  if (enabled.includes('FSD') && document.document_type !== 'FSD') {
     expected.push(
       'A1_DOC_CONTROL',
       'A2_BUILDING_PROFILE',

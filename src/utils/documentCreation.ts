@@ -1,50 +1,5 @@
 import { supabase } from '../lib/supabase';
-
-const MODULE_SKELETONS = {
-  FRA: [
-    'A1_DOC_CONTROL',
-    'A2_BUILDING_PROFILE',
-    'A3_PERSONS_AT_RISK',
-    'A4_MANAGEMENT_CONTROLS',
-    'A5_EMERGENCY_ARRANGEMENTS',
-    'A7_REVIEW_ASSURANCE',
-    'FRA_1_HAZARDS',
-    'FRA_2_ESCAPE_ASIS',
-    'FRA_3_PROTECTION_ASIS',
-    'FRA_5_EXTERNAL_FIRE_SPREAD',
-    'FRA_4_SIGNIFICANT_FINDINGS',
-  ],
-  FSD: [
-    'A1_DOC_CONTROL',
-    'A2_BUILDING_PROFILE',
-    'FSD_1_REG_BASIS',
-    'FSD_2_EVAC_STRATEGY',
-    'FSD_3_ESCAPE_DESIGN',
-    'FSD_4_PASSIVE_PROTECTION',
-    'FSD_5_ACTIVE_SYSTEMS',
-    'FSD_6_FRS_ACCESS',
-    'FSD_7_DRAWINGS',
-    'FSD_8_SMOKE_CONTROL',
-    'FSD_9_CONSTRUCTION_PHASE',
-  ],
-  DSEAR: [
-    'A1_DOC_CONTROL',
-    'A2_BUILDING_PROFILE',
-    'DSEAR_1_SUBSTANCES_REGISTER',
-    'DSEAR_2_PROCESS_RELEASES',
-    'DSEAR_3_HAC_ZONING',
-    'DSEAR_4_IGNITION_CONTROL',
-    'DSEAR_5_MITIGATION',
-    'DSEAR_6_RISK_TABLE',
-    'DSEAR_10_HIERARCHY_SUBSTITUTION',
-    'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE',
-  ],
-  RE: [
-    'A1_DOC_CONTROL',
-    'A2_BUILDING_PROFILE',
-    'RISK_ENGINEERING',
-  ],
-};
+import { getModuleKeysForDocType } from '../lib/modules/moduleCatalog';
 
 export type DocumentType = 'FRA' | 'FSD' | 'DSEAR' | 'RE';
 
@@ -106,7 +61,8 @@ export async function createDocument({
 
   console.log('[documentCreation.createDocument] Created document:', document.id, 'type:', documentType);
 
-  const moduleKeys = MODULE_SKELETONS[documentType] || [];
+  const moduleKeys = getModuleKeysForDocType(documentType);
+  console.log('[documentCreation.createDocument] Module keys for', documentType, ':', moduleKeys);
 
   const moduleInstances = moduleKeys.map((moduleKey) => ({
     organisation_id: organisationId,
@@ -118,16 +74,76 @@ export async function createDocument({
     data: {},
   }));
 
-  const { error: modulesError } = await supabase
-    .from('module_instances')
-    .insert(moduleInstances);
+  if (moduleInstances.length > 0) {
+    const { error: modulesError } = await supabase
+      .from('module_instances')
+      .insert(moduleInstances);
 
-  if (modulesError) {
-    console.error('[documentCreation.createDocument] Module instances insert failed:', modulesError);
-    throw modulesError;
+    if (modulesError) {
+      console.error('[documentCreation.createDocument] Module instances insert failed:', modulesError);
+      throw modulesError;
+    }
+
+    console.log('[documentCreation.createDocument] Created', moduleInstances.length, 'module instances');
   }
 
   return document.id;
+}
+
+/**
+ * Ensures all required module instances exist for a document.
+ * Useful for backfilling missing modules in existing documents.
+ * Uses upsert to safely add only missing modules without creating duplicates.
+ */
+export async function ensureRequiredModules(
+  documentId: string,
+  documentType: DocumentType,
+  organisationId: string
+): Promise<void> {
+  console.log('[documentCreation.ensureRequiredModules] Checking modules for document:', documentId, 'type:', documentType);
+
+  const requiredModuleKeys = getModuleKeysForDocType(documentType);
+  console.log('[documentCreation.ensureRequiredModules] Required modules:', requiredModuleKeys);
+
+  const { data: existingModules, error: fetchError } = await supabase
+    .from('module_instances')
+    .select('module_key')
+    .eq('document_id', documentId);
+
+  if (fetchError) {
+    console.error('[documentCreation.ensureRequiredModules] Failed to fetch existing modules:', fetchError);
+    throw fetchError;
+  }
+
+  const existingKeys = new Set(existingModules?.map(m => m.module_key) || []);
+  const missingKeys = requiredModuleKeys.filter(key => !existingKeys.has(key));
+
+  console.log('[documentCreation.ensureRequiredModules] Existing:', Array.from(existingKeys), 'Missing:', missingKeys);
+
+  if (missingKeys.length > 0) {
+    const newModuleInstances = missingKeys.map(moduleKey => ({
+      organisation_id: organisationId,
+      document_id: documentId,
+      module_key: moduleKey,
+      module_scope: 'document',
+      outcome: null,
+      assessor_notes: '',
+      data: {},
+    }));
+
+    const { error: insertError } = await supabase
+      .from('module_instances')
+      .insert(newModuleInstances);
+
+    if (insertError) {
+      console.error('[documentCreation.ensureRequiredModules] Failed to insert missing modules:', insertError);
+      throw insertError;
+    }
+
+    console.log('[documentCreation.ensureRequiredModules] Added', missingKeys.length, 'missing modules:', missingKeys);
+  } else {
+    console.log('[documentCreation.ensureRequiredModules] All required modules already exist');
+  }
 }
 
 export async function createPropertySurvey(

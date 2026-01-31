@@ -105,35 +105,49 @@ export default function NewAssessmentPage() {
     setCreatingType(typeId);
 
     try {
-      let documentId: string;
-
       if (typeId === 'fra') {
-        documentId = await createDocument({
+        const documentId = await createDocument({
           organisationId: organisation.id,
           documentType: 'FRA',
           title: 'New Fire Risk Assessment',
         });
+        if (!documentId) {
+          throw new Error('Document creation returned no ID');
+        }
+        console.log('[NewAssessment] Created FRA document:', documentId);
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'fsd') {
-        documentId = await createDocument({
+        const documentId = await createDocument({
           organisationId: organisation.id,
           documentType: 'FSD',
           title: 'New Fire Strategy',
         });
+        if (!documentId) {
+          throw new Error('Document creation returned no ID');
+        }
+        console.log('[NewAssessment] Created FSD document:', documentId);
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'dsear') {
-        documentId = await createDocument({
+        const documentId = await createDocument({
           organisationId: organisation.id,
           documentType: 'DSEAR',
           title: 'New Explosive Atmospheres Assessment',
         });
+        if (!documentId) {
+          throw new Error('Document creation returned no ID');
+        }
+        console.log('[NewAssessment] Created DSEAR document:', documentId);
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'property') {
-        documentId = await createPropertySurvey(user.id, 'New Client');
+        const documentId = await createPropertySurvey(user.id, 'New Client');
+        if (!documentId) {
+          throw new Error('Survey creation returned no ID');
+        }
+        console.log('[NewAssessment] Created property survey:', documentId);
         navigate(`/report/${documentId}`);
       }
     } catch (error) {
-      console.error('Error creating assessment:', error);
+      console.error('[NewAssessment] Error creating assessment:', error);
       alert('Failed to create assessment. Please try again.');
       setCreatingType(null);
     }

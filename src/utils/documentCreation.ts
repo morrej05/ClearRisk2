@@ -75,8 +75,22 @@ export async function createDocument({
     .select()
     .single();
 
-  if (docError) throw docError;
-  if (!document) throw new Error('Document creation failed');
+  if (docError) {
+    console.error('[documentCreation.createDocument] Insert failed:', docError);
+    throw docError;
+  }
+
+  if (!document) {
+    console.error('[documentCreation.createDocument] No document returned from insert');
+    throw new Error('Document creation failed - no data returned');
+  }
+
+  if (!document.id) {
+    console.error('[documentCreation.createDocument] Document missing ID:', document);
+    throw new Error('Document creation failed - no ID generated');
+  }
+
+  console.log('[documentCreation.createDocument] Created document:', document.id, 'type:', documentType);
 
   const moduleKeys = MODULE_SKELETONS[documentType] || [];
 
@@ -94,7 +108,10 @@ export async function createDocument({
     .from('module_instances')
     .insert(moduleInstances);
 
-  if (modulesError) throw modulesError;
+  if (modulesError) {
+    console.error('[documentCreation.createDocument] Module instances insert failed:', modulesError);
+    throw modulesError;
+  }
 
   return document.id;
 }
@@ -126,8 +143,22 @@ export async function createPropertySurvey(
     .select()
     .single();
 
-  if (error) throw error;
-  if (!data) throw new Error('Survey creation failed');
+  if (error) {
+    console.error('[documentCreation.createPropertySurvey] Insert failed:', error);
+    throw error;
+  }
+
+  if (!data) {
+    console.error('[documentCreation.createPropertySurvey] No survey returned from insert');
+    throw new Error('Survey creation failed - no data returned');
+  }
+
+  if (!data.id) {
+    console.error('[documentCreation.createPropertySurvey] Survey missing ID:', data);
+    throw new Error('Survey creation failed - no ID generated');
+  }
+
+  console.log('[documentCreation.createPropertySurvey] Created survey:', data.id);
 
   return data.id;
 }

@@ -231,6 +231,11 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
     setSectionGrades(prev => ({ ...prev, [section]: value }));
   };
 
+  // Helper to parse string numbers with commas
+  const toNum = (s: string | number) => {
+    return Number(String(s).replace(/,/g, '').trim() || 0);
+  };
+
   // Currency formatting
   const formatCurrency = (value: number) => {
     const symbols: Record<string, string> = { GBP: '£', USD: '$', EUR: '€' };
@@ -239,16 +244,22 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
   };
 
   // Calculate loss metrics
-  const pdValue = parseFloat(pdSumInsured) || 0;
-  const biValue = parseFloat(biSumInsured) || 0;
+  const lossMetrics = useMemo(() => {
+    const pd = toNum(pdSumInsured);
+    const bi = toNum(biSumInsured);
 
-  const emlPd = (pdValue * emlPdPercent) / 100;
-  const emlBi = (biValue * emlBiPercent) / 100;
-  const emlTotal = emlPd + emlBi;
+    const emlPd = pd * emlPdPercent / 100;
+    const emlBi = bi * emlBiPercent / 100;
+    const emlTotal = emlPd + emlBi;
 
-  const mflPd = (pdValue * mflPdPercent) / 100;
-  const mflBi = (biValue * mflBiPercent) / 100;
-  const mflTotal = mflPd + mflBi;
+    const mflPd = pd * mflPdPercent / 100;
+    const mflBi = bi * mflBiPercent / 100;
+    const mflTotal = mflPd + mflBi;
+
+    return { pd, bi, emlPd, emlBi, emlTotal, mflPd, mflBi, mflTotal };
+  }, [pdSumInsured, biSumInsured, emlPdPercent, emlBiPercent, mflPdPercent, mflBiPercent]);
+
+  const { pd, bi, emlPd, emlBi, emlTotal, mflPd, mflBi, mflTotal } = lossMetrics;
 
   // Auto-generate recommendations based on poor ratings
   useEffect(() => {
@@ -972,6 +983,60 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
                       className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
                       placeholder="0"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Loss Metrics Summary Card */}
+              <div className="p-6 bg-gradient-to-br from-neutral-50 to-neutral-100 border border-neutral-300 rounded-lg shadow-sm">
+                <h4 className="text-base font-semibold text-neutral-900 mb-4">Loss Metrics Summary</h4>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                      <div className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">PD Sum Insured</div>
+                      <div className="text-2xl font-bold text-neutral-900">{formatCurrency(pd)}</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                      <div className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">BI Sum Insured</div>
+                      <div className="text-2xl font-bold text-neutral-900">{formatCurrency(bi)}</div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-neutral-300 pt-4">
+                    <div className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-3">Estimated Maximum Loss (EML)</div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white p-3 rounded-lg border border-orange-200">
+                        <div className="text-xs text-neutral-600 mb-1">EML PD</div>
+                        <div className="text-lg font-bold text-neutral-900">{formatCurrency(emlPd)}</div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-orange-200">
+                        <div className="text-xs text-neutral-600 mb-1">EML BI</div>
+                        <div className="text-lg font-bold text-neutral-900">{formatCurrency(emlBi)}</div>
+                      </div>
+                      <div className="bg-orange-50 p-3 rounded-lg border-2 border-orange-400">
+                        <div className="text-xs text-orange-700 font-medium mb-1">EML Total</div>
+                        <div className="text-lg font-bold text-orange-700">{formatCurrency(emlTotal)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-neutral-300 pt-4">
+                    <div className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-3">Maximum Foreseeable Loss (MFL)</div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white p-3 rounded-lg border border-red-200">
+                        <div className="text-xs text-neutral-600 mb-1">MFL PD</div>
+                        <div className="text-lg font-bold text-neutral-900">{formatCurrency(mflPd)}</div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-red-200">
+                        <div className="text-xs text-neutral-600 mb-1">MFL BI</div>
+                        <div className="text-lg font-bold text-neutral-900">{formatCurrency(mflBi)}</div>
+                      </div>
+                      <div className="bg-red-50 p-3 rounded-lg border-2 border-red-400">
+                        <div className="text-xs text-red-700 font-medium mb-1">MFL Total</div>
+                        <div className="text-lg font-bold text-red-700">{formatCurrency(mflTotal)}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

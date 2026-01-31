@@ -567,9 +567,29 @@ const fetchModules = async () => {
                 );
               }
 
-              return modules.map((module) => (
-                <ModuleNavItem key={module.id} module={module} />
-              ));
+return (
+  <>
+    {reModules.length > 0 && (
+      <>
+        <div className="px-4 py-2 bg-purple-50 border-b border-purple-200">
+          <h3 className="text-xs font-bold text-purple-700 uppercase tracking-wider">
+            Risk Engineering
+          </h3>
+        </div>
+        {reModules.map((module) => (
+          <ModuleNavItem key={module.id} module={module} />
+        ))}
+      </>
+    )}
+
+    {modules
+      .filter(m => !reModules.includes(m))
+      .map((module) => (
+        <ModuleNavItem key={module.id} module={module} />
+      ))}
+  </>
+);
+
             })()}
           </div>
         </div>

@@ -192,6 +192,19 @@ export default function DocumentWorkspace() {
     }
   }, [searchParams, modules, selectedModuleId, id]);
 
+  // Auto-select first incomplete module (or first module) after modules load
+  useEffect(() => {
+    if (!selectedModuleId && modules.length > 0) {
+      const firstIncomplete = modules.find((m) => !m.completed_at);
+      const targetModule = firstIncomplete ?? modules[0];
+      setSelectedModuleId(targetModule.id);
+      setSearchParams({ m: targetModule.id });
+      if (id) {
+        localStorage.setItem(`ezirisk:lastModule:${id}`, targetModule.id);
+      }
+    }
+  }, [modules, selectedModuleId, id]);
+
   const fetchDocument = async () => {
     if (!id || !organisation?.id) return;
 

@@ -5,7 +5,6 @@ import AutoExpandTextarea from '../../AutoExpandTextarea';
 import SectionGrade from '../../SectionGrade';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
-import RatingRadio from '../../RatingRadio';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 
 interface Document {

@@ -129,7 +129,7 @@ export async function getLockedDefencePackUrl(
       return { success: false, error: 'Failed to generate download URL' };
     }
 
-    const signedUrl = (data as any)?.signedUrl;
+    const signedUrl = data?.signed_url || data?.signedUrl;
     if (!signedUrl) {
       return { success: false, error: 'No signed URL returned' };
     }

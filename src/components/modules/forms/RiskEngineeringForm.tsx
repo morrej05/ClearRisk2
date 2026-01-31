@@ -536,6 +536,265 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
           </p>
         </div>
 
+        {/* FORCE REAL: Construction */}
+        <div className="mb-6 p-6 border-8 border-green-500 bg-green-50 rounded-lg">
+          <h3 className="text-2xl font-bold text-green-900 mb-4">FORCE REAL: Construction</h3>
+          <div className="space-y-4">
+            <div className="overflow-x-auto bg-white p-4 rounded-lg border border-neutral-200">
+              <table className="w-full border-collapse border border-neutral-300">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Element</th>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Type / Material</th>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Fire Resistance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {constructionElements.map((elem, idx) => (
+                    <tr key={idx}>
+                      <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">{elem.element}</td>
+                      <td className="border border-neutral-300 px-3 py-2">
+                        <input
+                          type="text"
+                          value={elem.type_material}
+                          onChange={(e) => {
+                            const updated = [...constructionElements];
+                            updated[idx].type_material = e.target.value;
+                            setConstructionElements(updated);
+                          }}
+                          className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
+                          placeholder="e.g., Steel, Concrete, Timber"
+                        />
+                      </td>
+                      <td className="border border-neutral-300 px-3 py-2">
+                        <input
+                          type="text"
+                          value={elem.fire_resistance}
+                          onChange={(e) => {
+                            const updated = [...constructionElements];
+                            updated[idx].fire_resistance = e.target.value;
+                            setConstructionElements(updated);
+                          }}
+                          className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
+                          placeholder="e.g., 60 min, 120 min"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <SectionGrade
+              sectionKey="construction"
+              sectionTitle="Construction"
+              value={sectionGrades.construction}
+              onChange={(value) => handleSectionGradeChange('construction', value)}
+            />
+          </div>
+        </div>
+
+        {/* FORCE REAL: Fire Protection */}
+        <div className="mb-6 p-6 border-8 border-orange-500 bg-orange-50 rounded-lg">
+          <h3 className="text-2xl font-bold text-orange-900 mb-4">FORCE REAL: Fire Protection</h3>
+          <div className="space-y-4">
+            <div className="overflow-x-auto bg-white p-4 rounded-lg border border-neutral-200">
+              <table className="w-full border-collapse border border-neutral-300">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">System</th>
+                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Coverage / Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fireProtectionItems.map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">{item.system}</td>
+                      <td className="border border-neutral-300 px-3 py-2">
+                        <input
+                          type="text"
+                          value={item.coverage_notes}
+                          onChange={(e) => {
+                            const updated = [...fireProtectionItems];
+                            updated[idx].coverage_notes = e.target.value;
+                            setFireProtectionItems(updated);
+                          }}
+                          className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
+                          placeholder="Enter coverage details"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <SectionGrade
+              sectionKey="fire_protection"
+              sectionTitle="Fire Protection"
+              value={sectionGrades.fire_protection}
+              onChange={(value) => handleSectionGradeChange('fire_protection', value)}
+            />
+          </div>
+        </div>
+
+        {/* FORCE REAL: Recommendations */}
+        <div className="mb-6 p-6 border-8 border-purple-500 bg-purple-50 rounded-lg">
+          <h3 className="text-2xl font-bold text-purple-900 mb-4">FORCE REAL: Recommendations</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <p className="text-sm text-neutral-600">
+                Recommendations are auto-generated based on section ratings (1-2), or you can add manual recommendations.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={addManualRecommendation}
+                  className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Manual
+                </button>
+              </div>
+            </div>
+
+            {recommendations.length === 0 ? (
+              <div className="text-center py-8 border-2 border-dashed border-neutral-300 rounded-lg">
+                <p className="text-neutral-600">No recommendations yet. Rate sections 1-2 to auto-generate, or add manually.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recommendations.map((rec, idx) => (
+                  <div
+                    key={rec.id}
+                    className={`p-4 border rounded-lg ${rec.isAutoGenerated ? 'bg-blue-50 border-blue-200' : 'bg-white border-neutral-300'}`}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-medium px-2 py-1 rounded bg-neutral-200 text-neutral-700">
+                            #{idx + 1}
+                          </span>
+                          {rec.priority && (
+                            <span className={`text-xs font-medium px-2 py-1 rounded ${
+                              rec.priority === 'Critical' ? 'bg-red-100 text-red-700' :
+                              rec.priority === 'High' ? 'bg-orange-100 text-orange-700' :
+                              rec.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {rec.priority}
+                            </span>
+                          )}
+                          {rec.isAutoGenerated && (
+                            <span className="text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700">
+                              Auto-Generated
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeRecommendation(rec.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all"
+                        disabled={rec.isAutoGenerated}
+                        title={rec.isAutoGenerated ? "Auto-generated recommendations are removed when rating improves" : "Remove recommendation"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-700 mb-1">
+                          Hazard / Finding
+                        </label>
+                        <input
+                          type="text"
+                          value={rec.hazard}
+                          onChange={(e) => updateRecommendation(rec.id, 'hazard', e.target.value)}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                          placeholder="Brief title of the hazard or finding"
+                          disabled={rec.isAutoGenerated}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-700 mb-1">
+                          Description / Recommended Action
+                        </label>
+                        <textarea
+                          value={rec.description}
+                          onChange={(e) => updateRecommendation(rec.id, 'description', e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                          placeholder="Detailed description and recommended action"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-700 mb-1">
+                          Client Response (Optional)
+                        </label>
+                        <textarea
+                          value={rec.client_response}
+                          onChange={(e) => updateRecommendation(rec.id, 'client_response', e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                          placeholder="Client's response or action taken"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            Status
+                          </label>
+                          <select
+                            value={rec.status}
+                            onChange={(e) => updateRecommendation(rec.id, 'status', e.target.value)}
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                          >
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="closed">Closed</option>
+                          </select>
+                        </div>
+
+                        {!rec.isAutoGenerated && (
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                              Priority
+                            </label>
+                            <select
+                              value={rec.priority || 'Medium'}
+                              onChange={(e) => updateRecommendation(rec.id, 'priority', e.target.value)}
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                            >
+                              <option value="Critical">Critical</option>
+                              <option value="High">High</option>
+                              <option value="Medium">Medium</option>
+                              <option value="Low">Low</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">Auto-Generation Rules</h4>
+              <ul className="text-xs text-blue-800 space-y-1">
+                <li>• Recommendations are automatically generated when any section is rated 1 (Poor) or 2 (Tolerable)</li>
+                <li>• Auto-generated recommendations are removed when the rating improves to 3 or above</li>
+                <li>• Manual recommendations can be added at any time and must be removed manually</li>
+                <li>• All recommendations will be included in the report output</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Construction Table */}
         <div className="mb-8">
           <SectionHeader title="Construction Elements" sectionKey="construction" />

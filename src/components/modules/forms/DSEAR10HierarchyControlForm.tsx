@@ -69,7 +69,19 @@ export default function DSEAR10HierarchyControlForm({ moduleInstance, document, 
         <div><label className="block text-sm font-medium text-gray-700 mb-1">Justification for Retained Risk (ALARP)</label><AutoExpandTextarea value={justification} onChange={(e) => setJustification(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Explain why further risk reduction is not reasonably practicable" /></div>
       </div>
       <OutcomePanel outcome={outcome} assessorNotes={assessorNotes} onOutcomeChange={setOutcome} onNotesChange={setAssessorNotes} onSave={handleSave} isSaving={isSaving} suggestedOutcome={getSuggestedOutcome()} />
-      <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
+      {document?.id && moduleInstance?.id && (
+
+        <ModuleActions
+
+          key={actionsRefreshKey}
+
+          documentId={document.id}
+
+          moduleInstanceId={moduleInstance.id}
+
+        />
+
+      )}
     </div>
   );
 }

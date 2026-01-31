@@ -640,11 +640,17 @@ export default function FRA3FireProtectionForm({
         ) : null;
       })()}
 
-      <ModuleActions
+      {document?.id && moduleInstance?.id && (
+
+
+        <ModuleActions
         key={actionsRefreshKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}
       />
+
+
+      )}
 
       {showActionModal && (
         <AddActionModal

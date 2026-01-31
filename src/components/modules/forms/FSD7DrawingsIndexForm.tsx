@@ -355,10 +355,25 @@ export default function FSD7DrawingsIndexForm({
         isSaving={isSaving}
       />
 
-      <ModuleActions
-        documentId={document.id}
-        moduleInstanceId={moduleInstance.id}
-      />
+      {document?.id && moduleInstance?.id && (
+
+
+        <ModuleActions
+
+
+          key={actionsRefreshKey}
+
+
+          documentId={document.id}
+
+
+          moduleInstanceId={moduleInstance.id}
+
+
+        />
+
+
+      )}
 
       {showActionModal && (
         <AddActionModal

@@ -410,10 +410,25 @@ export default function FSD4PassiveFireProtectionForm({
         isSaving={isSaving}
       />
 
-      <ModuleActions
-        documentId={document.id}
-        moduleInstanceId={moduleInstance.id}
-      />
+      {document?.id && moduleInstance?.id && (
+
+
+        <ModuleActions
+
+
+          key={actionsRefreshKey}
+
+
+          documentId={document.id}
+
+
+          moduleInstanceId={moduleInstance.id}
+
+
+        />
+
+
+      )}
 
       {showActionModal && (
         <AddActionModal

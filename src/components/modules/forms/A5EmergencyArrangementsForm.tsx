@@ -512,11 +512,17 @@ export default function A5EmergencyArrangementsForm({
         ) : null;
       })()}
 
-      <ModuleActions
+      {document?.id && moduleInstance?.id && (
+
+
+        <ModuleActions
         key={actionsRefreshKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}
       />
+
+
+      )}
 
       {showActionModal && (
         <AddActionModal

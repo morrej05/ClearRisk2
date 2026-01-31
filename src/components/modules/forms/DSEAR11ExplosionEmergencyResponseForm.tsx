@@ -53,7 +53,19 @@ export default function DSEAR11ExplosionEmergencyResponseForm({ moduleInstance, 
         <div><label className="block text-sm font-medium text-gray-700 mb-1">Emergency Drills & Training in Place?</label><select value={drills} onChange={(e) => setDrills(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg"><option value="">Select...</option><option value="yes">Yes</option><option value="no">No</option><option value="unknown">Unknown</option></select></div>
       </div>
       <OutcomePanel outcome={outcome} assessorNotes={assessorNotes} onOutcomeChange={setOutcome} onNotesChange={setAssessorNotes} onSave={handleSave} isSaving={isSaving} suggestedOutcome={getSuggestedOutcome()} />
-      <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
+      {document?.id && moduleInstance?.id && (
+
+        <ModuleActions
+
+          key={actionsRefreshKey}
+
+          documentId={document.id}
+
+          moduleInstanceId={moduleInstance.id}
+
+        />
+
+      )}
     </div>
   );
 }

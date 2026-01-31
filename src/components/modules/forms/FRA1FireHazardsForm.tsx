@@ -582,11 +582,17 @@ export default function FRA1FireHazardsForm({
         isSaving={isSaving}
       />
 
-      <ModuleActions
+      {document?.id && moduleInstance?.id && (
+
+
+        <ModuleActions
         key={actionsRefreshKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}
       />
+
+
+      )}
 
       {showActionModal && (
         <AddActionModal

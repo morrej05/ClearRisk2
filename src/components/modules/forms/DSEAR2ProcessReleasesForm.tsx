@@ -281,10 +281,25 @@ export default function DSEAR2ProcessReleasesForm({
         suggestedOutcome={getSuggestedOutcome()}
       />
 
-      <ModuleActions
-        documentId={document.id}
-        moduleInstanceId={moduleInstance.id}
-      />
+      {document?.id && moduleInstance?.id && (
+
+
+        <ModuleActions
+
+
+          key={actionsRefreshKey}
+
+
+          documentId={document.id}
+
+
+          moduleInstanceId={moduleInstance.id}
+
+
+        />
+
+
+      )}
     </div>
   );
 }

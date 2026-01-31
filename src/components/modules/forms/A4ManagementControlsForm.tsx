@@ -753,11 +753,17 @@ export default function A4ManagementControlsForm({
         ) : null;
       })()}
 
-      <ModuleActions
+      {document?.id && moduleInstance?.id && (
+
+
+        <ModuleActions
         key={actionsRefreshKey}
         documentId={document.id}
         moduleInstanceId={moduleInstance.id}
       />
+
+
+      )}
 
       {showActionModal && (
         <AddActionModal

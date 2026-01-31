@@ -75,12 +75,14 @@ export default function ModuleRenderer({
           document={document}
           onSaved={onSaved}
         />
-        <div className="px-6 pb-6 max-w-5xl mx-auto">
-          <ModuleActions
-            documentId={document.id}
-            moduleInstanceId={moduleInstance.id}
-          />
-        </div>
+        {document?.id && moduleInstance?.id && (
+          <div className="px-6 pb-6 max-w-5xl mx-auto">
+            <ModuleActions
+              documentId={document.id}
+              moduleInstanceId={moduleInstance.id}
+            />
+          </div>
+        )}
       </>
     );
   }
@@ -410,10 +412,12 @@ function PlaceholderModuleForm({
         isSaving={isSaving}
       />
 
-      <ModuleActions
-        documentId={document.id}
-        moduleInstanceId={moduleInstance.id}
-      />
+      {document?.id && moduleInstance?.id && (
+        <ModuleActions
+          documentId={document.id}
+          moduleInstanceId={moduleInstance.id}
+        />
+      )}
     </div>
   );
 }

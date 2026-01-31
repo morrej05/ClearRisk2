@@ -450,25 +450,16 @@ export default function ReportPreviewPage() {
     );
   }
 
-  // ROUTER-LEVEL GUARD: Prevent non-FRA surveys from accessing FRA report UI
-  if (survey.survey_type !== 'fra') {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="bg-white border border-slate-200 rounded-lg p-6 max-w-xl w-full">
-          <h2 className="text-lg font-semibold text-slate-900 mb-2">Report not available</h2>
-          <p className="text-slate-600">
-            This report viewer currently supports Fire Risk (FRA) surveys only.
-          </p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // ROUTER-LEVEL GUARD: FRA report UI only.
+// Non-FRA surveys must go to workspace instead.
+if (survey.survey_type !== 'fra') {
+  return (
+    <Navigate
+      to={`/documents/${survey.id}/workspace`}
+      replace
+    />
+  );
+}
 
   return (
     <div className="min-h-screen bg-slate-50">

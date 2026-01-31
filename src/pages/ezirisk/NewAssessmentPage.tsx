@@ -106,40 +106,51 @@ export default function NewAssessmentPage() {
 
     try {
       if (typeId === 'fra') {
-        const documentId = await createDocument({
+        const payload = {
           organisationId: organisation.id,
-          documentType: 'FRA',
+          documentType: 'FRA' as const,
           title: 'New Fire Risk Assessment',
-        });
+        };
+        console.log('[NewAssessment] Creating FRA with payload:', payload);
+        const documentId = await createDocument(payload);
         if (!documentId) {
           throw new Error('Document creation returned no ID');
         }
         console.log('[NewAssessment] Created FRA document:', documentId);
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'fsd') {
-        const documentId = await createDocument({
+        const payload = {
           organisationId: organisation.id,
-          documentType: 'FSD',
+          documentType: 'FSD' as const,
           title: 'New Fire Strategy',
-        });
+        };
+        console.log('[NewAssessment] Creating FSD with payload:', payload);
+        const documentId = await createDocument(payload);
         if (!documentId) {
           throw new Error('Document creation returned no ID');
         }
         console.log('[NewAssessment] Created FSD document:', documentId);
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'dsear') {
-        const documentId = await createDocument({
+        const payload = {
           organisationId: organisation.id,
-          documentType: 'DSEAR',
+          documentType: 'DSEAR' as const,
           title: 'New Explosive Atmospheres Assessment',
-        });
+        };
+        console.log('[NewAssessment] Creating DSEAR with payload:', payload);
+        const documentId = await createDocument(payload);
         if (!documentId) {
           throw new Error('Document creation returned no ID');
         }
         console.log('[NewAssessment] Created DSEAR document:', documentId);
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'property') {
-        const documentId = await createPropertySurvey(user.id, 'New Client');
+        const payload = {
+          userId: user.id,
+          companyName: 'New Client',
+        };
+        console.log('[NewAssessment] Creating Property Survey (RE) with payload:', payload);
+        const documentId = await createPropertySurvey(payload.userId, payload.companyName);
         if (!documentId) {
           throw new Error('Survey creation returned no ID');
         }
@@ -147,8 +158,20 @@ export default function NewAssessmentPage() {
         navigate(`/report/${documentId}`);
       }
     } catch (error) {
-      console.error('[NewAssessment] Error creating assessment:', error);
-      alert('Failed to create assessment. Please try again.');
+      console.error('[NewAssessment] ERROR creating assessment:', error);
+      console.error('[NewAssessment] Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        cause: error instanceof Error ? error.cause : undefined,
+        stack: error instanceof Error ? error.stack : undefined,
+        full: error,
+      });
+
+      // Show actual error to user
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const displayMessage = `Failed to create assessment: ${errorMessage}`;
+
+      alert(displayMessage);
       setCreatingType(null);
     }
   };

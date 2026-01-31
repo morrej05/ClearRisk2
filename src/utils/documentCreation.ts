@@ -69,6 +69,8 @@ export async function createDocument({
     jurisdiction,
   };
 
+  console.log('[documentCreation.createDocument] Insert payload:', documentData);
+
   const { data: document, error: docError } = await supabase
     .from('documents')
     .insert([documentData])
@@ -77,6 +79,13 @@ export async function createDocument({
 
   if (docError) {
     console.error('[documentCreation.createDocument] Insert failed:', docError);
+    console.error('[documentCreation.createDocument] Error details:', {
+      code: docError.code,
+      message: docError.message,
+      details: docError.details,
+      hint: docError.hint,
+      full: docError,
+    });
     throw docError;
   }
 
@@ -122,29 +131,40 @@ export async function createPropertySurvey(
 ): Promise<string> {
   const surveyDate = new Date().toISOString().split('T')[0];
 
+  const insertPayload = {
+    user_id: userId,
+    framework_type: 'fire_property',
+    survey_type: 'Full',
+    report_status: 'Draft',
+    property_name: 'Untitled Survey',
+    property_address: '',
+    company_name: companyName,
+    survey_date: surveyDate,
+    issued: false,
+    form_data: {
+      companyName,
+      surveyDate,
+      reportStatus: 'Draft',
+    },
+  };
+
+  console.log('[documentCreation.createPropertySurvey] Insert payload:', insertPayload);
+
   const { data, error } = await supabase
     .from('survey_reports')
-    .insert({
-      user_id: userId,
-      framework_type: 'fire_property',
-      survey_type: 'Full',
-      report_status: 'Draft',
-      property_name: 'Untitled Survey',
-      property_address: '',
-      company_name: companyName,
-      survey_date: surveyDate,
-      issued: false,
-      form_data: {
-        companyName,
-        surveyDate,
-        reportStatus: 'Draft',
-      },
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
   if (error) {
     console.error('[documentCreation.createPropertySurvey] Insert failed:', error);
+    console.error('[documentCreation.createPropertySurvey] Error details:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      full: error,
+    });
     throw error;
   }
 

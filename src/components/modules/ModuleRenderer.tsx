@@ -265,6 +265,16 @@ export default function ModuleRenderer({
     );
   }
 
+  if (moduleInstance.module_key === 'RISK_ENGINEERING') {
+  return (
+    <RiskEngineeringForm
+      moduleInstance={moduleInstance}
+      document={document}
+      onSaved={onSaved}
+    />
+  );
+}
+
   if (moduleInstance.module_key === 'DSEAR_1_DANGEROUS_SUBSTANCES') {
     return <DSEAR1DangerousSubstancesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }

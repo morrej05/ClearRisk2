@@ -1,13 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2, AlertCircle, BookOpen, FileText } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2, Building2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import AutoExpandTextarea from '../../AutoExpandTextarea';
+import { useAuth } from '../../../contexts/AuthContext';
 import SectionGrade from '../../SectionGrade';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import RatingRadio from '../../RatingRadio';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
-import SmartRecommendationsTable from '../../SmartRecommendationsTable';
 
 interface Document {
   id: string;
@@ -16,10 +15,6 @@ interface Document {
   assessment_date: string;
   assessor_name: string | null;
   assessor_role: string | null;
-  responsible_person: string | null;
-  scope_description: string | null;
-  limitations_assumptions: string | null;
-  standards_selected: string[];
 }
 
 interface ModuleInstance {
@@ -38,43 +33,26 @@ interface RiskEngineeringFormProps {
   onSaved: () => void;
 }
 
+interface ConstructionElement {
+  element: string;
+  type_material: string;
+  fire_resistance: string;
+  comments: string;
+}
+
+interface FireProtectionItem {
+  system: string;
+  provided: string;
+  coverage_extent: string;
+  standard: string;
+  comments: string;
+}
+
 interface NaturalHazard {
   id: string;
   type: string;
   description: string;
   mitigationMeasures: string;
-}
-
-interface SumsInsuredRow {
-  id: string;
-  item: string;
-  pd_value: string;
-}
-
-interface WorstCasePDRow {
-  id: string;
-  item: string;
-  percent: string;
-  subtotal: number;
-}
-
-interface WorstCaseBIRow {
-  id: string;
-  item: string;
-  months: string;
-  percent: string;
-  subtotal: number;
-}
-
-interface ConstructionElement {
-  element: string;
-  type_material: string;
-  fire_resistance: string;
-}
-
-interface FireProtectionItem {
-  system: string;
-  coverage_notes: string;
 }
 
 interface SectionGrades {
@@ -99,26 +77,46 @@ interface Recommendation {
 }
 
 export default function RiskEngineeringForm({ moduleInstance, document, onSaved }: RiskEngineeringFormProps) {
+  const { profile } = useAuth();
   const d = moduleInstance.data || {};
 
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   const initial = {
+    // Document Control
+    docControl: d.docControl ?? {
+      assessorName: profile?.name || '',
+      assessorRole: '',
+      assessmentDate: getTodayDate(),
+      reviewDate: '',
+      siteName: document.title || '',
+      scopeLimitations: '',
+      standardsFrameworks: '',
+    },
+
     // Construction Table
     constructionElements: d.constructionElements ?? [
-      { element: 'Frame', type_material: '', fire_resistance: '' },
-      { element: 'Walls', type_material: '', fire_resistance: '' },
-      { element: 'Roof', type_material: '', fire_resistance: '' },
-      { element: 'Floors', type_material: '', fire_resistance: '' }
+      { element: 'Frame', type_material: '', fire_resistance: '', comments: '' },
+      { element: 'External Walls', type_material: '', fire_resistance: '', comments: '' },
+      { element: 'Roof', type_material: '', fire_resistance: '', comments: '' },
+      { element: 'Floors', type_material: '', fire_resistance: '', comments: '' },
+      { element: 'Compartments/Fire Stopping', type_material: '', fire_resistance: '', comments: '' }
     ],
 
     // Fire Protection Table
     fireProtectionItems: d.fireProtectionItems ?? [
-      { system: 'Sprinkler System', coverage_notes: '' },
-      { system: 'Fire Detection/Alarm', coverage_notes: '' },
-      { system: 'Emergency Lighting', coverage_notes: '' },
-      { system: 'Fire Extinguishers', coverage_notes: '' }
+      { system: 'Sprinklers', provided: 'No', coverage_extent: '', standard: '', comments: '' },
+      { system: 'Detection & Alarm', provided: 'No', coverage_extent: '', standard: '', comments: '' },
+      { system: 'Fire Water Supply', provided: 'No', coverage_extent: '', standard: '', comments: '' },
+      { system: 'Hydrants/Hose Reels', provided: 'No', coverage_extent: '', standard: '', comments: '' },
+      { system: 'Portable Extinguishers', provided: 'No', coverage_extent: '', standard: '', comments: '' },
+      { system: 'Gas Suppression', provided: 'No', coverage_extent: '', standard: '', comments: '' }
     ],
 
-    // Management Systems (12 fields with ratings)
+    // Management Systems
     commitmentLossPrevention: d.commitmentLossPrevention ?? '',
     commitmentLossPrevention_rating: d.commitmentLossPrevention_rating ?? 3,
     fireEquipmentTesting: d.fireEquipmentTesting ?? '',
@@ -145,23 +143,14 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
     emergencyPlanning_rating: d.emergencyPlanning_rating ?? 3,
 
     // Loss Expectancy
-    sumsInsured: d.sumsInsured ?? [
-      { id: crypto.randomUUID(), item: 'Buildings', pd_value: '0' },
-      { id: crypto.randomUUID(), item: 'Plant & Machinery', pd_value: '0' },
-      { id: crypto.randomUUID(), item: 'Stock', pd_value: '0' },
-      { id: crypto.randomUUID(), item: 'Gross Profit', pd_value: '0' }
-    ],
-    worstCasePD: d.worstCasePD ?? [
-      { id: crypto.randomUUID(), item: 'Buildings', percent: '0', subtotal: 0 },
-      { id: crypto.randomUUID(), item: 'Plant & Machinery', percent: '0', subtotal: 0 },
-      { id: crypto.randomUUID(), item: 'Stock', percent: '0', subtotal: 0 }
-    ],
-    worstCaseBI: d.worstCaseBI ?? [
-      { id: crypto.randomUUID(), item: 'Phase 1: Total Shutdown', months: '0', percent: '0', subtotal: 0 },
-      { id: crypto.randomUUID(), item: 'Phase 2: Partial Operations', months: '0', percent: '0', subtotal: 0 }
-    ],
     selectedCurrency: d.selectedCurrency ?? 'GBP',
-    indemnityPeriod: d.indemnityPeriod ?? '',
+    pdSumInsured: d.pdSumInsured ?? '0',
+    biSumInsured: d.biSumInsured ?? '0',
+    indemnityPeriod: d.indemnityPeriod ?? '12',
+    emlPdPercent: d.emlPdPercent ?? 25,
+    emlBiPercent: d.emlBiPercent ?? 25,
+    mflPdPercent: d.mflPdPercent ?? 100,
+    mflBiPercent: d.mflBiPercent ?? 100,
     lossExpectancyComments: d.lossExpectancyComments ?? '',
 
     // Natural Hazards
@@ -187,6 +176,7 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
   };
 
   // State
+  const [docControl, setDocControl] = useState(initial.docControl);
   const [constructionElements, setConstructionElements] = useState<ConstructionElement[]>(initial.constructionElements);
   const [fireProtectionItems, setFireProtectionItems] = useState<FireProtectionItem[]>(initial.fireProtectionItems);
 
@@ -215,11 +205,14 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
   const [emergencyPlanning, setEmergencyPlanning] = useState(initial.emergencyPlanning);
   const [emergencyPlanning_rating, setEmergencyPlanningRating] = useState(initial.emergencyPlanning_rating);
 
-  const [sumsInsured, setSumsInsured] = useState<SumsInsuredRow[]>(initial.sumsInsured);
-  const [worstCasePD, setWorstCasePD] = useState<WorstCasePDRow[]>(initial.worstCasePD);
-  const [worstCaseBI, setWorstCaseBI] = useState<WorstCaseBIRow[]>(initial.worstCaseBI);
   const [selectedCurrency, setSelectedCurrency] = useState(initial.selectedCurrency);
+  const [pdSumInsured, setPdSumInsured] = useState(initial.pdSumInsured);
+  const [biSumInsured, setBiSumInsured] = useState(initial.biSumInsured);
   const [indemnityPeriod, setIndemnityPeriod] = useState(initial.indemnityPeriod);
+  const [emlPdPercent, setEmlPdPercent] = useState(initial.emlPdPercent);
+  const [emlBiPercent, setEmlBiPercent] = useState(initial.emlBiPercent);
+  const [mflPdPercent, setMflPdPercent] = useState(initial.mflPdPercent);
+  const [mflBiPercent, setMflBiPercent] = useState(initial.mflBiPercent);
   const [lossExpectancyComments, setLossExpectancyComments] = useState(initial.lossExpectancyComments);
 
   const [naturalHazards, setNaturalHazards] = useState<NaturalHazard[]>(initial.naturalHazards);
@@ -233,68 +226,29 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-  const [showSurveyReport, setShowSurveyReport] = useState(false);
-  const [showLossPreventionReport, setShowLossPreventionReport] = useState(false);
-
-  // Calculations for Loss Expectancy
-  const updateWorstCasePD = (id: string, field: 'percent', value: string) => {
-    setWorstCasePD(prev => prev.map(row => {
-      if (row.id !== id) return row;
-
-      const updated = { ...row, [field]: value };
-      const percent = parseFloat(updated.percent) || 0;
-      const pdValue = parseFloat(sumsInsured.find(si => si.item === row.item)?.pd_value || '0') || 0;
-      updated.subtotal = (pdValue * percent) / 100;
-
-      return updated;
-    }));
-  };
-
-  const updateWorstCaseBI = (id: string, field: 'item' | 'months' | 'percent', value: string) => {
-    setWorstCaseBI(prev => prev.map(row => {
-      if (row.id !== id) return row;
-
-      const updated = { ...row, [field]: value };
-      const months = parseFloat(updated.months) || 0;
-      const percent = parseFloat(updated.percent) || 0;
-      const gpValue = parseFloat(sumsInsured.find(si => si.item === 'Gross Profit')?.pd_value || '0') || 0;
-      updated.subtotal = (gpValue * (months / 12) * percent) / 100;
-
-      return updated;
-    }));
-  };
-
-  const calculateWorstCaseTotals = () => {
-    const pdTotal = worstCasePD.reduce((sum, row) => sum + row.subtotal, 0);
-    const biTotal = worstCaseBI.reduce((sum, row) => sum + row.subtotal, 0);
-    return { pdTotal, biTotal, total: pdTotal + biTotal };
-  };
-
-  const getTotalMonths = () => {
-    return worstCaseBI.reduce((sum, row) => sum + (parseFloat(row.months) || 0), 0);
-  };
-
-  // Recalculate subtotals when sums insured change
-  useMemo(() => {
-    setWorstCasePD(prev => prev.map(row => {
-      const percent = parseFloat(row.percent) || 0;
-      const pdValue = parseFloat(sumsInsured.find(si => si.item === row.item)?.pd_value || '0') || 0;
-      return { ...row, subtotal: (pdValue * percent) / 100 };
-    }));
-  }, [sumsInsured]);
-
-  useMemo(() => {
-    setWorstCaseBI(prev => prev.map(row => {
-      const months = parseFloat(row.months) || 0;
-      const percent = parseFloat(row.percent) || 0;
-      const gpValue = parseFloat(sumsInsured.find(si => si.item === 'Gross Profit')?.pd_value || '0') || 0;
-      return { ...row, subtotal: (gpValue * (months / 12) * percent) / 100 };
-    }));
-  }, [sumsInsured]);
 
   const handleSectionGradeChange = (section: keyof SectionGrades, value: number) => {
     setSectionGrades(prev => ({ ...prev, [section]: value }));
   };
+
+  // Currency formatting
+  const formatCurrency = (value: number) => {
+    const symbols: Record<string, string> = { GBP: '£', USD: '$', EUR: '€' };
+    const symbol = symbols[selectedCurrency] || selectedCurrency;
+    return `${symbol}${value.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
+  // Calculate loss metrics
+  const pdValue = parseFloat(pdSumInsured) || 0;
+  const biValue = parseFloat(biSumInsured) || 0;
+
+  const emlPd = (pdValue * emlPdPercent) / 100;
+  const emlBi = (biValue * emlBiPercent) / 100;
+  const emlTotal = emlPd + emlBi;
+
+  const mflPd = (pdValue * mflPdPercent) / 100;
+  const mflBi = (biValue * mflBiPercent) / 100;
+  const mflTotal = mflPd + mflBi;
 
   // Auto-generate recommendations based on poor ratings
   useEffect(() => {
@@ -315,7 +269,6 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
         (rec) => rec.sourceRatingField === sourceField && rec.isAutoGenerated
       );
 
-      // Generate recommendation if rating is 1 or 2 (Poor or Tolerable)
       if (rating <= 2) {
         if (!existingRecommendation) {
           const severity = rating === 1 ? 'Critical' : 'High';
@@ -339,7 +292,6 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
           });
         }
       } else {
-        // Remove auto-generated recommendation if rating improves
         if (existingRecommendation) {
           setRecommendations((prev) =>
             prev.filter((rec) => rec.id !== existingRecommendation.id)
@@ -375,7 +327,28 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
     }));
   };
 
+  const addNaturalHazard = () => {
+    setNaturalHazards([
+      ...naturalHazards,
+      { id: crypto.randomUUID(), type: '', description: '', mitigationMeasures: '' }
+    ]);
+  };
+
+  const removeNaturalHazard = (id: string) => {
+    setNaturalHazards(naturalHazards.filter(h => h.id !== id));
+  };
+
+  const updateNaturalHazard = (id: string, field: keyof NaturalHazard, value: string) => {
+    setNaturalHazards(naturalHazards.map(h => {
+      if (h.id === id) {
+        return { ...h, [field]: value };
+      }
+      return h;
+    }));
+  };
+
   const buildPayload = () => ({
+    docControl,
     constructionElements,
     fireProtectionItems,
     commitmentLossPrevention,
@@ -402,11 +375,14 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
     contractorManagement_rating,
     emergencyPlanning,
     emergencyPlanning_rating,
-    sumsInsured,
-    worstCasePD,
-    worstCaseBI,
     selectedCurrency,
+    pdSumInsured,
+    biSumInsured,
     indemnityPeriod,
+    emlPdPercent,
+    emlBiPercent,
+    mflPdPercent,
+    mflBiPercent,
     lossExpectancyComments,
     naturalHazards,
     businessInterruption,
@@ -429,7 +405,6 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
 
       if (error) throw error;
 
-      // Update local moduleInstance state so RE DEBUG shows dataKeys without refresh
       moduleInstance.data = sanitized;
 
       setLastSaved(new Date().toLocaleTimeString());
@@ -466,48 +441,6 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
 
   const isSectionExpanded = (key: string) => expandedSections[key] ?? true;
 
-  // Debug banner showing bound keys
-  const debugKeys = Object.keys({
-    constructionElements,
-    fireProtectionItems,
-    commitmentLossPrevention,
-    commitmentLossPrevention_rating,
-    fireEquipmentTesting,
-    fireEquipmentTesting_rating,
-    controlHotWork,
-    controlHotWork_rating,
-    smoking,
-    smoking_rating,
-    housekeeping,
-    housekeeping_rating,
-    impairmentProcedures,
-    impairmentProcedures_rating,
-    electricalSafety,
-    electricalSafety_rating,
-    trainingEmergencyResponse,
-    trainingEmergencyResponse_rating,
-    securityArson,
-    securityArson_rating,
-    lossHistory,
-    lossHistory_rating,
-    contractorManagement,
-    contractorManagement_rating,
-    emergencyPlanning,
-    emergencyPlanning_rating,
-    sumsInsured,
-    worstCasePD,
-    worstCaseBI,
-    selectedCurrency,
-    indemnityPeriod,
-    lossExpectancyComments,
-    naturalHazards,
-    businessInterruption,
-    contingencyPlanning,
-    supplyChain,
-    sectionGrades,
-    recommendations,
-  });
-
   return (
     <div className="pb-6">
       <div className="p-6 max-w-5xl mx-auto">
@@ -515,7 +448,7 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
           <div>
             <h2 className="text-2xl font-bold text-neutral-900">Risk Engineering Assessment</h2>
             <p className="text-sm text-neutral-600">
-              Property risk survey - comprehensive assessment with ratings and loss analysis
+              Comprehensive property risk survey with ratings and loss analysis
             </p>
             {lastSaved && (
               <p className="text-xs text-neutral-500 mt-1">Last saved: {lastSaved}</p>
@@ -531,301 +464,125 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
           </button>
         </div>
 
-        {/* DEBUG BANNER */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-bold text-blue-900 mb-2">RE DEBUG - RESTORED IMPLEMENTATION</h3>
-          <p className="text-xs text-blue-800">
-            <strong>BOUND KEYS ({debugKeys.length}):</strong> {debugKeys.join(', ')}
-          </p>
-          <p className="text-xs text-blue-800 mt-1">
-            <strong>Module Instance ID:</strong> {moduleInstance.id}
-          </p>
-          <p className="text-xs text-blue-800 mt-1">
-            <strong>DB dataKeys ({Object.keys(moduleInstance.data || {}).length}):</strong>{' '}
-            {Object.keys(moduleInstance.data || {}).length > 0
-              ? Object.keys(moduleInstance.data).join(', ')
-              : 'none (not saved yet)'}
-          </p>
-        </div>
-
-        {/* FORCE REAL: Construction */}
-        <div className="mb-6 p-6 border-8 border-green-500 bg-green-50 rounded-lg">
-          <h3 className="text-2xl font-bold text-green-900 mb-4">FORCE REAL: Construction</h3>
-          <div className="space-y-4">
-            <div className="overflow-x-auto bg-white p-4 rounded-lg border border-neutral-200">
-              <table className="w-full border-collapse border border-neutral-300">
-                <thead className="bg-neutral-50">
-                  <tr>
-                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Element</th>
-                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Type / Material</th>
-                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Fire Resistance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {constructionElements.map((elem, idx) => (
-                    <tr key={idx}>
-                      <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">{elem.element}</td>
-                      <td className="border border-neutral-300 px-3 py-2">
-                        <input
-                          type="text"
-                          value={elem.type_material}
-                          onChange={(e) => {
-                            const updated = [...constructionElements];
-                            updated[idx].type_material = e.target.value;
-                            setConstructionElements(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
-                          placeholder="e.g., Steel, Concrete, Timber"
-                        />
-                      </td>
-                      <td className="border border-neutral-300 px-3 py-2">
-                        <input
-                          type="text"
-                          value={elem.fire_resistance}
-                          onChange={(e) => {
-                            const updated = [...constructionElements];
-                            updated[idx].fire_resistance = e.target.value;
-                            setConstructionElements(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
-                          placeholder="e.g., 60 min, 120 min"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <SectionGrade
-              sectionKey="construction"
-              sectionTitle="Construction"
-              value={sectionGrades.construction}
-              onChange={(value) => handleSectionGradeChange('construction', value)}
-            />
+        {/* Document Control - Always Visible */}
+        <div className="mb-8 p-6 bg-neutral-50 border border-neutral-200 rounded-lg">
+          <div className="flex items-center gap-3 mb-6">
+            <Building2 className="w-6 h-6 text-neutral-700" />
+            <h3 className="text-xl font-bold text-neutral-900">Document Control</h3>
           </div>
-        </div>
 
-        {/* FORCE REAL: Fire Protection */}
-        <div className="mb-6 p-6 border-8 border-orange-500 bg-orange-50 rounded-lg">
-          <h3 className="text-2xl font-bold text-orange-900 mb-4">FORCE REAL: Fire Protection</h3>
-          <div className="space-y-4">
-            <div className="overflow-x-auto bg-white p-4 rounded-lg border border-neutral-200">
-              <table className="w-full border-collapse border border-neutral-300">
-                <thead className="bg-neutral-50">
-                  <tr>
-                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">System</th>
-                    <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Coverage / Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fireProtectionItems.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">{item.system}</td>
-                      <td className="border border-neutral-300 px-3 py-2">
-                        <input
-                          type="text"
-                          value={item.coverage_notes}
-                          onChange={(e) => {
-                            const updated = [...fireProtectionItems];
-                            updated[idx].coverage_notes = e.target.value;
-                            setFireProtectionItems(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
-                          placeholder="Enter coverage details"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <SectionGrade
-              sectionKey="fire_protection"
-              sectionTitle="Fire Protection"
-              value={sectionGrades.fire_protection}
-              onChange={(value) => handleSectionGradeChange('fire_protection', value)}
-            />
-          </div>
-        </div>
-
-        {/* FORCE REAL: Recommendations */}
-        <div className="mb-6 p-6 border-8 border-purple-500 bg-purple-50 rounded-lg">
-          <h3 className="text-2xl font-bold text-purple-900 mb-4">FORCE REAL: Recommendations</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <p className="text-sm text-neutral-600">
-                Recommendations are auto-generated based on section ratings (1-2), or you can add manual recommendations.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={addManualRecommendation}
-                  className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Manual
-                </button>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Assessor Name
+              </label>
+              <input
+                type="text"
+                value={docControl.assessorName}
+                onChange={(e) => setDocControl({ ...docControl, assessorName: e.target.value })}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                placeholder="Enter assessor name"
+              />
             </div>
 
-            {recommendations.length === 0 ? (
-              <div className="text-center py-8 border-2 border-dashed border-neutral-300 rounded-lg">
-                <p className="text-neutral-600">No recommendations yet. Rate sections 1-2 to auto-generate, or add manually.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recommendations.map((rec, idx) => (
-                  <div
-                    key={rec.id}
-                    className={`p-4 border rounded-lg ${rec.isAutoGenerated ? 'bg-blue-50 border-blue-200' : 'bg-white border-neutral-300'}`}
-                  >
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-medium px-2 py-1 rounded bg-neutral-200 text-neutral-700">
-                            #{idx + 1}
-                          </span>
-                          {rec.priority && (
-                            <span className={`text-xs font-medium px-2 py-1 rounded ${
-                              rec.priority === 'Critical' ? 'bg-red-100 text-red-700' :
-                              rec.priority === 'High' ? 'bg-orange-100 text-orange-700' :
-                              rec.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-green-100 text-green-700'
-                            }`}>
-                              {rec.priority}
-                            </span>
-                          )}
-                          {rec.isAutoGenerated && (
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700">
-                              Auto-Generated
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeRecommendation(rec.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all"
-                        disabled={rec.isAutoGenerated}
-                        title={rec.isAutoGenerated ? "Auto-generated recommendations are removed when rating improves" : "Remove recommendation"}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Assessor Role <span className="text-neutral-400">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={docControl.assessorRole}
+                onChange={(e) => setDocControl({ ...docControl, assessorRole: e.target.value })}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                placeholder="e.g., Senior Risk Engineer"
+              />
+            </div>
 
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Hazard / Finding
-                        </label>
-                        <input
-                          type="text"
-                          value={rec.hazard}
-                          onChange={(e) => updateRecommendation(rec.id, 'hazard', e.target.value)}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                          placeholder="Brief title of the hazard or finding"
-                          disabled={rec.isAutoGenerated}
-                        />
-                      </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Assessment Date
+              </label>
+              <input
+                type="date"
+                value={docControl.assessmentDate}
+                onChange={(e) => setDocControl({ ...docControl, assessmentDate: e.target.value })}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+              />
+            </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Description / Recommended Action
-                        </label>
-                        <textarea
-                          value={rec.description}
-                          onChange={(e) => updateRecommendation(rec.id, 'description', e.target.value)}
-                          rows={3}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                          placeholder="Detailed description and recommended action"
-                        />
-                      </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Review Date <span className="text-neutral-400">(optional)</span>
+              </label>
+              <input
+                type="date"
+                value={docControl.reviewDate}
+                onChange={(e) => setDocControl({ ...docControl, reviewDate: e.target.value })}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+              />
+            </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Client Response (Optional)
-                        </label>
-                        <textarea
-                          value={rec.client_response}
-                          onChange={(e) => updateRecommendation(rec.id, 'client_response', e.target.value)}
-                          rows={2}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                          placeholder="Client's response or action taken"
-                        />
-                      </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Client / Site Name
+              </label>
+              <input
+                type="text"
+                value={docControl.siteName}
+                onChange={(e) => setDocControl({ ...docControl, siteName: e.target.value })}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                placeholder="Enter client or site name"
+              />
+            </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-1">
-                            Status
-                          </label>
-                          <select
-                            value={rec.status}
-                            onChange={(e) => updateRecommendation(rec.id, 'status', e.target.value)}
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                          >
-                            <option value="open">Open</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="closed">Closed</option>
-                          </select>
-                        </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Scope / Limitations
+              </label>
+              <textarea
+                value={docControl.scopeLimitations}
+                onChange={(e) => setDocControl({ ...docControl, scopeLimitations: e.target.value })}
+                rows={3}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent resize-y"
+                placeholder="Describe the scope and any limitations of this assessment"
+              />
+            </div>
 
-                        {!rec.isAutoGenerated && (
-                          <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">
-                              Priority
-                            </label>
-                            <select
-                              value={rec.priority || 'Medium'}
-                              onChange={(e) => updateRecommendation(rec.id, 'priority', e.target.value)}
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                            >
-                              <option value="Critical">Critical</option>
-                              <option value="High">High</option>
-                              <option value="Medium">Medium</option>
-                              <option value="Low">Low</option>
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">Auto-Generation Rules</h4>
-              <ul className="text-xs text-blue-800 space-y-1">
-                <li>• Recommendations are automatically generated when any section is rated 1 (Poor) or 2 (Tolerable)</li>
-                <li>• Auto-generated recommendations are removed when the rating improves to 3 or above</li>
-                <li>• Manual recommendations can be added at any time and must be removed manually</li>
-                <li>• All recommendations will be included in the report output</li>
-              </ul>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Standards / Frameworks
+              </label>
+              <textarea
+                value={docControl.standardsFrameworks}
+                onChange={(e) => setDocControl({ ...docControl, standardsFrameworks: e.target.value })}
+                rows={2}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent resize-y"
+                placeholder="e.g., BS 9999, NFPA 101, FM Global standards"
+              />
             </div>
           </div>
         </div>
 
-        {/* Construction Table */}
+        {/* Construction Section */}
         <div className="mb-8">
-          <SectionHeader title="Construction Elements" sectionKey="construction" />
+          <SectionHeader title="Construction" sectionKey="construction" />
           {isSectionExpanded('construction') && (
             <div className="space-y-4">
-              <div className="overflow-x-auto bg-white p-4 rounded-lg border border-neutral-200">
-                <table className="w-full border-collapse border border-neutral-300">
-                  <thead className="bg-neutral-50">
+              <div className="overflow-x-auto bg-white border border-neutral-200 rounded-lg">
+                <table className="w-full border-collapse">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
-                      <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Element</th>
-                      <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Type / Material</th>
-                      <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Fire Resistance</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Element</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Type / Material</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Fire Resistance (mins)</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Comments</th>
                     </tr>
                   </thead>
                   <tbody>
                     {constructionElements.map((elem, idx) => (
-                      <tr key={idx}>
-                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">{elem.element}</td>
-                        <td className="border border-neutral-300 px-3 py-2">
+                      <tr key={idx} className="border-b border-neutral-100 hover:bg-neutral-50">
+                        <td className="px-4 py-3 font-medium text-neutral-900 bg-neutral-50">{elem.element}</td>
+                        <td className="px-4 py-3">
                           <input
                             type="text"
                             value={elem.type_material}
@@ -834,11 +591,11 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
                               updated[idx].type_material = e.target.value;
                               setConstructionElements(updated);
                             }}
-                            className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
-                            placeholder="e.g., Steel, Concrete, Timber"
+                            className="w-full px-3 py-2 border border-neutral-200 rounded focus:ring-2 focus:ring-neutral-400 focus:border-transparent text-sm"
+                            placeholder="Steel, Concrete, Timber"
                           />
                         </td>
-                        <td className="border border-neutral-300 px-3 py-2">
+                        <td className="px-4 py-3">
                           <input
                             type="text"
                             value={elem.fire_resistance}
@@ -847,8 +604,21 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
                               updated[idx].fire_resistance = e.target.value;
                               setConstructionElements(updated);
                             }}
-                            className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
-                            placeholder="e.g., 60 min, 120 min"
+                            className="w-full px-3 py-2 border border-neutral-200 rounded focus:ring-2 focus:ring-neutral-400 focus:border-transparent text-sm"
+                            placeholder="60, 120"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={elem.comments}
+                            onChange={(e) => {
+                              const updated = [...constructionElements];
+                              updated[idx].comments = e.target.value;
+                              setConstructionElements(updated);
+                            }}
+                            className="w-full px-3 py-2 border border-neutral-200 rounded focus:ring-2 focus:ring-neutral-400 focus:border-transparent text-sm"
+                            placeholder="Additional notes"
                           />
                         </td>
                       </tr>
@@ -856,6 +626,7 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
                   </tbody>
                 </table>
               </div>
+
               <SectionGrade
                 sectionKey="construction"
                 sectionTitle="Construction"
@@ -866,34 +637,78 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
           )}
         </div>
 
-        {/* Fire Protection Table */}
+        {/* Fire Protection Systems Section */}
         <div className="mb-8">
-          <SectionHeader title="Fire Protection Systems" sectionKey="fireProtection" />
-          {isSectionExpanded('fireProtection') && (
+          <SectionHeader title="Fire Protection Systems" sectionKey="fire_protection" />
+          {isSectionExpanded('fire_protection') && (
             <div className="space-y-4">
-              <div className="overflow-x-auto bg-white p-4 rounded-lg border border-neutral-200">
-                <table className="w-full border-collapse border border-neutral-300">
-                  <thead className="bg-neutral-50">
+              <div className="overflow-x-auto bg-white border border-neutral-200 rounded-lg">
+                <table className="w-full border-collapse">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
-                      <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">System</th>
-                      <th className="border border-neutral-300 px-3 py-2 text-left font-semibold text-sm">Coverage / Notes</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">System</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Provided?</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Coverage / Extent</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Standard</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Comments</th>
                     </tr>
                   </thead>
                   <tbody>
                     {fireProtectionItems.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="border border-neutral-300 px-3 py-2 font-medium bg-neutral-50">{item.system}</td>
-                        <td className="border border-neutral-300 px-3 py-2">
-                          <input
-                            type="text"
-                            value={item.coverage_notes}
+                      <tr key={idx} className="border-b border-neutral-100 hover:bg-neutral-50">
+                        <td className="px-4 py-3 font-medium text-neutral-900 bg-neutral-50">{item.system}</td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={item.provided}
                             onChange={(e) => {
                               const updated = [...fireProtectionItems];
-                              updated[idx].coverage_notes = e.target.value;
+                              updated[idx].provided = e.target.value;
                               setFireProtectionItems(updated);
                             }}
-                            className="w-full px-2 py-1 border border-neutral-200 rounded text-sm"
-                            placeholder="Enter coverage details"
+                            className="w-full px-3 py-2 border border-neutral-200 rounded focus:ring-2 focus:ring-neutral-400 focus:border-transparent text-sm"
+                          >
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                            <option value="Partial">Partial</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={item.coverage_extent}
+                            onChange={(e) => {
+                              const updated = [...fireProtectionItems];
+                              updated[idx].coverage_extent = e.target.value;
+                              setFireProtectionItems(updated);
+                            }}
+                            className="w-full px-3 py-2 border border-neutral-200 rounded focus:ring-2 focus:ring-neutral-400 focus:border-transparent text-sm"
+                            placeholder="Full, partial, zones"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={item.standard}
+                            onChange={(e) => {
+                              const updated = [...fireProtectionItems];
+                              updated[idx].standard = e.target.value;
+                              setFireProtectionItems(updated);
+                            }}
+                            className="w-full px-3 py-2 border border-neutral-200 rounded focus:ring-2 focus:ring-neutral-400 focus:border-transparent text-sm"
+                            placeholder="BS, NFPA, FM"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={item.comments}
+                            onChange={(e) => {
+                              const updated = [...fireProtectionItems];
+                              updated[idx].comments = e.target.value;
+                              setFireProtectionItems(updated);
+                            }}
+                            className="w-full px-3 py-2 border border-neutral-200 rounded focus:ring-2 focus:ring-neutral-400 focus:border-transparent text-sm"
+                            placeholder="Additional notes"
                           />
                         </td>
                       </tr>
@@ -901,6 +716,7 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
                   </tbody>
                 </table>
               </div>
+
               <SectionGrade
                 sectionKey="fire_protection"
                 sectionTitle="Fire Protection"
@@ -911,228 +727,42 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
           )}
         </div>
 
-        {/* Management Systems - ALL 12 FIELDS WITH RATINGRADIO */}
+        {/* Management Systems Section */}
         <div className="mb-8">
-          <SectionHeader title="Management Systems" sectionKey="managementSystems" />
-          {isSectionExpanded('managementSystems') && (
+          <SectionHeader title="Management Systems" sectionKey="management_systems" />
+          {isSectionExpanded('management_systems') && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-neutral-900 pb-2 border-b border-neutral-300">
-                    Fire Safety & Housekeeping
-                  </h3>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Commitment to loss prevention
-                    </label>
-                    <RatingRadio
-                      value={commitmentLossPrevention_rating}
-                      onChange={(value) => setCommitmentLossPreventionRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={commitmentLossPrevention}
-                      onChange={(e) => setCommitmentLossPrevention(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe commitment to loss prevention"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Fire equipment testing & maintenance
-                    </label>
-                    <RatingRadio
-                      value={fireEquipmentTesting_rating}
-                      onChange={(value) => setFireEquipmentTestingRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={fireEquipmentTesting}
-                      onChange={(e) => setFireEquipmentTesting(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe fire equipment testing"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Control of hot work
-                    </label>
-                    <RatingRadio
-                      value={controlHotWork_rating}
-                      onChange={(value) => setControlHotWorkRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={controlHotWork}
-                      onChange={(e) => setControlHotWork(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe hot work controls"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Smoking policy
-                    </label>
-                    <RatingRadio
-                      value={smoking_rating}
-                      onChange={(value) => setSmokingRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={smoking}
-                      onChange={(e) => setSmoking(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe smoking policy"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Housekeeping standards
-                    </label>
-                    <RatingRadio
-                      value={housekeeping_rating}
-                      onChange={(value) => setHousekeepingRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={housekeeping}
-                      onChange={(e) => setHousekeeping(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe housekeeping standards"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Impairment procedures
-                    </label>
-                    <RatingRadio
-                      value={impairmentProcedures_rating}
-                      onChange={(value) => setImpairmentProceduresRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={impairmentProcedures}
-                      onChange={(e) => setImpairmentProcedures(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe impairment procedures"
-                    />
-                  </div>
+              {[
+                { label: 'Commitment to Loss Prevention', value: commitmentLossPrevention, setValue: setCommitmentLossPrevention, rating: commitmentLossPrevention_rating, setRating: setCommitmentLossPreventionRating },
+                { label: 'Fire Equipment Testing & Maintenance', value: fireEquipmentTesting, setValue: setFireEquipmentTesting, rating: fireEquipmentTesting_rating, setRating: setFireEquipmentTestingRating },
+                { label: 'Control of Hot Work', value: controlHotWork, setValue: setControlHotWork, rating: controlHotWork_rating, setRating: setControlHotWorkRating },
+                { label: 'Smoking Policy', value: smoking, setValue: setSmoking, rating: smoking_rating, setRating: setSmokingRating },
+                { label: 'Housekeeping', value: housekeeping, setValue: setHousekeeping, rating: housekeeping_rating, setRating: setHousekeepingRating },
+                { label: 'Impairment Procedures', value: impairmentProcedures, setValue: setImpairmentProcedures, rating: impairmentProcedures_rating, setRating: setImpairmentProceduresRating },
+                { label: 'Electrical Safety', value: electricalSafety, setValue: setElectricalSafety, rating: electricalSafety_rating, setRating: setElectricalSafetyRating },
+                { label: 'Training & Emergency Response', value: trainingEmergencyResponse, setValue: setTrainingEmergencyResponse, rating: trainingEmergencyResponse_rating, setRating: setTrainingEmergencyResponseRating },
+                { label: 'Security & Arson Prevention', value: securityArson, setValue: setSecurityArson, rating: securityArson_rating, setRating: setSecurityArsonRating },
+                { label: 'Loss History', value: lossHistory, setValue: setLossHistory, rating: lossHistory_rating, setRating: setLossHistoryRating },
+                { label: 'Contractor Management', value: contractorManagement, setValue: setContractorManagement, rating: contractorManagement_rating, setRating: setContractorManagementRating },
+                { label: 'Emergency Planning', value: emergencyPlanning, setValue: setEmergencyPlanning, rating: emergencyPlanning_rating, setRating: setEmergencyPlanningRating },
+              ].map((field, idx) => (
+                <div key={idx} className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    {field.label}
+                  </label>
+                  <textarea
+                    value={field.value}
+                    onChange={(e) => field.setValue(e.target.value)}
+                    rows={2}
+                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all resize-y mb-3"
+                    placeholder={`Describe ${field.label.toLowerCase()}`}
+                  />
+                  <RatingRadio
+                    value={field.rating}
+                    onChange={field.setRating}
+                  />
                 </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-neutral-900 pb-2 border-b border-neutral-300">
-                    Operational Controls
-                  </h3>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Electrical safety
-                    </label>
-                    <RatingRadio
-                      value={electricalSafety_rating}
-                      onChange={(value) => setElectricalSafetyRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={electricalSafety}
-                      onChange={(e) => setElectricalSafety(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe electrical safety measures"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Training & emergency response
-                    </label>
-                    <RatingRadio
-                      value={trainingEmergencyResponse_rating}
-                      onChange={(value) => setTrainingEmergencyResponseRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={trainingEmergencyResponse}
-                      onChange={(e) => setTrainingEmergencyResponse(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe training programs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Security & arson prevention
-                    </label>
-                    <RatingRadio
-                      value={securityArson_rating}
-                      onChange={(value) => setSecurityArsonRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={securityArson}
-                      onChange={(e) => setSecurityArson(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe security measures"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Loss history
-                    </label>
-                    <RatingRadio
-                      value={lossHistory_rating}
-                      onChange={(value) => setLossHistoryRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={lossHistory}
-                      onChange={(e) => setLossHistory(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe loss history"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Contractor management
-                    </label>
-                    <RatingRadio
-                      value={contractorManagement_rating}
-                      onChange={(value) => setContractorManagementRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={contractorManagement}
-                      onChange={(e) => setContractorManagement(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe contractor management"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Emergency planning
-                    </label>
-                    <RatingRadio
-                      value={emergencyPlanning_rating}
-                      onChange={(value) => setEmergencyPlanningRating(value)}
-                    />
-                    <input
-                      type="text"
-                      value={emergencyPlanning}
-                      onChange={(e) => setEmergencyPlanning(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all mt-2"
-                      placeholder="Describe emergency planning"
-                    />
-                  </div>
-                </div>
-              </div>
+              ))}
 
               <SectionGrade
                 sectionKey="management_systems"
@@ -1144,70 +774,77 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
           )}
         </div>
 
-        {/* Natural Hazards */}
+        {/* Natural Hazards Section */}
         <div className="mb-8">
-          <SectionHeader title="Natural Hazards" sectionKey="naturalHazards" />
-          {isSectionExpanded('naturalHazards') && (
+          <SectionHeader title="Natural Hazards" sectionKey="natural_hazards" />
+          {isSectionExpanded('natural_hazards') && (
             <div className="space-y-4">
-              {naturalHazards.map((hazard, idx) => (
-                <div key={hazard.id} className="p-4 border border-neutral-300 rounded-lg bg-white">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <input
-                      type="text"
-                      value={hazard.type}
-                      onChange={(e) => {
-                        const updated = [...naturalHazards];
-                        updated[idx].type = e.target.value;
-                        setNaturalHazards(updated);
-                      }}
-                      className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg"
-                      placeholder="Hazard type (e.g., Flood, Earthquake)"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setNaturalHazards(naturalHazards.filter((_, i) => i !== idx))}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <textarea
-                    value={hazard.description}
-                    onChange={(e) => {
-                      const updated = [...naturalHazards];
-                      updated[idx].description = e.target.value;
-                      setNaturalHazards(updated);
-                    }}
-                    rows={2}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg mb-2"
-                    placeholder="Description"
-                  />
-                  <textarea
-                    value={hazard.mitigationMeasures}
-                    onChange={(e) => {
-                      const updated = [...naturalHazards];
-                      updated[idx].mitigationMeasures = e.target.value;
-                      setNaturalHazards(updated);
-                    }}
-                    rows={2}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
-                    placeholder="Mitigation measures"
-                  />
-                </div>
-              ))}
               <button
                 type="button"
-                onClick={() => setNaturalHazards([...naturalHazards, {
-                  id: crypto.randomUUID(),
-                  type: '',
-                  description: '',
-                  mitigationMeasures: ''
-                }])}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-neutral-400 hover:text-neutral-700 hover:bg-white transition-all"
+                onClick={addNaturalHazard}
+                className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-sm"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 Add Natural Hazard
               </button>
+
+              {naturalHazards.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-neutral-300 rounded-lg">
+                  <p className="text-neutral-600">No natural hazards recorded. Click above to add.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {naturalHazards.map((hazard) => (
+                    <div key={hazard.id} className="p-4 border border-neutral-300 rounded-lg bg-white">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <input
+                          type="text"
+                          value={hazard.type}
+                          onChange={(e) => updateNaturalHazard(hazard.id, 'type', e.target.value)}
+                          className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm font-medium"
+                          placeholder="Hazard type (e.g., Flood, Earthquake)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeNaturalHazard(hazard.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            Description
+                          </label>
+                          <textarea
+                            value={hazard.description}
+                            onChange={(e) => updateNaturalHazard(hazard.id, 'description', e.target.value)}
+                            rows={2}
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                            placeholder="Describe the hazard and its potential impact"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            Mitigation Measures
+                          </label>
+                          <textarea
+                            value={hazard.mitigationMeasures}
+                            onChange={(e) => updateNaturalHazard(hazard.id, 'mitigationMeasures', e.target.value)}
+                            rows={2}
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                            placeholder="Describe mitigation and protection measures in place"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <SectionGrade
                 sectionKey="natural_hazards"
                 sectionTitle="Natural Hazards"
@@ -1218,234 +855,14 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
           )}
         </div>
 
-        {/* Loss Expectancy */}
+        {/* Business Continuity Section */}
         <div className="mb-8">
-          <SectionHeader title="Loss Expectancy" sectionKey="lossExpectancy" />
-          {isSectionExpanded('lossExpectancy') && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold text-neutral-900 mb-3">Table 1: Sums Insured</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Indemnity Period (months)
-                    </label>
-                    <input
-                      type="number"
-                      value={indemnityPeriod}
-                      onChange={(e) => setIndemnityPeriod(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent text-sm bg-white"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Currency
-                    </label>
-                    <select
-                      value={selectedCurrency}
-                      onChange={(e) => setSelectedCurrency(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent text-sm bg-white"
-                    >
-                      <option value="GBP">GBP (£)</option>
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto mb-4">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-neutral-100">
-                        <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">Item</th>
-                        <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">PD Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sumsInsured.map((row) => (
-                        <tr key={row.id}>
-                          <td className="border border-neutral-300 px-4 py-2 text-sm">{row.item}</td>
-                          <td className="border border-neutral-300 px-4 py-2">
-                            <input
-                              type="number"
-                              value={row.pd_value}
-                              onChange={(e) => setSumsInsured(prev => prev.map(r =>
-                                r.id === row.id ? { ...r, pd_value: e.target.value } : r
-                              ))}
-                              className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
-                              placeholder="0"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <textarea
-                  value={lossExpectancyComments}
-                  onChange={(e) => setLossExpectancyComments(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all resize-y"
-                  placeholder="Additional comments about sums insured"
-                />
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold text-neutral-900 mb-3">Table 2: Worst Case Loss Expectancy (WCL)</h3>
-                <p className="text-sm text-neutral-600 mb-4">
-                  An estimation of the maximum loss potential assuming failure of fire protection and ineffective emergency response.
-                </p>
-
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-lg font-medium text-neutral-900 mb-3">Property Damage</h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-neutral-100">
-                            <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">Item</th>
-                            <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">% of Value</th>
-                            <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">Sub-total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {worstCasePD.map((row) => (
-                            <tr key={row.id}>
-                              <td className="border border-neutral-300 px-4 py-2 text-sm">{row.item}</td>
-                              <td className="border border-neutral-300 px-4 py-2">
-                                <input
-                                  type="number"
-                                  value={row.percent}
-                                  onChange={(e) => updateWorstCasePD(row.id, 'percent', e.target.value)}
-                                  className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
-                                  placeholder="0"
-                                  min="0"
-                                  max="100"
-                                />
-                              </td>
-                              <td className="border border-neutral-300 px-4 py-2 text-sm bg-neutral-50 font-medium">
-                                {row.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                          ))}
-                          <tr className="bg-neutral-100 font-semibold">
-                            <td className="border border-neutral-300 px-4 py-2 text-sm">Worst Case LE: PD Total</td>
-                            <td className="border border-neutral-300 px-4 py-2 text-sm"></td>
-                            <td className="border border-neutral-300 px-4 py-2 text-sm">
-                              {calculateWorstCaseTotals().pdTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-medium text-neutral-900 mb-3">Business Interruption</h4>
-
-                    {getTotalMonths() > parseFloat(indemnityPeriod || '0') && indemnityPeriod && (
-                      <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-lg flex items-start">
-                        <AlertCircle className="w-5 h-5 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-amber-800">
-                          <strong>Warning:</strong> Total months ({getTotalMonths()}) exceeds indemnity period ({indemnityPeriod} months)
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-neutral-100">
-                            <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">Item</th>
-                            <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">Months</th>
-                            <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">% of GP</th>
-                            <th className="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold">Sub-total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {worstCaseBI.map((row, index) => (
-                            <tr key={row.id}>
-                              <td className="border border-neutral-300 px-4 py-2 text-sm">
-                                {index < 2 ? (
-                                  row.item
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={row.item}
-                                    onChange={(e) => updateWorstCaseBI(row.id, 'item', e.target.value)}
-                                    className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
-                                    placeholder="Phase name"
-                                  />
-                                )}
-                              </td>
-                              <td className="border border-neutral-300 px-4 py-2">
-                                <input
-                                  type="number"
-                                  value={row.months}
-                                  onChange={(e) => updateWorstCaseBI(row.id, 'months', e.target.value)}
-                                  className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
-                                  placeholder="0"
-                                />
-                              </td>
-                              <td className="border border-neutral-300 px-4 py-2">
-                                <input
-                                  type="number"
-                                  value={row.percent}
-                                  onChange={(e) => updateWorstCaseBI(row.id, 'percent', e.target.value)}
-                                  className="w-full px-2 py-1 border border-neutral-300 rounded text-sm"
-                                  placeholder="0"
-                                  min="0"
-                                  max="100"
-                                />
-                              </td>
-                              <td className="border border-neutral-300 px-4 py-2 text-sm bg-neutral-50 font-medium">
-                                {row.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                          ))}
-                          <tr className="bg-neutral-100 font-semibold">
-                            <td className="border border-neutral-300 px-4 py-2 text-sm">Worst Case LE: BI Total</td>
-                            <td className="border border-neutral-300 px-4 py-2 text-sm"></td>
-                            <td className="border border-neutral-300 px-4 py-2 text-sm"></td>
-                            <td className="border border-neutral-300 px-4 py-2 text-sm">
-                              {calculateWorstCaseTotals().biTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                          <tr className="bg-neutral-200 font-bold">
-                            <td className="border border-neutral-300 px-4 py-2 text-sm">TOTAL WCL (PD + BI)</td>
-                            <td className="border border-neutral-300 px-4 py-2 text-sm"></td>
-                            <td className="border border-neutral-300 px-4 py-2 text-sm"></td>
-                            <td className="border border-neutral-300 px-4 py-2 text-sm">
-                              {calculateWorstCaseTotals().total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <SectionGrade
-                sectionKey="loss_expectancy"
-                sectionTitle="Loss Expectancy"
-                value={sectionGrades.loss_expectancy}
-                onChange={(value) => handleSectionGradeChange('loss_expectancy', value)}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Business Continuity */}
-        <div className="mb-8">
-          <SectionHeader title="Business Continuity" sectionKey="businessContinuity" />
-          {isSectionExpanded('businessContinuity') && (
+          <SectionHeader title="Business Continuity" sectionKey="business_continuity" />
+          {isSectionExpanded('business_continuity') && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Business Interruption
+                  Business Interruption Considerations
                 </label>
                 <textarea
                   value={businessInterruption}
@@ -1487,6 +904,198 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
                 sectionTitle="Business Continuity"
                 value={sectionGrades.business_continuity}
                 onChange={(value) => handleSectionGradeChange('business_continuity', value)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Loss Expectancy Section */}
+        <div className="mb-8">
+          <SectionHeader title="Loss Expectancy" sectionKey="loss_expectancy" />
+          {isSectionExpanded('loss_expectancy') && (
+            <div className="space-y-6">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="text-sm font-semibold text-blue-900 mb-2">Sums Insured</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Currency
+                    </label>
+                    <select
+                      value={selectedCurrency}
+                      onChange={(e) => setSelectedCurrency(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                    >
+                      <option value="GBP">GBP (£)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Indemnity Period (months)
+                    </label>
+                    <input
+                      type="number"
+                      value={indemnityPeriod}
+                      onChange={(e) => setIndemnityPeriod(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                      placeholder="12"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Property Damage Sum Insured
+                    </label>
+                    <input
+                      type="number"
+                      value={pdSumInsured}
+                      onChange={(e) => setPdSumInsured(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Business Interruption Sum Insured
+                    </label>
+                    <input
+                      type="number"
+                      value={biSumInsured}
+                      onChange={(e) => setBiSumInsured(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <h4 className="text-sm font-semibold text-orange-900 mb-4">Estimated Maximum Loss (EML)</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      EML PD % (0-100)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={emlPdPercent}
+                      onChange={(e) => setEmlPdPercent(parseFloat(e.target.value) || 0)}
+                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      EML BI % (0-100)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={emlBiPercent}
+                      onChange={(e) => setEmlBiPercent(parseFloat(e.target.value) || 0)}
+                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-orange-300">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <div className="text-neutral-600 mb-1">EML PD</div>
+                      <div className="text-lg font-bold text-neutral-900">{formatCurrency(emlPd)}</div>
+                    </div>
+                    <div>
+                      <div className="text-neutral-600 mb-1">EML BI</div>
+                      <div className="text-lg font-bold text-neutral-900">{formatCurrency(emlBi)}</div>
+                    </div>
+                    <div>
+                      <div className="text-neutral-600 mb-1">EML Total</div>
+                      <div className="text-lg font-bold text-orange-700">{formatCurrency(emlTotal)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <h4 className="text-sm font-semibold text-red-900 mb-4">Maximum Foreseeable Loss (MFL)</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      MFL PD % (0-100)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={mflPdPercent}
+                      onChange={(e) => setMflPdPercent(parseFloat(e.target.value) || 0)}
+                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      MFL BI % (0-100)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={mflBiPercent}
+                      onChange={(e) => setMflBiPercent(parseFloat(e.target.value) || 0)}
+                      className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-red-300">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <div className="text-neutral-600 mb-1">MFL PD</div>
+                      <div className="text-lg font-bold text-neutral-900">{formatCurrency(mflPd)}</div>
+                    </div>
+                    <div>
+                      <div className="text-neutral-600 mb-1">MFL BI</div>
+                      <div className="text-lg font-bold text-neutral-900">{formatCurrency(mflBi)}</div>
+                    </div>
+                    <div>
+                      <div className="text-neutral-600 mb-1">MFL Total</div>
+                      <div className="text-lg font-bold text-red-700">{formatCurrency(mflTotal)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Loss Expectancy Comments
+                </label>
+                <textarea
+                  value={lossExpectancyComments}
+                  onChange={(e) => setLossExpectancyComments(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-transparent transition-all resize-y"
+                  placeholder="Additional comments on loss expectancy scenarios"
+                />
+              </div>
+
+              <SectionGrade
+                sectionKey="loss_expectancy"
+                sectionTitle="Loss Expectancy"
+                value={sectionGrades.loss_expectancy}
+                onChange={(value) => handleSectionGradeChange('loss_expectancy', value)}
               />
             </div>
           )}
@@ -1639,228 +1248,8 @@ export default function RiskEngineeringForm({ moduleInstance, document, onSaved 
                   ))}
                 </div>
               )}
-
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="text-sm font-semibold text-blue-900 mb-2">Auto-Generation Rules</h4>
-                <ul className="text-xs text-blue-800 space-y-1">
-                  <li>• Recommendations are automatically generated when any section is rated 1 (Poor) or 2 (Tolerable)</li>
-                  <li>• Auto-generated recommendations are removed when the rating improves to 3 or above</li>
-                  <li>• Manual recommendations can be added at any time and must be removed manually</li>
-                  <li>• All recommendations will be included in the report output</li>
-                </ul>
-              </div>
             </div>
           )}
-        </div>
-
-        {/* Draft Reports Section */}
-        <div className="mb-6 p-6 border-4 border-indigo-500 bg-indigo-50 rounded-lg">
-          <h3 className="text-2xl font-bold text-indigo-900 mb-4">Draft Reports</h3>
-          <div className="space-y-4">
-            <div className="flex gap-3 mb-4">
-              <button
-                type="button"
-                onClick={() => setShowSurveyReport(!showSurveyReport)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  showSurveyReport
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-indigo-600 border border-indigo-300 hover:bg-indigo-50'
-                }`}
-              >
-                <FileText className="w-4 h-4 inline mr-2" />
-                Survey Report
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowLossPreventionReport(!showLossPreventionReport)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  showLossPreventionReport
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-indigo-600 border border-indigo-300 hover:bg-indigo-50'
-                }`}
-              >
-                <FileText className="w-4 h-4 inline mr-2" />
-                Loss Prevention Report
-              </button>
-            </div>
-
-            {showSurveyReport && (
-              <div className="bg-white p-6 rounded-lg border border-neutral-200">
-                <h4 className="text-xl font-bold text-neutral-900 mb-4">Risk Engineering Survey Report (Draft)</h4>
-                <div className="prose max-w-none space-y-4">
-                  <section>
-                    <h5 className="text-lg font-semibold text-neutral-800">Construction Assessment</h5>
-                    <table className="w-full border-collapse border border-neutral-300 text-sm mt-2">
-                      <thead className="bg-neutral-50">
-                        <tr>
-                          <th className="border border-neutral-300 px-3 py-2 text-left">Element</th>
-                          <th className="border border-neutral-300 px-3 py-2 text-left">Type / Material</th>
-                          <th className="border border-neutral-300 px-3 py-2 text-left">Fire Resistance</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {constructionElements.map((elem, idx) => (
-                          <tr key={idx}>
-                            <td className="border border-neutral-300 px-3 py-2">{elem.element}</td>
-                            <td className="border border-neutral-300 px-3 py-2">{elem.type_material || '—'}</td>
-                            <td className="border border-neutral-300 px-3 py-2">{elem.fire_resistance || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <p className="mt-2 text-sm">
-                      <strong>Construction Grade:</strong> {sectionGrades.construction} / 5
-                    </p>
-                  </section>
-
-                  <section>
-                    <h5 className="text-lg font-semibold text-neutral-800">Fire Protection Systems</h5>
-                    <table className="w-full border-collapse border border-neutral-300 text-sm mt-2">
-                      <thead className="bg-neutral-50">
-                        <tr>
-                          <th className="border border-neutral-300 px-3 py-2 text-left">System</th>
-                          <th className="border border-neutral-300 px-3 py-2 text-left">Coverage / Notes</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {fireProtectionItems.map((item, idx) => (
-                          <tr key={idx}>
-                            <td className="border border-neutral-300 px-3 py-2">{item.system}</td>
-                            <td className="border border-neutral-300 px-3 py-2">{item.coverage_notes || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <p className="mt-2 text-sm">
-                      <strong>Fire Protection Grade:</strong> {sectionGrades.fire_protection} / 5
-                    </p>
-                  </section>
-
-                  <section>
-                    <h5 className="text-lg font-semibold text-neutral-800">Recommendations</h5>
-                    {recommendations.length === 0 ? (
-                      <p className="text-neutral-600 text-sm">No recommendations recorded.</p>
-                    ) : (
-                      <ol className="space-y-3 mt-2">
-                        {recommendations.map((rec, idx) => (
-                          <li key={rec.id} className="text-sm">
-                            <strong>#{idx + 1}</strong> {rec.priority && `[${rec.priority}]`}: {rec.hazard}
-                            <p className="text-neutral-700 mt-1">{rec.description}</p>
-                            {rec.client_response && (
-                              <p className="text-neutral-600 mt-1">
-                                <em>Client Response:</em> {rec.client_response}
-                              </p>
-                            )}
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-                  </section>
-                </div>
-              </div>
-            )}
-
-            {showLossPreventionReport && (
-              <div className="bg-white p-6 rounded-lg border border-neutral-200">
-                <h4 className="text-xl font-bold text-neutral-900 mb-4">Loss Prevention Report (Draft)</h4>
-                <div className="prose max-w-none space-y-4">
-                  <section>
-                    <h5 className="text-lg font-semibold text-neutral-800">Loss Expectancy Analysis</h5>
-
-                    <div className="mt-3">
-                      <h6 className="text-md font-semibold text-neutral-700">Sums Insured ({selectedCurrency})</h6>
-                      <table className="w-full border-collapse border border-neutral-300 text-sm mt-2">
-                        <thead className="bg-neutral-50">
-                          <tr>
-                            <th className="border border-neutral-300 px-3 py-2 text-left">Item</th>
-                            <th className="border border-neutral-300 px-3 py-2 text-right">Value</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sumsInsured.map((row) => (
-                            <tr key={row.id}>
-                              <td className="border border-neutral-300 px-3 py-2">{row.item}</td>
-                              <td className="border border-neutral-300 px-3 py-2 text-right">
-                                {parseFloat(row.pd_value || '0').toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="mt-3">
-                      <h6 className="text-md font-semibold text-neutral-700">Worst Case Property Damage</h6>
-                      <table className="w-full border-collapse border border-neutral-300 text-sm mt-2">
-                        <thead className="bg-neutral-50">
-                          <tr>
-                            <th className="border border-neutral-300 px-3 py-2 text-left">Item</th>
-                            <th className="border border-neutral-300 px-3 py-2 text-right">%</th>
-                            <th className="border border-neutral-300 px-3 py-2 text-right">Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {worstCasePD.map((row) => (
-                            <tr key={row.id}>
-                              <td className="border border-neutral-300 px-3 py-2">{row.item}</td>
-                              <td className="border border-neutral-300 px-3 py-2 text-right">{row.percent}%</td>
-                              <td className="border border-neutral-300 px-3 py-2 text-right">
-                                {row.subtotal.toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="mt-3">
-                      <h6 className="text-md font-semibold text-neutral-700">Worst Case Business Interruption</h6>
-                      <table className="w-full border-collapse border border-neutral-300 text-sm mt-2">
-                        <thead className="bg-neutral-50">
-                          <tr>
-                            <th className="border border-neutral-300 px-3 py-2 text-left">Phase</th>
-                            <th className="border border-neutral-300 px-3 py-2 text-right">Months</th>
-                            <th className="border border-neutral-300 px-3 py-2 text-right">%</th>
-                            <th className="border border-neutral-300 px-3 py-2 text-right">Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {worstCaseBI.map((row) => (
-                            <tr key={row.id}>
-                              <td className="border border-neutral-300 px-3 py-2">{row.item}</td>
-                              <td className="border border-neutral-300 px-3 py-2 text-right">{row.months}</td>
-                              <td className="border border-neutral-300 px-3 py-2 text-right">{row.percent}%</td>
-                              <td className="border border-neutral-300 px-3 py-2 text-right">
-                                {row.subtotal.toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {lossExpectancyComments && (
-                      <div className="mt-3">
-                        <h6 className="text-md font-semibold text-neutral-700">Comments</h6>
-                        <p className="text-sm text-neutral-700 mt-1">{lossExpectancyComments}</p>
-                      </div>
-                    )}
-                  </section>
-
-                  <section>
-                    <h5 className="text-lg font-semibold text-neutral-800">Management Systems</h5>
-                    <p className="text-sm">
-                      <strong>Overall Management Grade:</strong> {sectionGrades.management_systems} / 5
-                    </p>
-                  </section>
-                </div>
-              </div>
-            )}
-
-            <p className="text-xs text-indigo-800 italic">
-              These are draft reports generated from current form data. Save your work before generating final reports.
-            </p>
-          </div>
         </div>
 
         {document?.id && moduleInstance?.id && (

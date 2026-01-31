@@ -266,22 +266,24 @@ export default function DocumentOverview() {
     }
   };
 
-  const handleDownloadDefencePack = async () => {
-    if (!defencePack) return;
+const handleDownloadDefencePack = async () => {
+  if (!defencePack) return;
 
- try {
-  if (!document?.id) return;
+  try {
+    if (!document?.id) return;
 
-  const filename = `defence_pack_${(document.title || '').replace(/[^a-z0-9]/gi, '_')}_v${document.version_number}.zip`;
-  const result = await downloadDefencePack(document.id, filename);
+    const filename = `defence_pack_${(document.title || '').replace(/[^a-z0-9]/gi, '_')}_v${document.version_number}.zip`;
+    const result = await downloadDefencePack(document.id, filename);
 
-  if (!result.success) {
-    alert(result.error || 'Failed to download defence pack');
+    if (!result.success) {
+      alert(result.error || 'Failed to download defence pack');
+    }
+  } catch (error: any) {
+    console.error('Error downloading defence pack:', error);
+    alert(error.message || 'Failed to download defence pack');
   }
-} catch (error: any) {
-  console.error('Error downloading defence pack:', error);
-  alert(error.message || 'Failed to download defence pack');
-}
+};
+
 
   const getOutcomeBadgeVariant = (outcome: string | null): 'neutral' | 'risk-low' | 'risk-medium' | 'risk-high' | 'info' => {
     switch (outcome) {

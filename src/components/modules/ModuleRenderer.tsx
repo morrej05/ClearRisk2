@@ -31,6 +31,7 @@ import DSEAR10HierarchyControlForm from './forms/DSEAR10HierarchyControlForm';
 import DSEAR11ExplosionEmergencyResponseForm from './forms/DSEAR11ExplosionEmergencyResponseForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
+import RiskEngineeringForm from './forms/RiskEngineeringForm';
 
 interface Document {
   id: string;
@@ -297,6 +298,16 @@ export default function ModuleRenderer({
   }
 
   return <PlaceholderModuleForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+}
+
+if (moduleInstance.module_key === 'RISK_ENGINEERING') {
+  return (
+    <RiskEngineeringForm
+      moduleInstance={moduleInstance}
+      document={document}
+      onSaved={onSaved}
+    />
+  );
 }
 
 function PlaceholderModuleForm({

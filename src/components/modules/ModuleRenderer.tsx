@@ -298,7 +298,6 @@ export default function ModuleRenderer({
   }
 
   return <PlaceholderModuleForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
-}
 
 if (moduleInstance.module_key === 'RISK_ENGINEERING') {
   return (
@@ -309,7 +308,7 @@ if (moduleInstance.module_key === 'RISK_ENGINEERING') {
     />
   );
 }
-
+}
 function PlaceholderModuleForm({
   moduleInstance,
   document,

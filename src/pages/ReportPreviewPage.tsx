@@ -24,6 +24,7 @@ import {
   type ModuleProgress,
 } from '../utils/issueValidation';
 import { isOrgAdmin } from '../utils/entitlements';
+import { Navigate } from 'react-router-dom';
 
 async function generateIssuedPdf(surveyReportId: string) {
   const {

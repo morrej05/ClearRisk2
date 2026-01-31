@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2, AlertCircle, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2, AlertCircle, BookOpen, FileText } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import SectionGrade from '../../SectionGrade';

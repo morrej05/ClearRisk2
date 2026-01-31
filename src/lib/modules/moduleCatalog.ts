@@ -1,18 +1,3 @@
-export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
-  RISK_ENGINEERING: {
-    name: 'Risk Engineering',
-    docTypes: ['FRA', 'FSD', 'DSEAR'],
-    order: 0,
-  },
-
-  A1_DOC_CONTROL: {
-    name: 'A1 - Document Control & Governance',
-    docTypes: ['FRA', 'FSD', 'DSEAR'],
-    order: 1,
-  },
-  // …
-};
-
 export interface ModuleDefinition {
   name: string;
   docTypes: string[];
@@ -20,6 +5,12 @@ export interface ModuleDefinition {
 }
 
 export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
+  RISK_ENGINEERING: {
+    name: 'Risk Engineering',
+    docTypes: ['FRA', 'FSD', 'DSEAR'],
+    order: 0,
+  },
+
   A1_DOC_CONTROL: {
     name: 'A1 - Document Control & Governance',
     docTypes: ['FRA', 'FSD', 'DSEAR'],
@@ -166,10 +157,12 @@ export function getModuleName(moduleKey: string): string {
   return MODULE_CATALOG[moduleKey]?.name || moduleKey;
 }
 
-export function sortModulesByOrder(modules: Array<{ module_key: string }>): Array<{ module_key: string }> {
+export function sortModulesByOrder(
+  modules: Array<{ module_key: string }>
+): Array<{ module_key: string }> {
   return [...modules].sort((a, b) => {
-    const orderA = MODULE_CATALOG[a.module_key]?.order || 999;
-    const orderB = MODULE_CATALOG[b.module_key]?.order || 999;
+    const orderA = MODULE_CATALOG[a.module_key]?.order ?? 999;
+    const orderB = MODULE_CATALOG[b.module_key]?.order ?? 999;
     return orderA - orderB;
   });
 }

@@ -1,3 +1,18 @@
+export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
+  RISK_ENGINEERING: {
+    name: 'Risk Engineering',
+    docTypes: ['FRA', 'FSD', 'DSEAR'],
+    order: 0,
+  },
+
+  A1_DOC_CONTROL: {
+    name: 'A1 - Document Control & Governance',
+    docTypes: ['FRA', 'FSD', 'DSEAR'],
+    order: 1,
+  },
+  // …
+};
+
 export interface ModuleDefinition {
   name: string;
   docTypes: string[];

@@ -1017,7 +1017,15 @@ export default function Dashboard() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 {permissions.canViewSurveys && (
                                   <button
-                                    onClick={() => navigate(`/report/${survey.id}`)}
+                                    onClick={() => {
+                                      const isFRA = (survey.survey_type ?? '').toLowerCase() === 'fra';
+  if (isFRA) {
+    navigate(`/report/${survey.id}`);
+  } else {
+    navigate(`/documents/${survey.document_id}/workspace`);
+  }
+}}
+
                                     className="text-blue-600 hover:text-blue-900 transition-colors"
                                     title="View Reports"
                                   >

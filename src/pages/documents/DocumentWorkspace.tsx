@@ -522,6 +522,10 @@ const fetchModules = async () => {
 
               const COMMON_MODULES = ['A1_DOC_CONTROL', 'A2_BUILDING_PROFILE', 'A3_PERSONS_AT_RISK'];
 
+              const reModules = modules.filter(
+  m => m.module_key.startsWith('RE_') || m.module_key === 'RISK_ENGINEERING'
+);
+
               if (isCombined) {
                 const sharedModules = modules.filter(m => COMMON_MODULES.includes(m.module_key));
                 const fraModules = modules.filter(m => m.module_key.startsWith('FRA_'));

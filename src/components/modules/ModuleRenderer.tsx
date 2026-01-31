@@ -267,14 +267,20 @@ export default function ModuleRenderer({
 
   console.log('RE module key:', moduleInstance.module_key);
   if (moduleInstance.module_key === 'RISK_ENGINEERING') {
-  return (
-    <RiskEngineeringForm
-      moduleInstance={moduleInstance}
-      document={document}
-      onSaved={onSaved}
-    />
-  );
-}
+    const dataKeys = Object.keys(moduleInstance.data || {}).join(', ') || 'none';
+    return (
+      <>
+        <div className="bg-yellow-100 border-2 border-yellow-500 p-4 m-4 rounded font-mono text-sm">
+          <strong>RE DEBUG:</strong> component=RiskEngineeringForm | moduleId={moduleInstance.id} | key={moduleInstance.module_key} | docType={document.document_type} | dataKeys={dataKeys}
+        </div>
+        <RiskEngineeringForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={onSaved}
+        />
+      </>
+    );
+  }
 
   if (moduleInstance.module_key === 'DSEAR_1_DANGEROUS_SUBSTANCES') {
     return <DSEAR1DangerousSubstancesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;

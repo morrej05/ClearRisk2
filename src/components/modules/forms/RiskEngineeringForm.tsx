@@ -467,6 +467,10 @@ export default function RiskEngineeringForm({
             <SectionHeader title="Construction" sectionKey="construction" />
             {expandedSections.construction && (
               <div className="p-6 space-y-4 border-t border-neutral-200">
+                <div className="bg-pink-100 border-2 border-pink-500 p-3 rounded font-bold text-pink-900">
+                  DEBUG: Construction table should render here
+                </div>
+
                 <label className="block">
                   <div className="text-sm font-medium text-neutral-700 mb-1">Construction Details</div>
                   <AutoExpandTextarea
@@ -492,6 +496,10 @@ export default function RiskEngineeringForm({
             <SectionHeader title="Management Systems" sectionKey="management" />
             {expandedSections.management && (
               <div className="p-6 space-y-6 border-t border-neutral-200">
+                <div className="bg-pink-100 border-2 border-pink-500 p-3 rounded font-bold text-pink-900">
+                  DEBUG: Management systems grading should render here
+                </div>
+
                 <div className="space-y-4">
                   <h4 className="font-semibold text-neutral-900 pb-2 border-b border-neutral-300">Fire Safety & Housekeeping</h4>
 
@@ -631,6 +639,10 @@ export default function RiskEngineeringForm({
             <SectionHeader title="Fire Protection Systems" sectionKey="fireProtection" />
             {expandedSections.fireProtection && (
               <div className="p-6 space-y-4 border-t border-neutral-200">
+                <div className="bg-pink-100 border-2 border-pink-500 p-3 rounded font-bold text-pink-900">
+                  DEBUG: Fire protection table should render here
+                </div>
+
                 <label className="block">
                   <div className="text-sm font-medium text-neutral-700 mb-1">Fixed Fire Protection Systems</div>
                   <AutoExpandTextarea
@@ -1039,6 +1051,10 @@ export default function RiskEngineeringForm({
 
       {/* Outcome Panel and Actions */}
       <div className="px-6 max-w-5xl mx-auto mt-6">
+        <div className="bg-pink-100 border-2 border-pink-500 p-3 rounded font-bold text-pink-900 mb-6">
+          DEBUG: Recommendation buttons should render here
+        </div>
+
         <OutcomePanel
           outcome={outcome}
           assessorNotes={assessorNotes}

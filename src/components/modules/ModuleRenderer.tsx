@@ -265,6 +265,7 @@ export default function ModuleRenderer({
     );
   }
 
+  console.log('RE module key:', moduleInstance.module_key);
   if (moduleInstance.module_key === 'RISK_ENGINEERING') {
   return (
     <RiskEngineeringForm

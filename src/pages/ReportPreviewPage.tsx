@@ -67,6 +67,7 @@ type TabType = 'survey' | 'recommendations';
 
 interface Survey {
   id: string;
+  document_id: string;
   property_name: string;
   property_address: string;
   company_name: string | null;

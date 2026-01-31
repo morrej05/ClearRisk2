@@ -30,6 +30,10 @@ export interface DefencePackManifest {
   evidence_count: number;
 }
 
+/**
+ * Fetch the defence pack record for a document (metadata only).
+ * NOTE: This returns bundle_path, but the frontend must NOT use it to access storage.
+ */
 export async function getDefencePack(documentId: string): Promise<DefencePack | null> {
   try {
     const { data, error } = await supabase
@@ -66,7 +70,9 @@ export async function getDefencePacksByBaseDocument(baseDocumentId: string): Pro
   }
 }
 
-export async function buildDefencePack(documentId: string): Promise<{ success: boolean; pack?: DefencePack; error?: string }> {
+export async function buildDefencePack(
+  documentId: string
+): Promise<{ success: boolean; pack?: DefencePack; error?: string }> {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const { data: { session } } = await supabase.auth.getSession();
@@ -85,10 +91,10 @@ export async function buildDefencePack(documentId: string): Promise<{ success: b
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       return {
         success: false,
-        error: errorData.error || 'Failed to build defence pack',
+        error: (errorData as any)?.error || 'Failed to build defence pack',
       };
     }
 
@@ -105,20 +111,61 @@ export async function buildDefencePack(documentId: string): Promise<{ success: b
   }
 }
 
-export async function downloadDefencePack(bundlePath: string, filename: string): Promise<{ success: boolean; error?: string }> {
+/**
+ * LOCKED ACCESS PATTERN
+ * Frontend must NEVER call storage.createSignedUrl() for locked artefacts.
+ * Instead, request a short-lived signed URL from a secure Edge Function.
+ */
+export async function getLockedDefencePackUrl(
+  documentId: string
+): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
   try {
-    const { data, error } = await supabase.storage
-      .from('defence-packs')
-      .createSignedUrl(bundlePath, 300);
+    const { data, error } = await supabase.functions.invoke('get-defence-pack-url', {
+      body: { document_id: documentId },
+    });
 
-    if (error || !data) {
-      console.error('Error creating signed URL:', error);
+    if (error) {
+      console.error('[getLockedDefencePackUrl] function error:', error);
       return { success: false, error: 'Failed to generate download URL' };
     }
 
+    const signedUrl = (data as any)?.signedUrl;
+    if (!signedUrl) {
+      return { success: false, error: 'No signed URL returned' };
+    }
+
+    return { success: true, signedUrl };
+  } catch (err: any) {
+    console.error('[getLockedDefencePackUrl] unexpected error:', err);
+    return { success: false, error: err.message || 'Unknown error occurred' };
+  }
+}
+
+/**
+ * Download the defence pack ZIP (LOCKED).
+ *
+ * BREAKING CHANGE (intentional):
+ * - OLD: downloadDefencePack(bundlePath, filename)
+ * - NEW: downloadDefencePack(documentId, filename)
+ *
+ * Rationale: The frontend must not know or use bundle_path for access control.
+ */
+export async function downloadDefencePack(
+  documentId: string,
+  filename: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const urlResult = await getLockedDefencePackUrl(documentId);
+
+    if (!urlResult.success || !urlResult.signedUrl) {
+      return { success: false, error: urlResult.error || 'Failed to generate download URL' };
+    }
+
+    // Trigger download using an anchor. Browser may ignore 'download' if cross-origin headers override it.
     const link = document.createElement('a');
-    link.href = data.signedUrl;
+    link.href = urlResult.signedUrl;
     link.download = filename;
+    link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -168,7 +215,11 @@ export function isDefencePackEligible(issueStatus: string, lockedPdfPath: string
   return issueStatus === 'issued' && !!lockedPdfPath;
 }
 
-export function getDefencePackStatus(pack: DefencePack | null, issueStatus: string, lockedPdfPath: string | null): 'not_eligible' | 'ready' | 'exists' {
+export function getDefencePackStatus(
+  pack: DefencePack | null,
+  issueStatus: string,
+  lockedPdfPath: string | null
+): 'not_eligible' | 'ready' | 'exists' {
   if (!isDefencePackEligible(issueStatus, lockedPdfPath)) {
     return 'not_eligible';
   }

@@ -163,6 +163,17 @@ export default function DocumentWorkspace() {
   const [documentNotFound, setDocumentNotFound] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [isIssuing, setIsIssuing] = useState(false);
+  const [invalidUrl, setInvalidUrl] = useState(false);
+
+  // Guard: Check for missing document ID
+  useEffect(() => {
+    if (!id) {
+      console.error('[DocumentWorkspace] Missing document id route param');
+      setInvalidUrl(true);
+      setIsLoading(false);
+      setDocumentNotFound(true);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (id && organisation?.id) {
@@ -206,7 +217,10 @@ export default function DocumentWorkspace() {
   }, [modules, selectedModuleId, id]);
 
   const fetchDocument = async () => {
-    if (!id || !organisation?.id) return;
+    if (!id || !organisation?.id) {
+      console.error('[DocumentWorkspace.fetchDocument] Missing id or organisation.id', { id, orgId: organisation?.id });
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -237,7 +251,10 @@ export default function DocumentWorkspace() {
   };
 
 const fetchModules = async () => {
-  if (!id || !organisation?.id) return;
+  if (!id || !organisation?.id) {
+    console.error('[DocumentWorkspace.fetchModules] Missing id or organisation.id', { id, orgId: organisation?.id });
+    return;
+  }
 
   setIsLoading(true);
   try {
@@ -320,7 +337,14 @@ const fetchModules = async () => {
   };
 
   const handleIssueDocument = async () => {
-    if (!id || !user?.id || !document) return;
+    if (!id || !user?.id || !document) {
+      console.error('[DocumentWorkspace.handleIssueDocument] Missing required data', {
+        id,
+        userId: user?.id,
+        hasDocument: !!document
+      });
+      return;
+    }
 
     setIsIssuing(true);
     try {
@@ -422,9 +446,14 @@ const fetchModules = async () => {
           <div className="mb-4">
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
           </div>
-          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Document Not Found</h2>
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">
+            {invalidUrl ? 'Invalid Document URL' : 'Document Not Found'}
+          </h2>
           <p className="text-neutral-600 mb-6">
-            This document doesn't exist or you don't have permission to access it.
+            {invalidUrl
+              ? 'The document URL is invalid or incomplete. Please check the URL and try again.'
+              : "This document doesn't exist or you don't have permission to access it."
+            }
           </p>
           <button
             onClick={() => navigate('/dashboard')}

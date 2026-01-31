@@ -39,9 +39,14 @@ const MODULE_SKELETONS = {
     'DSEAR_10_HIERARCHY_SUBSTITUTION',
     'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE',
   ],
+  RE: [
+    'A1_DOC_CONTROL',
+    'A2_BUILDING_PROFILE',
+    'RISK_ENGINEERING',
+  ],
 };
 
-export type DocumentType = 'FRA' | 'FSD' | 'DSEAR';
+export type DocumentType = 'FRA' | 'FSD' | 'DSEAR' | 'RE';
 
 interface CreateDocumentParams {
   organisationId: string;

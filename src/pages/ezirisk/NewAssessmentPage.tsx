@@ -146,16 +146,17 @@ export default function NewAssessmentPage() {
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'property') {
         const payload = {
-          userId: user.id,
-          companyName: 'New Client',
+          organisationId: organisation.id,
+          documentType: 'RE' as const,
+          title: 'New Risk Engineering Assessment',
         };
-        console.log('[NewAssessment] Creating Property Survey (RE) with payload:', payload);
-        const documentId = await createPropertySurvey(payload.userId, payload.companyName);
+        console.log('[NewAssessment] Creating RE with payload:', payload);
+        const documentId = await createDocument(payload);
         if (!documentId) {
-          throw new Error('Survey creation returned no ID');
+          throw new Error('Document creation returned no ID');
         }
-        console.log('[NewAssessment] Created property survey:', documentId);
-        navigate(`/report/${documentId}`);
+        console.log('[NewAssessment] Created RE document:', documentId);
+        navigate(`/documents/${documentId}/workspace`);
       }
     } catch (error) {
       console.error('[NewAssessment] ERROR creating assessment:', error);

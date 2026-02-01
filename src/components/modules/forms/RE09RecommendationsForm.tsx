@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { Plus, X, Upload, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
-import OutcomePanel from '../OutcomePanel';
-import ModuleActions from '../ModuleActions';
 
 interface Document {
   id: string;
@@ -91,8 +89,6 @@ export default function RE09RecommendationsForm({
     : [];
 
   const [recommendations, setRecommendations] = useState<Recommendation[]>(safeRecommendations);
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
 
   useEffect(() => {
     if (recommendations.length === 0) {
@@ -241,16 +237,12 @@ export default function RE09RecommendationsForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const completedAt = outcome ? new Date().toISOString() : null;
       const sanitized = sanitizeModuleInstancePayload({ data: { recommendations } });
 
       const { error } = await supabase
         .from('module_instances')
         .update({
           data: sanitized.data,
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          completed_at: completedAt,
         })
         .eq('id', moduleInstance.id);
 
@@ -516,18 +508,15 @@ export default function RE09RecommendationsForm({
         </button>
       </div>
 
-      <OutcomePanel
-        outcome={outcome}
-        assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
-        onNotesChange={setAssessorNotes}
-        onSave={handleSave}
-        isSaving={isSaving}
-      />
-
-      {document?.id && moduleInstance?.id && (
-        <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
-      )}
+      <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+        >
+          {isSaving ? 'Saving...' : 'Save Recommendations'}
+        </button>
+      </div>
     </div>
   );
 }

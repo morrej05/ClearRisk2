@@ -42,7 +42,7 @@ import RE09ManagementForm from './forms/RE09ManagementForm';
 import RE10ProcessRiskForm from './forms/RE10ProcessRiskForm';
 import RE10SitePhotosForm from './forms/RE10SitePhotosForm';
 import RE12LossValuesForm from './forms/RE12LossValuesForm';
-import RE13RecommendationsForm from './forms/RE13RecommendationsForm';
+import RE09RecommendationsForm from './forms/RE09RecommendationsForm';
 import RE14DraftOutputsForm from './forms/RE14DraftOutputsForm';
 
 interface Document {
@@ -324,7 +324,7 @@ export default function ModuleRenderer({
   }
 
   if (moduleInstance.module_key === 'RE_13_RECOMMENDATIONS') {
-    return <RE13RecommendationsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return <RE09RecommendationsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }
 
   if (moduleInstance.module_key === 'RE_14_DRAFT_OUTPUTS') {

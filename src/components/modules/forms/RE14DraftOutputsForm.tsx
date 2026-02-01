@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { AlertCircle, TrendingUp, FileText, Image as ImageIcon, Save } from 'lucide-react';
+import { AlertCircle, TrendingUp, FileText, Image as ImageIcon, Save, Sparkles, Copy } from 'lucide-react';
 import ModuleActions from '../ModuleActions';
 import { HRG_CANONICAL_KEYS, getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, calculateScore } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
+import { generateRiskEngineeringSummary } from '../../../lib/ai/generateReSummary';
 
 interface Document {
   id: string;
@@ -58,7 +59,10 @@ export default function RE14DraftOutputsForm({
 }: RE14DraftOutputsFormProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [executiveSummary, setExecutiveSummary] = useState('');
+  const [executiveSummaryAi, setExecutiveSummaryAi] = useState('');
+  const [industryKey, setIndustryKey] = useState('');
   const [siteMetadata, setSiteMetadata] = useState<any>(null);
   const [ratingRows, setRatingRows] = useState<RatingRow[]>([]);
   const [totalScore, setTotalScore] = useState(0);
@@ -73,6 +77,7 @@ export default function RE14DraftOutputsForm({
 
   useEffect(() => {
     setExecutiveSummary(moduleInstance.data?.executive_summary || '');
+    setExecutiveSummaryAi(moduleInstance.data?.executive_summary_ai || '');
   }, [moduleInstance]);
 
   useEffect(() => {
@@ -102,12 +107,13 @@ export default function RE14DraftOutputsForm({
         }
 
         if (riskEng?.data) {
-          const industryKey = riskEng.data.industry_key;
+          const industryKeyValue = riskEng.data.industry_key;
+          setIndustryKey(industryKeyValue);
           const ratings = riskEng.data.ratings || {};
 
           const rows: RatingRow[] = HRG_CANONICAL_KEYS.map(canonicalKey => {
             const rating = getRating(riskEng.data, canonicalKey);
-            const config = getHrgConfig(industryKey, canonicalKey);
+            const config = getHrgConfig(industryKeyValue, canonicalKey);
             const score = calculateScore(rating, config.weight);
 
             return {
@@ -182,6 +188,54 @@ export default function RE14DraftOutputsForm({
     }
   };
 
+  const handleGenerateAiDraft = async () => {
+    if (!siteMetadata || !industryKey || ratingRows.length === 0) {
+      alert('Please ensure all assessment data is complete before generating an AI summary.');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const aiSummary = generateRiskEngineeringSummary({
+        industryKey,
+        siteName: siteMetadata.site_name,
+        assessmentDate: siteMetadata.assessment_date,
+        totalScore,
+        topContributors,
+        highPriorityRecommendations: recSummary.highPriorityItems,
+        recommendationCounts: recSummary.byPriority,
+      });
+
+      const { error } = await supabase
+        .from('module_instances')
+        .update({
+          data: {
+            ...moduleInstance.data,
+            executive_summary_ai: aiSummary,
+          },
+        })
+        .eq('id', moduleInstance.id);
+
+      if (error) throw error;
+
+      setExecutiveSummaryAi(aiSummary);
+      onSaved();
+    } catch (error) {
+      console.error('Error generating AI summary:', error);
+      alert('Failed to generate AI summary');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleUseAiDraft = () => {
+    if (!executiveSummaryAi) {
+      alert('Please generate an AI draft first.');
+      return;
+    }
+    setExecutiveSummary(executiveSummaryAi);
+  };
+
   if (loading) {
     return (
       <div className="p-6 max-w-5xl mx-auto">
@@ -233,6 +287,54 @@ export default function RE14DraftOutputsForm({
           className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           minRows={6}
         />
+      </div>
+
+      <div className="bg-gradient-to-br from-violet-50 to-blue-50 border border-violet-200 rounded-lg p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-violet-600" />
+            AI Summary (Draft)
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={handleGenerateAiDraft}
+              disabled={generating || !siteMetadata || !industryKey}
+              className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              {generating ? 'Generating...' : 'Generate AI draft'}
+            </button>
+            {executiveSummaryAi && (
+              <button
+                onClick={handleUseAiDraft}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Copy className="w-4 h-4" />
+                Use AI draft
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="text-sm text-slate-700">
+          <p className="mb-2">
+            Generate an AI-assisted draft summary based on assessment data. This summary is deterministic
+            and uses only the data entered in other modules (150-250 words, UK English, professional tone).
+          </p>
+          {!siteMetadata || !industryKey ? (
+            <p className="text-amber-700 font-medium">
+              Complete RE-01 Document Control and RISK_ENGINEERING modules before generating.
+            </p>
+          ) : null}
+        </div>
+        {executiveSummaryAi ? (
+          <div className="bg-white border border-violet-200 rounded-lg p-4">
+            <p className="text-sm text-slate-800 whitespace-pre-wrap">{executiveSummaryAi}</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-dashed border-violet-300 rounded-lg p-4 text-center">
+            <p className="text-sm text-slate-500 italic">No AI draft generated yet. Click "Generate AI draft" to create one.</p>
+          </div>
+        )}
       </div>
 
       <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">

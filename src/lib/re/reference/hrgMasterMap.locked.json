@@ -1,6 +1,76 @@
 {
   "meta": {
-    "default_weight": 3
+    "dataset_name": "risk_engineering_v1_hrg_master_map",
+    "version": "v1.0",
+    "status": "locked_reference_data",
+    "default_weight": 3,
+    "rating_scale": "engineer_rates_current_condition_1_to_5",
+    "calculation_note": "overall_section_contribution = weight * engineer_rating",
+    "module_keys": [
+      "process_control_and_stability",
+      "process_safety_management",
+      "electrical_and_utilities_reliability",
+      "critical_equipment_reliability",
+      "flammable_liquids_and_fire_risk",
+      "high_energy_materials_control",
+      "high_energy_process_equipment",
+      "safety_and_control_systems",
+      "natural_hazard_exposure_and_controls",
+      "emergency_response_and_bcp"
+    ]
   },
-  "industries": {}
-}
+  "industries": {
+    "aircraft_painting_unfueled": {
+      "modules": {
+        "flammable_liquids_and_fire_risk": {
+          "weight": 5,
+          "help_text": "Aircraft painting generates high concentrations of flammable vapours. Treat the painting area as a spray-application environment: strict ignition control, disciplined solvent handling, and effective ventilation are essential to prevent flash fire/explosion."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Electrical installations and temporary equipment within painting areas must be suitable for flammable vapour atmospheres. Non-suitable equipment and poor maintenance are common ignition pathways."
+        },
+        "critical_equipment_reliability": {
+          "weight": 4,
+          "help_text": "Ventilation and spray support systems are process-critical. Loss of extraction or interlocks can rapidly increase vapour accumulation risk and force an unsafe shutdown."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 3,
+          "help_text": "Large hangar openings and lightweight envelopes can be vulnerable to wind and wind-driven rain. Confirm storm procedures, door management, and securing/anchoring arrangements where applicable."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Emergency procedures should cover vapour ignition, spill response, safe shutdown, and protecting aircraft/assets during an incident."
+        }
+      }
+    },
+
+    "aluminium_manufacturing": {
+      "modules": {
+        "high_energy_materials_control": {
+          "weight": 5,
+          "help_text": "Molten aluminium operations can escalate rapidly following loss of containment, refractory degradation, or loss of control. Confirm spill routes, containment capacity, and that water is controlled away from molten pathways."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Power reliability is critical for controlled operation and orderly shutdown. Loss of power can create severe equipment damage and difficult recovery; confirm redundancy and emergency arrangements."
+        },
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Core process assets (pots/furnaces/casting/rolling) require disciplined inspection and monitoring. Confirm condition monitoring, maintenance planning, and critical spares for bottlenecks."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 4,
+          "help_text": "Hydraulic fluids, lubricants, and coatings can create severe fire exposures near hot equipment. Confirm leak control, less flammable fluids where appropriate, and effective local protection/segregation."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Emergency planning should include molten spill response, loss of utilities response, and recovery sequencing for critical equipment."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 1,
+          "help_text": "Loss potential is typically driven by process incidents more than natural hazards; still confirm site-specific exposure and utility resilience."
+        }
+      }
+    }
+

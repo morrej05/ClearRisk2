@@ -64,8 +64,8 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     order: 9,
   },
 
-  RE_14_DRAFT_OUTPUTS: {
-    name: 'RE-10 - Draft Outputs',
+  RE_10_SITE_PHOTOS: {
+    name: 'RE-10 - Site Photos & Site Plan',
     docTypes: ['RE'],
     order: 10,
   },

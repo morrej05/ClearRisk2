@@ -40,6 +40,7 @@ import RE07NaturalHazardsForm from './forms/RE07NaturalHazardsForm';
 import RE08UtilitiesForm from './forms/RE08UtilitiesForm';
 import RE09ManagementForm from './forms/RE09ManagementForm';
 import RE10ProcessRiskForm from './forms/RE10ProcessRiskForm';
+import RE10SitePhotosForm from './forms/RE10SitePhotosForm';
 import RE12LossValuesForm from './forms/RE12LossValuesForm';
 import RE13RecommendationsForm from './forms/RE13RecommendationsForm';
 import RE14DraftOutputsForm from './forms/RE14DraftOutputsForm';
@@ -312,6 +313,10 @@ export default function ModuleRenderer({
 
   if (moduleInstance.module_key === 'RE_10_PROCESS_RISK') {
     return <RE10ProcessRiskForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_10_SITE_PHOTOS') {
+    return <RE10SitePhotosForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }
 
   if (moduleInstance.module_key === 'RE_12_LOSS_VALUES') {

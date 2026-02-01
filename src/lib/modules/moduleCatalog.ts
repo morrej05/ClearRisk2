@@ -10,6 +10,66 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     docTypes: ['RE'],
     order: 0,
   },
+    RE_01_DOC_CONTROL: {
+    name: 'RE-1 - Document Control',
+    docTypes: ['RE'],
+    order: 1,
+  },
+
+  RE_03_OCCUPANCY: {
+    name: 'RE-3 - Occupancy',
+    docTypes: ['RE'],
+    order: 2,
+  },
+
+  RE_02_CONSTRUCTION: {
+    name: 'RE-2 - Construction',
+    docTypes: ['RE'],
+    order: 3,
+  },
+
+  RE_06_FIRE_PROTECTION: {
+    name: 'RE-4 - Fire Protection',
+    docTypes: ['RE'],
+    order: 4,
+  },
+
+  RE_07_NATURAL_HAZARDS: {
+    name: 'RE-5 - Natural Hazards',
+    docTypes: ['RE'],
+    order: 5,
+  },
+
+  RE_08_UTILITIES: {
+    name: 'RE-6 - Utilities & Critical Services',
+    docTypes: ['RE'],
+    order: 6,
+  },
+
+  RE_09_MANAGEMENT: {
+    name: 'RE-7 - Management Systems',
+    docTypes: ['RE'],
+    order: 7,
+  },
+
+  RE_12_LOSS_VALUES: {
+    name: 'RE-8 - Loss & Values',
+    docTypes: ['RE'],
+    order: 8,
+  },
+
+  RE_13_RECOMMENDATIONS: {
+    name: 'RE-9 - Recommendations',
+    docTypes: ['RE'],
+    order: 9,
+  },
+
+  RE_14_DRAFT_OUTPUTS: {
+    name: 'RE-10 - Draft Outputs',
+    docTypes: ['RE'],
+    order: 10,
+  },
+
 
   A1_DOC_CONTROL: {
     name: 'A1 - Document Control & Governance',

@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
-import RatingRadio from '../../RatingRadio';
+import ReRatingPanel from '../../re/ReRatingPanel';
+import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
+import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
+import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
 
 interface Document {
   id: string;
@@ -12,6 +15,7 @@ interface Document {
 
 interface ModuleInstance {
   id: string;
+  document_id: string;
   outcome: string | null;
   assessor_notes: string;
   data: Record<string, any>;
@@ -23,6 +27,8 @@ interface RE08UtilitiesFormProps {
   onSaved: () => void;
 }
 
+const CANONICAL_KEY = 'electrical_and_utilities_reliability';
+
 export default function RE08UtilitiesForm({
   moduleInstance,
   document,
@@ -32,7 +38,6 @@ export default function RE08UtilitiesForm({
   const d = moduleInstance.data || {};
 
   const [formData, setFormData] = useState({
-    ratings: d.ratings || { site_rating_1_5: null, site_rating_notes: '' },
     power_resilience: d.power_resilience || {
       notes: '',
       backup_power_present: null,
@@ -46,10 +51,73 @@ export default function RE08UtilitiesForm({
       water_supplies: { present: null, notes: '' },
     },
     single_points_of_failure: d.single_points_of_failure || [],
+    recommendations: d.recommendations || [],
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+
+  const [riskEngData, setRiskEngData] = useState<any>({});
+  const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
+  const [industryKey, setIndustryKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadRiskEngModule() {
+      try {
+        const { data: instance, error } = await supabase
+          .from('module_instances')
+          .select('id, data')
+          .eq('document_id', moduleInstance.document_id)
+          .eq('module_key', 'RISK_ENGINEERING')
+          .single();
+
+        if (error) throw error;
+
+        if (instance) {
+          setRiskEngInstanceId(instance.id);
+          setRiskEngData(instance.data || {});
+          setIndustryKey(instance.data?.industry_key || null);
+        }
+      } catch (err) {
+        console.error('Error loading RISK_ENGINEERING module:', err);
+      }
+    }
+
+    loadRiskEngModule();
+  }, [moduleInstance.document_id]);
+
+  const rating = getRating(riskEngData, CANONICAL_KEY);
+  const hrgConfig = getHrgConfig(industryKey, CANONICAL_KEY);
+
+  const handleRatingChange = async (newRating: number) => {
+    if (!riskEngInstanceId) return;
+
+    try {
+      const updatedRiskEngData = setRating(riskEngData, CANONICAL_KEY, newRating);
+
+      const { error } = await supabase
+        .from('module_instances')
+        .update({ data: updatedRiskEngData })
+        .eq('id', riskEngInstanceId);
+
+      if (error) throw error;
+
+      setRiskEngData(updatedRiskEngData);
+
+      const updatedFormData = ensureAutoRecommendation(formData, CANONICAL_KEY, newRating, industryKey);
+      if (updatedFormData !== formData) {
+        setFormData(updatedFormData);
+        const sanitized = sanitizeModuleInstancePayload({ data: updatedFormData });
+        await supabase
+          .from('module_instances')
+          .update({ data: sanitized.data })
+          .eq('id', moduleInstance.id);
+      }
+    } catch (err) {
+      console.error('Error updating rating:', err);
+      alert('Failed to update rating');
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -84,27 +152,18 @@ export default function RE08UtilitiesForm({
         <p className="text-slate-600">Assessment of power, utilities, and critical service dependencies</p>
       </div>
 
+      <div className="mb-6">
+        <ReRatingPanel
+          canonicalKey={CANONICAL_KEY}
+          industryKey={industryKey}
+          rating={rating}
+          onChangeRating={handleRatingChange}
+          helpText={hrgConfig.helpText}
+          weight={hrgConfig.weight}
+        />
+      </div>
+
       <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Site Rating</h3>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Overall Utilities Rating (1-5)</label>
-            <RatingRadio
-              value={formData.ratings.site_rating_1_5}
-              onChange={(value) => setFormData({ ...formData, ratings: { ...formData.ratings, site_rating_1_5: value } })}
-              name="site_rating"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Rating Notes</label>
-            <textarea
-              value={formData.ratings.site_rating_notes}
-              onChange={(e) => setFormData({ ...formData, ratings: { ...formData.ratings, site_rating_notes: e.target.value } })}
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-            />
-          </div>
-        </div>
 
         <div>
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Power Resilience</h3>

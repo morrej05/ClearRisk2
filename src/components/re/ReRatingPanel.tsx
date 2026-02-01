@@ -68,11 +68,11 @@ export default function ReRatingPanel({
           <div className="text-xs text-slate-500 mb-1">
             Weight {industryKey ? '(Industry-specific)' : '(Default)'}
           </div>
-          <div className="text-2xl font-bold text-slate-900">{weight.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-slate-900">{weight}</div>
         </div>
         <div>
           <div className="text-xs text-slate-500 mb-1">Weighted Score</div>
-          <div className="text-2xl font-bold text-blue-600">{score.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-blue-600">{score}</div>
         </div>
       </div>
 

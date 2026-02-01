@@ -39,6 +39,7 @@ import RE06FireProtectionForm from './forms/RE06FireProtectionForm';
 import RE07NaturalHazardsForm from './forms/RE07NaturalHazardsForm';
 import RE08UtilitiesForm from './forms/RE08UtilitiesForm';
 import RE09ManagementForm from './forms/RE09ManagementForm';
+import RE10ProcessRiskForm from './forms/RE10ProcessRiskForm';
 import RE12LossValuesForm from './forms/RE12LossValuesForm';
 import RE13RecommendationsForm from './forms/RE13RecommendationsForm';
 import RE14DraftOutputsForm from './forms/RE14DraftOutputsForm';
@@ -307,6 +308,10 @@ export default function ModuleRenderer({
 
   if (moduleInstance.module_key === 'RE_09_MANAGEMENT') {
     return <RE09ManagementForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_10_PROCESS_RISK') {
+    return <RE10ProcessRiskForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }
 
   if (moduleInstance.module_key === 'RE_12_LOSS_VALUES') {

@@ -21,26 +21,28 @@ interface ModuleInstance {
   data: Record<string, any>;
 }
 
-interface RE03OccupancyFormProps {
+interface RE10ProcessRiskFormProps {
   moduleInstance: ModuleInstance;
   document: Document;
   onSaved: () => void;
 }
 
-const CANONICAL_KEY = 'process_control_and_stability';
+const CANONICAL_KEYS = [
+  'flammable_liquids_and_fire_risk',
+  'critical_equipment_reliability',
+  'high_energy_materials_control',
+  'high_energy_process_equipment',
+];
 
-export default function RE03OccupancyForm({
+export default function RE10ProcessRiskForm({
   moduleInstance,
   document,
   onSaved,
-}: RE03OccupancyFormProps) {
+}: RE10ProcessRiskFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const d = moduleInstance.data || {};
 
   const [formData, setFormData] = useState({
-    process_overview: d.process_overview || '',
-    operating_hours: d.operating_hours || '',
-    headcount: d.headcount || null,
     notes: d.notes || '',
     recommendations: d.recommendations || [],
   });
@@ -77,14 +79,11 @@ export default function RE03OccupancyForm({
     loadRiskEngModule();
   }, [moduleInstance.document_id]);
 
-  const rating = getRating(riskEngData, CANONICAL_KEY);
-  const hrgConfig = getHrgConfig(industryKey, CANONICAL_KEY);
-
-  const handleRatingChange = async (newRating: number) => {
+  const handleRatingChange = async (canonicalKey: string, newRating: number) => {
     if (!riskEngInstanceId) return;
 
     try {
-      const updatedRiskEngData = setRating(riskEngData, CANONICAL_KEY, newRating);
+      const updatedRiskEngData = setRating(riskEngData, canonicalKey, newRating);
 
       const { error } = await supabase
         .from('module_instances')
@@ -95,7 +94,7 @@ export default function RE03OccupancyForm({
 
       setRiskEngData(updatedRiskEngData);
 
-      const updatedFormData = ensureAutoRecommendation(formData, CANONICAL_KEY, newRating, industryKey);
+      const updatedFormData = ensureAutoRecommendation(formData, canonicalKey, newRating, industryKey);
       if (updatedFormData !== formData) {
         setFormData(updatedFormData);
         const sanitized = sanitizeModuleInstancePayload({ data: updatedFormData });
@@ -139,68 +138,38 @@ export default function RE03OccupancyForm({
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-3 - Occupancy</h2>
-        <p className="text-slate-600">Occupancy classification and process control assessment</p>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-10 - Process Risk</h2>
+        <p className="text-slate-600">Process hazards and high-risk materials assessment</p>
       </div>
 
-      <div className="mb-6">
-        <ReRatingPanel
-          canonicalKey={CANONICAL_KEY}
-          industryKey={industryKey}
-          rating={rating}
-          onChangeRating={handleRatingChange}
-          helpText={hrgConfig.helpText}
-          weight={hrgConfig.weight}
+      <div className="space-y-6 mb-6">
+        {CANONICAL_KEYS.map((canonicalKey) => {
+          const rating = getRating(riskEngData, canonicalKey);
+          const hrgConfig = getHrgConfig(industryKey, canonicalKey);
+
+          return (
+            <ReRatingPanel
+              key={canonicalKey}
+              canonicalKey={canonicalKey}
+              industryKey={industryKey}
+              rating={rating}
+              onChangeRating={(newRating) => handleRatingChange(canonicalKey, newRating)}
+              helpText={hrgConfig.helpText}
+              weight={hrgConfig.weight}
+            />
+          );
+        })}
+      </div>
+
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Additional Notes</h3>
+        <textarea
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          rows={4}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+          placeholder="Additional observations about process risks and controls"
         />
-      </div>
-
-      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Occupancy Information</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Process Overview</label>
-              <textarea
-                value={formData.process_overview}
-                onChange={(e) => setFormData({ ...formData, process_overview: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                placeholder="Describe the primary processes and operations at this site"
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Operating Hours</label>
-                <input
-                  type="text"
-                  value={formData.operating_hours}
-                  onChange={(e) => setFormData({ ...formData, operating_hours: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                  placeholder="e.g., 24/7, Mon-Fri 9-5"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Headcount</label>
-                <input
-                  type="number"
-                  value={formData.headcount || ''}
-                  onChange={(e) => setFormData({ ...formData, headcount: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Additional Notes</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                placeholder="Additional observations and notes"
-              />
-            </div>
-          </div>
-        </div>
       </div>
 
       <OutcomePanel

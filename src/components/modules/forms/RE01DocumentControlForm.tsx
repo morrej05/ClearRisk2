@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
+import { HRG_MASTER_MAP } from '../../../lib/re/reference/hrgMasterMap';
+import { ensureRatingsObject } from '../../../lib/re/scoring/riskEngineeringHelpers';
 
 interface Document {
   id: string;
@@ -11,6 +13,7 @@ interface Document {
 
 interface ModuleInstance {
   id: string;
+  document_id: string;
   outcome: string | null;
   assessor_notes: string;
   data: Record<string, any>;
@@ -41,6 +44,61 @@ export default function RE01DocumentControlForm({
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+
+  const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
+  const [industryKey, setIndustryKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadRiskEngModule() {
+      try {
+        const { data: instances, error } = await supabase
+          .from('module_instances')
+          .select('id, data')
+          .eq('document_id', moduleInstance.document_id)
+          .eq('module_key', 'RISK_ENGINEERING')
+          .single();
+
+        if (error) throw error;
+
+        if (instances) {
+          setRiskEngInstanceId(instances.id);
+          setIndustryKey(instances.data?.industry_key || null);
+        }
+      } catch (err) {
+        console.error('Error loading RISK_ENGINEERING module:', err);
+      }
+    }
+
+    loadRiskEngModule();
+  }, [moduleInstance.document_id]);
+
+  const handleIndustryChange = async (newIndustryKey: string) => {
+    if (!riskEngInstanceId) return;
+
+    try {
+      const { data: current, error: fetchError } = await supabase
+        .from('module_instances')
+        .select('data')
+        .eq('id', riskEngInstanceId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const ensured = ensureRatingsObject({ ...current?.data, industry_key: newIndustryKey });
+
+      const { error: updateError } = await supabase
+        .from('module_instances')
+        .update({ data: ensured })
+        .eq('id', riskEngInstanceId);
+
+      if (updateError) throw updateError;
+
+      setIndustryKey(newIndustryKey);
+    } catch (err) {
+      console.error('Error updating industry key:', err);
+      alert('Failed to update industry classification');
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -76,6 +134,27 @@ export default function RE01DocumentControlForm({
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Industry Classification</h3>
+          <p className="text-sm text-slate-600 mb-3">
+            Select the industry type for this site. This determines the risk weighting factors applied across all assessment modules.
+          </p>
+          <div className="max-w-md">
+            <select
+              value={industryKey || ''}
+              onChange={(e) => handleIndustryChange(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            >
+              <option value="">Select Industry...</option>
+              {Object.entries(HRG_MASTER_MAP.industries).map(([key, config]) => (
+                <option key={key} value={key}>
+                  {config.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div>
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Assessor</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

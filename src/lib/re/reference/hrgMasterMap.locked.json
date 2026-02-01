@@ -190,4 +190,138 @@
         }
       }
     }
+    ,
+
+    "electrical_equipment_assembly": {
+      "modules": {
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Electrical assembly/testing depends on stable power and controlled environments. Power quality, humidity control, and clean electrical rooms reduce failures and rework."
+        },
+        "critical_equipment_reliability": {
+          "weight": 4,
+          "help_text": "Test rigs and production tooling can be bottlenecks. Confirm maintenance, calibration, spares, and program backups for fast recovery."
+        },
+        "process_control_and_stability": {
+          "weight": 4,
+          "help_text": "Contamination control and disciplined process steps prevent latent defects. Confirm housekeeping, ESD controls, and controlled storage/handling where applicable."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 4,
+          "help_text": "Water ingress and humidity after storms/floods can cause widespread damage to sensitive components. Confirm building envelope resilience and response plans."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 3,
+          "help_text": "Recovery often depends on restoring power and clean conditions. Confirm restart procedures and protection of critical documentation/programs."
+        }
+      }
+    },
+
+    "expanded_plastics_and_rubber": {
+      "modules": {
+        "flammable_liquids_and_fire_risk": {
+          "weight": 5,
+          "help_text": "Expanded plastics/rubber operations can have high fire load and rapid fire spread potential. Housekeeping, ignition control, and effective protection/segregation are key."
+        },
+        "process_control_and_stability": {
+          "weight": 4,
+          "help_text": "Combustible residues and deposits can accumulate; proactive cleaning and control of hot surfaces reduce ignition likelihood."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 4,
+          "help_text": "Electrical faults are common ignition sources in high-dust/high-residue areas. Confirm inspection and suitable equipment for the environment."
+        },
+        "critical_equipment_reliability": {
+          "weight": 4,
+          "help_text": "Presses/mixers/foaming equipment are critical. Failures can cause extended downtime and may initiate fires."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 3,
+          "help_text": "Flood/collapse can contaminate stock and create difficult recovery conditions. Confirm resilience and response planning."
+        }
+      }
+    },
+
+    "food_and_beverage_processing": {
+      "modules": {
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Power loss can cause rapid spoilage and loss of refrigeration. Confirm backup power, fuel logistics, and restoration plans."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 5,
+          "help_text": "Flooding and severe weather can cause contamination and total product loss even with limited structural damage. Confirm resilience and response."
+        },
+        "critical_equipment_reliability": {
+          "weight": 4,
+          "help_text": "Bottleneck assets (refrigeration, ovens, cookers, packaging lines) drive downtime. Confirm maintenance, spares, and restart procedures."
+        },
+        "process_control_and_stability": {
+          "weight": 4,
+          "help_text": "Process stability and hygiene controls prevent contamination and unsafe temperature excursions. Confirm monitoring, alarms, and operator response."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 4,
+          "help_text": "Fire can cause disproportionate contamination/smoke damage. Control ignition sources and maintain effective suppression to limit smoke spread and downtime."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 5,
+          "help_text": "Continuity planning should address product protection/relocation, cold-chain continuity, and recovery under reduced staffing/access constraints."
+        }
+      }
+    },
+
+    "foundries_and_forges": {
+      "modules": {
+        "high_energy_materials_control": {
+          "weight": 5,
+          "help_text": "Molten metal handling creates extreme escalation potential, especially with refractory degradation or water contact. Confirm containment, spill routes, and keeping molten areas dry."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Utilities/power support safe control and shutdown. Confirm redundancy, emergency power, and monitored cooling where required."
+        },
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Furnaces, presses, and cranes are critical. Failures can cause severe damage and prolonged outage; confirm inspection and condition monitoring."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 4,
+          "help_text": "Hydraulics/lubricants near hot operations can create severe fires. Confirm leak control and suitable local protection/segregation."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Emergency procedures should address molten spills, power loss, and recovery with spare parts/refractory and trained response across shifts."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 4,
+          "help_text": "Natural hazards can trigger utility loss and water ingress, which may escalate into molten incidents. Confirm resilience and response capability."
+        }
+      }
+    },
+
+    "glass_manufacturing": {
+      "modules": {
+        "high_energy_materials_control": {
+          "weight": 5,
+          "help_text": "Continuous molten glass processes can suffer severe damage during uncontrolled shutdowns or containment failures. Confirm refractory monitoring and containment."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Reliable power/utilities are essential for safe shutdown and process control. Confirm emergency arrangements and orderly shutdown capability."
+        },
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Melters, cooling, forming, and control systems are highly interdependent. Confirm monitoring, maintenance, and spare strategy for bottlenecks."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Emergency response should address leaks, safe shutdown, and recovery sequencing including availability of repair materials and trained staff."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 1,
+          "help_text": "Losses are usually process-driven; still confirm site-specific exposure and utility resilience."
+        }
+      }
+    }
 

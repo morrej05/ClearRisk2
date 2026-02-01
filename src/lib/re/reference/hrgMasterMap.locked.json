@@ -324,4 +324,218 @@
         }
       }
     }
+    ,
+
+    "hospital_sprinklered": {
+      "modules": {
+        "emergency_response_and_bcp": {
+          "weight": 5,
+          "help_text": "Clinical continuity is critical. Confirm emergency procedures, communications, evacuation/shelter plans, and continuity arrangements for essential services."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Continuous power supports life safety and clinical equipment. Confirm generator capacity, fuel resilience, and testing/maintenance."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 5,
+          "help_text": "Flood/wind/extreme weather can disrupt access, utilities, and operations. Confirm resilience measures and tested response plans."
+        },
+        "process_control_and_stability": {
+          "weight": 4,
+          "help_text": "Water leakage and system impairments can disrupt clinical areas. Confirm maintenance, monitoring, and rapid isolation/repair capability."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 3,
+          "help_text": "Fire risk is typically localized (kitchens, laundry, fuel systems) but requires consistent ignition control, housekeeping, and maintenance."
+        }
+      }
+    },
+
+    "hotel_sprinklered": {
+      "modules": {
+        "natural_hazard_exposure_and_controls": {
+          "weight": 5,
+          "help_text": "Severe weather and flooding can cause widespread room damage and prolonged guest displacement. Confirm resilience and response planning."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Effective emergency communications and evacuation/management procedures are essential to protect guests and staff."
+        },
+        "process_control_and_stability": {
+          "weight": 4,
+          "help_text": "Water leakage from domestic systems/HVAC can cause significant disruption and repeated losses. Confirm maintenance and isolation capability."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 3,
+          "help_text": "Power reliability supports guest services and life safety systems. Confirm emergency lighting and critical system resilience."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 3,
+          "help_text": "Fire risks are mainly in service areas (kitchens, laundry). Confirm housekeeping, equipment maintenance, and safe storage of combustibles."
+        }
+      }
+    },
+
+    "machine_shops": {
+      "modules": {
+        "flammable_liquids_and_fire_risk": {
+          "weight": 4,
+          "help_text": "Cutting oils, solvents, spraying, ovens, and dip processes can create localized severe fires. Confirm ignition control, containment/drainage, and housekeeping."
+        },
+        "critical_equipment_reliability": {
+          "weight": 4,
+          "help_text": "Presses and production machinery failures can cause extended downtime and secondary fire risk. Confirm maintenance, alignment checks, and spares."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 4,
+          "help_text": "Electrical faults are common ignition sources. Confirm inspection/testing, cool/clean/dry equipment rooms, and management of changes in loading."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 3,
+          "help_text": "Flood/wind can contaminate stock and disrupt production. Confirm resilience and recovery planning."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 3,
+          "help_text": "Emergency procedures should cover flammable liquid spills, hot work incidents, and recovery after localized fires."
+        }
+      }
+    },
+
+    "mining_coal_preparation": {
+      "modules": {
+        "process_control_and_stability": {
+          "weight": 5,
+          "help_text": "Coal dust and (where relevant) gas hazards require disciplined housekeeping, ventilation, and controls to prevent explosion and fast-moving fires."
+        },
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Conveyors/dryers/rotating equipment are production-critical and can initiate fires if they fail. Confirm condition monitoring and maintenance discipline."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 4,
+          "help_text": "Electrical suitability and maintenance are essential in dusty environments. Confirm appropriate equipment and inspection/testing regimes."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 4,
+          "help_text": "Flood/wind and access disruption can drive prolonged outages. Confirm resilience of conveyors, structures, and response capability."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Pre-incident planning and response capability are important given remote locations and potentially delayed external response."
+        }
+      }
+    },
+
+    "mining_metallurgical_refining": {
+      "modules": {
+        "high_energy_materials_control": {
+          "weight": 5,
+          "help_text": "Smelting/refining can involve molten metal, high temperatures, and reactive systems. Loss of containment or cooling can escalate rapidly."
+        },
+        "process_safety_management": {
+          "weight": 5,
+          "help_text": "Hazard analysis, management of change, and mechanical integrity are key to preventing major process incidents."
+        },
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Furnaces, blowers, and pressure systems require continuous monitoring and disciplined maintenance to avoid catastrophic failures."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 4,
+          "help_text": "Utilities and emergency power support safe control and shutdown. Confirm redundancy and orderly shutdown capability."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Emergency plans should address molten releases, toxic/irritant exposure pathways, and recovery sequencing for critical assets."
+        }
+      }
+    },
+
+    "mining_mineral_processing": {
+      "modules": {
+        "process_control_and_stability": {
+          "weight": 5,
+          "help_text": "Mineral concentration can involve reagents, solvents, and pressure systems. Stable control, isolation, and disciplined operations reduce major incident potential."
+        },
+        "critical_equipment_reliability": {
+          "weight": 4,
+          "help_text": "Rotating equipment, vessels, and conveyors are sensitive to wear/corrosion. Confirm inspection, maintenance, and critical spares."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 4,
+          "help_text": "Electrical reliability supports ventilation, solvent/reagent systems, and emergency shutdown. Confirm resilience and maintenance."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 4,
+          "help_text": "Flood/wind and access disruption can drive prolonged interruption. Confirm resilience and emergency logistics plans."
+        }
+      }
+    },
+
+    "mining_ore_distribution": {
+      "modules": {
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Conveyors/mobile equipment are essential. Failures and fires can cause long outages; confirm maintenance and protective measures."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 5,
+          "help_text": "Weather, flooding, and terrain-related events can damage infrastructure and prevent access/egress. Confirm resilience and response capability."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 4,
+          "help_text": "Electrical supply supports conveyors and site infrastructure. Confirm reliability, protection, and contingency measures."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Remote sites may have delayed response; confirm pre-incident planning, firefighting water availability, and recovery logistics."
+        }
+      }
+    },
+
+    "office_unsprinklered": {
+      "modules": {
+        "emergency_response_and_bcp": {
+          "weight": 5,
+          "help_text": "Emergency response and evacuation arrangements are critical in unsprinklered office buildings. Confirm alarm/notification, drills, and roles."
+        },
+        "process_control_and_stability": {
+          "weight": 4,
+          "help_text": "Water leakage (domestic/HVAC) can cause significant disruption. Confirm maintenance, isolation capability, and monitoring."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 4,
+          "help_text": "Wind/flood/extreme weather can affect access, power, and building integrity. Confirm preparedness and response plans."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 3,
+          "help_text": "Fire risk is typically low but can arise from poor electrical control, hot work, and temporary heating/extension leads. Confirm controls and housekeeping."
+        }
+      }
+    },
+
+    "paper_mill_recovery_boilers": {
+      "modules": {
+        "process_control_and_stability": {
+          "weight": 5,
+          "help_text": "Recovery boilers require disciplined operation during normal and abnormal conditions. Escalation can be rapid following leaks or control failures."
+        },
+        "high_energy_process_equipment": {
+          "weight": 5,
+          "help_text": "High-temperature/high-pressure equipment demands tested safeguards, interlocks, and reliable instrumentation to prevent severe incidents."
+        },
+        "safety_and_control_systems": {
+          "weight": 5,
+          "help_text": "Safety-critical trips, alarms, and shutdown sequences must be reliable and routinely tested to prevent catastrophic escalation."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 5,
+          "help_text": "Emergency procedures should cover suspected leaks, rapid decision-making authority, and coordinated safe shutdown and recovery."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 1,
+          "help_text": "Loss potential is mainly process-driven; confirm site-specific resilience where hazards affect utilities and access."
+        }
+      }
+    }
 

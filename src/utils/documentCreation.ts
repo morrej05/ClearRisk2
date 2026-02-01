@@ -95,26 +95,6 @@ export async function createDocument({
  * Useful for backfilling missing modules in existing documents.
  * Uses upsert to safely add only missing modules without creating duplicates.
  */
-export async function ensureRequiredModules(
-  documentId: string,
-  documentType: DocumentType,
-  organisationId: string
-): Promise<void> {
-  console.log('[documentCreation.ensureRequiredModules] Checking modules for document:', documentId, 'type:', documentType);
-
-  const requiredModuleKeys = getModuleKeysForDocType(documentType);
-  console.log('[documentCreation.ensureRequiredModules] Required modules:', requiredModuleKeys);
-
-  const { data: existingModules, error: fetchError } = await supabase
-    .from('module_instances')
-    .select('module_key')
-    .eq('document_id', documentId);
-
-  if (fetchError) {
-    console.error('[documentCreation.ensureRequiredModules] Failed to fetch existing modules:', fetchError);
-    throw fetchError;
-  }
-
 function initialiseModuleData(
   moduleKey: string,
   documentType: DocumentType
@@ -235,6 +215,26 @@ function initialiseModuleData(
       return { version: 'v1' };
   }
 }
+
+export async function ensureRequiredModules(
+  documentId: string,
+  documentType: DocumentType,
+  organisationId: string
+): Promise<void> {
+  console.log('[documentCreation.ensureRequiredModules] Checking modules for document:', documentId, 'type:', documentType);
+
+  const requiredModuleKeys = getModuleKeysForDocType(documentType);
+  console.log('[documentCreation.ensureRequiredModules] Required modules:', requiredModuleKeys);
+
+  const { data: existingModules, error: fetchError } = await supabase
+    .from('module_instances')
+    .select('module_key')
+    .eq('document_id', documentId);
+
+  if (fetchError) {
+    console.error('[documentCreation.ensureRequiredModules] Failed to fetch existing modules:', fetchError);
+    throw fetchError;
+  }
  
   const existingKeys = new Set(existingModules?.map(m => m.module_key) || []);
   const missingKeys = requiredModuleKeys.filter(key => !existingKeys.has(key));

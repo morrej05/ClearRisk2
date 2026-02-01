@@ -71,7 +71,7 @@ export async function createDocument({
     module_scope: 'document',
     outcome: null,
     assessor_notes: '',
-    data: {},
+    data: initialiseModuleData(moduleKey, documentType),
   }));
 
   if (moduleInstances.length > 0) {

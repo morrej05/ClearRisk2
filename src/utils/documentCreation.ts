@@ -228,7 +228,7 @@ export async function ensureRequiredModules(
 
   const { data: existingModules, error: fetchError } = await supabase
     .from('module_instances')
-    .select('module_key')
+    .select('id, module_key, data')
     .eq('document_id', documentId);
 
   if (fetchError) {

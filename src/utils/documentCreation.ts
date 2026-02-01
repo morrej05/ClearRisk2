@@ -115,6 +115,127 @@ export async function ensureRequiredModules(
     throw fetchError;
   }
 
+function initialiseModuleData(
+  moduleKey: string,
+  documentType: DocumentType
+) {
+  // Only apply defaults for Risk Engineering
+  if (documentType !== 'RE') return {};
+
+  switch (moduleKey) {
+    case 'RE_01_DOC_CONTROL':
+      return {
+        version: 'v1',
+        section_key: 'doc_control',
+        assessor: {
+          name: '',
+          role: '',
+          company: '',
+        },
+        attendance: {
+          met_onsite_with: '',
+          present_during_survey: '',
+        },
+        dates: {
+          assessment_date: null,
+          review_date: null,
+        },
+        client_site: {
+          client: '',
+          site: '',
+          address: '',
+          country: '',
+        },
+        scope: {
+          scope_description: '',
+          limitations_assumptions: '',
+        },
+        reference_documents_reviewed: [],
+      };
+
+    case 'RE_02_CONSTRUCTION':
+      return {
+        version: 'v1',
+        section_key: 'construction',
+        help: {
+          method_note:
+            'Roof/ceiling drives combustibility more than walls. Frame influences collapse exposure; record separately.',
+        },
+        ratings: {
+          site_rating_1_5: null,
+          site_rating_notes: '',
+        },
+        buildings: [],
+      };
+
+    case 'RE_03_OCCUPANCY':
+      return {
+        version: 'v1',
+        section_key: 'occupancy',
+        ratings: {
+          site_rating_1_5: null,
+          site_rating_notes: '',
+        },
+        occupancy_overview: {
+          industry_key: null,
+          process_overview: '',
+          operating_hours: '',
+          headcount: null,
+          critical_dependencies: [],
+        },
+        special_hazards: {
+          rating_1_5: null,
+          notes: '',
+          hazard_types: [
+            { type: 'ignitable_liquids', present: null, details: '' },
+            { type: 'flammable_gases_chemicals', present: null, details: '' },
+            { type: 'dusts_explosive_atmospheres', present: null, details: '' },
+            { type: 'specialised_industrial_equipment', present: null, details: '' },
+            { type: 'emerging_risks', present: null, details: '' },
+          ],
+          custom_items: [],
+        },
+      };
+
+    case 'RE_06_FIRE_PROTECTION':
+      return {
+        version: 'v1',
+        section_key: 'fire_protection',
+        help: {
+          table_note:
+            'Add one row per building/area. Record protected % vs recommended % then set adequacy.',
+        },
+        ratings: {
+          site_rating_1_5: null,
+          site_rating_notes: '',
+        },
+        building_protection_table: [],
+        systems: {
+          sprinklers: { present: null, type: '', design_standard: '', itm_notes: '', impairment_notes: '' },
+          detection_alarm: { present: null, coverage_notes: '', monitoring_to_arc: null },
+          hydrants: { on_site: null, coverage_notes: '', maintenance_notes: '' },
+          smoke_control: { present: null, notes: '' },
+          passive_protection: { notes: '' },
+        },
+        water_supply: {
+          primary_source: '',
+          redundancy: '',
+          reliability: null,
+          test_history_notes: '',
+        },
+        nle_impact: {
+          credible_to_reduce_nle_significantly: null,
+          basis: '',
+        },
+      };
+
+    // Add remaining RE_* modules the same way…
+
+    default:
+      return { version: 'v1' };
+  }
+}
+ 
   const existingKeys = new Set(existingModules?.map(m => m.module_key) || []);
   const missingKeys = requiredModuleKeys.filter(key => !existingKeys.has(key));
 

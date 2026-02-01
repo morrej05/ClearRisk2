@@ -128,7 +128,7 @@ export async function ensureRequiredModules(
       module_scope: 'document',
       outcome: null,
       assessor_notes: '',
-      data: {},
+      data: initialiseModuleData(moduleKey, documentType),
     }));
 
     const { error: insertError } = await supabase

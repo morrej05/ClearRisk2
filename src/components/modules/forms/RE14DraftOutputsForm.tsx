@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { AlertCircle, TrendingUp, FileText, Image as ImageIcon } from 'lucide-react';
+import { AlertCircle, TrendingUp, FileText, Image as ImageIcon, Save } from 'lucide-react';
 import ModuleActions from '../ModuleActions';
 import { HRG_CANONICAL_KEYS, getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, calculateScore } from '../../../lib/re/scoring/riskEngineeringHelpers';
+import AutoExpandTextarea from '../../AutoExpandTextarea';
 
 interface Document {
   id: string;
@@ -56,6 +57,8 @@ export default function RE14DraftOutputsForm({
   onSaved,
 }: RE14DraftOutputsFormProps) {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [executiveSummary, setExecutiveSummary] = useState('');
   const [siteMetadata, setSiteMetadata] = useState<any>(null);
   const [ratingRows, setRatingRows] = useState<RatingRow[]>([]);
   const [totalScore, setTotalScore] = useState(0);
@@ -67,6 +70,10 @@ export default function RE14DraftOutputsForm({
   });
   const [hasPhotos, setHasPhotos] = useState(false);
   const [hasSitePlan, setHasSitePlan] = useState(false);
+
+  useEffect(() => {
+    setExecutiveSummary(moduleInstance.data?.executive_summary || '');
+  }, [moduleInstance]);
 
   useEffect(() => {
     async function loadSummaryData() {
@@ -152,6 +159,29 @@ export default function RE14DraftOutputsForm({
     loadSummaryData();
   }, [moduleInstance.document_id]);
 
+  const handleSaveExecutiveSummary = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('module_instances')
+        .update({
+          data: {
+            ...moduleInstance.data,
+            executive_summary: executiveSummary,
+          },
+        })
+        .eq('id', moduleInstance.id);
+
+      if (error) throw error;
+      onSaved();
+    } catch (error) {
+      console.error('Error saving executive summary:', error);
+      alert('Failed to save executive summary');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 max-w-5xl mx-auto">
@@ -168,11 +198,41 @@ export default function RE14DraftOutputsForm({
           <div className="text-sm text-blue-900">
             <p className="font-semibold mb-1">Summary & Key Findings</p>
             <p className="text-blue-800">
-              This is a read-only summary of the assessment. All data is derived from information
-              entered in other modules.
+              The read-only sections below are automatically generated from other modules.
+              Use the Executive Summary section to provide a narrative overview for senior management.
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Executive Summary
+          </h3>
+          <button
+            onClick={handleSaveExecutiveSummary}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+        <div className="text-sm text-slate-600 mb-2">
+          <p>
+            Provide a high-level narrative summary for senior management and clients.
+            Focus on key findings, overall risk profile, and critical recommendations.
+          </p>
+        </div>
+        <AutoExpandTextarea
+          value={executiveSummary}
+          onChange={(e) => setExecutiveSummary(e.target.value)}
+          placeholder="Enter executive summary here..."
+          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          minRows={6}
+        />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">

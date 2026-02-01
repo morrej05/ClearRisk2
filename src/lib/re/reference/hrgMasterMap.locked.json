@@ -73,4 +73,121 @@
         }
       }
     }
+    ,
+
+    "automotive_press_plant": {
+      "modules": {
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Press integrity is central to production. Confirm preventive maintenance, alignment checks, load limiting, condition monitoring, and life-assessment practices to prevent sudden failures and long outages."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Electrical failures stop presses and handling systems immediately. Confirm inspection/testing, condition monitoring, and that changes in load are managed with upgrades where required."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 3,
+          "help_text": "Flammable liquid exposures exist (e.g., lubricants/hydraulics) but are generally secondary to mechanical/electrical drivers. Confirm ignition controls and leak management."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 5,
+          "help_text": "Flooding of basements or floor-mounted electrical systems can cause severe business interruption. Confirm flood resilience, drainage, protection of critical rooms, and response capability."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Contingency planning should cover press failure, electrical outage, and recovery with critical spares and safe restart procedures."
+        }
+      }
+    },
+
+    "automotive_body_plant": {
+      "modules": {
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Robotics and automated handling are core to body production. Confirm protection of control cabinets, spares strategy, program backups, and recovery plans for key bottlenecks."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "High electrical dependency means even short outages can stop production. Confirm electrical condition monitoring and resilience for critical systems."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 4,
+          "help_text": "Ignition sources (hot work, maintenance) and localized flammables can initiate fires. Confirm robust hot work controls, electrical maintenance, and housekeeping."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 5,
+          "help_text": "Flood and severe weather can drive major interruption. Confirm protection of floor/below-grade electrical areas, storm readiness, and site access/egress resilience."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Business continuity should address rapid restoration of automation capability, electrical recovery, and alternate production/logistics options."
+        }
+      }
+    },
+
+    "automotive_assembly_plant": {
+      "modules": {
+        "critical_equipment_reliability": {
+          "weight": 5,
+          "help_text": "Assembly lines are highly interdependent. Confirm reliability of automation/controls, availability of spares, and contingency plans for bottleneck equipment."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 5,
+          "help_text": "Electrical and control reliability is critical for continuous operation. Confirm maintenance, monitoring, and management of changes in loading and protection settings."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 4,
+          "help_text": "Fueling/finishing and localized processes introduce flammable liquid risk. Confirm shutoffs, spill control, drainage/containment, and ignition control during maintenance/hot work."
+        },
+        "process_control_and_stability": {
+          "weight": 4,
+          "help_text": "Control of in-process storage (including plastics), housekeeping, and storage arrangements reduces fire spread and operational disruption."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 5,
+          "help_text": "Flood, wind, and hail can create major interruption and high-value damage (including yard/finished goods). Confirm resilience measures and response capability."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Continuity planning should account for supply chain fragility, alternate logistics routes, and rapid restoration after utility disruption."
+        }
+      }
+    },
+
+    "chemical_manufacturing": {
+      "modules": {
+        "process_safety_management": {
+          "weight": 5,
+          "help_text": "Process safety management is foundational: hazard reviews, management of change, operating discipline, training, audits, and closure of findings prevent escalation."
+        },
+        "process_control_and_stability": {
+          "weight": 5,
+          "help_text": "Stable operation within defined safe limits is essential. Confirm procedures for normal/upset conditions, alarms, and operator response expectations."
+        },
+        "safety_and_control_systems": {
+          "weight": 5,
+          "help_text": "Safety-critical instrumentation and shutdown functions must be designed, tested, and maintained to perform under abnormal conditions."
+        },
+        "high_energy_process_equipment": {
+          "weight": 4,
+          "help_text": "Fired heaters and other high-energy equipment concentrate ignition/escalation risk. Confirm interlocks, trips, inspection regimes, and safe isolation."
+        },
+        "flammable_liquids_and_fire_risk": {
+          "weight": 5,
+          "help_text": "Loss of containment can lead to fire/explosion/toxic release. Confirm prevention layers (containment, drainage, isolation) and maintenance/testing of safeguards."
+        },
+        "electrical_and_utilities_reliability": {
+          "weight": 4,
+          "help_text": "Loss of utilities can create unsafe states. Confirm redundancy, safe shutdown capability, and emergency power where consequences are high."
+        },
+        "natural_hazard_exposure_and_controls": {
+          "weight": 1,
+          "help_text": "Major losses are typically process-driven; still confirm site-specific hazard exposure and resilience of utilities and containment."
+        },
+        "emergency_response_and_bcp": {
+          "weight": 4,
+          "help_text": "Emergency planning should address leak isolation, spill response, safe shutdown, and recovery sequencing, including competence across shifts."
+        }
+      }
+    }
 

@@ -32,6 +32,16 @@ import DSEAR11ExplosionEmergencyResponseForm from './forms/DSEAR11ExplosionEmerg
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
 import RiskEngineeringForm from './forms/RiskEngineeringForm';
+import RE01DocumentControlForm from './forms/RE01DocumentControlForm';
+import RE02ConstructionForm from './forms/RE02ConstructionForm';
+import RE03OccupancyForm from './forms/RE03OccupancyForm';
+import RE06FireProtectionForm from './forms/RE06FireProtectionForm';
+import RE07NaturalHazardsForm from './forms/RE07NaturalHazardsForm';
+import RE08UtilitiesForm from './forms/RE08UtilitiesForm';
+import RE09ManagementForm from './forms/RE09ManagementForm';
+import RE12LossValuesForm from './forms/RE12LossValuesForm';
+import RE13RecommendationsForm from './forms/RE13RecommendationsForm';
+import RE14DraftOutputsForm from './forms/RE14DraftOutputsForm';
 
 interface Document {
   id: string;
@@ -267,21 +277,48 @@ export default function ModuleRenderer({
     );
   }
 
-  console.log('RE module key:', moduleInstance.module_key);
   if (moduleInstance.module_key === 'RISK_ENGINEERING') {
-    const dataKeys = Object.keys(moduleInstance.data || {}).join(', ') || 'none';
-    return (
-      <>
-        <div className="bg-yellow-100 border-2 border-yellow-500 p-4 m-4 rounded font-mono text-sm">
-          <strong>RE DEBUG:</strong> component=RiskEngineeringForm | moduleId={moduleInstance.id} | key={moduleInstance.module_key} | docType={document.document_type} | dataKeys={dataKeys}
-        </div>
-        <RiskEngineeringForm
-          moduleInstance={moduleInstance}
-          document={document}
-          onSaved={onSaved}
-        />
-      </>
-    );
+    return <RiskEngineeringForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_01_DOC_CONTROL') {
+    return <RE01DocumentControlForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_02_CONSTRUCTION') {
+    return <RE02ConstructionForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_03_OCCUPANCY') {
+    return <RE03OccupancyForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_06_FIRE_PROTECTION') {
+    return <RE06FireProtectionForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_07_NATURAL_HAZARDS') {
+    return <RE07NaturalHazardsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_08_UTILITIES') {
+    return <RE08UtilitiesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_09_MANAGEMENT') {
+    return <RE09ManagementForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_12_LOSS_VALUES') {
+    return <RE12LossValuesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_13_RECOMMENDATIONS') {
+    return <RE13RecommendationsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_14_DRAFT_OUTPUTS') {
+    return <RE14DraftOutputsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }
 
   if (moduleInstance.module_key === 'DSEAR_1_DANGEROUS_SUBSTANCES') {
@@ -317,17 +354,8 @@ export default function ModuleRenderer({
   }
 
   return <PlaceholderModuleForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+}
 
-if (moduleInstance.module_key === 'RISK_ENGINEERING') {
-  return (
-    <RiskEngineeringForm
-      moduleInstance={moduleInstance}
-      document={document}
-      onSaved={onSaved}
-    />
-  );
-}
-}
 function PlaceholderModuleForm({
   moduleInstance,
   document,

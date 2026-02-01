@@ -3,15 +3,19 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
-import RatingRadio from '../../RatingRadio';
+import ReRatingPanel from '../../re/ReRatingPanel';
+import { HRG_MASTER_MAP } from '../../../lib/re/reference/hrgMasterMap';
+import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 
 interface Document {
   id: string;
   title: string;
+  document_type: string;
 }
 
 interface ModuleInstance {
   id: string;
+  document_id: string;
   outcome: string | null;
   assessor_notes: string;
   data: Record<string, any>;
@@ -52,12 +56,40 @@ export default function RE07NaturalHazardsForm({
   const safeHazards = Array.isArray(d.hazards) ? d.hazards : DEFAULT_HAZARDS;
 
   const [formData, setFormData] = useState({
-    ratings: d.ratings || { site_rating_1_5: null, site_rating_notes: '' },
     hazards: safeHazards,
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+
+  const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
+  const [riskEngData, setRiskEngData] = useState<Record<string, any>>({});
+  const [industryKey, setIndustryKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadRiskEngModule() {
+      try {
+        const { data: instances, error } = await supabase
+          .from('module_instances')
+          .select('id, data')
+          .eq('document_id', moduleInstance.document_id)
+          .eq('module_key', 'RISK_ENGINEERING')
+          .single();
+
+        if (error) throw error;
+
+        if (instances) {
+          setRiskEngInstanceId(instances.id);
+          setRiskEngData(instances.data || {});
+          setIndustryKey(instances.data?.industry_key || null);
+        }
+      } catch (err) {
+        console.error('Error loading RISK_ENGINEERING module:', err);
+      }
+    }
+
+    loadRiskEngModule();
+  }, [moduleInstance.document_id]);
 
   useEffect(() => {
     const healData = async () => {
@@ -83,6 +115,42 @@ export default function RE07NaturalHazardsForm({
 
     healData();
   }, []);
+
+  const canonicalKey = 'natural_hazard_exposure_and_controls';
+  const rating = getRating(riskEngData, canonicalKey);
+
+  const getHelpText = (): string => {
+    if (!industryKey) return 'Rate the overall natural hazard exposure and effectiveness of controls.';
+    const industryConfig = HRG_MASTER_MAP.industries[industryKey];
+    return industryConfig?.modules?.[canonicalKey]?.help_text || 'Rate the overall natural hazard exposure and controls.';
+  };
+
+  const getWeight = (): number => {
+    if (!industryKey) return HRG_MASTER_MAP.meta.default_weight;
+    const industryConfig = HRG_MASTER_MAP.industries[industryKey];
+    return industryConfig?.modules?.[canonicalKey]?.weight || HRG_MASTER_MAP.meta.default_weight;
+  };
+
+  const handleRatingChange = async (newRating: number) => {
+    if (!riskEngInstanceId) return;
+
+    try {
+      const updatedData = setRating(riskEngData, canonicalKey, newRating);
+      const sanitized = sanitizeModuleInstancePayload({ data: updatedData });
+
+      const { error } = await supabase
+        .from('module_instances')
+        .update({ data: sanitized.data })
+        .eq('id', riskEngInstanceId);
+
+      if (error) throw error;
+
+      setRiskEngData(updatedData);
+    } catch (err) {
+      console.error('Error updating rating:', err);
+      alert('Failed to update rating');
+    }
+  };
 
   const updateHazard = (key: string, field: string, value: string) => {
     const hazards = Array.isArray(formData?.hazards) ? formData.hazards : [];
@@ -127,28 +195,18 @@ export default function RE07NaturalHazardsForm({
         <p className="text-slate-600">Natural hazards exposure and controls assessment</p>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Site Rating</h3>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Overall Natural Hazards Rating (1-5)</label>
-            <RatingRadio
-              value={formData.ratings.site_rating_1_5}
-              onChange={(value) => setFormData({ ...formData, ratings: { ...formData.ratings, site_rating_1_5: value } })}
-              name="site_rating"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Rating Notes</label>
-            <textarea
-              value={formData.ratings.site_rating_notes}
-              onChange={(e) => setFormData({ ...formData, ratings: { ...formData.ratings, site_rating_notes: e.target.value } })}
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-            />
-          </div>
-        </div>
+      <div className="mb-6">
+        <ReRatingPanel
+          canonicalKey={canonicalKey}
+          industryKey={industryKey}
+          rating={rating}
+          onChangeRating={handleRatingChange}
+          helpText={getHelpText()}
+          weight={getWeight()}
+        />
+      </div>
 
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Hazard Assessment</h3>
           <div className="space-y-6">

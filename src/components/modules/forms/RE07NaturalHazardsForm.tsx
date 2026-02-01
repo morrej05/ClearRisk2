@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
@@ -32,6 +32,15 @@ const HAZARD_LABELS: Record<string, string> = {
   subsidence: 'Subsidence',
 };
 
+const DEFAULT_HAZARDS = [
+  { key: 'flood', exposure: '', controls: '', notes: '' },
+  { key: 'wind', exposure: '', controls: '', notes: '' },
+  { key: 'quake', exposure: '', controls: '', notes: '' },
+  { key: 'wildfire', exposure: '', controls: '', notes: '' },
+  { key: 'lightning', exposure: '', controls: '', notes: '' },
+  { key: 'subsidence', exposure: '', controls: '', notes: '' },
+];
+
 export default function RE07NaturalHazardsForm({
   moduleInstance,
   document,
@@ -40,25 +49,46 @@ export default function RE07NaturalHazardsForm({
   const [isSaving, setIsSaving] = useState(false);
   const d = moduleInstance.data || {};
 
+  const safeHazards = Array.isArray(d.hazards) ? d.hazards : DEFAULT_HAZARDS;
+
   const [formData, setFormData] = useState({
     ratings: d.ratings || { site_rating_1_5: null, site_rating_notes: '' },
-    hazards: d.hazards || [
-      { key: 'flood', exposure: '', controls: '', notes: '' },
-      { key: 'wind', exposure: '', controls: '', notes: '' },
-      { key: 'quake', exposure: '', controls: '', notes: '' },
-      { key: 'wildfire', exposure: '', controls: '', notes: '' },
-      { key: 'lightning', exposure: '', controls: '', notes: '' },
-      { key: 'subsidence', exposure: '', controls: '', notes: '' },
-    ],
+    hazards: safeHazards,
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
 
+  useEffect(() => {
+    const healData = async () => {
+      if (d.hazards !== undefined && !Array.isArray(d.hazards)) {
+        console.warn('RE07: Healing non-array hazards data');
+        try {
+          const sanitized = sanitizeModuleInstancePayload({
+            data: {
+              ...d,
+              hazards: DEFAULT_HAZARDS
+            }
+          });
+
+          await supabase
+            .from('module_instances')
+            .update({ data: sanitized.data })
+            .eq('id', moduleInstance.id);
+        } catch (error) {
+          console.error('Error healing hazards data:', error);
+        }
+      }
+    };
+
+    healData();
+  }, []);
+
   const updateHazard = (key: string, field: string, value: string) => {
+    const hazards = Array.isArray(formData?.hazards) ? formData.hazards : [];
     setFormData({
       ...formData,
-      hazards: formData.hazards.map((h: any) =>
+      hazards: hazards.map((h: any) =>
         h.key === key ? { ...h, [field]: value } : h
       ),
     });
@@ -122,43 +152,46 @@ export default function RE07NaturalHazardsForm({
         <div>
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Hazard Assessment</h3>
           <div className="space-y-6">
-            {formData.hazards.map((hazard: any) => (
-              <div key={hazard.key} className="border border-slate-200 rounded-lg p-4">
-                <h4 className="font-semibold text-slate-900 mb-3">{HAZARD_LABELS[hazard.key]}</h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Exposure</label>
-                    <input
-                      type="text"
-                      value={hazard.exposure}
-                      onChange={(e) => updateHazard(hazard.key, 'exposure', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                      placeholder="e.g., Low, Medium, High"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Controls</label>
-                    <input
-                      type="text"
-                      value={hazard.controls}
-                      onChange={(e) => updateHazard(hazard.key, 'controls', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                      placeholder="Describe existing controls or mitigation measures"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                    <textarea
-                      value={hazard.notes}
-                      onChange={(e) => updateHazard(hazard.key, 'notes', e.target.value)}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                      placeholder="Additional notes and observations"
-                    />
+            {(() => {
+              const hazards = Array.isArray(formData?.hazards) ? formData.hazards : [];
+              return hazards.map((hazard: any) => (
+                <div key={hazard.key} className="border border-slate-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-slate-900 mb-3">{HAZARD_LABELS[hazard.key]}</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Exposure</label>
+                      <input
+                        type="text"
+                        value={hazard.exposure}
+                        onChange={(e) => updateHazard(hazard.key, 'exposure', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="e.g., Low, Medium, High"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Controls</label>
+                      <input
+                        type="text"
+                        value={hazard.controls}
+                        onChange={(e) => updateHazard(hazard.key, 'controls', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="Describe existing controls or mitigation measures"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                      <textarea
+                        value={hazard.notes}
+                        onChange={(e) => updateHazard(hazard.key, 'notes', e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="Additional notes and observations"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
-import { HRG_MASTER_MAP } from '../../../lib/re/reference/hrgMasterMap';
+import { HRG_MASTER_MAP, humanizeIndustryKey } from '../../../lib/re/reference/hrgMasterMap';
 import { ensureRatingsObject } from '../../../lib/re/scoring/riskEngineeringHelpers';
 
 interface Document {
@@ -146,9 +146,9 @@ export default function RE01DocumentControlForm({
               className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
             >
               <option value="">Select Industry...</option>
-              {Object.entries(HRG_MASTER_MAP.industries).map(([key, config]) => (
+              {Object.keys(HRG_MASTER_MAP.industries).map((key) => (
                 <option key={key} value={key}>
-                  {config.label}
+                  {humanizeIndustryKey(key)}
                 </option>
               ))}
             </select>

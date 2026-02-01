@@ -1,23 +1,30 @@
+import lockedData from './hrgMasterMap.locked.json';
+
 export interface HrgModuleConfig {
   weight: number;
   help_text: string;
 }
 
 export interface HrgIndustryConfig {
-  label: string;
   modules: Record<string, HrgModuleConfig>;
 }
 
 export interface HrgMasterMap {
   meta: {
-    version: string;
+    version?: string;
+    dataset_name?: string;
+    status?: string;
     module_keys: string[];
     default_weight: number;
+    rating_scale?: string;
+    calculation_note?: string;
   };
   industries: Record<string, HrgIndustryConfig>;
 }
 
-export const HRG_MASTER_MAP: HrgMasterMap = {
+export const HRG_MASTER_MAP: HrgMasterMap = lockedData as HrgMasterMap;
+
+const LEGACY_HARDCODED_MAP: HrgMasterMap = {
   meta: {
     version: '1.0',
     module_keys: [
@@ -36,7 +43,6 @@ export const HRG_MASTER_MAP: HrgMasterMap = {
   },
   industries: {
     chemical_batch_processing: {
-      label: 'Chemical - Batch Processing',
       modules: {
         process_control_and_stability: {
           weight: 5,
@@ -757,6 +763,13 @@ export function getHrgConfig(
 }
 
 export function humanizeCanonicalKey(key: string): string {
+  return key
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+export function humanizeIndustryKey(key: string): string {
   return key
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

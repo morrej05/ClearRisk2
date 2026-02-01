@@ -70,6 +70,12 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     order: 10,
   },
 
+  RE_14_DRAFT_OUTPUTS: {
+    name: 'RE-11 - Summary & Key Findings',
+    docTypes: ['RE'],
+    order: 11,
+  },
+
 
   A1_DOC_CONTROL: {
     name: 'A1 - Document Control & Governance',

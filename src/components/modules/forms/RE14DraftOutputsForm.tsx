@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
-import OutcomePanel from '../OutcomePanel';
+import { AlertCircle, TrendingUp, FileText, Image as ImageIcon } from 'lucide-react';
 import ModuleActions from '../ModuleActions';
+import { HRG_CANONICAL_KEYS, getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
+import { getRating, calculateScore } from '../../../lib/re/scoring/riskEngineeringHelpers';
 
 interface Document {
   id: string;
@@ -11,6 +12,7 @@ interface Document {
 
 interface ModuleInstance {
   id: string;
+  document_id: string;
   outcome: string | null;
   assessor_notes: string;
   data: Record<string, any>;
@@ -22,106 +24,316 @@ interface RE14DraftOutputsFormProps {
   onSaved: () => void;
 }
 
+interface RatingRow {
+  canonicalKey: string;
+  label: string;
+  rating: number;
+  weight: number;
+  score: number;
+}
+
+interface RecommendationSummary {
+  total: number;
+  byPriority: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  highPriorityItems: Array<{ text: string; priority: string }>;
+}
+
+function formatCanonicalKey(key: string): string {
+  return key
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export default function RE14DraftOutputsForm({
   moduleInstance,
   document,
   onSaved,
 }: RE14DraftOutputsFormProps) {
-  const [isSaving, setIsSaving] = useState(false);
-  const d = moduleInstance.data || {};
-
-  const [formData, setFormData] = useState({
-    draft_survey_report: d.draft_survey_report || { content: '' },
-    draft_loss_prevention_report: d.draft_loss_prevention_report || { content: '' },
+  const [loading, setLoading] = useState(true);
+  const [siteMetadata, setSiteMetadata] = useState<any>(null);
+  const [ratingRows, setRatingRows] = useState<RatingRow[]>([]);
+  const [totalScore, setTotalScore] = useState(0);
+  const [topContributors, setTopContributors] = useState<RatingRow[]>([]);
+  const [recSummary, setRecSummary] = useState<RecommendationSummary>({
+    total: 0,
+    byPriority: { critical: 0, high: 0, medium: 0, low: 0 },
+    highPriorityItems: [],
   });
+  const [hasPhotos, setHasPhotos] = useState(false);
+  const [hasSitePlan, setHasSitePlan] = useState(false);
 
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+  useEffect(() => {
+    async function loadSummaryData() {
+      setLoading(true);
+      try {
+        const { data: modules, error } = await supabase
+          .from('module_instances')
+          .select('module_key, data')
+          .eq('document_id', moduleInstance.document_id)
+          .in('module_key', ['RE_01_DOCUMENT_CONTROL', 'RISK_ENGINEERING', 'RE_13_RECOMMENDATIONS', 'RE_10_SITE_PHOTOS']);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const completedAt = outcome ? new Date().toISOString() : null;
-      const sanitized = sanitizeModuleInstancePayload({ data: formData });
+        if (error) throw error;
 
-      const { error } = await supabase
-        .from('module_instances')
-        .update({
-          data: sanitized.data,
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          completed_at: completedAt,
-        })
-        .eq('id', moduleInstance.id);
+        const re01 = modules.find(m => m.module_key === 'RE_01_DOCUMENT_CONTROL');
+        const riskEng = modules.find(m => m.module_key === 'RISK_ENGINEERING');
+        const recommendations = modules.find(m => m.module_key === 'RE_13_RECOMMENDATIONS');
+        const sitePhotos = modules.find(m => m.module_key === 'RE_10_SITE_PHOTOS');
 
-      if (error) throw error;
-      onSaved();
-    } catch (error) {
-      console.error('Error saving module:', error);
-      alert('Failed to save module. Please try again.');
-    } finally {
-      setIsSaving(false);
+        if (re01?.data) {
+          setSiteMetadata({
+            site_name: re01.data.site_name || 'Not specified',
+            site_address: re01.data.site_address || 'Not specified',
+            assessor_name: re01.data.assessor_name || 'Not specified',
+            assessment_date: re01.data.assessment_date || 'Not specified',
+          });
+        }
+
+        if (riskEng?.data) {
+          const industryKey = riskEng.data.industry_key;
+          const ratings = riskEng.data.ratings || {};
+
+          const rows: RatingRow[] = HRG_CANONICAL_KEYS.map(canonicalKey => {
+            const rating = getRating(riskEng.data, canonicalKey);
+            const config = getHrgConfig(industryKey, canonicalKey);
+            const score = calculateScore(rating, config.weight);
+
+            return {
+              canonicalKey,
+              label: formatCanonicalKey(canonicalKey),
+              rating,
+              weight: config.weight,
+              score,
+            };
+          });
+
+          setRatingRows(rows);
+
+          const total = rows.reduce((sum, row) => sum + row.score, 0);
+          setTotalScore(total);
+
+          const sorted = [...rows].sort((a, b) => b.score - a.score);
+          setTopContributors(sorted.slice(0, 3));
+        }
+
+        if (recommendations?.data?.recommendations) {
+          const recs = recommendations.data.recommendations;
+          const summary: RecommendationSummary = {
+            total: recs.length,
+            byPriority: {
+              critical: recs.filter((r: any) => r.priority === 'critical').length,
+              high: recs.filter((r: any) => r.priority === 'high').length,
+              medium: recs.filter((r: any) => r.priority === 'medium').length,
+              low: recs.filter((r: any) => r.priority === 'low').length,
+            },
+            highPriorityItems: recs
+              .filter((r: any) => r.priority === 'high' || r.priority === 'critical')
+              .map((r: any) => ({ text: r.text, priority: r.priority })),
+          };
+          setRecSummary(summary);
+        }
+
+        if (sitePhotos?.data) {
+          setHasPhotos((sitePhotos.data.photos || []).length > 0);
+          setHasSitePlan(!!sitePhotos.data.site_plan);
+        }
+      } catch (error) {
+        console.error('Error loading summary data:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  };
+
+    loadSummaryData();
+  }, [moduleInstance.document_id]);
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="text-center py-12 text-slate-500">Loading summary...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-10 - Draft Outputs</h2>
-        <p className="text-slate-600">Draft report content and executive summaries</p>
-      </div>
-
-      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Draft Survey Report</h3>
-          <p className="text-sm text-slate-600 mb-3">
-            Use this space to draft key report sections, executive summary, or narrative content.
-          </p>
-          <textarea
-            value={formData.draft_survey_report.content}
-            onChange={(e) => setFormData({
-              ...formData,
-              draft_survey_report: { content: e.target.value }
-            })}
-            rows={12}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono"
-            placeholder="Draft survey report content..."
-          />
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Draft Loss Prevention Report</h3>
-          <p className="text-sm text-slate-600 mb-3">
-            Draft content specific to loss prevention recommendations and risk mitigation strategies.
-          </p>
-          <textarea
-            value={formData.draft_loss_prevention_report.content}
-            onChange={(e) => setFormData({
-              ...formData,
-              draft_loss_prevention_report: { content: e.target.value }
-            })}
-            rows={12}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono"
-            placeholder="Draft loss prevention report content..."
-          />
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-900">
-            <strong>Note:</strong> This module is for working drafts. Final reports are generated from the structured
-            data entered in other modules. Use this space for narrative content, executive summaries, and custom sections.
-          </p>
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-900">
+            <p className="font-semibold mb-1">Summary & Key Findings</p>
+            <p className="text-blue-800">
+              This is a read-only summary of the assessment. All data is derived from information
+              entered in other modules.
+            </p>
+          </div>
         </div>
       </div>
 
-      <OutcomePanel
-        outcome={outcome}
-        assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
-        onNotesChange={setAssessorNotes}
-        onSave={handleSave}
-        isSaving={isSaving}
-      />
+      <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <FileText className="w-5 h-5" />
+          Site Information
+        </h3>
+        {siteMetadata ? (
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-slate-700">Site Name:</span>
+              <p className="text-slate-900">{siteMetadata.site_name}</p>
+            </div>
+            <div>
+              <span className="font-medium text-slate-700">Assessor:</span>
+              <p className="text-slate-900">{siteMetadata.assessor_name}</p>
+            </div>
+            <div>
+              <span className="font-medium text-slate-700">Address:</span>
+              <p className="text-slate-900">{siteMetadata.site_address}</p>
+            </div>
+            <div>
+              <span className="font-medium text-slate-700">Assessment Date:</span>
+              <p className="text-slate-900">{siteMetadata.assessment_date}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">No site information available. Complete RE-01 Document Control.</p>
+        )}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5" />
+          Risk Ratings Summary
+        </h3>
+        {ratingRows.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-semibold text-slate-700">Risk Factor</th>
+                    <th className="text-center px-4 py-2 font-semibold text-slate-700">Rating</th>
+                    <th className="text-center px-4 py-2 font-semibold text-slate-700">Weight</th>
+                    <th className="text-center px-4 py-2 font-semibold text-slate-700">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ratingRows.map((row, idx) => (
+                    <tr key={row.canonicalKey} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                      <td className="px-4 py-2 text-slate-900">{row.label}</td>
+                      <td className="text-center px-4 py-2 text-slate-900">{row.rating}</td>
+                      <td className="text-center px-4 py-2 text-slate-900">{row.weight}</td>
+                      <td className="text-center px-4 py-2 font-medium text-slate-900">{row.score.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-100 border-t-2 border-slate-300 font-semibold">
+                    <td className="px-4 py-3 text-slate-900">Total</td>
+                    <td className="text-center px-4 py-3"></td>
+                    <td className="text-center px-4 py-3"></td>
+                    <td className="text-center px-4 py-3 text-slate-900">{totalScore.toFixed(1)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <h4 className="font-semibold text-amber-900 mb-2">Top 3 Risk Contributors</h4>
+              <div className="space-y-2">
+                {topContributors.map((row, idx) => (
+                  <div key={row.canonicalKey} className="flex items-center justify-between text-sm">
+                    <span className="text-amber-900">
+                      <span className="font-semibold">#{idx + 1}</span> {row.label}
+                    </span>
+                    <span className="font-medium text-amber-900">Score: {row.score.toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500">No risk ratings available. Complete the RISK_ENGINEERING module.</p>
+        )}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-slate-900">Recommendations Summary</h3>
+        {recSummary.total > 0 ? (
+          <>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-red-900">{recSummary.byPriority.critical}</div>
+                <div className="text-xs text-red-700 font-medium">Critical</div>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-orange-900">{recSummary.byPriority.high}</div>
+                <div className="text-xs text-orange-700 font-medium">High</div>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-yellow-900">{recSummary.byPriority.medium}</div>
+                <div className="text-xs text-yellow-700 font-medium">Medium</div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-slate-900">{recSummary.byPriority.low}</div>
+                <div className="text-xs text-slate-700 font-medium">Low</div>
+              </div>
+            </div>
+
+            {recSummary.highPriorityItems.length > 0 && (
+              <div className="mt-4">
+                <h4 className="font-semibold text-slate-900 mb-2">High Priority Recommendations</h4>
+                <ul className="space-y-2">
+                  {recSummary.highPriorityItems.map((item, idx) => (
+                    <li key={idx} className="text-sm text-slate-700 flex items-start gap-2">
+                      <span className={`px-2 py-0.5 text-xs rounded font-medium flex-shrink-0 ${
+                        item.priority === 'critical'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {item.priority.toUpperCase()}
+                      </span>
+                      <span className="flex-1">{item.text || 'No description'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-slate-500">No recommendations available. Complete RE-09 Recommendations.</p>
+        )}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <ImageIcon className="w-5 h-5" />
+          Supporting Documentation
+        </h3>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <span className="text-slate-700">Site Photos</span>
+            {hasPhotos ? (
+              <span className="text-green-600 font-medium">Available</span>
+            ) : (
+              <span className="text-slate-400">Not uploaded</span>
+            )}
+          </div>
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <span className="text-slate-700">Site Plan</span>
+            {hasSitePlan ? (
+              <span className="text-green-600 font-medium">Available</span>
+            ) : (
+              <span className="text-slate-400">Not uploaded</span>
+            )}
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 italic">
+          Supporting documentation is available in RE-10 Site Photos & Site Plan.
+        </p>
+      </div>
 
       {document?.id && moduleInstance?.id && (
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />

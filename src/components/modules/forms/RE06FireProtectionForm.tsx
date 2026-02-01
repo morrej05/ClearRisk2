@@ -91,40 +91,56 @@ export default function RE06FireProtectionForm({
   const [industryKey, setIndustryKey] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadConstructionBuildings() {
-      try {
-        const { data: constructionInstance, error } = await supabase
-          .from('module_instances')
-          .select('data')
-          .eq('document_id', moduleInstance.document_id)
-          .eq('module_key', 'RE02_CONSTRUCTION')
-          .single();
+async function loadConstructionBuildings() {
+  try {
+    const { data: constructionInstance, error } = await supabase
+      .from('module_instances')
+      .select('data')
+      .eq('document_id', moduleInstance.document_id)
+      .eq('module_key', 'RE02_CONSTRUCTION')
+      .maybeSingle(); // ✅ no 406 if 0 rows
 
-        if (error) throw error;
+    if (error) throw error;
 
-        if (constructionInstance?.data?.construction?.buildings) {
-          const buildings = constructionInstance.data.construction.buildings;
-          setConstructionBuildings(buildings);
+    // If Construction hasn't been saved yet, treat as no buildings
+    const buildings = Array.isArray(constructionInstance?.data?.construction?.buildings)
+      ? constructionInstance!.data.construction.buildings
+      : [];
 
-          const existingBuildingIds = formData.fire_protection.buildings.map((b: any) => b.building_id);
-          const newBuildings = buildings
-            .filter((b: any) => !existingBuildingIds.includes(b.id))
-            .map((b: any) => createEmptyBuildingProtection(b.id, b.building_name));
+    setConstructionBuildings(buildings);
 
-          if (newBuildings.length > 0) {
-            setFormData({
-              ...formData,
-              fire_protection: {
-                ...formData.fire_protection,
-                buildings: [...formData.fire_protection.buildings, ...newBuildings],
-              },
-            });
-          }
-        }
-      } catch (err) {
-        console.error('Error loading construction buildings:', err);
-      }
-    }
+    if (buildings.length === 0) return;
+
+    // Merge any new Construction buildings into Fire Protection (by id)
+    setFormData((prev) => {
+      const prevBuildings = Array.isArray(prev.fire_protection?.buildings)
+        ? prev.fire_protection.buildings
+        : [];
+
+      const existingBuildingIds = prevBuildings
+        .map((b: any) => b?.building_id)
+        .filter(Boolean);
+
+      const newBuildings = buildings
+        .filter((b: any) => b?.id && !existingBuildingIds.includes(b.id))
+        .map((b: any) => createEmptyBuildingProtection(b.id, b.building_name));
+
+      if (newBuildings.length === 0) return prev;
+
+      return {
+        ...prev,
+        fire_protection: {
+          ...prev.fire_protection,
+          buildings: [...prevBuildings, ...newBuildings],
+        },
+      };
+    });
+  } catch (err) {
+    console.error('Error loading construction buildings:', err);
+    setConstructionBuildings([]);
+    // Don’t mutate formData on error; just render without linked rows
+  }
+}
 
     loadConstructionBuildings();
   }, [moduleInstance.document_id]);

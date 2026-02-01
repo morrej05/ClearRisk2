@@ -14,7 +14,7 @@ export async function createDocument({
   organisationId,
   documentType,
   title,
-  jurisdiction = 'UK'
+  jurisdiction = 'UK',
 }: CreateDocumentParams): Promise<string> {
   const documentTitle = title || `New ${documentType}`;
   const assessmentDate = new Date().toISOString().split('T')[0];
@@ -49,13 +49,8 @@ export async function createDocument({
     throw docError;
   }
 
-  if (!document) {
-    console.error('[documentCreation.createDocument] No document returned from insert');
-    throw new Error('Document creation failed - no data returned');
-  }
-
-  if (!document.id) {
-    console.error('[documentCreation.createDocument] Document missing ID:', document);
+  if (!document?.id) {
+    console.error('[documentCreation.createDocument] Document creation failed - missing document/id:', document);
     throw new Error('Document creation failed - no ID generated');
   }
 
@@ -75,25 +70,33 @@ export async function createDocument({
   }));
 
   if (moduleInstances.length > 0) {
+    // Prefer upsert so we don't ever create duplicates (requires unique constraint on (document_id, module_key))
     const { error: modulesError } = await supabase
       .from('module_instances')
-      .insert(moduleInstances);
+      .upsert(moduleInstances, {
+        onConflict: 'document_id,module_key',
+        ignoreDuplicates: true,
+      });
 
     if (modulesError) {
-      console.error('[documentCreation.createDocument] Module instances insert failed:', modulesError);
+      console.error('[documentCreation.createDocument] Module instances upsert failed:', modulesError);
       throw modulesError;
     }
 
-    console.log('[documentCreation.createDocument] Created', moduleInstances.length, 'module instances');
+    console.log('[documentCreation.createDocument] Created/ensured', moduleInstances.length, 'module instances');
   }
 
   return document.id;
 }
 
+function isEmptyPlainObject(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return true;
+  if (Array.isArray(value)) return false;
+  return Object.keys(value as Record<string, unknown>).length === 0;
+}
+
 /**
- * Ensures all required module instances exist for a document.
- * Useful for backfilling missing modules in existing documents.
- * Uses upsert to safely add only missing modules without creating duplicates.
+ * Provides default module data payloads (currently only for Risk Engineering).
  */
 function initialiseModuleData(moduleKey: string, documentType: DocumentType) {
   // Only apply defaults for Risk Engineering
@@ -178,7 +181,7 @@ function initialiseModuleData(moduleKey: string, documentType: DocumentType) {
           passive_protection: { notes: '' },
         },
         water_supply: {
-          reliability: null, // reliable/unreliable can be mapped in UI; store boolean or enum later
+          reliability: null,
           primary_source: '',
           redundancy: '',
           test_history_notes: '',
@@ -245,7 +248,6 @@ function initialiseModuleData(moduleKey: string, documentType: DocumentType) {
         version: 'v1',
         section_key: 'process_risk',
         ratings: { site_rating_1_5: null, site_rating_notes: '' },
-        // keep process risk separate from occupancy going forward
         process_overview: '',
       };
 
@@ -265,8 +267,8 @@ function initialiseModuleData(moduleKey: string, documentType: DocumentType) {
         version: 'v1',
         section_key: 'recommendations',
         settings: {
-          numbering_prefix: '', // optional later
-          numbering_includes_year_month: true, // e.g. 2026-01-001
+          numbering_prefix: '',
+          numbering_includes_year_month: true,
           max_images_per_recommendation: 3,
         },
         summary_table: [],
@@ -309,6 +311,11 @@ function initialiseModuleData(moduleKey: string, documentType: DocumentType) {
   }
 }
 
+/**
+ * Ensures all required module instances exist for a document.
+ * - Adds any missing modules (safe upsert)
+ * - For RE only: backfills empty {} data to defaults (prevents “blank UI”)
+ */
 export async function ensureRequiredModules(
   documentId: string,
   documentType: DocumentType,
@@ -337,7 +344,9 @@ export async function ensureRequiredModules(
   const existingKeys = new Set(existingModules?.map((m) => m.module_key) || []);
   const missingKeys = requiredModuleKeys.filter((key) => !existingKeys.has(key));
 
-  // 1) Insert missing modules with correct defaults
+  console.log('[documentCreation.ensureRequiredModules] Existing:', Array.from(existingKeys), 'Missing:', missingKeys);
+
+  // 1) Insert/ensure missing modules (use upsert to avoid duplicates)
   if (missingKeys.length > 0) {
     const newModuleInstances = missingKeys.map((moduleKey) => ({
       organisation_id: organisationId,
@@ -349,97 +358,58 @@ export async function ensureRequiredModules(
       data: initialiseModuleData(moduleKey, documentType),
     }));
 
-    const { error: insertError } = await supabase.from('module_instances').insert(newModuleInstances);
+    const { error: upsertError } = await supabase
+      .from('module_instances')
+      .upsert(newModuleInstances, {
+        onConflict: 'document_id,module_key',
+        ignoreDuplicates: true,
+      });
 
-    if (insertError) {
-      console.error('[documentCreation.ensureRequiredModules] Module instances insert failed:', insertError);
-      throw insertError;
+    if (upsertError) {
+      console.error('[documentCreation.ensureRequiredModules] Failed to upsert missing modules:', upsertError);
+      throw upsertError;
     }
 
-    console.log('[documentCreation.ensureRequiredModules] Inserted missing modules:', missingKeys);
+    console.log('[documentCreation.ensureRequiredModules] Ensured', missingKeys.length, 'modules:', missingKeys);
+  } else {
+    console.log('[documentCreation.ensureRequiredModules] All required modules already exist');
   }
 
   // 2) Backfill existing RE modules that have empty {} data (prevents “blank UI”)
   if (documentType === 'RE' && existingModules?.length) {
-    const empties = existingModules.filter((m) => {
-      const d = m.data as any;
-      return !d || (typeof d === 'object' && !Array.isArray(d) && Object.keys(d).length === 0);
-    });
+    const empties = existingModules.filter((m) => isEmptyPlainObject(m.data));
 
     for (const m of empties) {
       const defaults = initialiseModuleData(m.module_key, documentType);
+
+      // If we don't have defaults for that key, skip (don’t overwrite with {})
+      if (isEmptyPlainObject(defaults)) continue;
+
       const { error: updateError } = await supabase
         .from('module_instances')
         .update({ data: defaults })
         .eq('id', m.id);
 
       if (updateError) {
-        console.error('[documentCreation.ensureRequiredModules] Failed to backfill module data:', m.module_key, updateError);
+        console.error(
+          '[documentCreation.ensureRequiredModules] Failed to backfill module data:',
+          m.module_key,
+          updateError
+        );
         throw updateError;
       }
     }
 
     if (empties.length) {
-      console.log('[documentCreation.ensureRequiredModules] Backfilled empty RE modules:', empties.map((e) => e.module_key));
+      console.log(
+        '[documentCreation.ensureRequiredModules] Backfilled empty RE modules:',
+        empties.map((e) => e.module_key)
+      );
     }
   }
 }
 
-export async function ensureRequiredModules(
-  documentId: string,
-  documentType: DocumentType,
-  organisationId: string
-): Promise<void> {
-  console.log('[documentCreation.ensureRequiredModules] Checking modules for document:', documentId, 'type:', documentType);
-
-  const requiredModuleKeys = getModuleKeysForDocType(documentType);
-  console.log('[documentCreation.ensureRequiredModules] Required modules:', requiredModuleKeys);
-
-  const { data: existingModules, error: fetchError } = await supabase
-    .from('module_instances')
-    .select('id, module_key, data')
-    .eq('document_id', documentId);
-
-  if (fetchError) {
-    console.error('[documentCreation.ensureRequiredModules] Failed to fetch existing modules:', fetchError);
-    throw fetchError;
-  }
- 
-  const existingKeys = new Set(existingModules?.map(m => m.module_key) || []);
-  const missingKeys = requiredModuleKeys.filter(key => !existingKeys.has(key));
-
-  console.log('[documentCreation.ensureRequiredModules] Existing:', Array.from(existingKeys), 'Missing:', missingKeys);
-
-  if (missingKeys.length > 0) {
-    const newModuleInstances = missingKeys.map(moduleKey => ({
-      organisation_id: organisationId,
-      document_id: documentId,
-      module_key: moduleKey,
-      module_scope: 'document',
-      outcome: null,
-      assessor_notes: '',
-      data: initialiseModuleData(moduleKey, documentType),
-    }));
-
-    const { error: insertError } = await supabase
-      .from('module_instances')
-      .insert(newModuleInstances);
-
-    if (insertError) {
-      console.error('[documentCreation.ensureRequiredModules] Failed to insert missing modules:', insertError);
-      throw insertError;
-    }
-
-    console.log('[documentCreation.ensureRequiredModules] Added', missingKeys.length, 'missing modules:', missingKeys);
-  } else {
-    console.log('[documentCreation.ensureRequiredModules] All required modules already exist');
-  }
-}
-
-export async function createPropertySurvey(
-  userId: string,
-  companyName: string
-): Promise<string> {
+export async function createPropertySurvey(userId: string, companyName: string): Promise<string> {
   const surveyDate = new Date().toISOString().split('T')[0];
 
   const insertPayload = {
@@ -461,11 +431,7 @@ export async function createPropertySurvey(
 
   console.log('[documentCreation.createPropertySurvey] Insert payload:', insertPayload);
 
-  const { data, error } = await supabase
-    .from('survey_reports')
-    .insert(insertPayload)
-    .select()
-    .single();
+  const { data, error } = await supabase.from('survey_reports').insert(insertPayload).select().single();
 
   if (error) {
     console.error('[documentCreation.createPropertySurvey] Insert failed:', error);
@@ -479,17 +445,11 @@ export async function createPropertySurvey(
     throw error;
   }
 
-  if (!data) {
-    console.error('[documentCreation.createPropertySurvey] No survey returned from insert');
-    throw new Error('Survey creation failed - no data returned');
-  }
-
-  if (!data.id) {
-    console.error('[documentCreation.createPropertySurvey] Survey missing ID:', data);
+  if (!data?.id) {
+    console.error('[documentCreation.createPropertySurvey] Survey creation failed - missing data/id:', data);
     throw new Error('Survey creation failed - no ID generated');
   }
 
   console.log('[documentCreation.createPropertySurvey] Created survey:', data.id);
-
   return data.id;
 }

@@ -27,23 +27,7 @@ interface RE07NaturalHazardsFormProps {
   onSaved: () => void;
 }
 
-const HAZARD_LABELS: Record<string, string> = {
-  flood: 'Flood',
-  wind: 'Wind/Storm',
-  quake: 'Earthquake',
-  wildfire: 'Wildfire',
-  lightning: 'Lightning',
-  subsidence: 'Subsidence',
-};
-
-const DEFAULT_HAZARDS = [
-  { key: 'flood', exposure: '', controls: '', notes: '' },
-  { key: 'wind', exposure: '', controls: '', notes: '' },
-  { key: 'quake', exposure: '', controls: '', notes: '' },
-  { key: 'wildfire', exposure: '', controls: '', notes: '' },
-  { key: 'lightning', exposure: '', controls: '', notes: '' },
-  { key: 'subsidence', exposure: '', controls: '', notes: '' },
-];
+const CANONICAL_KEY = 'natural_hazard_exposure_and_controls';
 
 export default function RE07NaturalHazardsForm({
   moduleInstance,
@@ -53,10 +37,8 @@ export default function RE07NaturalHazardsForm({
   const [isSaving, setIsSaving] = useState(false);
   const d = moduleInstance.data || {};
 
-  const safeHazards = Array.isArray(d.hazards) ? d.hazards : DEFAULT_HAZARDS;
-
   const [formData, setFormData] = useState({
-    hazards: safeHazards,
+    natural_hazards_notes: typeof d.natural_hazards_notes === 'string' ? d.natural_hazards_notes : '',
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
@@ -91,51 +73,25 @@ export default function RE07NaturalHazardsForm({
     loadRiskEngModule();
   }, [moduleInstance.document_id]);
 
-  useEffect(() => {
-    const healData = async () => {
-      if (d.hazards !== undefined && !Array.isArray(d.hazards)) {
-        console.warn('RE07: Healing non-array hazards data');
-        try {
-          const sanitized = sanitizeModuleInstancePayload({
-            data: {
-              ...d,
-              hazards: DEFAULT_HAZARDS
-            }
-          });
-
-          await supabase
-            .from('module_instances')
-            .update({ data: sanitized.data })
-            .eq('id', moduleInstance.id);
-        } catch (error) {
-          console.error('Error healing hazards data:', error);
-        }
-      }
-    };
-
-    healData();
-  }, []);
-
-  const canonicalKey = 'natural_hazard_exposure_and_controls';
-  const rating = getRating(riskEngData, canonicalKey);
+  const rating = getRating(riskEngData, CANONICAL_KEY);
 
   const getHelpText = (): string => {
     if (!industryKey) return 'Rate the overall natural hazard exposure and effectiveness of controls.';
     const industryConfig = HRG_MASTER_MAP.industries[industryKey];
-    return industryConfig?.modules?.[canonicalKey]?.help_text || 'Rate the overall natural hazard exposure and controls.';
+    return industryConfig?.modules?.[CANONICAL_KEY]?.help_text || 'Rate the overall natural hazard exposure and controls.';
   };
 
   const getWeight = (): number => {
     if (!industryKey) return HRG_MASTER_MAP.meta.default_weight;
     const industryConfig = HRG_MASTER_MAP.industries[industryKey];
-    return industryConfig?.modules?.[canonicalKey]?.weight || HRG_MASTER_MAP.meta.default_weight;
+    return industryConfig?.modules?.[CANONICAL_KEY]?.weight || HRG_MASTER_MAP.meta.default_weight;
   };
 
   const handleRatingChange = async (newRating: number) => {
     if (!riskEngInstanceId) return;
 
     try {
-      const updatedData = setRating(riskEngData, canonicalKey, newRating);
+      const updatedData = setRating(riskEngData, CANONICAL_KEY, newRating);
       const sanitized = sanitizeModuleInstancePayload({ data: updatedData });
 
       const { error } = await supabase
@@ -150,16 +106,6 @@ export default function RE07NaturalHazardsForm({
       console.error('Error updating rating:', err);
       alert('Failed to update rating');
     }
-  };
-
-  const updateHazard = (key: string, field: string, value: string) => {
-    const hazards = Array.isArray(formData?.hazards) ? formData.hazards : [];
-    setFormData({
-      ...formData,
-      hazards: hazards.map((h: any) =>
-        h.key === key ? { ...h, [field]: value } : h
-      ),
-    });
   };
 
   const handleSave = async () => {
@@ -191,13 +137,13 @@ export default function RE07NaturalHazardsForm({
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-5 - Natural Hazards</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-7 - Natural Hazards</h2>
         <p className="text-slate-600">Natural hazards exposure and controls assessment</p>
       </div>
 
       <div className="mb-6">
         <ReRatingPanel
-          canonicalKey={canonicalKey}
+          canonicalKey={CANONICAL_KEY}
           industryKey={industryKey}
           rating={rating}
           onChangeRating={handleRatingChange}
@@ -206,51 +152,20 @@ export default function RE07NaturalHazardsForm({
         />
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Natural Hazards Assessment</h3>
+        <p className="text-sm text-slate-600 mb-4">
+          Document the natural hazards at this location (flood, earthquake, wildfire, storm, lightning, subsidence, etc.) and the controls in place to mitigate them.
+        </p>
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Hazard Assessment</h3>
-          <div className="space-y-6">
-            {(() => {
-              const hazards = Array.isArray(formData?.hazards) ? formData.hazards : [];
-              return hazards.map((hazard: any) => (
-                <div key={hazard.key} className="border border-slate-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-slate-900 mb-3">{HAZARD_LABELS[hazard.key]}</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Exposure</label>
-                      <input
-                        type="text"
-                        value={hazard.exposure}
-                        onChange={(e) => updateHazard(hazard.key, 'exposure', e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="e.g., Low, Medium, High"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Controls</label>
-                      <input
-                        type="text"
-                        value={hazard.controls}
-                        onChange={(e) => updateHazard(hazard.key, 'controls', e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="Describe existing controls or mitigation measures"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                      <textarea
-                        value={hazard.notes}
-                        onChange={(e) => updateHazard(hazard.key, 'notes', e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="Additional notes and observations"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ));
-            })()}
-          </div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Assessment Notes</label>
+          <textarea
+            value={formData.natural_hazards_notes}
+            onChange={(e) => setFormData({ ...formData, natural_hazards_notes: e.target.value })}
+            rows={10}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            placeholder="Document natural hazards exposure and mitigation measures. Consider: flood risk, seismic activity, wildfire exposure, storm/wind risk, lightning protection, ground stability, and any other relevant natural hazards for this location..."
+          />
         </div>
       </div>
 

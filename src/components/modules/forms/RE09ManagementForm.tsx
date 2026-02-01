@@ -195,11 +195,27 @@ export default function RE09ManagementForm({
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">Rating (1-5)</label>
-                    <RatingRadio
-                      value={category.rating_1_5}
-                      onChange={(value) => updateCategory(category.key, 'rating_1_5', value)}
-                      name={`category_${category.key}`}
-                    />
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => updateCategory(category.key, 'rating_1_5', num)}
+                          className={`flex-1 px-3 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
+                            category.rating_1_5 === num
+                              ? num <= 2
+                                ? 'bg-green-100 border-green-500 text-green-700'
+                                : num === 3
+                                ? 'bg-amber-100 border-amber-500 text-amber-700'
+                                : 'bg-red-100 border-red-500 text-red-700'
+                              : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">1 = Excellent, 5 = Poor</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>

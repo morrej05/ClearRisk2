@@ -29,6 +29,20 @@ interface RE03OccupancyFormProps {
 
 const CANONICAL_KEY = 'process_control_and_stability';
 
+const SPECIAL_HAZARDS_CANONICAL_KEYS = [
+  'flammable_liquids_and_fire_risk',
+  'high_energy_materials_control',
+  'high_energy_process_equipment',
+];
+
+const SPECIAL_HAZARDS_LABELS: Record<string, string> = {
+  ignitable_liquids: 'Ignitable liquids',
+  flammable_gases_chemicals: 'Flammable gases & chemicals',
+  dusts_explosive_atmospheres: 'Dusts and explosive atmospheres',
+  specialised_industrial_equipment: 'Specialised industrial equipment',
+  emerging_risks: 'Emerging risks (PV panels, lithium-ion, etc.)',
+};
+
 export default function RE03OccupancyForm({
   moduleInstance,
   document,
@@ -42,6 +56,13 @@ export default function RE03OccupancyForm({
     operating_hours: d.operating_hours || '',
     headcount: d.headcount || null,
     notes: d.notes || '',
+    special_hazards: d.special_hazards || {
+      ignitable_liquids: { present: false, notes: '' },
+      flammable_gases_chemicals: { present: false, notes: '' },
+      dusts_explosive_atmospheres: { present: false, notes: '' },
+      specialised_industrial_equipment: { present: false, notes: '' },
+      emerging_risks: { present: false, notes: '' },
+    },
     recommendations: d.recommendations || [],
   });
 
@@ -80,11 +101,11 @@ export default function RE03OccupancyForm({
   const rating = getRating(riskEngData, CANONICAL_KEY);
   const hrgConfig = getHrgConfig(industryKey, CANONICAL_KEY);
 
-  const handleRatingChange = async (newRating: number) => {
+  const handleRatingChange = async (canonicalKey: string, newRating: number) => {
     if (!riskEngInstanceId) return;
 
     try {
-      const updatedRiskEngData = setRating(riskEngData, CANONICAL_KEY, newRating);
+      const updatedRiskEngData = setRating(riskEngData, canonicalKey, newRating);
 
       const { error } = await supabase
         .from('module_instances')
@@ -95,7 +116,7 @@ export default function RE03OccupancyForm({
 
       setRiskEngData(updatedRiskEngData);
 
-      const updatedFormData = ensureAutoRecommendation(formData, CANONICAL_KEY, newRating, industryKey);
+      const updatedFormData = ensureAutoRecommendation(formData, canonicalKey, newRating, industryKey);
       if (updatedFormData !== formData) {
         setFormData(updatedFormData);
         const sanitized = sanitizeModuleInstancePayload({ data: updatedFormData });
@@ -108,6 +129,19 @@ export default function RE03OccupancyForm({
       console.error('Error updating rating:', err);
       alert('Failed to update rating');
     }
+  };
+
+  const updateSpecialHazard = (key: string, field: 'present' | 'notes', value: any) => {
+    setFormData({
+      ...formData,
+      special_hazards: {
+        ...formData.special_hazards,
+        [key]: {
+          ...formData.special_hazards[key],
+          [field]: value,
+        },
+      },
+    });
   };
 
   const handleSave = async () => {
@@ -148,7 +182,7 @@ export default function RE03OccupancyForm({
           canonicalKey={CANONICAL_KEY}
           industryKey={industryKey}
           rating={rating}
-          onChangeRating={handleRatingChange}
+          onChangeRating={(newRating) => handleRatingChange(CANONICAL_KEY, newRating)}
           helpText={hrgConfig.helpText}
           weight={hrgConfig.weight}
         />
@@ -201,6 +235,70 @@ export default function RE03OccupancyForm({
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Special Hazards (Generic)</h3>
+        <p className="text-sm text-slate-600 mb-4">
+          Document the presence and key characteristics of special hazards at this site. Use the rating panels below to assess control quality.
+        </p>
+        <div className="space-y-4">
+          {Object.entries(SPECIAL_HAZARDS_LABELS).map(([key, label]) => (
+            <div key={key} className="border border-slate-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-slate-900">{label}</h4>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-slate-600">Present?</span>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.special_hazards[key].present}
+                      onChange={(e) => updateSpecialHazard(key, 'present', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700">
+                      {formData.special_hazards[key].present ? 'Yes' : 'No'}
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                <textarea
+                  value={formData.special_hazards[key].notes}
+                  onChange={(e) => updateSpecialHazard(key, 'notes', e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                  placeholder={`Describe ${label.toLowerCase()} present at this site...`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-6 space-y-6">
+        <div className="bg-slate-50 border border-slate-300 rounded-lg p-4">
+          <h3 className="text-base font-semibold text-slate-900 mb-2">Special Hazards & High-Risk Processes</h3>
+          <p className="text-sm text-slate-600">
+            Rate the quality of controls for special hazards and high-risk processes identified above.
+          </p>
+        </div>
+        {SPECIAL_HAZARDS_CANONICAL_KEYS.map((canonicalKey) => {
+          const rating = getRating(riskEngData, canonicalKey);
+          const hrgConfig = getHrgConfig(industryKey, canonicalKey);
+          return (
+            <ReRatingPanel
+              key={canonicalKey}
+              canonicalKey={canonicalKey}
+              industryKey={industryKey}
+              rating={rating}
+              onChangeRating={(newRating) => handleRatingChange(canonicalKey, newRating)}
+              helpText={hrgConfig.helpText}
+              weight={hrgConfig.weight}
+            />
+          );
+        })}
       </div>
 
       <OutcomePanel

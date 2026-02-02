@@ -200,7 +200,7 @@ export default function RE06FireProtectionForm({
     }
 
     loadConstructionBuildings();
-  }, [moduleInstance.document_id, selectedBuildingId]);
+  }, [moduleInstance.document_id]);
 
   const handleSave = async () => {
     if (isSaving) return;

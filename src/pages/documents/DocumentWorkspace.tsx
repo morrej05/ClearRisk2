@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck, Menu, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName, sortModulesByOrder, getModuleKeysForDocType } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
@@ -171,6 +171,7 @@ export default function DocumentWorkspace() {
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [isIssuing, setIsIssuing] = useState(false);
   const [invalidUrl, setInvalidUrl] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Guard: Check for missing document ID
   useEffect(() => {
@@ -348,6 +349,7 @@ const fetchModules = async () => {
   const handleModuleSelect = (moduleId: string) => {
     setSelectedModuleId(moduleId);
     setSearchParams({ m: moduleId });
+    setIsMobileMenuOpen(false); // Close mobile menu on selection
 
     // Save last visited module to localStorage
     if (id) {
@@ -416,14 +418,15 @@ const fetchModules = async () => {
   const ModuleNavItem = ({ module }: { module: ModuleInstance }) => (
     <button
       onClick={() => handleModuleSelect(module.id)}
-      className={`w-full text-left px-4 py-3 transition-colors ${
+      className={`w-full text-left px-4 py-3 transition-colors md:px-2 lg:px-4 ${
         selectedModuleId === module.id
           ? 'bg-neutral-100 border-l-4 border-neutral-900'
           : 'hover:bg-neutral-50 border-l-4 border-transparent'
       }`}
+      title={getModuleName(module.module_key)}
     >
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 mt-0.5">
+      <div className="flex items-start gap-3 md:flex-col md:items-center md:gap-1 lg:flex-row lg:items-start lg:gap-3">
+        <div className="flex-shrink-0 mt-0.5 md:mt-0">
           {module.outcome && module.outcome !== 'info_gap' ? (
             <CheckCircle className="w-5 h-5 text-green-600" />
           ) : module.outcome === 'info_gap' ? (
@@ -432,7 +435,7 @@ const fetchModules = async () => {
             <div className="w-5 h-5 rounded-full border-2 border-neutral-300" />
           )}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 md:hidden lg:block">
           <p className="text-sm font-medium text-neutral-900 mb-1">
             {getModuleName(module.module_key)}
           </p>
@@ -455,6 +458,18 @@ const fetchModules = async () => {
                 </span>
               )}
             </div>
+          )}
+        </div>
+        {/* Icon-only badge for tablet view */}
+        <div className="hidden md:block lg:hidden">
+          {module.outcome && (
+            <div className={`w-2 h-2 rounded-full ${
+              module.outcome === 'compliant' ? 'bg-green-600' :
+              module.outcome === 'minor_def' ? 'bg-amber-600' :
+              module.outcome === 'material_def' ? 'bg-red-600' :
+              module.outcome === 'info_gap' ? 'bg-blue-600' :
+              'bg-neutral-400'
+            }`} />
           )}
         </div>
       </div>
@@ -517,13 +532,26 @@ const fetchModules = async () => {
       <div className="bg-white border-b border-neutral-200 px-4 py-3">
         <div className="max-w-[1800px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5 text-neutral-600" />
+              ) : (
+                <Menu className="w-5 h-5 text-neutral-600" />
+              )}
+            </button>
+
             {returnToPath === '/dashboard/actions' ? (
               <button
                 onClick={() => navigate('/dashboard/actions')}
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
               >
                 <List className="w-4 h-4" />
-                Actions Register
+                <span className="hidden sm:inline">Actions Register</span>
               </button>
             ) : (
               <button
@@ -531,12 +559,12 @@ const fetchModules = async () => {
                 className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 font-medium transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to Overview
+                <span className="hidden sm:inline">Back to Overview</span>
               </button>
             )}
-            <div className="h-6 w-px bg-neutral-300" />
+            <div className="h-6 w-px bg-neutral-300 hidden sm:block" />
             <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-neutral-600" />
+              <FileText className="w-5 h-5 text-neutral-600 hidden sm:block" />
               <div className="flex items-center gap-3">
                 <div>
                   <h1 className="text-lg font-bold text-neutral-900">{document.title}</h1>
@@ -554,7 +582,7 @@ const fetchModules = async () => {
               className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
             >
               <FileCheck className="w-4 h-4" />
-              Issue Document
+              <span className="hidden sm:inline">Issue Document</span>
             </button>
           )}
         </div>
@@ -573,12 +601,38 @@ const fetchModules = async () => {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden max-w-[1800px] mx-auto w-full">
-        <div className="w-80 bg-white border-r border-neutral-200 overflow-y-auto">
-          <div className="p-4 border-b border-neutral-200 bg-neutral-50">
-            <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wide">
-              Modules
-            </h2>
+      <div className="flex flex-1 overflow-hidden max-w-[1800px] mx-auto w-full relative">
+        {/* Mobile overlay */}
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Sidebar - responsive width and positioning */}
+        <div className={`
+          bg-white border-r border-neutral-200 overflow-y-auto transition-all duration-300
+          ${isMobileMenuOpen ? 'fixed inset-y-0 left-0 z-50 w-80' : 'hidden'}
+          md:block md:relative md:w-16
+          lg:w-64
+        `}>
+          <div className="p-4 border-b border-neutral-200 bg-neutral-50 md:p-2 lg:p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wide md:hidden lg:block">
+                Modules
+              </h2>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="md:hidden p-1 hover:bg-neutral-200 rounded transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5 text-neutral-600" />
+              </button>
+            </div>
+            <div className="hidden md:block lg:hidden text-center">
+              <FileText className="w-5 h-5 text-neutral-600 mx-auto" />
+            </div>
           </div>
           <div className="divide-y divide-neutral-200">
             {(() => {
@@ -601,7 +655,7 @@ const fetchModules = async () => {
                   <>
                     {sharedModules.length > 0 && (
                       <>
-                        <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                        <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 md:px-2 lg:px-4 md:hidden lg:block">
                           <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Shared</h3>
                         </div>
                         {sharedModules.map((module) => (
@@ -611,7 +665,7 @@ const fetchModules = async () => {
                     )}
                     {fraModules.length > 0 && (
                       <>
-                        <div className="px-4 py-2 bg-orange-50 border-b border-orange-200">
+                        <div className="px-4 py-2 bg-orange-50 border-b border-orange-200 md:px-2 lg:px-4 md:hidden lg:block">
                           <h3 className="text-xs font-bold text-orange-700 uppercase tracking-wider">Fire Risk Assessment (FRA)</h3>
                         </div>
                         {fraModules.map((module) => (
@@ -621,7 +675,7 @@ const fetchModules = async () => {
                     )}
                     {fsdModules.length > 0 && (
                       <>
-                        <div className="px-4 py-2 bg-cyan-50 border-b border-cyan-200">
+                        <div className="px-4 py-2 bg-cyan-50 border-b border-cyan-200 md:px-2 lg:px-4 md:hidden lg:block">
                           <h3 className="text-xs font-bold text-cyan-700 uppercase tracking-wider">Fire Strategy Document (FSD)</h3>
                         </div>
                         {fsdModules.map((module) => (
@@ -637,7 +691,7 @@ return (
   <>
     {reModules.length > 0 && (
       <>
-        <div className="px-4 py-2 bg-purple-50 border-b border-purple-200">
+        <div className="px-4 py-2 bg-purple-50 border-b border-purple-200 md:px-2 lg:px-4 md:hidden lg:block">
           <h3 className="text-xs font-bold text-purple-700 uppercase tracking-wider">
             Risk Engineering
           </h3>
@@ -660,8 +714,8 @@ return (
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-neutral-50">
-          <div className="max-w-7xl mx-auto p-6">
+        <div className="flex-1 min-w-0 overflow-y-auto bg-neutral-50">
+          <div className="w-full p-4 sm:p-6">
             {['FRA', 'DSEAR', 'FSD'].includes(document.document_type) && organisation?.id && (
               <ExecutiveSummaryPanel
                 documentId={document.id}

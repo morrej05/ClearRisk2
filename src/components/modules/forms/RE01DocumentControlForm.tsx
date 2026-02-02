@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
-import OutcomePanel from '../OutcomePanel';
-import ModuleActions from '../ModuleActions';
 import { HRG_MASTER_MAP, humanizeIndustryKey } from '../../../lib/re/reference/hrgMasterMap';
 import { ensureRatingsObject } from '../../../lib/re/scoring/riskEngineeringHelpers';
 
@@ -41,9 +39,6 @@ export default function RE01DocumentControlForm({
     scope: d.scope || { scope_description: '', limitations_assumptions: '' },
     reference_documents_reviewed: d.reference_documents_reviewed || [],
   });
-
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
 
   const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
   const [industryKey, setIndustryKey] = useState<string | null>(null);

@@ -4,7 +4,7 @@ import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanit
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import ReRatingPanel from '../../re/ReRatingPanel';
-import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
+import { getHrgConfig, HRG_MASTER_MAP } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
 import { Plus, X, AlertCircle, BookOpen } from 'lucide-react';
@@ -37,13 +37,14 @@ interface Hazard {
   free_text: string;
 }
 
-const CANONICAL_KEY = 'process_control_and_stability';
+function getIndustrySpecialHazardKeys(industryKey: string | null): string[] {
+  if (!industryKey || !HRG_MASTER_MAP.industries[industryKey]) {
+    return [];
+  }
 
-const SPECIAL_HAZARDS_CANONICAL_KEYS = [
-  'flammable_liquids_and_fire_risk',
-  'high_energy_materials_control',
-  'high_energy_process_equipment',
-];
+  const industry = HRG_MASTER_MAP.industries[industryKey];
+  return Object.keys(industry.modules);
+}
 
 const GENERIC_HAZARD_OPTIONS = [
   { key: 'ignitable_liquids', label: 'Ignitable liquids' },
@@ -116,8 +117,7 @@ export default function RE03OccupancyForm({
     loadRiskEngModule();
   }, [moduleInstance.document_id]);
 
-  const rating = getRating(riskEngData, CANONICAL_KEY);
-  const hrgConfig = getHrgConfig(industryKey, CANONICAL_KEY);
+  const industrySpecialHazardKeys = getIndustrySpecialHazardKeys(industryKey);
 
   const handleRatingChange = async (canonicalKey: string, newRating: number) => {
     if (!riskEngInstanceId) return;
@@ -305,17 +305,6 @@ export default function RE03OccupancyForm({
         <p className="text-slate-600">Occupancy classification and process control assessment</p>
       </div>
 
-      <div className="mb-6">
-        <ReRatingPanel
-          canonicalKey={CANONICAL_KEY}
-          industryKey={industryKey}
-          rating={rating}
-          onChangeRating={(newRating) => handleRatingChange(CANONICAL_KEY, newRating)}
-          helpText={hrgConfig.helpText}
-          weight={hrgConfig.weight}
-        />
-      </div>
-
       <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Occupancy / Process Overview</h3>
         <p className="text-sm text-slate-600 mb-4">
@@ -337,11 +326,6 @@ export default function RE03OccupancyForm({
             <h3 className="text-lg font-semibold text-slate-900 mb-1">
               Industry-Specific Special Hazards & High-Risk Processes
             </h3>
-            {industryKey && hrgConfig.helpText && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2 mb-4">
-                <p className="text-sm text-blue-900">{hrgConfig.helpText}</p>
-              </div>
-            )}
             {!industryKey && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2 mb-4">
                 <p className="text-sm text-amber-900">
@@ -377,29 +361,45 @@ export default function RE03OccupancyForm({
         </div>
       </div>
 
-      <div className="mb-6 space-y-6">
-        <div className="bg-slate-50 border border-slate-300 rounded-lg p-4">
-          <h3 className="text-base font-semibold text-slate-900 mb-2">Special Hazards & High-Risk Processes - Rating Panels</h3>
-          <p className="text-sm text-slate-600">
-            Rate the quality of controls for special hazards and high-risk processes identified above.
-          </p>
+      {industrySpecialHazardKeys.length > 0 && (
+        <div className="mb-6 space-y-6">
+          <div className="bg-slate-50 border border-slate-300 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-slate-900 mb-2">Industry-Specific Risk Factors - Rating Panels</h3>
+            <p className="text-sm text-slate-600">
+              Rate the quality of controls for each industry-specific risk factor.
+            </p>
+          </div>
+          {industrySpecialHazardKeys.map((canonicalKey) => {
+            const rating = getRating(riskEngData, canonicalKey);
+            const hrgConfig = getHrgConfig(industryKey, canonicalKey);
+            return (
+              <ReRatingPanel
+                key={canonicalKey}
+                canonicalKey={canonicalKey}
+                industryKey={industryKey}
+                rating={rating}
+                onChangeRating={(newRating) => handleRatingChange(canonicalKey, newRating)}
+                helpText={hrgConfig.helpText}
+                weight={hrgConfig.weight}
+              />
+            );
+          })}
         </div>
-        {SPECIAL_HAZARDS_CANONICAL_KEYS.map((canonicalKey) => {
-          const rating = getRating(riskEngData, canonicalKey);
-          const hrgConfig = getHrgConfig(industryKey, canonicalKey);
-          return (
-            <ReRatingPanel
-              key={canonicalKey}
-              canonicalKey={canonicalKey}
-              industryKey={industryKey}
-              rating={rating}
-              onChangeRating={(newRating) => handleRatingChange(canonicalKey, newRating)}
-              helpText={hrgConfig.helpText}
-              weight={hrgConfig.weight}
-            />
-          );
-        })}
-      </div>
+      )}
+
+      {!industryKey && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-amber-900 mb-1">No Industry Selected</h3>
+              <p className="text-sm text-amber-800">
+                Industry-specific risk factor rating panels will appear once you select an industry classification in RE-01 Document Control.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Generic Special Hazards</h3>

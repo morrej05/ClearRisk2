@@ -49,21 +49,27 @@ export default function RE03OccupancyForm({
   onSaved,
 }: RE03OccupancyFormProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const d = moduleInstance.data || {};
+  const d = moduleInstance?.data ?? {};
+
+  const defaultSpecialHazards = {
+    ignitable_liquids: { present: false, notes: '' },
+    flammable_gases_chemicals: { present: false, notes: '' },
+    dusts_explosive_atmospheres: { present: false, notes: '' },
+    specialised_industrial_equipment: { present: false, notes: '' },
+    emerging_risks: { present: false, notes: '' },
+  };
+
+  const safeSpecialHazards = typeof d.special_hazards === 'object' && d.special_hazards !== null
+    ? { ...defaultSpecialHazards, ...d.special_hazards }
+    : defaultSpecialHazards;
 
   const [formData, setFormData] = useState({
-    process_overview: d.process_overview || '',
-    operating_hours: d.operating_hours || '',
-    headcount: d.headcount || null,
-    notes: d.notes || '',
-    special_hazards: d.special_hazards || {
-      ignitable_liquids: { present: false, notes: '' },
-      flammable_gases_chemicals: { present: false, notes: '' },
-      dusts_explosive_atmospheres: { present: false, notes: '' },
-      specialised_industrial_equipment: { present: false, notes: '' },
-      emerging_risks: { present: false, notes: '' },
-    },
-    recommendations: d.recommendations || [],
+    process_overview: d.process_overview ?? '',
+    operating_hours: d.operating_hours ?? '',
+    headcount: d.headcount ?? null,
+    notes: d.notes ?? '',
+    special_hazards: safeSpecialHazards,
+    recommendations: Array.isArray(d.recommendations) ? d.recommendations : [],
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
@@ -81,14 +87,17 @@ export default function RE03OccupancyForm({
           .select('id, data')
           .eq('document_id', moduleInstance.document_id)
           .eq('module_key', 'RISK_ENGINEERING')
-          .single();
+          .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error loading RISK_ENGINEERING module:', error);
+          return;
+        }
 
         if (instance) {
           setRiskEngInstanceId(instance.id);
-          setRiskEngData(instance.data || {});
-          setIndustryKey(instance.data?.industry_key || null);
+          setRiskEngData(instance.data ?? {});
+          setIndustryKey(instance.data?.industry_key ?? null);
         }
       } catch (err) {
         console.error('Error loading RISK_ENGINEERING module:', err);
@@ -132,12 +141,13 @@ export default function RE03OccupancyForm({
   };
 
   const updateSpecialHazard = (key: string, field: 'present' | 'notes', value: any) => {
+    const currentHazard = formData.special_hazards[key] ?? { present: false, notes: '' };
     setFormData({
       ...formData,
       special_hazards: {
         ...formData.special_hazards,
         [key]: {
-          ...formData.special_hazards[key],
+          ...currentHazard,
           [field]: value,
         },
       },
@@ -243,37 +253,40 @@ export default function RE03OccupancyForm({
           Document the presence and key characteristics of special hazards at this site. Use the rating panels below to assess control quality.
         </p>
         <div className="space-y-4">
-          {Object.entries(SPECIAL_HAZARDS_LABELS).map(([key, label]) => (
-            <div key={key} className="border border-slate-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium text-slate-900">{label}</h4>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-slate-600">Present?</span>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.special_hazards[key].present}
-                      onChange={(e) => updateSpecialHazard(key, 'present', e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-slate-700">
-                      {formData.special_hazards[key].present ? 'Yes' : 'No'}
-                    </span>
-                  </label>
+          {Object.entries(SPECIAL_HAZARDS_LABELS).map(([key, label]) => {
+            const hazard = formData.special_hazards[key] ?? { present: false, notes: '' };
+            return (
+              <div key={key} className="border border-slate-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-slate-900">{label}</h4>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-600">Present?</span>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={hazard.present}
+                        onChange={(e) => updateSpecialHazard(key, 'present', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-slate-700">
+                        {hazard.present ? 'Yes' : 'No'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                  <textarea
+                    value={hazard.notes}
+                    onChange={(e) => updateSpecialHazard(key, 'notes', e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                    placeholder={`Describe ${label.toLowerCase()} present at this site...`}
+                  />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                <textarea
-                  value={formData.special_hazards[key].notes}
-                  onChange={(e) => updateSpecialHazard(key, 'notes', e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                  placeholder={`Describe ${label.toLowerCase()} present at this site...`}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

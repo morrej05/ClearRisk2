@@ -371,7 +371,7 @@ function calculateConstructionMetrics(building: Building): CalculatedMetrics {
   const wallProxyArea = roofArea > 0 ? roofArea * 0.6 : 0;
 
   // Cladding proxy area (envelope uplift if combustible cladding present)
-  const claddingArea = building.combustible_cladding.present && roofArea > 0 ? roofArea * 0.1 : 0;
+const claddingArea = building.combustible_cladding.present ? wallProxyArea * 0.25 : 0;
 
   // Total reference area
   const totalRefArea = roofArea + mezzArea + wallProxyArea + claddingArea;

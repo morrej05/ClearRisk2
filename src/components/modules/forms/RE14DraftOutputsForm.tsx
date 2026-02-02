@@ -7,6 +7,8 @@ import { HRG_CANONICAL_KEYS, getHrgConfig } from '../../../lib/re/reference/hrgM
 import { getRating, calculateScore } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import { generateRiskEngineeringSummary } from '../../../lib/ai/generateReSummary';
+import { getConstructionRating } from '../../../lib/re/scoring/constructionRating';
+import { getEnabledFactors } from '../../../lib/re/reference/occupancyRelevance';
 
 interface Document {
   id: string;
@@ -33,6 +35,7 @@ interface RatingRow {
   rating: number;
   weight: number;
   score: number;
+  isPillar?: boolean;
 }
 
 interface RecommendationSummary {
@@ -75,6 +78,7 @@ export default function RE14DraftOutputsForm({
   });
   const [hasPhotos, setHasPhotos] = useState(false);
   const [hasSitePlan, setHasSitePlan] = useState(false);
+  const [occupancyMissing, setOccupancyMissing] = useState(false);
 
   useEffect(() => {
     setExecutiveSummary(moduleInstance.data?.executive_summary || '');
@@ -110,28 +114,77 @@ export default function RE14DraftOutputsForm({
         if (riskEng?.data) {
           const industryKeyValue = riskEng.data.industry_key;
           setIndustryKey(industryKeyValue);
-          const ratings = riskEng.data.ratings || {};
+          setOccupancyMissing(!industryKeyValue);
 
-          const rows: RatingRow[] = HRG_CANONICAL_KEYS.map(canonicalKey => {
-            const rating = getRating(riskEng.data, canonicalKey);
-            const config = getHrgConfig(industryKeyValue, canonicalKey);
-            const score = calculateScore(rating, config.weight);
+          // Fetch section grades for global pillars
+          const { data: doc, error: docError } = await supabase
+            .from('documents')
+            .select('section_grades')
+            .eq('id', moduleInstance.document_id)
+            .maybeSingle();
 
-            return {
-              canonicalKey,
-              label: formatCanonicalKey(canonicalKey),
-              rating,
-              weight: config.weight,
-              score,
-            };
-          });
+          const sectionGrades = doc?.section_grades || {};
 
-          setRatingRows(rows);
+          // Get construction rating
+          const constructionResult = await getConstructionRating(moduleInstance.document_id);
 
-          const total = rows.reduce((sum, row) => sum + row.score, 0);
+          // Build global pillar rows (ALWAYS INCLUDED)
+          const pillarRows: RatingRow[] = [
+            {
+              canonicalKey: 'construction_and_combustibility',
+              label: 'Construction & Combustibility',
+              rating: constructionResult.rating,
+              weight: getHrgConfig(industryKeyValue, 'construction').weight || 3,
+              score: constructionResult.rating * (getHrgConfig(industryKeyValue, 'construction').weight || 3),
+              isPillar: true,
+            },
+            {
+              canonicalKey: 'fire_protection',
+              label: 'Fire Protection',
+              rating: sectionGrades.fire_protection || 1,
+              weight: getHrgConfig(industryKeyValue, 'fire_protection').weight || 3,
+              score: (sectionGrades.fire_protection || 1) * (getHrgConfig(industryKeyValue, 'fire_protection').weight || 3),
+              isPillar: true,
+            },
+            {
+              canonicalKey: 'management_systems',
+              label: 'Management Systems',
+              rating: sectionGrades.management || 3,
+              weight: getHrgConfig(industryKeyValue, 'management').weight || 3,
+              score: (sectionGrades.management || 3) * (getHrgConfig(industryKeyValue, 'management').weight || 3),
+              isPillar: true,
+            },
+          ];
+
+          // Get enabled factors for this occupancy
+          const enabledFactors = getEnabledFactors(industryKeyValue);
+
+          // Build loss driver rows (FILTERED BY OCCUPANCY)
+          const lossDriverRows: RatingRow[] = HRG_CANONICAL_KEYS
+            .filter(key => enabledFactors.includes(key))
+            .map(canonicalKey => {
+              const rating = getRating(riskEng.data, canonicalKey);
+              const config = getHrgConfig(industryKeyValue, canonicalKey);
+              const score = calculateScore(rating, config.weight);
+
+              return {
+                canonicalKey,
+                label: formatCanonicalKey(canonicalKey),
+                rating,
+                weight: config.weight,
+                score,
+                isPillar: false,
+              };
+            });
+
+          // Combine pillars + loss drivers
+          const allRows = [...pillarRows, ...lossDriverRows];
+          setRatingRows(allRows);
+
+          const total = allRows.reduce((sum, row) => sum + row.score, 0);
           setTotalScore(total);
 
-          const sorted = [...rows].sort((a, b) => b.score - a.score);
+          const sorted = [...allRows].sort((a, b) => b.score - a.score);
           setTopContributors(sorted.slice(0, 3));
         }
 
@@ -373,6 +426,18 @@ export default function RE14DraftOutputsForm({
           <TrendingUp className="w-5 h-5" />
           Risk Ratings Summary
         </h3>
+
+        {occupancyMissing && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex gap-2 items-start">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-900">
+                Occupancy not set — risk factors may be incomplete. Set occupancy in RE-03 Occupancy to see all relevant factors.
+              </p>
+            </div>
+          </div>
+        )}
+
         {ratingRows.length > 0 ? (
           <>
             <div className="overflow-x-auto">
@@ -386,15 +451,42 @@ export default function RE14DraftOutputsForm({
                   </tr>
                 </thead>
                 <tbody>
-                  {ratingRows.map((row, idx) => (
-                    <tr key={row.canonicalKey} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                      <td className="px-4 py-2 text-slate-900">{row.label}</td>
+                  {/* Global Pillars Section */}
+                  <tr className="bg-blue-50 border-t-2 border-blue-300">
+                    <td colSpan={4} className="px-4 py-2 text-xs font-semibold text-blue-900 uppercase tracking-wide">
+                      Global Pillars (Always Included)
+                    </td>
+                  </tr>
+                  {ratingRows.filter(row => row.isPillar).map((row, idx) => (
+                    <tr key={row.canonicalKey} className="bg-blue-50/50">
+                      <td className="px-4 py-2 text-slate-900 font-medium">{row.label}</td>
                       <td className="text-center px-4 py-2 text-slate-900">{row.rating}</td>
                       <td className="text-center px-4 py-2 text-slate-900">{row.weight}</td>
                       <td className="text-center px-4 py-2 font-medium text-slate-900">{row.score.toFixed(1)}</td>
                     </tr>
                   ))}
-                  <tr className="bg-slate-100 border-t-2 border-slate-300 font-semibold">
+
+                  {/* Occupancy Loss Drivers Section */}
+                  {ratingRows.filter(row => !row.isPillar).length > 0 && (
+                    <>
+                      <tr className="bg-slate-50 border-t-2 border-slate-300">
+                        <td colSpan={4} className="px-4 py-2 text-xs font-semibold text-slate-900 uppercase tracking-wide">
+                          Occupancy Loss Drivers (Filtered by Relevance)
+                        </td>
+                      </tr>
+                      {ratingRows.filter(row => !row.isPillar).map((row, idx) => (
+                        <tr key={row.canonicalKey} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                          <td className="px-4 py-2 text-slate-900">{row.label}</td>
+                          <td className="text-center px-4 py-2 text-slate-900">{row.rating}</td>
+                          <td className="text-center px-4 py-2 text-slate-900">{row.weight}</td>
+                          <td className="text-center px-4 py-2 font-medium text-slate-900">{row.score.toFixed(1)}</td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Total Row */}
+                  <tr className="bg-slate-100 border-t-2 border-slate-400 font-semibold">
                     <td className="px-4 py-3 text-slate-900">Total</td>
                     <td className="text-center px-4 py-3"></td>
                     <td className="text-center px-4 py-3"></td>

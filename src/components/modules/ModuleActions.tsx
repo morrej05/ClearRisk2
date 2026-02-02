@@ -50,6 +50,7 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
   const [documentStatus, setDocumentStatus] = useState<string>('draft');
+  const [documentType, setDocumentType] = useState<string | null>(null);
   const [actionToDelete, setActionToDelete] = useState<string | null>(null);
 
   useEffect(() => {
@@ -129,12 +130,15 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
     try {
       const { data, error } = await supabase
         .from('documents')
-        .select('status')
+        .select('status, document_type')
         .eq('id', documentId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      if (data) setDocumentStatus(data.status);
+      if (data) {
+        setDocumentStatus(data.status);
+        setDocumentType(data.document_type);
+      }
     } catch (error) {
       console.error('Error fetching document status:', error);
     }
@@ -233,6 +237,23 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
               <div>documentId: {documentId || '(missing)'}</div>
               <div>moduleInstanceId: {moduleInstanceId || '(missing)'}</div>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (documentType === 'RE') {
+    return (
+      <div className="bg-blue-50 rounded-lg border border-blue-200 p-6 mt-6">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-bold text-blue-900 mb-1">Recommendations for Risk Engineering</h3>
+            <p className="text-sm text-blue-800">
+              Recommendations for Risk Engineering documents are managed in RE-09 Recommendations.
+              This module uses the FRA action workflow which is not applicable to Risk Engineering documents.
+            </p>
           </div>
         </div>
       </div>

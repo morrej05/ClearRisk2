@@ -144,6 +144,23 @@ function getRatingLabel(rating: number): string {
     default: return 'Unknown';
   }
 }
+function getMezzanineFactor(material: string): number {
+  const m = (material || '').toLowerCase();
+
+  // Low combustibility / robust
+  if (m.includes('reinforced concrete')) return 0.1;
+  if (m.includes('composite')) return 0.2; // steel deck + concrete topping
+
+  // Steel mezzanine (collapse/robustness risk dominates)
+  if (m.includes('protected steel')) return 0.5;
+  if (m.includes('unprotected steel')) return 0.8;
+
+  // High combustibility
+  if (m.includes('timber')) return 0.9;
+
+  // Unknown / default conservative mid
+  return 0.6;
+}
 
 /**
  * Calculate comprehensive construction metrics for a building

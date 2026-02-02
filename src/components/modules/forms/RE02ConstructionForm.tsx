@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
-import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { Plus, Trash2, Edit2, X } from 'lucide-react';
@@ -46,7 +45,7 @@ interface Building {
     basements: number | null;
     height_m: number | null;
   };
-  cladding: {
+  combustible_cladding: {
     present: boolean;
     details: string;
   };
@@ -97,7 +96,7 @@ function createEmptyBuilding(): Building {
       basements: null,
       height_m: null,
     },
-    cladding: {
+    combustible_cladding: {
       present: false,
       details: '',
     },
@@ -139,13 +138,9 @@ function computeCombustibility(building: Building): { score: number; band: 'Low'
   }
   score += wallsScore * 2; // Walls are significant contributor
 
-  // Cladding adjustment
-  if (building.cladding.present) {
-    const isNonCombustible = building.cladding.details.toLowerCase().includes('non-combustible') ||
-                             building.cladding.details.toLowerCase().includes('non combustible');
-    if (!isNonCombustible) {
-      score += 0.5;
-    }
+  // Combustible cladding adjustment
+  if (building.combustible_cladding.present) {
+    score += 0.5;
   }
 
   // Frame adjustment
@@ -184,18 +179,27 @@ export default function RE02ConstructionForm({
   const d = moduleInstance.data || {};
 
   const safeBuildings: Building[] = Array.isArray(d.construction?.buildings)
-    ? d.construction.buildings.map((b: any) => ({
-        ...createEmptyBuilding(),
-        ...b,
-        roof: { ...createEmptyBuilding().roof, ...(b.roof || {}) },
-        walls: {
-          breakdown: Array.isArray(b.walls?.breakdown) ? b.walls.breakdown : [],
-          total_percent: b.walls?.total_percent || 0,
-        },
-        geometry: { ...createEmptyBuilding().geometry, ...(b.geometry || {}) },
-        cladding: { ...createEmptyBuilding().cladding, ...(b.cladding || {}) },
-        frame: { ...createEmptyBuilding().frame, ...(b.frame || {}) },
-      }))
+    ? d.construction.buildings.map((b: any) => {
+        // Migrate old cladding to combustible_cladding
+        const combustible_cladding = b.combustible_cladding
+          ? { ...createEmptyBuilding().combustible_cladding, ...b.combustible_cladding }
+          : b.cladding
+          ? { ...createEmptyBuilding().combustible_cladding, ...b.cladding }
+          : createEmptyBuilding().combustible_cladding;
+
+        return {
+          ...createEmptyBuilding(),
+          ...b,
+          roof: { ...createEmptyBuilding().roof, ...(b.roof || {}) },
+          walls: {
+            breakdown: Array.isArray(b.walls?.breakdown) ? b.walls.breakdown : [],
+            total_percent: b.walls?.total_percent || 0,
+          },
+          geometry: { ...createEmptyBuilding().geometry, ...(b.geometry || {}) },
+          combustible_cladding,
+          frame: { ...createEmptyBuilding().frame, ...(b.frame || {}) },
+        };
+      })
     : [];
 
   const [formData, setFormData] = useState({
@@ -204,8 +208,6 @@ export default function RE02ConstructionForm({
     site_notes: d.construction?.site_notes || '',
   });
 
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
   const [editingWallsFor, setEditingWallsFor] = useState<string | null>(null);
 
   const updateBuilding = (id: string, updates: Partial<Building>) => {
@@ -255,7 +257,6 @@ export default function RE02ConstructionForm({
 
     setIsSaving(true);
     try {
-      const completedAt = outcome ? new Date().toISOString() : null;
       const sanitized = sanitizeModuleInstancePayload({
         data: { construction: formData },
       });
@@ -264,9 +265,6 @@ export default function RE02ConstructionForm({
         .from('module_instances')
         .update({
           data: sanitized.data,
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          completed_at: completedAt,
         })
         .eq('id', moduleInstance.id);
 
@@ -302,7 +300,7 @@ export default function RE02ConstructionForm({
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Walls</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Upper Floors (m²)</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Geometry</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Cladding</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Comb. Cladding</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Compart.</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Frame</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Combustibility</th>
@@ -364,19 +362,33 @@ export default function RE02ConstructionForm({
                       <div className="flex gap-1 min-w-[120px]">
                         <input
                           type="number"
+                          min="0"
+                          step="1"
                           value={bldg.geometry.floors || ''}
-                          onChange={(e) => updateBuilding(bldg.id, { geometry: { ...bldg.geometry, floors: e.target.value ? parseInt(e.target.value) : null } })}
+                          onChange={(e) => {
+                            const val = e.target.value ? Math.max(0, parseInt(e.target.value)) : null;
+                            updateBuilding(bldg.id, { geometry: { ...bldg.geometry, floors: val } });
+                          }}
                           className="w-12 px-1 py-1 border border-slate-300 rounded text-xs"
                           placeholder="F"
-                          title="Floors"
+                          title="Floors (positive)"
                         />
                         <input
                           type="number"
+                          max="-1"
+                          step="1"
                           value={bldg.geometry.basements || ''}
-                          onChange={(e) => updateBuilding(bldg.id, { geometry: { ...bldg.geometry, basements: e.target.value ? parseInt(e.target.value) : null } })}
+                          onChange={(e) => {
+                            if (!e.target.value) {
+                              updateBuilding(bldg.id, { geometry: { ...bldg.geometry, basements: null } });
+                            } else {
+                              const val = Math.min(-1, parseInt(e.target.value));
+                              updateBuilding(bldg.id, { geometry: { ...bldg.geometry, basements: val } });
+                            }
+                          }}
                           className="w-12 px-1 py-1 border border-slate-300 rounded text-xs"
                           placeholder="B"
-                          title="Basements"
+                          title="Basements (negative)"
                         />
                         <input
                           type="number"
@@ -391,10 +403,10 @@ export default function RE02ConstructionForm({
                     <td className="px-3 py-2">
                       <input
                         type="checkbox"
-                        checked={bldg.cladding.present}
-                        onChange={(e) => updateBuilding(bldg.id, { cladding: { ...bldg.cladding, present: e.target.checked } })}
+                        checked={bldg.combustible_cladding.present}
+                        onChange={(e) => updateBuilding(bldg.id, { combustible_cladding: { ...bldg.combustible_cladding, present: e.target.checked } })}
                         className="rounded"
-                        title="Cladding present"
+                        title="Combustible cladding"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -520,15 +532,6 @@ export default function RE02ConstructionForm({
           </div>
         </div>
 
-        <OutcomePanel
-          outcome={outcome}
-          assessorNotes={assessorNotes}
-          onOutcomeChange={setOutcome}
-          onNotesChange={setAssessorNotes}
-          onSave={handleSave}
-          isSaving={isSaving}
-        />
-
         {document?.id && moduleInstance?.id && (
           <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
         )}
@@ -650,18 +653,18 @@ export default function RE02ConstructionForm({
                   )}
                 </div>
 
-                {/* Cladding Details (if present) */}
-                {building.cladding.present && (
+                {/* Combustible Cladding Details (if present) */}
+                {building.combustible_cladding.present && (
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Cladding Details</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Combustible Cladding Details</label>
                     <textarea
-                      value={building.cladding.details}
+                      value={building.combustible_cladding.details}
                       onChange={(e) => updateBuilding(building.id, {
-                        cladding: { ...building.cladding, details: e.target.value }
+                        combustible_cladding: { ...building.combustible_cladding, details: e.target.value }
                       })}
                       rows={2}
                       className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-                      placeholder="Describe cladding type, material, compliance status (include 'non-combustible' if applicable)"
+                      placeholder="Describe combustible cladding type, material, compliance status, and any mitigation measures"
                     />
                   </div>
                 )}

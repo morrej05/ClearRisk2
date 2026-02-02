@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
-import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import ReRatingPanel from '../../re/ReRatingPanel';
 import FloatingSaveBar from './FloatingSaveBar';
@@ -81,9 +80,6 @@ export default function RE03OccupancyForm({
     hazards: safeHazards,
     hazards_free_text: d.occupancy?.hazards_free_text ?? '',
   });
-
-  const [outcome, setOutcome] = useState(moduleInstance.outcome ?? '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes ?? '');
 
   const [riskEngData, setRiskEngData] = useState<any>({});
   const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
@@ -276,16 +272,12 @@ export default function RE03OccupancyForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const completedAt = outcome ? new Date().toISOString() : null;
       const sanitized = sanitizeModuleInstancePayload({ data: { occupancy: formData } });
 
       const { error } = await supabase
         .from('module_instances')
         .update({
           data: sanitized.data,
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          completed_at: completedAt,
         })
         .eq('id', moduleInstance.id);
 
@@ -520,15 +512,6 @@ export default function RE03OccupancyForm({
           />
         </div>
       </div>
-
-        <OutcomePanel
-          outcome={outcome}
-          assessorNotes={assessorNotes}
-          onOutcomeChange={setOutcome}
-          onNotesChange={setAssessorNotes}
-          onSave={handleSave}
-          isSaving={isSaving}
-        />
 
         {document?.id && moduleInstance?.id && (
           <ModuleActions

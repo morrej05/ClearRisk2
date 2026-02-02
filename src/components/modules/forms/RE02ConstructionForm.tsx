@@ -847,18 +847,22 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-600">Combustible (area-weighted):</span>
+                          {hasAreaData(bldg) ? (
                           <span
                             className={`text-xs font-bold ${
-                              (bldg.calculated?.combustible_percent ?? 0) > 50
-                                ? 'text-red-600'
-                                : (bldg.calculated?.combustible_percent ?? 0) > 25
-                                ? 'text-amber-600'
-                                : 'text-green-600'
-                            }`}
-                          >
+                            (bldg.calculated?.combustible_percent ?? 0) > 50
+                            ? 'text-red-600'
+                            : (bldg.calculated?.combustible_percent ?? 0) > 25
+                            ? 'text-amber-600'
+                            : 'text-green-600'
+                        }`}
+                        >
                             {bldg.calculated?.combustible_percent ?? 0}%
-                          </span>
+                        </span>
+                      ) : (
+                          <span className="text-xs text-slate-400 italic">—</span>
+                      )}
+
                         </div>
                       </div>
                     </td>

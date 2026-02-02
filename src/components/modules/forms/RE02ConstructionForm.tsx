@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
-import { Plus, Trash2, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Info } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -26,6 +26,12 @@ interface RE02ConstructionFormProps {
 interface WallBreakdown {
   material: string;
   percent: number;
+}
+
+interface CalculatedMetrics {
+  construction_score: number; // 0-100 internal score
+  construction_rating: number; // 1-5 derived rating
+  combustible_percent: number; // 0-100 percentage
 }
 
 interface Building {
@@ -55,9 +61,7 @@ interface Building {
     protection: 'protected' | 'unprotected' | 'unknown';
   };
   notes: string;
-  combustibility_score: number;
-  combustibility_band: 'Low' | 'Medium' | 'High';
-  rating: number;
+  calculated?: CalculatedMetrics;
 }
 
 const ROOF_MATERIALS = [
@@ -106,68 +110,121 @@ function createEmptyBuilding(): Building {
       protection: 'unknown',
     },
     notes: '',
-    combustibility_score: 0,
-    combustibility_band: 'Low',
-    rating: 3,
   };
 }
 
-function computeCombustibility(building: Building): { score: number; band: 'Low' | 'Medium' | 'High' } {
-  let score = 0;
+/**
+ * Get human-readable label for construction rating
+ */
+function getRatingLabel(rating: number): string {
+  switch (rating) {
+    case 5: return 'Excellent';
+    case 4: return 'Good';
+    case 3: return 'Average';
+    case 2: return 'Below Average';
+    case 1: return 'Poor';
+    default: return 'Unknown';
+  }
+}
 
-  // Roof material scoring (0 = non-combustible, 1 = limited, 2 = combustible)
+/**
+ * Calculate comprehensive construction metrics for a building
+ * Returns score (0-100), rating (1-5), and combustible percentage
+ */
+function calculateConstructionMetrics(building: Building): CalculatedMetrics {
+  let rawScore = 100; // Start with perfect score, deduct for risks
+  let combustiblePoints = 0; // Track combustible elements
+  let totalPoints = 0; // Track total elements for percentage
+
+  // Roof material analysis
   const roofFactor =
     building.roof.material.includes('Combustible') ? 2 :
     building.roof.material.includes('Unapproved') ? 2 :
     building.roof.material.includes('Approved') ? 1 : 0;
 
-  // Apply roof area multiplier if present
-  const roofContribution = roofFactor * (building.roof.area_sqm && building.roof.area_sqm > 0 ? 1.5 : 1);
-  score += roofContribution;
+  if (roofFactor > 0) {
+    const roofPenalty = roofFactor * (building.roof.area_sqm && building.roof.area_sqm > 0 ? 12 : 8);
+    rawScore -= roofPenalty;
+    combustiblePoints += roofFactor * 2;
+  }
+  totalPoints += 2;
 
-  // Walls scoring - weighted average by percent
-  let wallsScore = 0;
+  // Walls analysis - weighted by percentage
   if (building.walls.breakdown.length > 0 && building.walls.total_percent > 0) {
     for (const wall of building.walls.breakdown) {
       const wallFactor =
         wall.material.includes('Combustible') ? 2 :
         wall.material.includes('Unapproved') ? 2 :
         wall.material.includes('Approved') ? 1 : 0;
-      wallsScore += (wallFactor * wall.percent) / 100;
+
+      const wallPenalty = wallFactor * (wall.percent / 100) * 15;
+      rawScore -= wallPenalty;
+      combustiblePoints += wallFactor * (wall.percent / 100) * 3;
     }
-  }
-  score += wallsScore * 2; // Walls are significant contributor
-
-  // Combustible cladding adjustment
-  if (building.combustible_cladding.present) {
-    score += 0.5;
-  }
-
-  // Frame adjustment
-  if (building.frame.type === 'Timber') {
-    score += 1;
-  }
-  if (building.frame.protection === 'unprotected' && building.frame.type === 'Steel') {
-    score += 0.3;
-  }
-  if (building.frame.protection === 'protected') {
-    score -= 0.2;
-  }
-
-  // Normalize to 0-10 scale
-  const normalizedScore = Math.min(10, Math.max(0, Math.round(score * 10) / 10));
-
-  // Determine band
-  let band: 'Low' | 'Medium' | 'High';
-  if (normalizedScore <= 3) {
-    band = 'Low';
-  } else if (normalizedScore <= 6) {
-    band = 'Medium';
+    totalPoints += 3;
   } else {
-    band = 'High';
+    totalPoints += 3;
   }
 
-  return { score: normalizedScore, band };
+  // Combustible cladding
+  if (building.combustible_cladding.present) {
+    rawScore -= 10;
+    combustiblePoints += 1;
+  }
+  totalPoints += 1;
+
+  // Frame type and protection
+  if (building.frame.type === 'Timber') {
+    rawScore -= 15;
+    combustiblePoints += 2;
+  } else if (building.frame.type === 'Steel') {
+    if (building.frame.protection === 'unprotected') {
+      rawScore -= 8;
+      combustiblePoints += 0.5;
+    } else if (building.frame.protection === 'protected') {
+      rawScore += 5; // Bonus for protected steel
+    }
+  } else if (building.frame.type === 'Reinforced Concrete' || building.frame.type === 'Masonry') {
+    rawScore += 5; // Bonus for non-combustible frame
+  }
+  totalPoints += 2;
+
+  // Compartmentation bonus
+  if (building.compartmentation === 'high') {
+    rawScore += 10;
+  } else if (building.compartmentation === 'medium') {
+    rawScore += 5;
+  } else if (building.compartmentation === 'low') {
+    rawScore -= 5;
+  }
+
+  // Clamp score to 0-100
+  const construction_score = Math.min(100, Math.max(0, Math.round(rawScore)));
+
+  // Derive rating from score (1-5 scale)
+  let construction_rating: number;
+  if (construction_score >= 85) {
+    construction_rating = 5; // Excellent
+  } else if (construction_score >= 70) {
+    construction_rating = 4; // Good
+  } else if (construction_score >= 50) {
+    construction_rating = 3; // Average
+  } else if (construction_score >= 30) {
+    construction_rating = 2; // Below Average
+  } else {
+    construction_rating = 1; // Poor
+  }
+
+  // Calculate combustible percentage
+  const combustible_percent = totalPoints > 0
+    ? Math.min(100, Math.max(0, Math.round((combustiblePoints / totalPoints) * 100)))
+    : 0;
+
+  return {
+    construction_score,
+    construction_rating,
+    combustible_percent,
+  };
 }
 
 export default function RE02ConstructionForm({
@@ -203,8 +260,10 @@ export default function RE02ConstructionForm({
     : [];
 
   const [formData, setFormData] = useState({
-    buildings: safeBuildings,
-    site_rating: typeof d.construction?.site_rating === 'number' ? d.construction.site_rating : 3,
+    buildings: safeBuildings.map(b => ({
+      ...b,
+      calculated: calculateConstructionMetrics(b),
+    })),
     site_notes: d.construction?.site_notes || '',
   });
 
@@ -216,11 +275,10 @@ export default function RE02ConstructionForm({
       buildings: formData.buildings.map((b) => {
         if (b.id === id) {
           const updated = { ...b, ...updates };
-          const combustibility = computeCombustibility(updated);
+          const calculated = calculateConstructionMetrics(updated);
           return {
             ...updated,
-            combustibility_score: combustibility.score,
-            combustibility_band: combustibility.band,
+            calculated,
           };
         }
         return b;
@@ -229,9 +287,11 @@ export default function RE02ConstructionForm({
   };
 
   const addBuilding = () => {
+    const newBuilding = createEmptyBuilding();
+    const calculated = calculateConstructionMetrics(newBuilding);
     setFormData({
       ...formData,
-      buildings: [...formData.buildings, createEmptyBuilding()],
+      buildings: [...formData.buildings, { ...newBuilding, calculated }],
     });
   };
 
@@ -303,8 +363,7 @@ export default function RE02ConstructionForm({
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Comb. Cladding</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Compart.</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Frame</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Combustibility</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Rating</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Calculated Metrics</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
@@ -444,27 +503,28 @@ export default function RE02ConstructionForm({
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                          bldg.combustibility_band === 'High' ? 'bg-red-100 text-red-800' :
-                          bldg.combustibility_band === 'Medium' ? 'bg-amber-100 text-amber-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {bldg.combustibility_band}
-                        </span>
-                        <span className="text-xs text-slate-500">{bldg.combustibility_score}</span>
+                      <div className="flex flex-col gap-1 min-w-[140px]">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                            (bldg.calculated?.construction_rating ?? 3) >= 4 ? 'bg-green-100 text-green-800' :
+                            (bldg.calculated?.construction_rating ?? 3) === 3 ? 'bg-blue-100 text-blue-800' :
+                            (bldg.calculated?.construction_rating ?? 3) === 2 ? 'bg-amber-100 text-amber-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {bldg.calculated?.construction_rating ?? 3} – {getRatingLabel(bldg.calculated?.construction_rating ?? 3)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-600">Combustible:</span>
+                          <span className={`text-xs font-bold ${
+                            (bldg.calculated?.combustible_percent ?? 0) > 50 ? 'text-red-600' :
+                            (bldg.calculated?.combustible_percent ?? 0) > 25 ? 'text-amber-600' :
+                            'text-green-600'
+                          }`}>
+                            {bldg.calculated?.combustible_percent ?? 0}%
+                          </span>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <select
-                        value={bldg.rating}
-                        onChange={(e) => updateBuilding(bldg.id, { rating: parseInt(e.target.value) })}
-                        className="w-full min-w-[60px] px-2 py-1 border border-slate-300 rounded text-sm font-medium"
-                      >
-                        {[1, 2, 3, 4, 5].map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
                     </td>
                     <td className="px-3 py-2">
                       <button
@@ -494,41 +554,45 @@ export default function RE02ConstructionForm({
           </div>
         </div>
 
-        {/* Site-Level Controls */}
+        {/* Calculation Explanation Panel */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">Automated Construction Assessment</h3>
+              <p className="text-sm text-blue-800 mb-3">
+                Construction ratings are automatically calculated based on the building characteristics you enter. The system evaluates:
+              </p>
+              <ul className="text-sm text-blue-800 space-y-1 mb-3 list-disc list-inside">
+                <li>Roof material type and area</li>
+                <li>Wall construction materials and percentages</li>
+                <li>Presence of combustible cladding</li>
+                <li>Structural frame type and fire protection</li>
+                <li>Compartmentation quality</li>
+              </ul>
+              <p className="text-sm text-blue-800">
+                <strong>Rating Scale:</strong> 1 = Poor, 2 = Below Average, 3 = Average, 4 = Good, 5 = Excellent
+              </p>
+              <p className="text-sm text-blue-700 mt-2 italic">
+                Engineers should use the notes fields to provide context, observations, and professional judgment.
+                The calculated rating reflects objective construction quality assessment.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Site-Level Notes */}
         <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Site-Level Assessment</h3>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Site Construction Rating (1-5)</label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={formData.site_rating}
-                  onChange={(e) => setFormData({ ...formData, site_rating: parseInt(e.target.value) })}
-                  className="flex-1"
-                />
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 font-bold text-blue-900">
-                  {formData.site_rating}
-                </div>
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                1 = Poor, 3 = Average, 5 = Excellent
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Site Notes</label>
-              <textarea
-                value={formData.site_notes}
-                onChange={(e) => setFormData({ ...formData, site_notes: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                placeholder="Overall site construction observations, context, or summary..."
-              />
-            </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Site-Level Notes</h3>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Overall Site Construction Observations</label>
+            <textarea
+              value={formData.site_notes}
+              onChange={(e) => setFormData({ ...formData, site_notes: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              placeholder="Document overall site construction observations, context, common patterns across buildings, or summary notes..."
+            />
           </div>
         </div>
 

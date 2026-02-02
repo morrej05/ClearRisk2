@@ -189,6 +189,54 @@ function getMezzanineFactor(material: string): number {
 }
 
 /**
+ * Get combustible factor for area-weighted combustible % calculation.
+ * Returns 0 (non-combustible), 0.5 (partial/unknown), or 1 (fully combustible).
+ */
+function getMaterialCombustibleFactor(material: string): number {
+  const m = (material || '').toLowerCase();
+
+  // Non-combustible materials
+  if (m.includes('heavy non-combustible')) return 0;
+  if (m.includes('light non-combustible')) return 0;
+
+  // Partial combustibility
+  if (m.includes('foam plastic') && m.includes('approved')) return 0.5;
+
+  // Fully combustible
+  if (m.includes('foam plastic') && m.includes('unapproved')) return 1;
+  if (m.includes('combustible')) return 1;
+
+  // Unknown - conservative default
+  if (m.includes('unknown')) return 0.5;
+
+  // Default conservative
+  return 0.5;
+}
+
+/**
+ * Calculate weighted combustible fraction from breakdown.
+ * Returns 0-1 representing the combustible fraction of the breakdown.
+ */
+function getBreakdownCombustibleFraction(
+  breakdown: Array<{ material: string; percent: number }>,
+  total_percent: number
+): number {
+  // No breakdown or incomplete - return conservative default
+  if (!breakdown || breakdown.length === 0 || total_percent <= 0) {
+    return 0.5;
+  }
+
+  // Calculate weighted average of combustible factors
+  let weightedSum = 0;
+  for (const item of breakdown) {
+    const factor = getMaterialCombustibleFactor(item.material);
+    weightedSum += factor * (item.percent / 100);
+  }
+
+  return weightedSum;
+}
+
+/**
  * Calculate comprehensive construction metrics for a building
  * Returns score (0-100), rating (1-5), and combustible percentage.
  *
@@ -304,9 +352,41 @@ function calculateConstructionMetrics(building: Building): CalculatedMetrics {
     construction_rating = 1;
   }
 
-  // Calculate combustible percentage (0-100)
-  const combustible_percent =
-    totalPoints > 0 ? Math.min(100, Math.max(0, Math.round((combustiblePoints / totalPoints) * 100))) : 0;
+  // Calculate area-weighted combustible percentage (0-100)
+  let combustible_percent = 0;
+
+  // Get actual areas
+  const roofArea = building.roof.area_sqm ?? 0;
+  const mezzArea = building.upper_floors_mezzanine.area_sqm ?? 0;
+
+  // Calculate combustible fractions for each component
+  const roofFrac = getBreakdownCombustibleFraction(building.roof.breakdown, building.roof.total_percent);
+  const wallFrac = getBreakdownCombustibleFraction(building.walls.breakdown, building.walls.total_percent);
+  const mezzFrac = getBreakdownCombustibleFraction(
+    building.upper_floors_mezzanine.breakdown,
+    building.upper_floors_mezzanine.total_percent
+  );
+
+  // Wall proxy area (walls scale with building footprint)
+  const wallProxyArea = roofArea > 0 ? roofArea * 0.6 : 0;
+
+  // Cladding proxy area (envelope uplift if combustible cladding present)
+  const claddingArea = building.combustible_cladding.present && roofArea > 0 ? roofArea * 0.1 : 0;
+
+  // Total reference area
+  const totalRefArea = roofArea + mezzArea + wallProxyArea + claddingArea;
+
+  if (totalRefArea > 0) {
+    // Calculate combustible area (weighted by combustible fraction)
+    const combustibleArea =
+      roofArea * roofFrac + mezzArea * mezzFrac + wallProxyArea * wallFrac + claddingArea * 1;
+
+    // Calculate percentage and clamp to 0-100
+    combustible_percent = Math.min(100, Math.max(0, Math.round((combustibleArea / totalRefArea) * 100)));
+  } else {
+    // No area data - default to 0
+    combustible_percent = 0;
+  }
 
   return {
     construction_score,
@@ -761,7 +841,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-600">Combustible:</span>
+                          <span className="text-xs text-slate-600">Combustible (area-weighted):</span>
                           <span
                             className={`text-xs font-bold ${
                               (bldg.calculated?.combustible_percent ?? 0) > 50

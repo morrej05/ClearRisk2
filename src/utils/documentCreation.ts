@@ -19,6 +19,22 @@ export async function createDocument({
   const documentTitle = title || `New ${documentType}`;
   const assessmentDate = new Date().toISOString().split('T')[0];
 
+  // Initialize section grades for RE documents with fire_protection defaulting to 1
+  const sectionGrades = documentType === 'RE' ? {
+    survey_info: 3,
+    property_details: 3,
+    construction: 3,
+    occupancy: 3,
+    management: 3,
+    fire_protection: 1,  // CRITICAL DEFAULT: Fire Protection starts at 1 (Inadequate)
+    business_continuity: 3,
+    loss_expectancy: 3,
+    hazards: 3,
+    natural_hazards: 3,
+    recommendations: 3,
+    attachments: 3
+  } : {};
+
   const documentData = {
     organisation_id: organisationId,
     document_type: documentType,
@@ -27,6 +43,7 @@ export async function createDocument({
     version: 1,
     assessment_date: assessmentDate,
     jurisdiction,
+    section_grades: sectionGrades,
   };
 
   console.log('[documentCreation.createDocument] Insert payload:', documentData);

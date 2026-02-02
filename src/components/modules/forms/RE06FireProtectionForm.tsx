@@ -229,7 +229,7 @@ export default function RE06FireProtectionForm({
         }
 
         const grade = doc?.section_grades?.fire_protection;
-        if (grade !== undefined && grade > 0) {
+        if (grade !== undefined) {
           setSectionGrade(grade);
         }
       } catch (error) {

@@ -7,6 +7,7 @@ import ReRatingPanel from '../../re/ReRatingPanel';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
+import { Plus, X, AlertCircle, BookOpen } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -27,6 +28,15 @@ interface RE03OccupancyFormProps {
   onSaved: () => void;
 }
 
+interface Hazard {
+  id: string;
+  hazard_key: string;
+  hazard_label: string;
+  description: string;
+  assessment: string;
+  free_text: string;
+}
+
 const CANONICAL_KEY = 'process_control_and_stability';
 
 const SPECIAL_HAZARDS_CANONICAL_KEYS = [
@@ -35,13 +45,13 @@ const SPECIAL_HAZARDS_CANONICAL_KEYS = [
   'high_energy_process_equipment',
 ];
 
-const SPECIAL_HAZARDS_LABELS: Record<string, string> = {
-  ignitable_liquids: 'Ignitable liquids',
-  flammable_gases_chemicals: 'Flammable gases & chemicals',
-  dusts_explosive_atmospheres: 'Dusts and explosive atmospheres',
-  specialised_industrial_equipment: 'Specialised industrial equipment',
-  emerging_risks: 'Emerging risks (PV panels, lithium-ion, etc.)',
-};
+const GENERIC_HAZARD_OPTIONS = [
+  { key: 'ignitable_liquids', label: 'Ignitable liquids' },
+  { key: 'flammable_gases_chemicals', label: 'Flammable gases & chemicals' },
+  { key: 'dusts_explosive_atmospheres', label: 'Dusts and explosive atmospheres' },
+  { key: 'specialised_industrial_equipment', label: 'Specialised industrial equipment' },
+  { key: 'emerging_risks', label: 'Emerging risks (PV panels, lithium-ion, etc.)' },
+];
 
 export default function RE03OccupancyForm({
   moduleInstance,
@@ -49,35 +59,34 @@ export default function RE03OccupancyForm({
   onSaved,
 }: RE03OccupancyFormProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddingRecommendation, setIsAddingRecommendation] = useState(false);
   const d = moduleInstance?.data ?? {};
 
-  const defaultSpecialHazards = {
-    ignitable_liquids: { present: false, notes: '' },
-    flammable_gases_chemicals: { present: false, notes: '' },
-    dusts_explosive_atmospheres: { present: false, notes: '' },
-    specialised_industrial_equipment: { present: false, notes: '' },
-    emerging_risks: { present: false, notes: '' },
-  };
-
-  const safeSpecialHazards = typeof d.special_hazards === 'object' && d.special_hazards !== null
-    ? { ...defaultSpecialHazards, ...d.special_hazards }
-    : defaultSpecialHazards;
+  const safeHazards: Hazard[] = Array.isArray(d.occupancy?.hazards)
+    ? d.occupancy.hazards.map((h: any) => ({
+        id: h.id ?? crypto.randomUUID(),
+        hazard_key: h.hazard_key ?? '',
+        hazard_label: h.hazard_label ?? '',
+        description: h.description ?? '',
+        assessment: h.assessment ?? '',
+        free_text: h.free_text ?? '',
+      }))
+    : [];
 
   const [formData, setFormData] = useState({
-    process_overview: d.process_overview ?? '',
-    operating_hours: d.operating_hours ?? '',
-    headcount: d.headcount ?? null,
-    notes: d.notes ?? '',
-    special_hazards: safeSpecialHazards,
-    recommendations: Array.isArray(d.recommendations) ? d.recommendations : [],
+    process_overview: d.occupancy?.process_overview ?? '',
+    industry_special_hazards_notes: d.occupancy?.industry_special_hazards_notes ?? '',
+    hazards: safeHazards,
+    hazards_free_text: d.occupancy?.hazards_free_text ?? '',
   });
 
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+  const [outcome, setOutcome] = useState(moduleInstance.outcome ?? '');
+  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes ?? '');
 
   const [riskEngData, setRiskEngData] = useState<any>({});
   const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
   const [industryKey, setIndustryKey] = useState<string | null>(null);
+  const [selectedHazardToAdd, setSelectedHazardToAdd] = useState('');
 
   useEffect(() => {
     async function loadRiskEngModule() {
@@ -128,7 +137,7 @@ export default function RE03OccupancyForm({
       const updatedFormData = ensureAutoRecommendation(formData, canonicalKey, newRating, industryKey);
       if (updatedFormData !== formData) {
         setFormData(updatedFormData);
-        const sanitized = sanitizeModuleInstancePayload({ data: updatedFormData });
+        const sanitized = sanitizeModuleInstancePayload({ data: { occupancy: updatedFormData } });
         await supabase
           .from('module_instances')
           .update({ data: sanitized.data })
@@ -140,25 +149,134 @@ export default function RE03OccupancyForm({
     }
   };
 
-  const updateSpecialHazard = (key: string, field: 'present' | 'notes', value: any) => {
-    const currentHazard = formData.special_hazards[key] ?? { present: false, notes: '' };
+  const addHazardEntry = () => {
+    if (!selectedHazardToAdd) return;
+
+    const option = GENERIC_HAZARD_OPTIONS.find(opt => opt.key === selectedHazardToAdd);
+    if (!option) return;
+
+    const newHazard: Hazard = {
+      id: crypto.randomUUID(),
+      hazard_key: option.key,
+      hazard_label: option.label,
+      description: '',
+      assessment: '',
+      free_text: '',
+    };
+
     setFormData({
       ...formData,
-      special_hazards: {
-        ...formData.special_hazards,
-        [key]: {
-          ...currentHazard,
-          [field]: value,
-        },
-      },
+      hazards: [...formData.hazards, newHazard],
     });
+    setSelectedHazardToAdd('');
+  };
+
+  const removeHazard = (id: string) => {
+    setFormData({
+      ...formData,
+      hazards: formData.hazards.filter(h => h.id !== id),
+    });
+  };
+
+  const updateHazard = (id: string, updates: Partial<Hazard>) => {
+    setFormData({
+      ...formData,
+      hazards: formData.hazards.map(h => h.id === id ? { ...h, ...updates } : h),
+    });
+  };
+
+  const addRecommendation = async (title: string, detail: string, relatedSection: string = 'Hazards') => {
+    setIsAddingRecommendation(true);
+    try {
+      const { data: reModule, error: fetchError } = await supabase
+        .from('module_instances')
+        .select('id, data')
+        .eq('document_id', moduleInstance.document_id)
+        .eq('module_key', 'RE_13_RECOMMENDATIONS')
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      const newRecommendation = {
+        id: crypto.randomUUID(),
+        title,
+        detail,
+        priority: 'Medium',
+        target_date: '',
+        owner: '',
+        status: 'Open',
+        related_section: relatedSection,
+        photos: [],
+        is_auto_generated: false,
+        source_module: 'RE_03_OCCUPANCY',
+      };
+
+      if (reModule) {
+        const existingRecs = Array.isArray(reModule.data?.recommendations) ? reModule.data.recommendations : [];
+        const updatedRecs = [...existingRecs, newRecommendation];
+        const sanitized = sanitizeModuleInstancePayload({ data: { recommendations: updatedRecs } });
+
+        const { error: updateError } = await supabase
+          .from('module_instances')
+          .update({ data: sanitized.data })
+          .eq('id', reModule.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const sanitized = sanitizeModuleInstancePayload({ data: { recommendations: [newRecommendation] } });
+
+        const { error: insertError } = await supabase
+          .from('module_instances')
+          .insert({
+            document_id: moduleInstance.document_id,
+            module_key: 'RE_13_RECOMMENDATIONS',
+            data: sanitized.data,
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      alert('Recommendation added to RE-9 successfully!');
+    } catch (err) {
+      console.error('Error adding recommendation:', err);
+      alert('Failed to add recommendation. Please try again.');
+    } finally {
+      setIsAddingRecommendation(false);
+    }
+  };
+
+  const handleAddIndustryRecommendation = () => {
+    if (!formData.industry_special_hazards_notes.trim()) {
+      alert('Please add notes before creating a recommendation.');
+      return;
+    }
+    addRecommendation(
+      'RE-03: Industry-specific hazards',
+      formData.industry_special_hazards_notes,
+      'Hazards'
+    );
+  };
+
+  const handleAddHazardRecommendation = (hazard: Hazard) => {
+    const detailParts = [];
+    if (hazard.description) detailParts.push(`Description: ${hazard.description}`);
+    if (hazard.assessment) detailParts.push(`Assessment: ${hazard.assessment}`);
+    if (hazard.free_text) detailParts.push(`Notes: ${hazard.free_text}`);
+
+    const detail = detailParts.length > 0 ? detailParts.join('\n\n') : 'See RE-03 for details.';
+
+    addRecommendation(
+      `RE-03: ${hazard.hazard_label}`,
+      detail,
+      'Hazards'
+    );
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const completedAt = outcome ? new Date().toISOString() : null;
-      const sanitized = sanitizeModuleInstancePayload({ data: formData });
+      const sanitized = sanitizeModuleInstancePayload({ data: { occupancy: formData } });
 
       const { error } = await supabase
         .from('module_instances')
@@ -198,101 +316,70 @@ export default function RE03OccupancyForm({
         />
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Occupancy Information</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Process Overview</label>
-              <textarea
-                value={formData.process_overview}
-                onChange={(e) => setFormData({ ...formData, process_overview: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                placeholder="Describe the primary processes and operations at this site"
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Operating Hours</label>
-                <input
-                  type="text"
-                  value={formData.operating_hours}
-                  onChange={(e) => setFormData({ ...formData, operating_hours: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                  placeholder="e.g., 24/7, Mon-Fri 9-5"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Headcount</label>
-                <input
-                  type="number"
-                  value={formData.headcount || ''}
-                  onChange={(e) => setFormData({ ...formData, headcount: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Additional Notes</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                placeholder="Additional observations and notes"
-              />
-            </div>
-          </div>
-        </div>
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Occupancy / Process Overview</h3>
+        <p className="text-sm text-slate-600 mb-4">
+          Provide a comprehensive overview of the occupancy classification, primary processes, operations, and activities at this site.
+        </p>
+        <textarea
+          value={formData.process_overview}
+          onChange={(e) => setFormData({ ...formData, process_overview: e.target.value })}
+          rows={8}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono"
+          placeholder="Describe the site occupancy, business operations, manufacturing processes, storage activities, operating hours, staffing levels, and any other relevant occupancy information..."
+        />
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Special Hazards (Generic)</h3>
-        <p className="text-sm text-slate-600 mb-4">
-          Document the presence and key characteristics of special hazards at this site. Use the rating panels below to assess control quality.
-        </p>
-        <div className="space-y-4">
-          {Object.entries(SPECIAL_HAZARDS_LABELS).map(([key, label]) => {
-            const hazard = formData.special_hazards[key] ?? { present: false, notes: '' };
-            return (
-              <div key={key} className="border border-slate-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-slate-900">{label}</h4>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-slate-600">Present?</span>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={hazard.present}
-                        onChange={(e) => updateSpecialHazard(key, 'present', e.target.checked)}
-                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-slate-700">
-                        {hazard.present ? 'Yes' : 'No'}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                  <textarea
-                    value={hazard.notes}
-                    onChange={(e) => updateSpecialHazard(key, 'notes', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder={`Describe ${label.toLowerCase()} present at this site...`}
-                  />
-                </div>
+        <div className="flex items-start gap-3 mb-4">
+          <BookOpen className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">
+              Industry-Specific Special Hazards & High-Risk Processes
+            </h3>
+            {industryKey && hrgConfig.helpText && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2 mb-4">
+                <p className="text-sm text-blue-900">{hrgConfig.helpText}</p>
               </div>
-            );
-          })}
+            )}
+            {!industryKey && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2 mb-4">
+                <p className="text-sm text-amber-900">
+                  No industry selected in RE-01. Industry-specific guidance will appear once an industry is selected.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Notes on Industry-Specific Hazards
+            </label>
+            <textarea
+              value={formData.industry_special_hazards_notes}
+              onChange={(e) => setFormData({ ...formData, industry_special_hazards_notes: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              placeholder="Document industry-specific hazards and high-risk processes identified at this site..."
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleAddIndustryRecommendation}
+            disabled={isAddingRecommendation || !formData.industry_special_hazards_notes.trim()}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus className="w-4 h-4" />
+            Add Recommendation to RE-9
+          </button>
         </div>
       </div>
 
       <div className="mb-6 space-y-6">
         <div className="bg-slate-50 border border-slate-300 rounded-lg p-4">
-          <h3 className="text-base font-semibold text-slate-900 mb-2">Special Hazards & High-Risk Processes</h3>
+          <h3 className="text-base font-semibold text-slate-900 mb-2">Special Hazards & High-Risk Processes - Rating Panels</h3>
           <p className="text-sm text-slate-600">
             Rate the quality of controls for special hazards and high-risk processes identified above.
           </p>
@@ -314,6 +401,124 @@ export default function RE03OccupancyForm({
         })}
       </div>
 
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Generic Special Hazards</h3>
+        <p className="text-sm text-slate-600 mb-4">
+          Document the presence and key characteristics of generic special hazards at this site.
+        </p>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-2">Add Hazard</label>
+          <div className="flex gap-2">
+            <select
+              value={selectedHazardToAdd}
+              onChange={(e) => setSelectedHazardToAdd(e.target.value)}
+              className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm"
+            >
+              <option value="">Select a hazard type...</option>
+              {GENERIC_HAZARD_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={addHazardEntry}
+              disabled={!selectedHazardToAdd}
+              className="px-4 py-2 bg-slate-700 text-white text-sm rounded-md hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {formData.hazards.map((hazard) => (
+            <div key={hazard.id} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-slate-900">{hazard.hazard_label}</h4>
+                <button
+                  type="button"
+                  onClick={() => removeHazard(hazard.id)}
+                  className="text-red-600 hover:text-red-700 p-1"
+                  title="Remove hazard"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                  <textarea
+                    value={hazard.description}
+                    onChange={(e) => updateHazard(hazard.id, { description: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"
+                    placeholder="Describe this hazard at the site..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Assessment</label>
+                  <textarea
+                    value={hazard.assessment}
+                    onChange={(e) => updateHazard(hazard.id, { assessment: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"
+                    placeholder="Assessment of controls and risk level..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Additional Notes</label>
+                  <textarea
+                    value={hazard.free_text}
+                    onChange={(e) => updateHazard(hazard.id, { free_text: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"
+                    placeholder="Any additional notes or observations..."
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddHazardRecommendation(hazard)}
+                  disabled={isAddingRecommendation}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Recommendation to RE-9
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {formData.hazards.length === 0 && (
+            <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-300 rounded-lg">
+              <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">No hazards added yet</p>
+              <p className="text-xs text-slate-400">Use the dropdown above to add hazard entries</p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Additional Hazards / Catch-All Notes
+          </label>
+          <textarea
+            value={formData.hazards_free_text}
+            onChange={(e) => setFormData({ ...formData, hazards_free_text: e.target.value })}
+            rows={3}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            placeholder="Any other hazards or observations not captured above..."
+          />
+        </div>
+      </div>
+
       <OutcomePanel
         outcome={outcome}
         assessorNotes={assessorNotes}
@@ -324,7 +529,11 @@ export default function RE03OccupancyForm({
       />
 
       {document?.id && moduleInstance?.id && (
-        <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
+        <ModuleActions
+          documentId={document.id}
+          moduleInstanceId={moduleInstance.id}
+          buttonLabel="Add Recommendation"
+        />
       )}
     </div>
   );

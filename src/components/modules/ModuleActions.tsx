@@ -34,6 +34,7 @@ interface Action {
 interface ModuleActionsProps {
   documentId: string;
   moduleInstanceId: string;
+  buttonLabel?: string;
 }
 
 const isValidUUID = (id: string | undefined | null): boolean => {
@@ -42,7 +43,7 @@ const isValidUUID = (id: string | undefined | null): boolean => {
   return uuidRegex.test(id);
 };
 
-export default function ModuleActions({ documentId, moduleInstanceId }: ModuleActionsProps) {
+export default function ModuleActions({ documentId, moduleInstanceId, buttonLabel = 'Add Action' }: ModuleActionsProps) {
   const { user } = useAuth();
   const [actions, setActions] = useState<Action[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -247,7 +248,7 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
           className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white font-medium rounded-lg hover:bg-neutral-800 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Add Action
+          {buttonLabel}
         </button>
       </div>
 
@@ -260,7 +261,7 @@ export default function ModuleActions({ documentId, moduleInstanceId }: ModuleAc
           <AlertCircle className="w-12 h-12 text-neutral-300 mb-3" />
           <p className="text-neutral-500 text-sm">No actions added yet</p>
           <p className="text-neutral-400 text-xs">
-            Click "Add Action" to create a recommended action for this module
+            Click "{buttonLabel}" to create a recommended action for this module
           </p>
         </div>
       ) : (

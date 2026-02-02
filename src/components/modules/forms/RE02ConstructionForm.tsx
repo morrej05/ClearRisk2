@@ -371,7 +371,9 @@ function calculateConstructionMetrics(building: Building): CalculatedMetrics {
   const wallProxyArea = roofArea > 0 ? roofArea * 0.6 : 0;
 
   // Cladding proxy area (envelope uplift if combustible cladding present)
-const claddingArea = building.combustible_cladding.present ? wallProxyArea * 0.25 : 0;
+  const proxyBase = roofArea > 0 ? roofArea : mezzArea;
+  const claddingArea =
+    building.combustible_cladding.present && proxyBase > 0 ? proxyBase * 0.1 : 0;
 
   // Total reference area
   const totalRefArea = roofArea + mezzArea + wallProxyArea + claddingArea;
@@ -847,22 +849,22 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-600">Combustible (area-weighted):</span>
                           {hasAreaData(bldg) ? (
-                          <span
-                            className={`text-xs font-bold ${
-                            (bldg.calculated?.combustible_percent ?? 0) > 50
-                            ? 'text-red-600'
-                            : (bldg.calculated?.combustible_percent ?? 0) > 25
-                            ? 'text-amber-600'
-                            : 'text-green-600'
-                        }`}
-                        >
-                            {bldg.calculated?.combustible_percent ?? 0}%
-                        </span>
-                      ) : (
-                          <span className="text-xs text-slate-400 italic">—</span>
-                      )}
-
+                            <span
+                              className={`text-xs font-bold ${
+                                (bldg.calculated?.combustible_percent ?? 0) > 50
+                                  ? 'text-red-600'
+                                  : (bldg.calculated?.combustible_percent ?? 0) > 25
+                                  ? 'text-amber-600'
+                                  : 'text-green-600'
+                              }`}
+                            >
+                              {bldg.calculated?.combustible_percent ?? 0}%
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">—</span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -941,6 +943,11 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
               </ul>
               <p className="text-sm text-blue-800">
                 <strong>Rating Scale:</strong> 1 = Poor, 2 = Below Average, 3 = Average, 4 = Good, 5 = Excellent
+              </p>
+              <p className="text-sm text-blue-800 mt-3">
+                <strong>Combustible (area-weighted):</strong> an estimate of the proportion of major construction elements that are combustible,
+                based on roof and mezzanine areas and the material percentage splits entered. Wall area is approximated using a simple proxy
+                when full wall dimensions are not captured. If no roof or mezzanine area is provided, this value is shown as "—".
               </p>
               <p className="text-sm text-blue-700 mt-2 italic">
                 Engineers should use the notes fields to provide context, observations, and professional judgment. The calculated rating reflects

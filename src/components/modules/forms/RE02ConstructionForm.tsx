@@ -75,6 +75,15 @@ const CONSTRUCTION_MATERIALS = [
   'Unknown',
 ];
 
+const MEZZANINE_MATERIALS = [
+  'Reinforced Concrete',
+  'Composite Steel Deck + Concrete',
+  'Protected Steel Mezzanine',
+  'Unprotected Steel Mezzanine',
+  'Timber Floor / Timber Mezzanine',
+  'Unknown',
+];
+
 const FRAME_TYPES = [
   { value: 'steel', label: 'Steel' },
   { value: 'protected_steel', label: 'Protected Steel' },
@@ -83,6 +92,11 @@ const FRAME_TYPES = [
   { value: 'masonry', label: 'Masonry' },
   { value: 'other', label: 'Other' },
 ];
+
+function getMaterialOptionsForType(type: 'roof' | 'walls' | 'mezzanine'): string[] {
+  if (type === 'mezzanine') return MEZZANINE_MATERIALS;
+  return CONSTRUCTION_MATERIALS;
+}
 
 function createEmptyBuilding(): Building {
   return {
@@ -787,7 +801,7 @@ export default function RE02ConstructionForm({
                           }}
                           className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
                         >
-                          {CONSTRUCTION_MATERIALS.map(mat => (
+                          {getMaterialOptionsForType(editingBreakdown.type).map(mat => (
                             <option key={mat} value={mat}>{mat}</option>
                           ))}
                         </select>
@@ -831,7 +845,7 @@ export default function RE02ConstructionForm({
                     onClick={() => {
                       const newBreakdown = [
                         ...breakdownData.breakdown,
-                        { material: CONSTRUCTION_MATERIALS[0], percent: 0 }
+                        { material: getMaterialOptionsForType(editingBreakdown.type)[0], percent: 0 }
                       ];
                       const total = newBreakdown.reduce((sum, w) => sum + w.percent, 0);
                       updateBreakdownData(editingBuilding.id, editingBreakdown.type, {

@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react';
+import { AlertTriangle, Building, Flame, Bell, CheckCircle2, ChevronRight } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
-import OutcomePanel from '../OutcomePanel';
-import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
-import ReRatingPanel from '../../re/ReRatingPanel';
-import { HRG_MASTER_MAP } from '../../../lib/re/reference/hrgMasterMap';
-import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 
 interface Document {
   id: string;
@@ -28,226 +23,188 @@ interface RE06FireProtectionFormProps {
   onSaved: () => void;
 }
 
+type WaterSupplyReliability = 'reliable' | 'unreliable' | 'unknown';
+type AdequacyLevel = 'adequate' | 'marginal' | 'inadequate' | 'unknown';
+type CoverageLevel = 'none' | 'partial' | 'full' | 'unknown';
+type CoverageAdequacy = 'poor' | 'adequate' | 'good' | 'unknown';
+type MonitoringType = 'none' | 'keyholder' | 'arc' | 'unknown';
+
+interface SiteData {
+  water_supply_reliability: WaterSupplyReliability;
+  water_supply_notes: string;
+  passive_fire_protection_adequacy: AdequacyLevel;
+  passive_fire_protection_notes: string;
+  fire_control_systems_adequacy: AdequacyLevel;
+  fire_control_systems_notes: string;
+  site_infrastructure?: {
+    water_supplies?: any[];
+    pump_sets?: any[];
+    distribution?: any[];
+  };
+}
+
+interface BuildingSuppressionData {
+  systems_present: string[];
+  coverage: CoverageLevel;
+  notes: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+}
+
+interface BuildingDetectionData {
+  system_type: string;
+  coverage_adequacy: CoverageAdequacy;
+  monitoring: MonitoringType;
+  notes: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+}
+
+interface BuildingReadinessData {
+  testing_inspection_notes: string;
+  impairment_management_notes: string;
+  general_notes: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+}
+
 interface BuildingFireProtection {
-  building_id: string;
-  building_name: string;
-  percent_area_protected: number;
-  percent_area_recommended: number;
-  assessment: string;
+  suppression: BuildingSuppressionData;
+  detection_alarm: BuildingDetectionData;
+  readiness: BuildingReadinessData;
   notes: string;
 }
 
-function createEmptyBuildingProtection(buildingId: string, buildingName: string): BuildingFireProtection {
+interface FireProtectionModule {
+  site: SiteData;
+  buildings: Record<string, BuildingFireProtection>;
+}
+
+interface ConstructionBuilding {
+  id: string;
+  building_name: string;
+}
+
+const RATING_HELP = {
+  1: 'Inadequate - materially below what this occupancy requires',
+  2: 'Marginal / weak - significant gaps or reliability concerns',
+  3: 'Generally adequate - meets normal industry expectation',
+  4: 'Good - above average; reliable with minor gaps only',
+  5: 'Robust / best practice - strong, resilient, well maintained'
+};
+
+function createDefaultBuildingProtection(): BuildingFireProtection {
   return {
-    building_id: buildingId,
-    building_name: buildingName,
-    percent_area_protected: 0,
-    percent_area_recommended: 0,
-    assessment: '',
-    notes: '',
+    suppression: {
+      systems_present: [],
+      coverage: 'unknown',
+      notes: '',
+      rating: 3
+    },
+    detection_alarm: {
+      system_type: '',
+      coverage_adequacy: 'unknown',
+      monitoring: 'unknown',
+      notes: '',
+      rating: 3
+    },
+    readiness: {
+      testing_inspection_notes: '',
+      impairment_management_notes: '',
+      general_notes: '',
+      rating: 3
+    },
+    notes: ''
+  };
+}
+
+function createDefaultSiteData(): SiteData {
+  return {
+    water_supply_reliability: 'unknown',
+    water_supply_notes: '',
+    passive_fire_protection_adequacy: 'unknown',
+    passive_fire_protection_notes: '',
+    fire_control_systems_adequacy: 'unknown',
+    fire_control_systems_notes: ''
   };
 }
 
 export default function RE06FireProtectionForm({
   moduleInstance,
   document,
-  onSaved,
+  onSaved
 }: RE06FireProtectionFormProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [constructionBuildings, setConstructionBuildings] = useState<any[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [constructionBuildings, setConstructionBuildings] = useState<ConstructionBuilding[]>([]);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'site' | 'buildings'>('site');
+
   const d = moduleInstance.data || {};
-
-  const safeBuildings = Array.isArray(d.fire_protection?.buildings)
-    ? d.fire_protection.buildings
-    : [];
-
-  const safeSystems = d.fire_protection?.systems || {
-    sprinklers: { present: false, type: '', design_basis: '', itm_notes: '', impairment_notes: '' },
-    water_supply: { reliability: '', primary_source: '', redundancy: '', test_history_notes: '' },
-    detection_alarm: { present: false, coverage_notes: '', monitoring_to_arc: false },
-    hydrants: { on_site: false, coverage_notes: '', maintenance_notes: '' },
-    passive_protection: { notes: '' },
-    smoke_control: { present: false, notes: '' },
+  const safeFireProtection: FireProtectionModule = {
+    site: d.fire_protection?.site || createDefaultSiteData(),
+    buildings: d.fire_protection?.buildings || {}
   };
 
-  const safeNLE = d.fire_protection?.credible_to_reduce_nle || {
-    credible: false,
-    basis: '',
-  };
-
-  const [formData, setFormData] = useState({
-    fire_protection: {
-      buildings: safeBuildings,
-      systems: safeSystems,
-      credible_to_reduce_nle: safeNLE,
-      site_rating_1_to_5: typeof d.fire_protection?.site_rating_1_to_5 === 'number' ? d.fire_protection.site_rating_1_to_5 : 3,
-    },
+  const [formData, setFormData] = useState<{ fire_protection: FireProtectionModule }>({
+    fire_protection: safeFireProtection
   });
 
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
-
-  const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
-  const [riskEngData, setRiskEngData] = useState<Record<string, any>>({});
-  const [industryKey, setIndustryKey] = useState<string | null>(null);
-
   useEffect(() => {
-async function loadConstructionBuildings() {
-  try {
-    const { data: constructionInstance, error } = await supabase
-      .from('module_instances')
-      .select('data')
-      .eq('document_id', moduleInstance.document_id)
-      .eq('module_key', 'RE02_CONSTRUCTION')
-      .maybeSingle(); // ✅ no 406 if 0 rows
-
-    if (error) throw error;
-
-    // If Construction hasn't been saved yet, treat as no buildings
-    const buildings = Array.isArray(constructionInstance?.data?.construction?.buildings)
-      ? constructionInstance!.data.construction.buildings
-      : [];
-
-    setConstructionBuildings(buildings);
-
-    if (buildings.length === 0) return;
-
-    // Merge any new Construction buildings into Fire Protection (by id)
-    setFormData((prev) => {
-      const prevBuildings = Array.isArray(prev.fire_protection?.buildings)
-        ? prev.fire_protection.buildings
-        : [];
-
-      const existingBuildingIds = prevBuildings
-        .map((b: any) => b?.building_id)
-        .filter(Boolean);
-
-      const newBuildings = buildings
-        .filter((b: any) => b?.id && !existingBuildingIds.includes(b.id))
-        .map((b: any) => createEmptyBuildingProtection(b.id, b.building_name));
-
-      if (newBuildings.length === 0) return prev;
-
-      return {
-        ...prev,
-        fire_protection: {
-          ...prev.fire_protection,
-          buildings: [...prevBuildings, ...newBuildings],
-        },
-      };
-    });
-  } catch (err) {
-    console.error('Error loading construction buildings:', err);
-    setConstructionBuildings([]);
-    // Don’t mutate formData on error; just render without linked rows
-  }
-}
-
-    loadConstructionBuildings();
-  }, [moduleInstance.document_id]);
-
-  useEffect(() => {
-    async function loadRiskEngModule() {
+    async function loadConstructionBuildings() {
       try {
-        const { data: instances, error } = await supabase
+        const { data: constructionInstance, error } = await supabase
           .from('module_instances')
-          .select('id, data')
+          .select('data')
           .eq('document_id', moduleInstance.document_id)
-          .eq('module_key', 'RISK_ENGINEERING')
-          .single();
+          .eq('module_key', 'RE_02_CONSTRUCTION')
+          .maybeSingle();
 
         if (error) throw error;
 
-        if (instances) {
-          setRiskEngInstanceId(instances.id);
-          setRiskEngData(instances.data || {});
-          setIndustryKey(instances.data?.industry_key || null);
+        const buildings = Array.isArray(constructionInstance?.data?.construction?.buildings)
+          ? constructionInstance.data.construction.buildings
+          : [];
+
+        setConstructionBuildings(buildings);
+
+        if (buildings.length > 0 && !selectedBuildingId) {
+          setSelectedBuildingId(buildings[0].id);
         }
+
+        // Initialize any missing buildings
+        setFormData((prev) => {
+          const updatedBuildings = { ...prev.fire_protection.buildings };
+          buildings.forEach((b: ConstructionBuilding) => {
+            if (!updatedBuildings[b.id]) {
+              updatedBuildings[b.id] = createDefaultBuildingProtection();
+            }
+          });
+
+          return {
+            ...prev,
+            fire_protection: {
+              ...prev.fire_protection,
+              buildings: updatedBuildings
+            }
+          };
+        });
       } catch (err) {
-        console.error('Error loading RISK_ENGINEERING module:', err);
+        console.error('Error loading construction buildings:', err);
+        setConstructionBuildings([]);
       }
     }
 
-    loadRiskEngModule();
-  }, [moduleInstance.document_id]);
-
-  const canonicalKey = 'safety_and_control_systems';
-  const rating = getRating(riskEngData, canonicalKey);
-
-  const getHelpText = (): string => {
-    if (!industryKey) return 'Rate the overall fire protection and safety control systems for this facility.';
-    const industryConfig = HRG_MASTER_MAP.industries[industryKey];
-    return industryConfig?.modules?.[canonicalKey]?.help_text || 'Rate the overall fire protection and safety control systems.';
-  };
-
-  const getWeight = (): number => {
-    if (!industryKey) return HRG_MASTER_MAP.meta.default_weight;
-    const industryConfig = HRG_MASTER_MAP.industries[industryKey];
-    return industryConfig?.modules?.[canonicalKey]?.weight || HRG_MASTER_MAP.meta.default_weight;
-  };
-
-  const handleRatingChange = async (newRating: number) => {
-    if (!riskEngInstanceId) return;
-
-    try {
-      const updatedData = setRating(riskEngData, canonicalKey, newRating);
-      const sanitized = sanitizeModuleInstancePayload({ data: updatedData });
-
-      const { error } = await supabase
-        .from('module_instances')
-        .update({ data: sanitized.data })
-        .eq('id', riskEngInstanceId);
-
-      if (error) throw error;
-
-      setRiskEngData(updatedData);
-    } catch (err) {
-      console.error('Error updating rating:', err);
-      alert('Failed to update rating');
-    }
-  };
-
-  const updateBuilding = (buildingId: string, field: string, value: any) => {
-    setFormData({
-      ...formData,
-      fire_protection: {
-        ...formData.fire_protection,
-        buildings: formData.fire_protection.buildings.map((b: any) =>
-          b.building_id === buildingId ? { ...b, [field]: value } : b
-        ),
-      },
-    });
-  };
-
-  const updateSystems = (system: string, field: string, value: any) => {
-    setFormData({
-      ...formData,
-      fire_protection: {
-        ...formData.fire_protection,
-        systems: {
-          ...formData.fire_protection.systems,
-          [system]: {
-            ...formData.fire_protection.systems[system],
-            [field]: value,
-          },
-        },
-      },
-    });
-  };
+    loadConstructionBuildings();
+  }, [moduleInstance.document_id, selectedBuildingId]);
 
   const handleSave = async () => {
+    if (isSaving) return;
+    setSaveError(null);
     setIsSaving(true);
-    try {
-      const completedAt = outcome ? new Date().toISOString() : null;
-      const sanitized = sanitizeModuleInstancePayload({ data: formData });
 
+    try {
       const { error } = await supabase
         .from('module_instances')
         .update({
-          data: sanitized.data,
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          completed_at: completedAt,
+          data: formData
         })
         .eq('id', moduleInstance.id);
 
@@ -255,426 +212,571 @@ async function loadConstructionBuildings() {
       onSaved();
     } catch (error) {
       console.error('Error saving module:', error);
-      alert('Failed to save module. Please try again.');
+      const errorMsg = 'Failed to save module. Please try again.';
+      setSaveError(errorMsg);
+      alert(errorMsg);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const updateSiteField = <K extends keyof SiteData>(field: K, value: SiteData[K]) => {
+    setFormData({
+      ...formData,
+      fire_protection: {
+        ...formData.fire_protection,
+        site: {
+          ...formData.fire_protection.site,
+          [field]: value
+        }
+      }
+    });
+  };
+
+  const updateBuildingField = (
+    buildingId: string,
+    section: 'suppression' | 'detection_alarm' | 'readiness',
+    field: string,
+    value: any
+  ) => {
+    setFormData({
+      ...formData,
+      fire_protection: {
+        ...formData.fire_protection,
+        buildings: {
+          ...formData.fire_protection.buildings,
+          [buildingId]: {
+            ...formData.fire_protection.buildings[buildingId],
+            [section]: {
+              ...formData.fire_protection.buildings[buildingId]?.[section],
+              [field]: value
+            }
+          }
+        }
+      }
+    });
+  };
+
+  const toggleSuppressionSystem = (buildingId: string, system: string) => {
+    const building = formData.fire_protection.buildings[buildingId];
+    const currentSystems = building?.suppression?.systems_present || [];
+    const newSystems = currentSystems.includes(system)
+      ? currentSystems.filter(s => s !== system)
+      : [...currentSystems, system];
+
+    updateBuildingField(buildingId, 'suppression', 'systems_present', newSystems);
+  };
+
+  const selectedBuilding = selectedBuildingId
+    ? constructionBuildings.find(b => b.id === selectedBuildingId)
+    : null;
+
+  const selectedBuildingData = selectedBuildingId
+    ? formData.fire_protection.buildings[selectedBuildingId] || createDefaultBuildingProtection()
+    : null;
+
+  const waterSupplyUnreliable = formData.fire_protection.site.water_supply_reliability === 'unreliable';
+  const hasWaterBasedSuppression = selectedBuildingData?.suppression.systems_present.some(
+    s => ['sprinklers', 'water_mist', 'foam'].includes(s.toLowerCase())
+  );
+
+  const RatingSelector = ({
+    value,
+    onChange,
+    label
+  }: {
+    value: number;
+    onChange: (v: number) => void;
+    label: string;
+  }) => (
+    <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+      <label className="block text-sm font-semibold text-slate-900 mb-3">{label}</label>
+      <div className="flex items-center gap-2 mb-3">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button
+            key={rating}
+            type="button"
+            onClick={() => onChange(rating)}
+            className={`flex-1 py-3 text-lg font-bold rounded-lg transition-colors ${
+              value === rating
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-slate-600 border border-slate-300 hover:border-blue-400'
+            }`}
+          >
+            {rating}
+          </button>
+        ))}
+      </div>
+      <div className="text-xs text-slate-600 space-y-1 bg-white rounded p-3">
+        <div><strong>1:</strong> {RATING_HELP[1]}</div>
+        <div><strong>3:</strong> {RATING_HELP[3]}</div>
+        <div><strong>5:</strong> {RATING_HELP[5]}</div>
+      </div>
+    </div>
+  );
+
   return (
     <>
-    <div className="p-6 max-w-7xl mx-auto pb-24">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-06 - Fire Protection</h2>
-        <p className="text-slate-600">Active and passive fire protection systems aligned to construction</p>
-      </div>
-
-      <div className="mb-6">
-        <ReRatingPanel
-          canonicalKey={canonicalKey}
-          industryKey={industryKey}
-          rating={rating}
-          onChangeRating={handleRatingChange}
-          helpText={getHelpText()}
-          weight={getWeight()}
-        />
-      </div>
-
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Building-Level Protection</h3>
-          <p className="text-sm text-slate-600 mb-4">
-            One row per building from RE-02 Construction. Protection coverage automatically syncs.
+      <div className="p-6 max-w-7xl mx-auto pb-24">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-04 - Fire Protection</h2>
+          <p className="text-slate-600">
+            Site-wide fire protection infrastructure and per-building fire protection systems assessment
           </p>
-          {formData.fire_protection.buildings.length === 0 ? (
-            <div className="text-slate-500 text-sm py-4">
-              No buildings found. Please complete RE-02 Construction module first.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {formData.fire_protection.buildings.map((building: any) => (
-                <div key={building.building_id} className="border border-slate-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-slate-900 mb-3">{building.building_name || 'Unnamed Building'}</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        % Area Protected (0-100)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={building.percent_area_protected}
-                        onChange={(e) => updateBuilding(building.building_id, 'percent_area_protected', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        % Area Recommended (0-100)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={building.percent_area_recommended}
-                        onChange={(e) => updateBuilding(building.building_id, 'percent_area_recommended', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Assessment
-                      </label>
-                      <select
-                        value={building.assessment}
-                        onChange={(e) => updateBuilding(building.building_id, 'assessment', e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                      >
-                        <option value="">Select...</option>
-                        <option value="adequate">Adequate</option>
-                        <option value="partial">Partial</option>
-                        <option value="inadequate">Inadequate</option>
-                      </select>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                      <textarea
-                        value={building.notes}
-                        onChange={(e) => updateBuilding(building.building_id, 'notes', e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="Observations on this building's fire protection"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Site-Level Systems</h3>
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6 border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab('site')}
+            className={`px-4 py-3 font-medium transition-colors ${
+              activeTab === 'site'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Site-Wide Systems
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('buildings');
+              if (constructionBuildings.length > 0 && !selectedBuildingId) {
+                setSelectedBuildingId(constructionBuildings[0].id);
+              }
+            }}
+            className={`px-4 py-3 font-medium transition-colors ${
+              activeTab === 'buildings'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Buildings ({constructionBuildings.length})
+          </button>
+        </div>
 
+        {/* Site-Wide Systems Tab */}
+        {activeTab === 'site' && (
           <div className="space-y-6">
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="font-semibold text-slate-900 mb-3">Sprinklers</h4>
+            {/* Water Supply Reliability */}
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Flame className="w-5 h-5 text-orange-500" />
+                Water Supply Reliability
+              </h3>
               <div className="space-y-4">
                 <div>
-                  <label className="flex items-center text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={formData.fire_protection.systems.sprinklers.present}
-                      onChange={(e) => updateSystems('sprinklers', 'present', e.target.checked)}
-                      className="mr-2"
-                    />
-                    Sprinkler System Present
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Reliability Assessment
                   </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['reliable', 'unreliable', 'unknown'] as WaterSupplyReliability[]).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => updateSiteField('water_supply_reliability', level)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
+                          formData.fire_protection.site.water_supply_reliability === level
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {formData.fire_protection.systems.sprinklers.present && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
-                        <input
-                          type="text"
-                          value={formData.fire_protection.systems.sprinklers.type}
-                          onChange={(e) => updateSystems('sprinklers', 'type', e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          placeholder="e.g., Wet pipe, ESFR, Deluge"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Design Basis</label>
-                        <input
-                          type="text"
-                          value={formData.fire_protection.systems.sprinklers.design_basis}
-                          onChange={(e) => updateSystems('sprinklers', 'design_basis', e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          placeholder="e.g., NFPA 13, BS EN 12845"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">ITM Notes</label>
-                      <textarea
-                        value={formData.fire_protection.systems.sprinklers.itm_notes}
-                        onChange={(e) => updateSystems('sprinklers', 'itm_notes', e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="Inspection, testing, and maintenance program details"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Impairment Notes</label>
-                      <textarea
-                        value={formData.fire_protection.systems.sprinklers.impairment_notes}
-                        onChange={(e) => updateSystems('sprinklers', 'impairment_notes', e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="Impairment management procedures and current status"
-                      />
-                    </div>
-                  </>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Notes
+                    <span className="text-xs text-slate-500 ml-2 font-normal">
+                      (source, capacity, constraints, testing, resilience)
+                    </span>
+                  </label>
+                  <textarea
+                    value={formData.fire_protection.site.water_supply_notes}
+                    onChange={(e) => updateSiteField('water_supply_notes', e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                    placeholder="Describe water supply sources, capacity, redundancy, testing history, and any reliability concerns..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Passive Fire Protection */}
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Building className="w-5 h-5 text-slate-500" />
+                Passive Fire Protection
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Adequacy Assessment
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['adequate', 'marginal', 'inadequate', 'unknown'] as AdequacyLevel[]).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => updateSiteField('passive_fire_protection_adequacy', level)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
+                          formData.fire_protection.site.passive_fire_protection_adequacy === level
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Notes
+                    <span className="text-xs text-slate-500 ml-2 font-normal">
+                      (compartmentation, fire stopping, doors, penetrations, management of change)
+                    </span>
+                  </label>
+                  <textarea
+                    value={formData.fire_protection.site.passive_fire_protection_notes}
+                    onChange={(e) => updateSiteField('passive_fire_protection_notes', e.target.value)}
+                    rows={5}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                    placeholder="Assess compartmentation strategy, fire stopping quality, fire doors and penetrations control, management of change processes..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Fire Control Systems */}
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Bell className="w-5 h-5 text-blue-500" />
+                Fire Control Systems
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Adequacy Assessment
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['adequate', 'marginal', 'inadequate', 'unknown'] as AdequacyLevel[]).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => updateSiteField('fire_control_systems_adequacy', level)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
+                          formData.fire_protection.site.fire_control_systems_adequacy === level
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Notes
+                    <span className="text-xs text-slate-500 ml-2 font-normal">
+                      (cause & effect, control panels, interfaces, testing & management)
+                    </span>
+                  </label>
+                  <textarea
+                    value={formData.fire_protection.site.fire_control_systems_notes}
+                    onChange={(e) => updateSiteField('fire_control_systems_notes', e.target.value)}
+                    rows={5}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                    placeholder="Describe cause & effect strategy, control panels/fire control room, system interfaces (smoke control, suppression release, shutdowns), testing & management..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Buildings Tab */}
+        {activeTab === 'buildings' && (
+          <div className="flex gap-6">
+            {/* Building List Sidebar */}
+            <div className="w-64 flex-shrink-0">
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3">Buildings</h3>
+                {constructionBuildings.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No buildings found. Complete RE-02 Construction first.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {constructionBuildings.map((building) => (
+                      <button
+                        key={building.id}
+                        onClick={() => setSelectedBuildingId(building.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors ${
+                          selectedBuildingId === building.id
+                            ? 'bg-blue-50 text-blue-900 font-medium'
+                            : 'text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="truncate">{building.building_name || 'Unnamed Building'}</span>
+                        {selectedBuildingId === building.id && (
+                          <ChevronRight className="w-4 h-4 flex-shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
 
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="font-semibold text-slate-900 mb-3">Water Supply</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Reliability</label>
-                  <select
-                    value={formData.fire_protection.systems.water_supply.reliability}
-                    onChange={(e) => updateSystems('water_supply', 'reliability', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                  >
-                    <option value="">Select...</option>
-                    <option value="reliable">Reliable</option>
-                    <option value="unreliable">Unreliable</option>
-                  </select>
+            {/* Building Details */}
+            {selectedBuilding && selectedBuildingData && (
+              <div className="flex-1 space-y-6">
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                  <h3 className="text-xl font-bold text-slate-900">
+                    {selectedBuilding.building_name || 'Unnamed Building'}
+                  </h3>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Primary Source</label>
-                  <input
-                    type="text"
-                    value={formData.fire_protection.systems.water_supply.primary_source}
-                    onChange={(e) => updateSystems('water_supply', 'primary_source', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="e.g., Municipal mains, on-site tanks, river/lake"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Redundancy</label>
-                  <textarea
-                    value={formData.fire_protection.systems.water_supply.redundancy}
-                    onChange={(e) => updateSystems('water_supply', 'redundancy', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="Describe backup water supplies or redundancy measures"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Test History Notes</label>
-                  <textarea
-                    value={formData.fire_protection.systems.water_supply.test_history_notes}
-                    onChange={(e) => updateSystems('water_supply', 'test_history_notes', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="Flow testing history and results"
-                  />
-                </div>
-              </div>
-            </div>
 
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="font-semibold text-slate-900 mb-3">Detection & Alarm</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="flex items-center text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={formData.fire_protection.systems.detection_alarm.present}
-                      onChange={(e) => updateSystems('detection_alarm', 'present', e.target.checked)}
-                      className="mr-2"
+                {/* Warning if water unreliable */}
+                {waterSupplyUnreliable && hasWaterBasedSuppression && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-amber-900 mb-1">Water Supply Concern</h4>
+                      <p className="text-sm text-amber-800">
+                        Site water supply is marked as unreliable, which may affect the effectiveness of water-based suppression systems in this building.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Suppression Section */}
+                <div className="bg-white rounded-lg border border-slate-200 p-6">
+                  <h4 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-orange-500" />
+                    Automatic Suppression
+                  </h4>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Systems Present
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {['Sprinklers', 'Water Mist', 'Gaseous', 'Foam'].map((system) => (
+                          <button
+                            key={system}
+                            type="button"
+                            onClick={() => toggleSuppressionSystem(selectedBuildingId, system)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              selectedBuildingData.suppression.systems_present.includes(system)
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {system}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Coverage
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {(['none', 'partial', 'full', 'unknown'] as CoverageLevel[]).map((level) => (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => updateBuildingField(selectedBuildingId, 'suppression', 'coverage', level)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                              selectedBuildingData.suppression.coverage === level
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {level}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Notes
+                        <span className="text-xs text-slate-500 ml-2 font-normal">
+                          (system details, condition, defects, comments)
+                        </span>
+                      </label>
+                      <textarea
+                        value={selectedBuildingData.suppression.notes}
+                        onChange={(e) => updateBuildingField(selectedBuildingId, 'suppression', 'notes', e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="Describe system details, design basis, condition, defects, maintenance..."
+                      />
+                    </div>
+
+                    <RatingSelector
+                      value={selectedBuildingData.suppression.rating}
+                      onChange={(v) => updateBuildingField(selectedBuildingId, 'suppression', 'rating', v)}
+                      label="Suppression System Rating (1-5)"
                     />
-                    Detection System Present
-                  </label>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Coverage Notes</label>
-                  <textarea
-                    value={formData.fire_protection.systems.detection_alarm.coverage_notes}
-                    onChange={(e) => updateSystems('detection_alarm', 'coverage_notes', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="Describe detection coverage and types (smoke, heat, flame, etc.)"
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={formData.fire_protection.systems.detection_alarm.monitoring_to_arc}
-                      onChange={(e) => updateSystems('detection_alarm', 'monitoring_to_arc', e.target.checked)}
-                      className="mr-2"
+
+                {/* Detection & Alarm Section */}
+                <div className="bg-white rounded-lg border border-slate-200 p-6">
+                  <h4 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-blue-500" />
+                    Detection & Alarm
+                  </h4>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        System Type
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedBuildingData.detection_alarm.system_type}
+                        onChange={(e) => updateBuildingField(selectedBuildingId, 'detection_alarm', 'system_type', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="e.g., Addressable, Conventional, Analogue..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Coverage Adequacy
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {(['poor', 'adequate', 'good', 'unknown'] as CoverageAdequacy[]).map((level) => (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => updateBuildingField(selectedBuildingId, 'detection_alarm', 'coverage_adequacy', level)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                              selectedBuildingData.detection_alarm.coverage_adequacy === level
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {level}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Monitoring
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {(['none', 'keyholder', 'arc', 'unknown'] as MonitoringType[]).map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => updateBuildingField(selectedBuildingId, 'detection_alarm', 'monitoring', type)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                              selectedBuildingData.detection_alarm.monitoring === type
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {type === 'arc' ? 'ARC' : type}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Notes
+                        <span className="text-xs text-slate-500 ml-2 font-normal">
+                          (coverage details, testing regime)
+                        </span>
+                      </label>
+                      <textarea
+                        value={selectedBuildingData.detection_alarm.notes}
+                        onChange={(e) => updateBuildingField(selectedBuildingId, 'detection_alarm', 'notes', e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="Describe detection coverage, zones, testing regime, maintenance..."
+                      />
+                    </div>
+
+                    <RatingSelector
+                      value={selectedBuildingData.detection_alarm.rating}
+                      onChange={(v) => updateBuildingField(selectedBuildingId, 'detection_alarm', 'rating', v)}
+                      label="Detection & Alarm Rating (1-5)"
                     />
-                    Monitored to Alarm Receiving Centre (ARC)
-                  </label>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="font-semibold text-slate-900 mb-3">Hydrants</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="flex items-center text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={formData.fire_protection.systems.hydrants.on_site}
-                      onChange={(e) => updateSystems('hydrants', 'on_site', e.target.checked)}
-                      className="mr-2"
+                {/* Operational Readiness Section */}
+                <div className="bg-white rounded-lg border border-slate-200 p-6">
+                  <h4 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    Operational Readiness
+                  </h4>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Testing & Inspection
+                      </label>
+                      <textarea
+                        value={selectedBuildingData.readiness.testing_inspection_notes}
+                        onChange={(e) => updateBuildingField(selectedBuildingId, 'readiness', 'testing_inspection_notes', e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="Describe testing and inspection adequacy, frequency, compliance..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Impairment Management
+                      </label>
+                      <textarea
+                        value={selectedBuildingData.readiness.impairment_management_notes}
+                        onChange={(e) => updateBuildingField(selectedBuildingId, 'readiness', 'impairment_management_notes', e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="Assess impairment management effectiveness, procedures, communication..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Day-to-Day Reliability
+                      </label>
+                      <textarea
+                        value={selectedBuildingData.readiness.general_notes}
+                        onChange={(e) => updateBuildingField(selectedBuildingId, 'readiness', 'general_notes', e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                        placeholder="General reliability, housekeeping interactions, operational concerns..."
+                      />
+                    </div>
+
+                    <RatingSelector
+                      value={selectedBuildingData.readiness.rating}
+                      onChange={(v) => updateBuildingField(selectedBuildingId, 'readiness', 'rating', v)}
+                      label="Operational Readiness Rating (1-5)"
                     />
-                    On-Site Hydrants Present
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Coverage Notes</label>
-                  <textarea
-                    value={formData.fire_protection.systems.hydrants.coverage_notes}
-                    onChange={(e) => updateSystems('hydrants', 'coverage_notes', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="Location, spacing, and adequacy of hydrant coverage"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Maintenance Notes</label>
-                  <textarea
-                    value={formData.fire_protection.systems.hydrants.maintenance_notes}
-                    onChange={(e) => updateSystems('hydrants', 'maintenance_notes', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="Maintenance program and condition"
-                  />
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="font-semibold text-slate-900 mb-3">Passive Protection</h4>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                <textarea
-                  value={formData.fire_protection.systems.passive_protection.notes}
-                  onChange={(e) => updateSystems('passive_protection', 'notes', e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                  placeholder="Fire walls, barriers, compartmentation, fire-rated doors, penetration sealing, intumescent coatings"
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="font-semibold text-slate-900 mb-3">Smoke Control</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="flex items-center text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={formData.fire_protection.systems.smoke_control.present}
-                      onChange={(e) => updateSystems('smoke_control', 'present', e.target.checked)}
-                      className="mr-2"
-                    />
-                    Smoke Control System Present
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                  <textarea
-                    value={formData.fire_protection.systems.smoke_control.notes}
-                    onChange={(e) => updateSystems('smoke_control', 'notes', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="Natural vents, mechanical extraction, pressurization systems"
-                  />
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">NLE Linkage</h3>
-          <p className="text-sm text-slate-600 mb-4">
-            Determine whether fire protection systems are adequate to materially reduce Normal Loss Expectancy (NLE).
-          </p>
-          <div className="space-y-4">
-            <div>
-              <label className="flex items-center text-sm font-medium text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={formData.fire_protection.credible_to_reduce_nle.credible}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    fire_protection: {
-                      ...formData.fire_protection,
-                      credible_to_reduce_nle: {
-                        ...formData.fire_protection.credible_to_reduce_nle,
-                        credible: e.target.checked,
-                      },
-                    },
-                  })}
-                  className="mr-2"
-                />
-                Credible to Reduce NLE
-              </label>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Basis</label>
-              <textarea
-                value={formData.fire_protection.credible_to_reduce_nle.basis}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  fire_protection: {
-                    ...formData.fire_protection,
-                    credible_to_reduce_nle: {
-                      ...formData.fire_protection.credible_to_reduce_nle,
-                      basis: e.target.value,
-                    },
-                  },
-                })}
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                placeholder="Explain the rationale for crediting (or not crediting) fire protection in NLE calculations"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Site Fire Protection Rating</h3>
-          <p className="text-sm text-slate-600 mb-4">
-            Overall site fire protection quality considering building-level protection and site-level systems.
-          </p>
-          <div className="flex items-center gap-4">
-            <input
-              type="range"
-              min="1"
-              max="5"
-              value={formData.fire_protection.site_rating_1_to_5}
-              onChange={(e) => setFormData({
-                ...formData,
-                fire_protection: { ...formData.fire_protection, site_rating_1_to_5: parseInt(e.target.value) }
-              })}
-              className="flex-1"
-            />
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 font-bold text-blue-900 text-xl">
-              {formData.fire_protection.site_rating_1_to_5}
-            </div>
-          </div>
-          <div className="text-xs text-slate-500 mt-2">
-            1 = Poor/Inadequate, 3 = Average, 5 = Excellent
-          </div>
-        </div>
+        )}
       </div>
-
-      <OutcomePanel
-        outcome={outcome}
-        assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
-        onNotesChange={setAssessorNotes}
-        onSave={handleSave}
-        isSaving={isSaving}
-      />
-
-      {document?.id && moduleInstance?.id && (
-        <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
-      )}
-    </div>
 
       <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
     </>

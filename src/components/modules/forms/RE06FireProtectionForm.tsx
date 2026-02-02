@@ -352,26 +352,43 @@ export default function RE06FireProtectionForm({
           <p className="text-slate-600">Active fire protection effectiveness assessment</p>
         </div>
 
-        {/* Horizontal Building Tabs (Mobile-First) */}
-        <div className="mb-6 -mx-4 md:mx-0">
-          <div className="overflow-x-auto px-4 md:px-0">
-            <div className="flex gap-2 pb-2 min-w-max md:min-w-0">
-              {constructionBuildings.map((building) => (
-                <button
-                  key={building.id}
-                  onClick={() => setSelectedBuildingId(building.id)}
-                  className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
-                    selectedBuildingId === building.id
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {building.building_name || 'Unnamed Building'}
-                </button>
-              ))}
+        {/* No Buildings Message */}
+        {constructionBuildings.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-amber-900 mb-1">No Buildings Configured</h4>
+                <p className="text-sm text-amber-800 mb-2">
+                  Please complete the RE-02 Construction module first to define your buildings before assessing fire protection.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Horizontal Building Tabs (Mobile-First) */}
+        {constructionBuildings.length > 0 && (
+          <div className="mb-6 -mx-4 md:mx-0">
+            <div className="overflow-x-auto px-4 md:px-0">
+              <div className="flex gap-2 pb-2 min-w-max md:min-w-0">
+                {constructionBuildings.map((building) => (
+                  <button
+                    key={building.id}
+                    onClick={() => setSelectedBuildingId(building.id)}
+                    className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+                      selectedBuildingId === building.id
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {building.building_name || 'Unnamed Building'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Per-Building Content */}
         {selectedBuilding && selectedBuildingData && (

@@ -1,7 +1,7 @@
 import { Save } from 'lucide-react';
 
 interface FloatingSaveBarProps {
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   isSaving: boolean;
   statusText?: string;
 }
@@ -17,7 +17,10 @@ export default function FloatingSaveBar({ onSave, isSaving, statusText }: Floati
         </div>
 
         <button
-          onClick={onSave}
+          type="button"
+          onClick={async () => {
+            if (!isSaving) await onSave();
+          }}
           disabled={isSaving}
           className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >

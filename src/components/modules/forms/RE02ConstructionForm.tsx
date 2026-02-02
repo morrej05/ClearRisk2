@@ -405,6 +405,7 @@ function hasAreaData(building: Building): boolean {
 
 export default function RE02ConstructionForm({ moduleInstance, document, onSaved }: RE02ConstructionFormProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const d = moduleInstance.data || {};
 
   const safeBuildings: Building[] = Array.isArray(d.construction?.buildings)
@@ -541,24 +542,30 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
   };
 
   const handleSave = async () => {
+    // Guard against double-clicks / concurrent saves
+    if (isSaving) return;
+
+    // Clear any previous errors
+    setSaveError(null);
+
     // Validate breakdown percentages
     for (const building of formData.buildings) {
       if (building.roof.breakdown.length > 0 && building.roof.total_percent !== 100) {
-        alert(
-          `Building "${building.building_name || 'Unnamed'}": Roof percentages must total 100% (currently ${building.roof.total_percent}%)`
-        );
+        const errorMsg = `Building "${building.building_name || 'Unnamed'}": Roof percentages must total 100% (currently ${building.roof.total_percent}%)`;
+        setSaveError(errorMsg);
+        alert(errorMsg);
         return;
       }
       if (building.walls.breakdown.length > 0 && building.walls.total_percent !== 100) {
-        alert(
-          `Building "${building.building_name || 'Unnamed'}": Wall percentages must total 100% (currently ${building.walls.total_percent}%)`
-        );
+        const errorMsg = `Building "${building.building_name || 'Unnamed'}": Wall percentages must total 100% (currently ${building.walls.total_percent}%)`;
+        setSaveError(errorMsg);
+        alert(errorMsg);
         return;
       }
       if (building.upper_floors_mezzanine.breakdown.length > 0 && building.upper_floors_mezzanine.total_percent !== 100) {
-        alert(
-          `Building "${building.building_name || 'Unnamed'}": Mezzanine percentages must total 100% (currently ${building.upper_floors_mezzanine.total_percent}%)`
-        );
+        const errorMsg = `Building "${building.building_name || 'Unnamed'}": Mezzanine percentages must total 100% (currently ${building.upper_floors_mezzanine.total_percent}%)`;
+        setSaveError(errorMsg);
+        alert(errorMsg);
         return;
       }
     }
@@ -587,7 +594,9 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       onSaved();
     } catch (error) {
       console.error('Error saving module:', error);
-      alert('Failed to save module. Please try again.');
+      const errorMsg = 'Failed to save module. Please try again.';
+      setSaveError(errorMsg);
+      alert(errorMsg);
     } finally {
       setIsSaving(false);
     }
@@ -634,6 +643,11 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     }
     updateBuilding(buildingId, updates);
   };
+
+  // Calculate totals for display
+  const totalRoofSqm = formData.buildings.reduce((sum, b) => sum + (b.roof.area_sqm ?? 0), 0);
+  const totalMezzSqm = formData.buildings.reduce((sum, b) => sum + (b.upper_floors_mezzanine.area_sqm ?? 0), 0);
+  const totalKnownSqm = totalRoofSqm + totalMezzSqm;
 
   return (
     <>
@@ -883,6 +897,24 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="bg-slate-50 border-t-2 border-slate-300">
+                <tr>
+                  <td className="px-3 py-3 text-xs font-semibold text-slate-700">
+                    Totals
+                  </td>
+                  <td className="px-3 py-3 text-xs text-slate-700">
+                    Roof: <span className="font-semibold">{Math.round(totalRoofSqm).toLocaleString()}</span> m²
+                  </td>
+                  <td className="px-3 py-3" />
+                  <td className="px-3 py-3 text-xs text-slate-700">
+                    Mezz: <span className="font-semibold">{Math.round(totalMezzSqm).toLocaleString()}</span> m²
+                  </td>
+                  <td className="px-3 py-3" />
+                  <td className="px-3 py-3 text-xs text-slate-700" colSpan={5}>
+                    Known total (roof + mezz): <span className="font-semibold">{Math.round(totalKnownSqm).toLocaleString()}</span> m²
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 

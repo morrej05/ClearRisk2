@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
+import FloatingSaveBar from './FloatingSaveBar';
 import ReRatingPanel from '../../re/ReRatingPanel';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
@@ -136,7 +137,8 @@ export default function RE10ProcessRiskForm({
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <>
+    <div className="p-6 max-w-5xl mx-auto pb-24">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-10 - Process Risk</h2>
         <p className="text-slate-600">Process hazards and high-risk materials assessment</p>
@@ -185,5 +187,8 @@ export default function RE10ProcessRiskForm({
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
       )}
     </div>
+
+      <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+    </>
   );
 }

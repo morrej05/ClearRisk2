@@ -4,6 +4,7 @@ import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanit
 import { Plus, X, Upload, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
+import FloatingSaveBar from './FloatingSaveBar';
 
 interface Document {
   id: string;
@@ -160,7 +161,8 @@ export default function RE13RecommendationsForm({
   };
 
   return (
-    <div className="space-y-6 px-6 py-6 max-w-5xl mx-auto">
+    <>
+    <div className="space-y-6 px-6 py-6 max-w-5xl mx-auto pb-24">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex gap-3">
           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -331,19 +333,12 @@ export default function RE13RecommendationsForm({
         onNotesChange={setAssessorNotes}
       />
 
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </button>
-      </div>
-
       {document?.id && moduleInstance?.id && (
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
       )}
     </div>
+
+      <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+    </>
   );
 }

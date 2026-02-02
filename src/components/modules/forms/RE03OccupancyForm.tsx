@@ -4,6 +4,7 @@ import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanit
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import ReRatingPanel from '../../re/ReRatingPanel';
+import FloatingSaveBar from './FloatingSaveBar';
 import { getHrgConfig, HRG_MASTER_MAP } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
@@ -299,11 +300,12 @@ export default function RE03OccupancyForm({
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-3 - Occupancy</h2>
-        <p className="text-slate-600">Occupancy classification and process control assessment</p>
-      </div>
+    <>
+      <div className="p-6 max-w-5xl mx-auto pb-24">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-3 - Occupancy</h2>
+          <p className="text-slate-600">Occupancy classification and process control assessment</p>
+        </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Occupancy / Process Overview</h3>
@@ -519,22 +521,25 @@ export default function RE03OccupancyForm({
         </div>
       </div>
 
-      <OutcomePanel
-        outcome={outcome}
-        assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
-        onNotesChange={setAssessorNotes}
-        onSave={handleSave}
-        isSaving={isSaving}
-      />
-
-      {document?.id && moduleInstance?.id && (
-        <ModuleActions
-          documentId={document.id}
-          moduleInstanceId={moduleInstance.id}
-          buttonLabel="Add Recommendation"
+        <OutcomePanel
+          outcome={outcome}
+          assessorNotes={assessorNotes}
+          onOutcomeChange={setOutcome}
+          onNotesChange={setAssessorNotes}
+          onSave={handleSave}
+          isSaving={isSaving}
         />
-      )}
-    </div>
+
+        {document?.id && moduleInstance?.id && (
+          <ModuleActions
+            documentId={document.id}
+            moduleInstanceId={moduleInstance.id}
+            buttonLabel="Add Recommendation"
+          />
+        )}
+      </div>
+
+      <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+    </>
   );
 }

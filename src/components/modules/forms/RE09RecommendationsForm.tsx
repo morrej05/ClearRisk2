@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import FloatingSaveBar from './FloatingSaveBar';
 import { Plus, X, Upload, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
 
 interface Document {
@@ -260,7 +261,8 @@ export default function RE09RecommendationsForm({
   const manualRecCount = recommendations.filter((r) => !r.is_auto_generated).length;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <>
+    <div className="p-6 max-w-7xl mx-auto pb-24">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-09 - Recommendations</h2>
         <p className="text-slate-600">Actions list arising from the risk engineering assessment</p>
@@ -508,15 +510,9 @@ export default function RE09RecommendationsForm({
         </button>
       </div>
 
-      <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-        >
-          {isSaving ? 'Saving...' : 'Save Recommendations'}
-        </button>
-      </div>
     </div>
+
+      <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+    </>
   );
 }

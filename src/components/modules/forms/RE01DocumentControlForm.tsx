@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { HRG_MASTER_MAP, humanizeIndustryKey } from '../../../lib/re/reference/hrgMasterMap';
 import { ensureRatingsObject } from '../../../lib/re/scoring/riskEngineeringHelpers';
+import FloatingSaveBar from './FloatingSaveBar';
 import { Plus, X } from 'lucide-react';
 
 interface Document {
@@ -193,11 +194,12 @@ export default function RE01DocumentControlForm({
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-1 - Document Control</h2>
-        <p className="text-slate-600">Survey metadata and document control information</p>
-      </div>
+    <>
+      <div className="p-6 max-w-5xl mx-auto pb-24">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-1 - Document Control</h2>
+          <p className="text-slate-600">Survey metadata and document control information</p>
+        </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
         <div>
@@ -495,16 +497,9 @@ export default function RE01DocumentControlForm({
           </div>
         </div>
       </div>
-
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </button>
       </div>
-    </div>
+
+      <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+    </>
   );
 }

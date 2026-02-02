@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
+import FloatingSaveBar from './FloatingSaveBar';
 import { calculateBuildingCombustibility } from '../../../utils/combustibilityCalculations';
 import { Plus, Trash2 } from 'lucide-react';
 
@@ -282,7 +283,8 @@ export default function RE02ConstructionForm({
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <>
+    <div className="p-6 max-w-7xl mx-auto pb-24">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-02 - Construction</h2>
         <p className="text-slate-600">Structured construction assessment with combustibility analysis</p>
@@ -645,5 +647,8 @@ export default function RE02ConstructionForm({
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
       )}
     </div>
+
+      <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+    </>
   );
 }

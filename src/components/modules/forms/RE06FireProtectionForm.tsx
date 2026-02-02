@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
+import FloatingSaveBar from './FloatingSaveBar';
 import ReRatingPanel from '../../re/ReRatingPanel';
 import { HRG_MASTER_MAP } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
@@ -261,7 +262,8 @@ async function loadConstructionBuildings() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <>
+    <div className="p-6 max-w-7xl mx-auto pb-24">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-06 - Fire Protection</h2>
         <p className="text-slate-600">Active and passive fire protection systems aligned to construction</p>
@@ -673,5 +675,8 @@ async function loadConstructionBuildings() {
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
       )}
     </div>
+
+      <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+    </>
   );
 }

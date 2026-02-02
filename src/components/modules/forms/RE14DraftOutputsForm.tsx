@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { AlertCircle, TrendingUp, FileText, Image as ImageIcon, Save, Sparkles, Copy } from 'lucide-react';
 import ModuleActions from '../ModuleActions';
+import FloatingSaveBar from './FloatingSaveBar';
 import { HRG_CANONICAL_KEYS, getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, calculateScore } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
@@ -245,7 +246,8 @@ export default function RE14DraftOutputsForm({
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <>
+    <div className="p-6 max-w-5xl mx-auto space-y-6 pb-24">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex gap-3">
           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -501,5 +503,8 @@ export default function RE14DraftOutputsForm({
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
       )}
     </div>
+
+      <FloatingSaveBar onSave={handleSaveExecutiveSummary} isSaving={saving} />
+    </>
   );
 }

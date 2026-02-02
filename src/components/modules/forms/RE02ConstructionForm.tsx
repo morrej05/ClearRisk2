@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { Plus, Trash2, Edit2, X, Info } from 'lucide-react';
@@ -478,14 +477,21 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
     setIsSaving(true);
     try {
-      const sanitized = sanitizeModuleInstancePayload({
-        data: { construction: formData },
-      });
+      // Remove calculated fields before saving
+      const buildingsWithoutCalculated = formData.buildings.map(({ calculated, ...building }) => building);
+
+      // Build payload directly - save as jsonb without sanitization
+      const payload = {
+        construction: {
+          ...formData,
+          buildings: buildingsWithoutCalculated
+        }
+      };
 
       const { error } = await supabase
         .from('module_instances')
         .update({
-          data: sanitized.data,
+          data: payload,
         })
         .eq('id', moduleInstance.id);
 

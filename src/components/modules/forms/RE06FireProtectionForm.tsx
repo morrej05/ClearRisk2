@@ -33,6 +33,14 @@ interface SprinklersData {
   required_pct?: number | null;
   notes: string;
   rating: 1 | 2 | 3 | 4 | 5;
+  system_standard?: string;
+  system_type?: string;
+  hazard_class?: string;
+  last_service_date?: string | null;
+  has_impairments?: string;
+  impairments_notes?: string;
+  valve_supervision?: string;
+  heating_adequate?: string;
 }
 
 interface WaterMistData {
@@ -427,7 +435,15 @@ export default function RE06FireProtectionForm({
                           provided_pct: null,
                           required_pct: null,
                           notes: '',
-                          rating: 3
+                          rating: 3,
+                          system_standard: '',
+                          system_type: '',
+                          hazard_class: '',
+                          last_service_date: null,
+                          has_impairments: '',
+                          impairments_notes: '',
+                          valve_supervision: '',
+                          heating_adequate: ''
                         });
                       }
                     }}
@@ -518,6 +534,184 @@ export default function RE06FireProtectionForm({
                       onChange={(v) => updateBuildingField(selectedBuildingId, ['suppression', 'sprinklers', 'rating'], v)}
                       label="Sprinkler System Rating (1-5)"
                     />
+
+                    {/* Sprinkler System Details */}
+                    <div className="border-t border-slate-200 pt-6 mt-6">
+                      <h5 className="text-sm font-semibold text-slate-900 mb-4">Sprinkler System Details</h5>
+                      <p className="text-xs text-slate-600 mb-4">
+                        These details support professional judgment of coverage, reliability, and rating effectiveness.
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {/* System Standard */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            System Standard <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={selectedBuildingData.suppression.sprinklers.system_standard || ''}
+                            onChange={(e) => updateBuildingField(
+                              selectedBuildingId,
+                              ['suppression', 'sprinklers', 'system_standard'],
+                              e.target.value
+                            )}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                          >
+                            <option value="">Select...</option>
+                            <option value="EN12845">EN 12845</option>
+                            <option value="NFPA13">NFPA 13</option>
+                            <option value="FM">FM</option>
+                            <option value="LPC">LPC</option>
+                            <option value="Other">Other</option>
+                            <option value="Unknown">Unknown</option>
+                          </select>
+                        </div>
+
+                        {/* System Type */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            System Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={selectedBuildingData.suppression.sprinklers.system_type || ''}
+                            onChange={(e) => updateBuildingField(
+                              selectedBuildingId,
+                              ['suppression', 'sprinklers', 'system_type'],
+                              e.target.value
+                            )}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                          >
+                            <option value="">Select...</option>
+                            <option value="Wet">Wet</option>
+                            <option value="Dry">Dry</option>
+                            <option value="Pre-action">Pre-action</option>
+                            <option value="Deluge">Deluge</option>
+                            <option value="Unknown">Unknown</option>
+                          </select>
+                        </div>
+
+                        {/* Hazard Class */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Hazard Class (as designed) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedBuildingData.suppression.sprinklers.hazard_class || ''}
+                            onChange={(e) => updateBuildingField(
+                              selectedBuildingId,
+                              ['suppression', 'sprinklers', 'hazard_class'],
+                              e.target.value
+                            )}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                            placeholder="e.g., OH2, LH, HHP"
+                          />
+                        </div>
+
+                        {/* Last Service Date */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Last Full Service/Inspection <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={selectedBuildingData.suppression.sprinklers.last_service_date || ''}
+                            onChange={(e) => updateBuildingField(
+                              selectedBuildingId,
+                              ['suppression', 'sprinklers', 'last_service_date'],
+                              e.target.value || null
+                            )}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                          />
+                        </div>
+
+                        {/* Known Impairments */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Known Impairments or Defects <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={selectedBuildingData.suppression.sprinklers.has_impairments || ''}
+                            onChange={(e) => updateBuildingField(
+                              selectedBuildingId,
+                              ['suppression', 'sprinklers', 'has_impairments'],
+                              e.target.value
+                            )}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                          >
+                            <option value="">Select...</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="Unknown">Unknown</option>
+                          </select>
+                        </div>
+
+                        {/* Valve Supervision */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Valve Supervision
+                          </label>
+                          <select
+                            value={selectedBuildingData.suppression.sprinklers.valve_supervision || ''}
+                            onChange={(e) => updateBuildingField(
+                              selectedBuildingId,
+                              ['suppression', 'sprinklers', 'valve_supervision'],
+                              e.target.value
+                            )}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                          >
+                            <option value="">Select...</option>
+                            <option value="Yes">Yes</option>
+                            <option value="Partial">Partial</option>
+                            <option value="No">No</option>
+                            <option value="Unknown">Unknown</option>
+                          </select>
+                        </div>
+
+                        {/* Heating Adequate (only for Wet systems) */}
+                        {selectedBuildingData.suppression.sprinklers.system_type === 'Wet' && (
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Heating Adequate (if wet)
+                            </label>
+                            <select
+                              value={selectedBuildingData.suppression.sprinklers.heating_adequate || ''}
+                              onChange={(e) => updateBuildingField(
+                                selectedBuildingId,
+                                ['suppression', 'sprinklers', 'heating_adequate'],
+                                e.target.value
+                              )}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                              <option value="Unknown">Unknown</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Impairments Notes (conditional) */}
+                      {selectedBuildingData.suppression.sprinklers.has_impairments === 'Yes' && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Impairments/Defects Details
+                          </label>
+                          <textarea
+                            value={selectedBuildingData.suppression.sprinklers.impairments_notes || ''}
+                            onChange={(e) => updateBuildingField(
+                              selectedBuildingId,
+                              ['suppression', 'sprinklers', 'impairments_notes'],
+                              e.target.value
+                            )}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                            placeholder="Describe known impairments, defects, or concerns..."
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

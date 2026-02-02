@@ -651,7 +651,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
   return (
     <>
-      <div className="p-6 max-w-7xl mx-auto pb-24">
+      <div className="p-6 max-w-5xl mx-auto pb-24">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-02 - Construction</h2>
           <p className="text-slate-600">Building construction assessment with combustibility analysis</p>

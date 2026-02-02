@@ -325,7 +325,7 @@ export default function RE11DraftOutputsForm({
 
   return (
     <>
-    <div className="p-6 max-w-7xl mx-auto pb-24">
+    <div className="p-6 max-w-5xl mx-auto pb-24">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-11 - Draft Outputs</h2>
         <p className="text-slate-600">

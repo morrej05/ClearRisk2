@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, Flame, Bell, Shield, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import FloatingSaveBar from './FloatingSaveBar';
+import SectionGrade from '../../SectionGrade';
+import { updateSectionGrade } from '../../../utils/sectionGrades';
 
 interface Document {
   id: string;
@@ -152,6 +154,7 @@ export default function RE06FireProtectionForm({
   const [constructionBuildings, setConstructionBuildings] = useState<ConstructionBuilding[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [siteExpanded, setSiteExpanded] = useState(true);
+  const [sectionGrade, setSectionGrade] = useState<number>(3);
 
   const d = moduleInstance.data || {};
   const safeFireProtection: FireProtectionModule = {
@@ -209,6 +212,42 @@ export default function RE06FireProtectionForm({
 
     loadConstructionBuildings();
   }, [moduleInstance.document_id]);
+
+  // Load section grade from document
+  useEffect(() => {
+    async function loadSectionGrade() {
+      try {
+        const { data: doc, error } = await supabase
+          .from('documents')
+          .select('section_grades')
+          .eq('id', document.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[RE06] Error loading section grade:', error);
+          return;
+        }
+
+        const grade = doc?.section_grades?.fire_protection;
+        if (grade !== undefined && grade > 0) {
+          setSectionGrade(grade);
+        }
+      } catch (error) {
+        console.error('[RE06] Exception loading section grade:', error);
+      }
+    }
+
+    loadSectionGrade();
+  }, [document.id]);
+
+  const handleSectionGradeChange = async (value: number) => {
+    setSectionGrade(value);
+    // Persist to canonical documents.section_grades
+    const { error } = await updateSectionGrade(document.id, 'fire_protection', value);
+    if (error) {
+      console.error('[RE06] Failed to update section grade:', error);
+    }
+  };
 
   const handleSave = async () => {
     if (isSaving) return;
@@ -1199,6 +1238,16 @@ export default function RE06FireProtectionForm({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Section Grade */}
+      <div className="max-w-5xl mx-auto px-6 pb-6">
+        <SectionGrade
+          sectionKey="fire_protection"
+          sectionTitle="Fire Protection"
+          value={sectionGrade}
+          onChange={handleSectionGradeChange}
+        />
       </div>
 
       <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />

@@ -12,6 +12,7 @@ import ExecutiveSummaryPanel from '../../components/documents/ExecutiveSummaryPa
 import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
 import { JurisdictionSelector } from '../../components/JurisdictionSelector';
 import DocumentStatusBadge from '../../components/documents/DocumentStatusBadge';
+import OverallGradeWidget from '../../components/re/OverallGradeWidget';
 
 interface Document {
   id: string;
@@ -727,6 +728,12 @@ return (
                 initialMode={(document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'ai'}
                 onUpdate={fetchDocument}
               />
+            )}
+
+            {document.document_type === 'RE' && (
+              <div className="mb-6">
+                <OverallGradeWidget documentId={document.id} />
+              </div>
             )}
 
             {selectedModule ? (

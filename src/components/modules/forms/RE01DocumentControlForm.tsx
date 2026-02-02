@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { HRG_MASTER_MAP, humanizeIndustryKey } from '../../../lib/re/reference/hrgMasterMap';
 import { ensureRatingsObject } from '../../../lib/re/scoring/riskEngineeringHelpers';
+import { Plus, X } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -23,6 +24,20 @@ interface RE01DocumentControlFormProps {
   onSaved: () => void;
 }
 
+interface SiteContact {
+  name: string;
+  role: string;
+  company: string;
+  email: string;
+  phone: string;
+}
+
+interface Attendee {
+  name: string;
+  role: string;
+  company: string;
+}
+
 export default function RE01DocumentControlForm({
   moduleInstance,
   document,
@@ -33,15 +48,21 @@ export default function RE01DocumentControlForm({
 
   const [formData, setFormData] = useState({
     assessor: d.assessor || { name: '', role: '', company: '' },
-    attendance: d.attendance || { met_onsite_with: '', present_during_survey: '' },
     dates: d.dates || { assessment_date: null, review_date: null },
     client_site: d.client_site || { client: '', site: '', address: '', country: '' },
-    scope: d.scope || { scope_description: '', limitations_assumptions: '' },
+    scope: d.scope || {
+      scope_type: 'full_loss_prevention',
+      scope_other_text: '',
+      limitations_assumptions: ''
+    },
+    site_contacts: d.site_contacts || [] as SiteContact[],
+    present_during_survey: d.present_during_survey || [] as Attendee[],
     reference_documents_reviewed: d.reference_documents_reviewed || [],
   });
 
   const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
   const [industryKey, setIndustryKey] = useState<string | null>(null);
+  const [riskEngModuleNotFound, setRiskEngModuleNotFound] = useState(false);
 
   useEffect(() => {
     async function loadRiskEngModule() {
@@ -51,16 +72,22 @@ export default function RE01DocumentControlForm({
           .select('id, data')
           .eq('document_id', moduleInstance.document_id)
           .eq('module_key', 'RISK_ENGINEERING')
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
 
         if (instances) {
           setRiskEngInstanceId(instances.id);
           setIndustryKey(instances.data?.industry_key || null);
+          setRiskEngModuleNotFound(false);
+        } else {
+          setRiskEngInstanceId(null);
+          setIndustryKey(null);
+          setRiskEngModuleNotFound(true);
         }
       } catch (err) {
         console.error('Error loading RISK_ENGINEERING module:', err);
+        setRiskEngModuleNotFound(true);
       }
     }
 
@@ -68,14 +95,16 @@ export default function RE01DocumentControlForm({
   }, [moduleInstance.document_id]);
 
   const handleIndustryChange = async (newIndustryKey: string) => {
-    if (!riskEngInstanceId) return;
+    if (!riskEngInstanceId) {
+      return;
+    }
 
     try {
       const { data: current, error: fetchError } = await supabase
         .from('module_instances')
         .select('data')
         .eq('id', riskEngInstanceId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
 
@@ -95,19 +124,61 @@ export default function RE01DocumentControlForm({
     }
   };
 
+  const addSiteContact = () => {
+    setFormData(prev => ({
+      ...prev,
+      site_contacts: [...prev.site_contacts, { name: '', role: '', company: '', email: '', phone: '' }]
+    }));
+  };
+
+  const removeSiteContact = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      site_contacts: prev.site_contacts.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateSiteContact = (index: number, field: keyof SiteContact, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      site_contacts: prev.site_contacts.map((contact, i) =>
+        i === index ? { ...contact, [field]: value } : contact
+      )
+    }));
+  };
+
+  const addAttendee = () => {
+    setFormData(prev => ({
+      ...prev,
+      present_during_survey: [...prev.present_during_survey, { name: '', role: '', company: '' }]
+    }));
+  };
+
+  const removeAttendee = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      present_during_survey: prev.present_during_survey.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateAttendee = (index: number, field: keyof Attendee, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      present_during_survey: prev.present_during_survey.map((attendee, i) =>
+        i === index ? { ...attendee, [field]: value } : attendee
+      )
+    }));
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const completedAt = outcome ? new Date().toISOString() : null;
       const sanitized = sanitizeModuleInstancePayload({ data: formData });
 
       const { error } = await supabase
         .from('module_instances')
         .update({
           data: sanitized.data,
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          completed_at: completedAt,
         })
         .eq('id', moduleInstance.id);
 
@@ -138,7 +209,8 @@ export default function RE01DocumentControlForm({
             <select
               value={industryKey || ''}
               onChange={(e) => handleIndustryChange(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              disabled={!riskEngInstanceId}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-50 disabled:text-slate-500"
             >
               <option value="">Select Industry...</option>
               {Object.keys(HRG_MASTER_MAP.industries).map((key) => (
@@ -147,6 +219,11 @@ export default function RE01DocumentControlForm({
                 </option>
               ))}
             </select>
+            {riskEngModuleNotFound && (
+              <p className="text-sm text-amber-600 mt-2">
+                Risk Engineering base module not found
+              </p>
+            )}
           </div>
         </div>
 
@@ -158,7 +235,7 @@ export default function RE01DocumentControlForm({
               <input
                 type="text"
                 value={formData.assessor.name}
-                onChange={(e) => setFormData({ ...formData, assessor: { ...formData.assessor, name: e.target.value } })}
+                onChange={(e) => setFormData(prev => ({ ...prev, assessor: { ...prev.assessor, name: e.target.value } }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
               />
             </div>
@@ -167,7 +244,7 @@ export default function RE01DocumentControlForm({
               <input
                 type="text"
                 value={formData.assessor.role}
-                onChange={(e) => setFormData({ ...formData, assessor: { ...formData.assessor, role: e.target.value } })}
+                onChange={(e) => setFormData(prev => ({ ...prev, assessor: { ...prev.assessor, role: e.target.value } }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
               />
             </div>
@@ -176,7 +253,7 @@ export default function RE01DocumentControlForm({
               <input
                 type="text"
                 value={formData.assessor.company}
-                onChange={(e) => setFormData({ ...formData, assessor: { ...formData.assessor, company: e.target.value } })}
+                onChange={(e) => setFormData(prev => ({ ...prev, assessor: { ...prev.assessor, company: e.target.value } }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
               />
             </div>
@@ -191,7 +268,7 @@ export default function RE01DocumentControlForm({
               <input
                 type="text"
                 value={formData.client_site.client}
-                onChange={(e) => setFormData({ ...formData, client_site: { ...formData.client_site, client: e.target.value } })}
+                onChange={(e) => setFormData(prev => ({ ...prev, client_site: { ...prev.client_site, client: e.target.value } }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
               />
             </div>
@@ -200,7 +277,7 @@ export default function RE01DocumentControlForm({
               <input
                 type="text"
                 value={formData.client_site.site}
-                onChange={(e) => setFormData({ ...formData, client_site: { ...formData.client_site, site: e.target.value } })}
+                onChange={(e) => setFormData(prev => ({ ...prev, client_site: { ...prev.client_site, site: e.target.value } }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
               />
             </div>
@@ -208,7 +285,7 @@ export default function RE01DocumentControlForm({
               <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
               <textarea
                 value={formData.client_site.address}
-                onChange={(e) => setFormData({ ...formData, client_site: { ...formData.client_site, address: e.target.value } })}
+                onChange={(e) => setFormData(prev => ({ ...prev, client_site: { ...prev.client_site, address: e.target.value } }))}
                 rows={2}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
               />
@@ -217,42 +294,217 @@ export default function RE01DocumentControlForm({
         </div>
 
         <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Site Contacts</h3>
+            <button
+              type="button"
+              onClick={addSiteContact}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4" />
+              Add Contact
+            </button>
+          </div>
+
+          {formData.site_contacts.length === 0 ? (
+            <div className="text-center py-6 bg-slate-50 border border-slate-200 rounded-md text-sm text-slate-500">
+              No site contacts added
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {formData.site_contacts.map((contact, index) => (
+                <div key={index} className="p-4 border border-slate-200 rounded-md bg-slate-50">
+                  <div className="flex items-start justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-slate-900">Contact {index + 1}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removeSiteContact(index)}
+                      className="text-red-600 hover:text-red-700 p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={contact.name}
+                        onChange={(e) => updateSiteContact(index, 'name', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Role</label>
+                      <input
+                        type="text"
+                        value={contact.role}
+                        onChange={(e) => updateSiteContact(index, 'role', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Company</label>
+                      <input
+                        type="text"
+                        value={contact.company}
+                        onChange={(e) => updateSiteContact(index, 'company', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={contact.email}
+                        onChange={(e) => updateSiteContact(index, 'email', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Phone</label>
+                      <input
+                        type="tel"
+                        value={contact.phone}
+                        onChange={(e) => updateSiteContact(index, 'phone', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Present During Survey</h3>
+            <button
+              type="button"
+              onClick={addAttendee}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4" />
+              Add Attendee
+            </button>
+          </div>
+
+          {formData.present_during_survey.length === 0 ? (
+            <div className="text-center py-6 bg-slate-50 border border-slate-200 rounded-md text-sm text-slate-500">
+              No attendees added
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {formData.present_during_survey.map((attendee, index) => (
+                <div key={index} className="p-4 border border-slate-200 rounded-md bg-slate-50">
+                  <div className="flex items-start justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-slate-900">Attendee {index + 1}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removeAttendee(index)}
+                      className="text-red-600 hover:text-red-700 p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={attendee.name}
+                        onChange={(e) => updateAttendee(index, 'name', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Role</label>
+                      <input
+                        type="text"
+                        value={attendee.role}
+                        onChange={(e) => updateAttendee(index, 'role', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Company</label>
+                      <input
+                        type="text"
+                        value={attendee.company}
+                        onChange={(e) => updateAttendee(index, 'company', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Scope</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Scope Description</label>
-              <textarea
-                value={formData.scope.scope_description}
-                onChange={(e) => setFormData({ ...formData, scope: { ...formData.scope, scope_description: e.target.value } })}
-                rows={3}
+              <label className="block text-sm font-medium text-slate-700 mb-1">Survey Type</label>
+              <select
+                value={formData.scope.scope_type}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  scope: { ...prev.scope, scope_type: e.target.value }
+                }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-              />
+              >
+                <option value="full_loss_prevention">Full Loss Prevention Survey</option>
+                <option value="interim_loss_prevention">Interim Loss Prevention Survey</option>
+                <option value="desktop">Desktop Survey</option>
+                <option value="other">Other</option>
+              </select>
             </div>
+
+            {formData.scope.scope_type === 'other' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Describe Survey Type</label>
+                <input
+                  type="text"
+                  value={formData.scope.scope_other_text}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    scope: { ...prev.scope, scope_other_text: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                  placeholder="Specify survey type..."
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Limitations & Assumptions</label>
               <textarea
                 value={formData.scope.limitations_assumptions}
-                onChange={(e) => setFormData({ ...formData, scope: { ...formData.scope, limitations_assumptions: e.target.value } })}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  scope: { ...prev.scope, limitations_assumptions: e.target.value }
+                }))}
                 rows={3}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                placeholder="Document any limitations or assumptions for this survey..."
               />
             </div>
           </div>
         </div>
       </div>
 
-      <OutcomePanel
-        outcome={outcome}
-        assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
-        onNotesChange={setAssessorNotes}
-        onSave={handleSave}
-        isSaving={isSaving}
-      />
-
-      {document?.id && moduleInstance?.id && (
-        <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
-      )}
+      <div className="flex justify-end gap-3 pt-4 border-t">
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {isSaving ? 'Saving...' : 'Save'}
+        </button>
+      </div>
     </div>
   );
 }

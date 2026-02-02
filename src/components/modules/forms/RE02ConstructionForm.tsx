@@ -394,6 +394,12 @@ const claddingArea = building.combustible_cladding.present ? wallProxyArea * 0.2
     combustible_percent,
   };
 }
+function hasAreaData(building: Building): boolean {
+  return (
+    (building.roof?.area_sqm ?? 0) > 0 ||
+    (building.upper_floors_mezzanine?.area_sqm ?? 0) > 0
+  );
+}
 
 export default function RE02ConstructionForm({ moduleInstance, document, onSaved }: RE02ConstructionFormProps) {
   const [isSaving, setIsSaving] = useState(false);

@@ -23,7 +23,7 @@ interface RE02ConstructionFormProps {
   onSaved: () => void;
 }
 
-interface WallBreakdown {
+interface MaterialBreakdown {
   material: string;
   percent: number;
 }
@@ -38,14 +38,19 @@ interface Building {
   id: string;
   building_name: string;
   roof: {
-    material: string;
     area_sqm: number | null;
-  };
-  walls: {
-    breakdown: WallBreakdown[];
+    breakdown: MaterialBreakdown[];
     total_percent: number;
   };
-  upper_floors_mezz_sqm: number | null;
+  walls: {
+    breakdown: MaterialBreakdown[];
+    total_percent: number;
+  };
+  upper_floors_mezzanine: {
+    area_sqm: number | null;
+    breakdown: MaterialBreakdown[];
+    total_percent: number;
+  };
   geometry: {
     floors: number | null;
     basements: number | null;
@@ -56,45 +61,47 @@ interface Building {
     details: string;
   };
   compartmentation: 'low' | 'medium' | 'high' | 'unknown';
-  frame: {
-    type: string;
-    protection: 'protected' | 'unprotected' | 'unknown';
-  };
+  frame_type: 'steel' | 'protected_steel' | 'timber' | 'reinforced_concrete' | 'masonry' | 'other';
   notes: string;
   calculated?: CalculatedMetrics;
 }
 
-const ROOF_MATERIALS = [
+const CONSTRUCTION_MATERIALS = [
   'Heavy Non-Combustible',
   'Light Non-Combustible',
   'Foam Plastic (Approved)',
   'Foam Plastic (Unapproved)',
   'Combustible (Other)',
+  'Unknown',
 ];
 
-const WALL_MATERIALS = [
-  'Heavy Non-Combustible',
-  'Light Non-Combustible',
-  'Foam Plastic (Approved)',
-  'Foam Plastic (Unapproved)',
-  'Combustible (Other)',
+const FRAME_TYPES = [
+  { value: 'steel', label: 'Steel' },
+  { value: 'protected_steel', label: 'Protected Steel' },
+  { value: 'timber', label: 'Timber' },
+  { value: 'reinforced_concrete', label: 'Reinforced Concrete' },
+  { value: 'masonry', label: 'Masonry' },
+  { value: 'other', label: 'Other' },
 ];
-
-const FRAME_TYPES = ['Steel', 'Timber', 'Reinforced Concrete', 'Masonry', 'Other'];
 
 function createEmptyBuilding(): Building {
   return {
     id: crypto.randomUUID(),
     building_name: '',
     roof: {
-      material: 'Heavy Non-Combustible',
       area_sqm: null,
+      breakdown: [],
+      total_percent: 0,
     },
     walls: {
       breakdown: [],
       total_percent: 0,
     },
-    upper_floors_mezz_sqm: null,
+    upper_floors_mezzanine: {
+      area_sqm: null,
+      breakdown: [],
+      total_percent: 0,
+    },
     geometry: {
       floors: null,
       basements: null,
@@ -105,10 +112,7 @@ function createEmptyBuilding(): Building {
       details: '',
     },
     compartmentation: 'unknown',
-    frame: {
-      type: 'Steel',
-      protection: 'unknown',
-    },
+    frame_type: 'steel',
     notes: '',
   };
 }
@@ -136,16 +140,18 @@ function calculateConstructionMetrics(building: Building): CalculatedMetrics {
   let combustiblePoints = 0; // Track combustible elements
   let totalPoints = 0; // Track total elements for percentage
 
-  // Roof material analysis
-  const roofFactor =
-    building.roof.material.includes('Combustible') ? 2 :
-    building.roof.material.includes('Unapproved') ? 2 :
-    building.roof.material.includes('Approved') ? 1 : 0;
+  // Roof material analysis - weighted by percentage
+  if (building.roof.breakdown.length > 0 && building.roof.total_percent > 0) {
+    for (const roofMat of building.roof.breakdown) {
+      const roofFactor =
+        roofMat.material.includes('Combustible') ? 2 :
+        roofMat.material.includes('Unapproved') ? 2 :
+        roofMat.material.includes('Approved') ? 1 : 0;
 
-  if (roofFactor > 0) {
-    const roofPenalty = roofFactor * (building.roof.area_sqm && building.roof.area_sqm > 0 ? 12 : 8);
-    rawScore -= roofPenalty;
-    combustiblePoints += roofFactor * 2;
+      const roofPenalty = roofFactor * (roofMat.percent / 100) * (building.roof.area_sqm && building.roof.area_sqm > 0 ? 12 : 8);
+      rawScore -= roofPenalty;
+      combustiblePoints += roofFactor * (roofMat.percent / 100) * 2;
+    }
   }
   totalPoints += 2;
 
@@ -174,17 +180,15 @@ function calculateConstructionMetrics(building: Building): CalculatedMetrics {
   totalPoints += 1;
 
   // Frame type and protection
-  if (building.frame.type === 'Timber') {
+  if (building.frame_type === 'timber') {
     rawScore -= 15;
     combustiblePoints += 2;
-  } else if (building.frame.type === 'Steel') {
-    if (building.frame.protection === 'unprotected') {
-      rawScore -= 8;
-      combustiblePoints += 0.5;
-    } else if (building.frame.protection === 'protected') {
-      rawScore += 5; // Bonus for protected steel
-    }
-  } else if (building.frame.type === 'Reinforced Concrete' || building.frame.type === 'Masonry') {
+  } else if (building.frame_type === 'steel') {
+    rawScore -= 8;
+    combustiblePoints += 0.5;
+  } else if (building.frame_type === 'protected_steel') {
+    rawScore += 5; // Bonus for protected steel
+  } else if (building.frame_type === 'reinforced_concrete' || building.frame_type === 'masonry') {
     rawScore += 5; // Bonus for non-combustible frame
   }
   totalPoints += 2;
@@ -244,17 +248,85 @@ export default function RE02ConstructionForm({
           ? { ...createEmptyBuilding().combustible_cladding, ...b.cladding }
           : createEmptyBuilding().combustible_cladding;
 
+        // Migrate roof: old {material, area_sqm} => new {area_sqm, breakdown[], total_percent}
+        let roof;
+        if (b.roof?.breakdown && Array.isArray(b.roof.breakdown)) {
+          // Already new format
+          roof = {
+            area_sqm: b.roof.area_sqm ?? null,
+            breakdown: b.roof.breakdown,
+            total_percent: b.roof.total_percent || 0,
+          };
+        } else if (b.roof?.material) {
+          // Old format - migrate
+          roof = {
+            area_sqm: b.roof.area_sqm ?? null,
+            breakdown: [{ material: b.roof.material, percent: 100 }],
+            total_percent: 100,
+          };
+        } else {
+          roof = createEmptyBuilding().roof;
+        }
+
+        // Migrate walls
+        const walls = {
+          breakdown: Array.isArray(b.walls?.breakdown) ? b.walls.breakdown : [],
+          total_percent: b.walls?.total_percent || 0,
+        };
+
+        // Migrate upper_floors_mezzanine: old upper_floors_mezz_sqm => new {area_sqm, breakdown[], total_percent}
+        let upper_floors_mezzanine;
+        if (b.upper_floors_mezzanine?.breakdown && Array.isArray(b.upper_floors_mezzanine.breakdown)) {
+          // Already new format
+          upper_floors_mezzanine = {
+            area_sqm: b.upper_floors_mezzanine.area_sqm ?? null,
+            breakdown: b.upper_floors_mezzanine.breakdown,
+            total_percent: b.upper_floors_mezzanine.total_percent || 0,
+          };
+        } else if (typeof b.upper_floors_mezz_sqm === 'number') {
+          // Old format - migrate
+          upper_floors_mezzanine = {
+            area_sqm: b.upper_floors_mezz_sqm,
+            breakdown: [{ material: 'Unknown', percent: 100 }],
+            total_percent: 100,
+          };
+        } else {
+          upper_floors_mezzanine = createEmptyBuilding().upper_floors_mezzanine;
+        }
+
+        // Migrate frame: old {type, protection} => new frame_type
+        let frame_type: Building['frame_type'] = 'steel';
+        if (typeof b.frame_type === 'string') {
+          // Already new format
+          frame_type = b.frame_type;
+        } else if (b.frame?.type) {
+          // Old format - migrate
+          const oldType = b.frame.type.toLowerCase();
+          const oldProtection = b.frame.protection;
+
+          if (oldType.includes('steel')) {
+            frame_type = oldProtection === 'protected' ? 'protected_steel' : 'steel';
+          } else if (oldType.includes('timber')) {
+            frame_type = 'timber';
+          } else if (oldType.includes('concrete')) {
+            frame_type = 'reinforced_concrete';
+          } else if (oldType.includes('masonry')) {
+            frame_type = 'masonry';
+          } else {
+            frame_type = 'other';
+          }
+        }
+
         return {
           ...createEmptyBuilding(),
           ...b,
-          roof: { ...createEmptyBuilding().roof, ...(b.roof || {}) },
-          walls: {
-            breakdown: Array.isArray(b.walls?.breakdown) ? b.walls.breakdown : [],
-            total_percent: b.walls?.total_percent || 0,
-          },
+          roof,
+          walls,
+          upper_floors_mezzanine,
           geometry: { ...createEmptyBuilding().geometry, ...(b.geometry || {}) },
           combustible_cladding,
-          frame: { ...createEmptyBuilding().frame, ...(b.frame || {}) },
+          frame_type,
+          notes: b.notes || '',
         };
       })
     : [];
@@ -267,7 +339,10 @@ export default function RE02ConstructionForm({
     site_notes: d.construction?.site_notes || '',
   });
 
-  const [editingWallsFor, setEditingWallsFor] = useState<string | null>(null);
+  const [editingBreakdown, setEditingBreakdown] = useState<{
+    buildingId: string;
+    type: 'roof' | 'walls' | 'mezzanine';
+  } | null>(null);
 
   const updateBuilding = (id: string, updates: Partial<Building>) => {
     setFormData({
@@ -307,10 +382,18 @@ export default function RE02ConstructionForm({
   };
 
   const handleSave = async () => {
-    // Validate wall percentages
+    // Validate breakdown percentages
     for (const building of formData.buildings) {
+      if (building.roof.breakdown.length > 0 && building.roof.total_percent !== 100) {
+        alert(`Building "${building.building_name || 'Unnamed'}": Roof percentages must total 100% (currently ${building.roof.total_percent}%)`);
+        return;
+      }
       if (building.walls.breakdown.length > 0 && building.walls.total_percent !== 100) {
         alert(`Building "${building.building_name || 'Unnamed'}": Wall percentages must total 100% (currently ${building.walls.total_percent}%)`);
+        return;
+      }
+      if (building.upper_floors_mezzanine.breakdown.length > 0 && building.upper_floors_mezzanine.total_percent !== 100) {
+        alert(`Building "${building.building_name || 'Unnamed'}": Mezzanine percentages must total 100% (currently ${building.upper_floors_mezzanine.total_percent}%)`);
         return;
       }
     }
@@ -338,7 +421,41 @@ export default function RE02ConstructionForm({
     }
   };
 
-  const building = editingWallsFor ? formData.buildings.find(b => b.id === editingWallsFor) : null;
+  const editingBuilding = editingBreakdown ? formData.buildings.find(b => b.id === editingBreakdown.buildingId) : null;
+
+  const getBreakdownData = (building: Building, type: 'roof' | 'walls' | 'mezzanine') => {
+    switch (type) {
+      case 'roof': return building.roof;
+      case 'walls': return building.walls;
+      case 'mezzanine': return building.upper_floors_mezzanine;
+    }
+  };
+
+  const getBreakdownTitle = (type: 'roof' | 'walls' | 'mezzanine') => {
+    switch (type) {
+      case 'roof': return 'Roof Materials';
+      case 'walls': return 'Walls';
+      case 'mezzanine': return 'Upper Floors / Mezzanine';
+    }
+  };
+
+  const updateBreakdownData = (buildingId: string, type: 'roof' | 'walls' | 'mezzanine', data: { breakdown: MaterialBreakdown[]; total_percent: number }) => {
+    const updates: Partial<Building> = {};
+    if (type === 'roof') {
+      const building = formData.buildings.find(b => b.id === buildingId);
+      if (building) {
+        updates.roof = { ...building.roof, ...data };
+      }
+    } else if (type === 'walls') {
+      updates.walls = data;
+    } else if (type === 'mezzanine') {
+      const building = formData.buildings.find(b => b.id === buildingId);
+      if (building) {
+        updates.upper_floors_mezzanine = { ...building.upper_floors_mezzanine, ...data };
+      }
+    }
+    updateBuilding(buildingId, updates);
+  };
 
   return (
     <>
@@ -355,10 +472,9 @@ export default function RE02ConstructionForm({
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Building Name</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Roof Material</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Roof Area (m²)</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Roof</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Walls</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Upper Floors (m²)</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Mezzanine</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Geometry</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Comb. Cladding</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">Compart.</th>
@@ -380,28 +496,26 @@ export default function RE02ConstructionForm({
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <select
-                        value={bldg.roof.material}
-                        onChange={(e) => updateBuilding(bldg.id, { roof: { ...bldg.roof, material: e.target.value } })}
-                        className="w-full min-w-[140px] px-2 py-1 border border-slate-300 rounded text-sm"
-                      >
-                        {ROOF_MATERIALS.map(mat => (
-                          <option key={mat} value={mat}>{mat}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        value={bldg.roof.area_sqm || ''}
-                        onChange={(e) => updateBuilding(bldg.id, { roof: { ...bldg.roof, area_sqm: e.target.value ? parseFloat(e.target.value) : null } })}
-                        className="w-full min-w-[80px] px-2 py-1 border border-slate-300 rounded text-sm"
-                        placeholder="Area"
-                      />
+                      <div className="flex flex-col gap-1 min-w-[110px]">
+                        <input
+                          type="number"
+                          value={bldg.roof.area_sqm || ''}
+                          onChange={(e) => updateBuilding(bldg.id, { roof: { ...bldg.roof, area_sqm: e.target.value ? parseFloat(e.target.value) : null } })}
+                          className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                          placeholder="Area m²"
+                        />
+                        <button
+                          onClick={() => setEditingBreakdown({ buildingId: bldg.id, type: 'roof' })}
+                          className="flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          {bldg.roof.breakdown.length > 0 ? `${bldg.roof.total_percent}%` : 'Edit'}
+                        </button>
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <button
-                        onClick={() => setEditingWallsFor(bldg.id)}
+                        onClick={() => setEditingBreakdown({ buildingId: bldg.id, type: 'walls' })}
                         className="flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-sm"
                       >
                         <Edit2 className="w-3 h-3" />
@@ -409,13 +523,27 @@ export default function RE02ConstructionForm({
                       </button>
                     </td>
                     <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        value={bldg.upper_floors_mezz_sqm || ''}
-                        onChange={(e) => updateBuilding(bldg.id, { upper_floors_mezz_sqm: e.target.value ? parseFloat(e.target.value) : null })}
-                        className="w-full min-w-[80px] px-2 py-1 border border-slate-300 rounded text-sm"
-                        placeholder="Area"
-                      />
+                      <div className="flex flex-col gap-1 min-w-[110px]">
+                        <input
+                          type="number"
+                          value={bldg.upper_floors_mezzanine.area_sqm || ''}
+                          onChange={(e) => updateBuilding(bldg.id, {
+                            upper_floors_mezzanine: {
+                              ...bldg.upper_floors_mezzanine,
+                              area_sqm: e.target.value ? parseFloat(e.target.value) : null
+                            }
+                          })}
+                          className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                          placeholder="Area m²"
+                        />
+                        <button
+                          onClick={() => setEditingBreakdown({ buildingId: bldg.id, type: 'mezzanine' })}
+                          className="flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          {bldg.upper_floors_mezzanine.breakdown.length > 0 ? `${bldg.upper_floors_mezzanine.total_percent}%` : 'Edit'}
+                        </button>
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex gap-1 min-w-[120px]">
@@ -481,26 +609,15 @@ export default function RE02ConstructionForm({
                       </select>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex flex-col gap-1 min-w-[120px]">
-                        <select
-                          value={bldg.frame.type}
-                          onChange={(e) => updateBuilding(bldg.id, { frame: { ...bldg.frame, type: e.target.value } })}
-                          className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
-                        >
-                          {FRAME_TYPES.map(ft => (
-                            <option key={ft} value={ft}>{ft}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={bldg.frame.protection}
-                          onChange={(e) => updateBuilding(bldg.id, { frame: { ...bldg.frame, protection: e.target.value as any } })}
-                          className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
-                        >
-                          <option value="unknown">Unknown</option>
-                          <option value="protected">Protected</option>
-                          <option value="unprotected">Unprotected</option>
-                        </select>
-                      </div>
+                      <select
+                        value={bldg.frame_type}
+                        onChange={(e) => updateBuilding(bldg.id, { frame_type: e.target.value as any })}
+                        className="w-full min-w-[120px] px-2 py-1 border border-slate-300 rounded text-sm"
+                      >
+                        {FRAME_TYPES.map(ft => (
+                          <option key={ft.value} value={ft.value}>{ft.label}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1 min-w-[140px]">
@@ -554,6 +671,31 @@ export default function RE02ConstructionForm({
           </div>
         </div>
 
+        {/* Compartmentation Definitions */}
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-semibold text-slate-900 mb-2">Compartmentation Guidance</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <span className="font-medium text-slate-700">Low:</span>
+              <p className="text-slate-600 mt-1">
+                Large open spaces with minimal fire separation. Few fire-rated barriers or compartment walls. Significant potential for fire spread.
+              </p>
+            </div>
+            <div>
+              <span className="font-medium text-slate-700">Medium:</span>
+              <p className="text-slate-600 mt-1">
+                Moderate compartmentation with some fire-rated walls and floors. Partial separation of areas. Some barriers to limit fire spread.
+              </p>
+            </div>
+            <div>
+              <span className="font-medium text-slate-700">High:</span>
+              <p className="text-slate-600 mt-1">
+                Well-defined fire compartments with proper fire-rated walls, floors, and doors. Effective fire separation limiting spread.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Calculation Explanation Panel */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
           <div className="flex items-start gap-3">
@@ -603,161 +745,176 @@ export default function RE02ConstructionForm({
 
       <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
 
-      {/* Walls Editor Modal */}
-      {editingWallsFor && building && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Edit Walls Breakdown</h3>
-                  <p className="text-sm text-slate-600 mt-1">
-                    {building.building_name || 'Unnamed Building'}
-                  </p>
+      {/* Material Breakdown Editor Modal */}
+      {editingBreakdown && editingBuilding && (() => {
+        const breakdownData = getBreakdownData(editingBuilding, editingBreakdown.type);
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Edit {getBreakdownTitle(editingBreakdown.type)} Breakdown
+                    </h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {editingBuilding.building_name || 'Unnamed Building'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setEditingBreakdown(null)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setEditingWallsFor(null)}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              <div className="space-y-4">
-                {building.walls.breakdown.map((wall, idx) => (
-                  <div key={idx} className="flex gap-2 items-start">
-                    <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Material</label>
-                      <select
-                        value={wall.material}
-                        onChange={(e) => {
-                          const newBreakdown = [...building.walls.breakdown];
-                          newBreakdown[idx] = { ...wall, material: e.target.value };
+                <div className="space-y-4">
+                  {breakdownData.breakdown.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Material</label>
+                        <select
+                          value={item.material}
+                          onChange={(e) => {
+                            const newBreakdown = [...breakdownData.breakdown];
+                            newBreakdown[idx] = { ...item, material: e.target.value };
+                            const total = newBreakdown.reduce((sum, w) => sum + w.percent, 0);
+                            updateBreakdownData(editingBuilding.id, editingBreakdown.type, {
+                              breakdown: newBreakdown,
+                              total_percent: total
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                        >
+                          {CONSTRUCTION_MATERIALS.map(mat => (
+                            <option key={mat} value={mat}>{mat}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-24">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Percent</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.percent}
+                          onChange={(e) => {
+                            const newBreakdown = [...breakdownData.breakdown];
+                            newBreakdown[idx] = { ...item, percent: parseFloat(e.target.value) || 0 };
+                            const total = newBreakdown.reduce((sum, w) => sum + w.percent, 0);
+                            updateBreakdownData(editingBuilding.id, editingBreakdown.type, {
+                              breakdown: newBreakdown,
+                              total_percent: total
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newBreakdown = breakdownData.breakdown.filter((_, i) => i !== idx);
                           const total = newBreakdown.reduce((sum, w) => sum + w.percent, 0);
-                          updateBuilding(building.id, {
-                            walls: { breakdown: newBreakdown, total_percent: total }
+                          updateBreakdownData(editingBuilding.id, editingBreakdown.type, {
+                            breakdown: newBreakdown,
+                            total_percent: total
                           });
                         }}
-                        className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                        className="mt-6 p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
                       >
-                        {WALL_MATERIALS.map(mat => (
-                          <option key={mat} value={mat}>{mat}</option>
-                        ))}
-                      </select>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <div className="w-24">
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Percent</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={wall.percent}
-                        onChange={(e) => {
-                          const newBreakdown = [...building.walls.breakdown];
-                          newBreakdown[idx] = { ...wall, percent: parseFloat(e.target.value) || 0 };
-                          const total = newBreakdown.reduce((sum, w) => sum + w.percent, 0);
-                          updateBuilding(building.id, {
-                            walls: { breakdown: newBreakdown, total_percent: total }
-                          });
-                        }}
+                  ))}
+
+                  <button
+                    onClick={() => {
+                      const newBreakdown = [
+                        ...breakdownData.breakdown,
+                        { material: CONSTRUCTION_MATERIALS[0], percent: 0 }
+                      ];
+                      const total = newBreakdown.reduce((sum, w) => sum + w.percent, 0);
+                      updateBreakdownData(editingBuilding.id, editingBreakdown.type, {
+                        breakdown: newBreakdown,
+                        total_percent: total
+                      });
+                    }}
+                    className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover:border-slate-400 hover:text-slate-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Material
+                  </button>
+
+                  <div className={`p-3 rounded-lg ${
+                    breakdownData.total_percent === 100 ? 'bg-green-50 border border-green-200' :
+                    breakdownData.total_percent === 0 ? 'bg-slate-50 border border-slate-200' :
+                    'bg-red-50 border border-red-200'
+                  }`}>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-slate-700">Total:</span>
+                      <span className={`text-lg font-bold ${
+                        breakdownData.total_percent === 100 ? 'text-green-700' :
+                        breakdownData.total_percent === 0 ? 'text-slate-700' :
+                        'text-red-700'
+                      }`}>
+                        {breakdownData.total_percent}%
+                      </span>
+                    </div>
+                    {breakdownData.total_percent !== 100 && breakdownData.total_percent !== 0 && (
+                      <p className="text-xs text-red-600 mt-1">
+                        Must total 100% before saving
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Combustible Cladding Details (if present) */}
+                  {editingBuilding.combustible_cladding.present && (
+                    <div className="pt-4 border-t border-slate-200">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Combustible Cladding Details</label>
+                      <textarea
+                        value={editingBuilding.combustible_cladding.details}
+                        onChange={(e) => updateBuilding(editingBuilding.id, {
+                          combustible_cladding: { ...editingBuilding.combustible_cladding, details: e.target.value }
+                        })}
+                        rows={2}
                         className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                        placeholder="Describe combustible cladding type, material, compliance status, and any mitigation measures"
                       />
                     </div>
-                    <button
-                      onClick={() => {
-                        const newBreakdown = building.walls.breakdown.filter((_, i) => i !== idx);
-                        const total = newBreakdown.reduce((sum, w) => sum + w.percent, 0);
-                        updateBuilding(building.id, {
-                          walls: { breakdown: newBreakdown, total_percent: total }
-                        });
-                      }}
-                      className="mt-6 p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-
-                <button
-                  onClick={() => {
-                    const newBreakdown = [
-                      ...building.walls.breakdown,
-                      { material: WALL_MATERIALS[0], percent: 0 }
-                    ];
-                    const total = newBreakdown.reduce((sum, w) => sum + w.percent, 0);
-                    updateBuilding(building.id, {
-                      walls: { breakdown: newBreakdown, total_percent: total }
-                    });
-                  }}
-                  className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover:border-slate-400 hover:text-slate-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Material
-                </button>
-
-                <div className={`p-3 rounded-lg ${
-                  building.walls.total_percent === 100 ? 'bg-green-50 border border-green-200' :
-                  building.walls.total_percent === 0 ? 'bg-slate-50 border border-slate-200' :
-                  'bg-red-50 border border-red-200'
-                }`}>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-slate-700">Total:</span>
-                    <span className={`text-lg font-bold ${
-                      building.walls.total_percent === 100 ? 'text-green-700' :
-                      building.walls.total_percent === 0 ? 'text-slate-700' :
-                      'text-red-700'
-                    }`}>
-                      {building.walls.total_percent}%
-                    </span>
-                  </div>
-                  {building.walls.total_percent !== 100 && building.walls.total_percent !== 0 && (
-                    <p className="text-xs text-red-600 mt-1">
-                      Must total 100% before saving
-                    </p>
                   )}
-                </div>
 
-                {/* Combustible Cladding Details (if present) */}
-                {building.combustible_cladding.present && (
+                  {/* Notes */}
                   <div className="pt-4 border-t border-slate-200">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Combustible Cladding Details</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Building Notes</label>
                     <textarea
-                      value={building.combustible_cladding.details}
-                      onChange={(e) => updateBuilding(building.id, {
-                        combustible_cladding: { ...building.combustible_cladding, details: e.target.value }
-                      })}
-                      rows={2}
+                      value={editingBuilding.notes}
+                      onChange={(e) => updateBuilding(editingBuilding.id, { notes: e.target.value })}
+                      rows={3}
                       className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-                      placeholder="Describe combustible cladding type, material, compliance status, and any mitigation measures"
+                      placeholder="Additional observations about this building..."
                     />
                   </div>
-                )}
-
-                {/* Notes */}
-                <div className="pt-4 border-t border-slate-200">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Building Notes</label>
-                  <textarea
-                    value={building.notes}
-                    onChange={(e) => updateBuilding(building.id, { notes: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-                    placeholder="Additional observations about this building..."
-                  />
                 </div>
-              </div>
 
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  onClick={() => setEditingWallsFor(null)}
-                  className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800"
-                >
-                  Done
-                </button>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      if (breakdownData.breakdown.length > 0 && breakdownData.total_percent !== 100) {
+                        alert(`Material percentages must total 100% (currently ${breakdownData.total_percent}%)`);
+                        return;
+                      }
+                      setEditingBreakdown(null);
+                    }}
+                    className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 }

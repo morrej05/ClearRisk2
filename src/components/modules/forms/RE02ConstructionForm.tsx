@@ -224,6 +224,40 @@ function calculateConstructionMetrics(building: Building): CalculatedMetrics {
   }
   totalPoints += 2;
 
+    // Upper floors / mezzanine analysis - weighted by percentage, with area influence
+  if (
+    building.upper_floors_mezzanine?.breakdown?.length > 0 &&
+    building.upper_floors_mezzanine.total_percent > 0
+  ) {
+    // Penalty severity scaled by how much mezzanine exists (if area provided)
+    // Small mezzanine shouldn't dominate; large mezzanine should matter.
+    const mezzArea = building.upper_floors_mezzanine.area_sqm ?? 0;
+    const roofArea = building.roof.area_sqm ?? 0;
+    const refArea = roofArea > 0 ? roofArea : 1000; // fallback so we don't divide by 0
+
+    // scale 0.6 -> 1.2 based on mezzanine/roof area ratio (capped)
+    const mezzRatio = Math.max(0, Math.min(1, mezzArea / refArea));
+    const mezzScale = 0.6 + (0.6 * mezzRatio); // 0.6..1.2
+
+    let mezzWeightedFactor = 0;
+    for (const item of building.upper_floors_mezzanine.breakdown) {
+      const factor = getMezzanineFactor(item.material); // 0.1..0.9
+      mezzWeightedFactor += factor * (item.percent / 100);
+    }
+
+    // Convert weighted factor to a penalty. Keep it below roof, above walls.
+    // Max penalty roughly: 20 * 1.2 = 24
+    const mezzPenalty = mezzWeightedFactor * 20 * mezzScale;
+    rawScore -= mezzPenalty;
+
+    // Add to combustible metric:
+    // Treat mezzanine as a significant contributor but not as dominant as roof.
+    combustiblePoints += mezzWeightedFactor * 2; // contribution weight (tunable)
+  }
+
+  // Count mezzanine as a scoring element (for combustible % denominator)
+  totalPoints += 2;
+
   // Compartmentation bonus
   if (building.compartmentation === 'high') {
     rawScore += 10;

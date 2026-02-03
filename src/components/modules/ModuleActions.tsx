@@ -267,10 +267,17 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
     );
   }
 
-  if (documentType === 'RE' && moduleKey !== 'RE_13_RECOMMENDATIONS') {
-    return null;
+  // RE documents: only RE-9 Recommendations (RE_13_RECOMMENDATIONS) shows actions
+  if (documentType === 'RE') {
+    if (moduleKey === 'RE_13_RECOMMENDATIONS') {
+      // RE-9 Recommendations: show full actions UI
+    } else {
+      // All other RE modules: no footer at all
+      return null;
+    }
   }
 
+  // Non-RE documents (FRA, FSD, DSEAR): show actions UI
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-6 mt-6">
       <div className="flex items-center justify-between mb-4">

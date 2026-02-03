@@ -35,7 +35,7 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
   },
 
   RE_07_NATURAL_HAZARDS: {
-    name: 'RE-5 - Natural Hazards',
+    name: 'RE-5 - Exposures',
     docTypes: ['RE'],
     order: 5,
   },

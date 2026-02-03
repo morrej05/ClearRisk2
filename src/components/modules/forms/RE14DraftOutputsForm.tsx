@@ -147,6 +147,14 @@ export default function RE14DraftOutputsForm({
               isPillar: true,
             },
             {
+              canonicalKey: 'exposure',
+              label: 'Exposure',
+              rating: sectionGrades.exposure || 3,
+              weight: getHrgConfig(industryKeyValue, 'exposure').weight || 3,
+              score: (sectionGrades.exposure || 3) * (getHrgConfig(industryKeyValue, 'exposure').weight || 3),
+              isPillar: true,
+            },
+            {
               canonicalKey: 'management_systems',
               label: 'Management Systems',
               rating: sectionGrades.management || 3,

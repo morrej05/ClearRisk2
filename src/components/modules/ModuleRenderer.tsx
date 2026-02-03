@@ -36,7 +36,7 @@ import RE01DocumentControlForm from './forms/RE01DocumentControlForm';
 import RE02ConstructionForm from './forms/RE02ConstructionForm';
 import RE03OccupancyForm from './forms/RE03OccupancyForm';
 import RE06FireProtectionForm from './forms/RE06FireProtectionForm';
-import RE07NaturalHazardsForm from './forms/RE07NaturalHazardsForm';
+import RE07ExposuresForm from './forms/RE07ExposuresForm';
 import RE08UtilitiesForm from './forms/RE08UtilitiesForm';
 import RE09ManagementForm from './forms/RE09ManagementForm';
 import RE10ProcessRiskForm from './forms/RE10ProcessRiskForm';
@@ -300,7 +300,7 @@ export default function ModuleRenderer({
   }
 
   if (moduleInstance.module_key === 'RE_07_NATURAL_HAZARDS') {
-    return <RE07NaturalHazardsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return <RE07ExposuresForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }
 
   if (moduleInstance.module_key === 'RE_08_UTILITIES') {

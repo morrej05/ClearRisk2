@@ -8,6 +8,12 @@ import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
 import { Plus, X, Trash2 } from 'lucide-react';
+import {
+  isHeavyOccupancy,
+  getSuggestedEquipment,
+  getEquipmentOptions,
+  STANDARD_EQUIPMENT_OPTIONS,
+} from '../../../lib/re/reference/occupancyCriticalEquipment';
 
 interface Document {
   id: string;
@@ -58,33 +64,6 @@ interface CriticalEquipment {
 const ELECTRICAL_KEY = 'electrical_and_utilities_reliability';
 const EQUIPMENT_KEY = 'critical_equipment_reliability';
 
-const HEAVY_SET = new Set([
-  'aircraft_painting_unfueled',
-  'aluminium_manufacturing',
-  'automotive_press_plant',
-  'automotive_body_plant',
-  'automotive_assembly_plant',
-  'chemical_manufacturing',
-  'expanded_plastics_and_rubber',
-  'food_and_beverage_processing',
-  'foundries_and_forges',
-  'glass_manufacturing',
-  'mining_coal_preparation',
-  'mining_metallurgical_refining',
-  'mining_mineral_processing',
-  'paper_mill_recovery_boilers',
-  'paper_mill_power_generation',
-  'pulp_and_paper_making',
-  'pharmaceutical_manufacturing',
-  'power_generation',
-  'printing_operations',
-  'semiconductor_manufacturing',
-  'steel_mills',
-  'textile_manufacturing',
-  'unexpanded_plastics',
-  'woodworking',
-]);
-
 const SERVICE_TYPE_OPTIONS = [
   'Fuel gas',
   'Refrigeration',
@@ -95,33 +74,6 @@ const SERVICE_TYPE_OPTIONS = [
   'IT – Business systems / ERP / network',
   'OT – SCADA / PLC / process control',
   'Telecoms / connectivity',
-  'Custom…',
-];
-
-const EQUIPMENT_TYPE_OPTIONS_HEAVY = [
-  'Boiler',
-  'Turbine',
-  'Generator',
-  'Reactor / Vessel',
-  'Kiln / Furnace',
-  'Extruder / Mill',
-  'Compressor',
-  'Cooling tower',
-  'Chiller',
-  'Process control system',
-  'Custom…',
-];
-
-const EQUIPMENT_TYPE_OPTIONS_OTHER = [
-  'Boiler',
-  'Turbine',
-  'Generator',
-  'HVAC system',
-  'Cooling tower',
-  'Chiller',
-  'Fire pump',
-  'Sprinkler system',
-  'Building management system',
   'Custom…',
 ];
 
@@ -217,7 +169,9 @@ export default function RE08UtilitiesForm({
   const electricalHrgConfig = getHrgConfig(industryKey, ELECTRICAL_KEY);
   const equipmentHrgConfig = getHrgConfig(industryKey, EQUIPMENT_KEY);
 
-  const isHeavyOccupancy = industryKey ? HEAVY_SET.has(industryKey) : false;
+  const isHeavy = isHeavyOccupancy(industryKey);
+  const suggestedEquipment = getSuggestedEquipment(industryKey);
+  const equipmentOptions = getEquipmentOptions(industryKey);
 
   const handleRatingChange = async (canonicalKey: string, newRating: number) => {
     if (!riskEngInstanceId) return;
@@ -298,7 +252,7 @@ export default function RE08UtilitiesForm({
       equipment_type: isCustom ? 'custom' : selectedEquipmentType,
       custom_label: isCustom ? customEquipmentLabel : undefined,
       tag_or_name: '',
-      criticality: isHeavyOccupancy ? 'high' : null,
+      criticality: isHeavy ? 'high' : null,
       redundancy: null,
       spares_strategy: null,
       condition_notes: '',
@@ -642,7 +596,7 @@ export default function RE08UtilitiesForm({
             {showEquipmentPicker && (
               <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Select Equipment Type</label>
-                {isHeavyOccupancy && (
+                {isHeavy && suggestedEquipment.length > 0 && (
                   <div className="mb-3">
                     <p className="text-xs font-medium text-slate-600 mb-2">Suggested for this occupancy:</p>
                     <select
@@ -651,7 +605,7 @@ export default function RE08UtilitiesForm({
                       className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
                     >
                       <option value="">Choose equipment...</option>
-                      {EQUIPMENT_TYPE_OPTIONS_HEAVY.map((option) => (
+                      {equipmentOptions.map((option) => (
                         <option key={option} value={option}>
                           {option}
                         </option>
@@ -659,14 +613,14 @@ export default function RE08UtilitiesForm({
                     </select>
                   </div>
                 )}
-                {!isHeavyOccupancy && (
+                {(!isHeavy || suggestedEquipment.length === 0) && (
                   <select
                     value={selectedEquipmentType}
                     onChange={(e) => setSelectedEquipmentType(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
                   >
                     <option value="">Choose equipment type...</option>
-                    {EQUIPMENT_TYPE_OPTIONS_OTHER.map((option) => (
+                    {STANDARD_EQUIPMENT_OPTIONS.map((option) => (
                       <option key={option} value={option}>
                         {option}
                       </option>

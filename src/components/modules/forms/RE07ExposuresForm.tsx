@@ -40,12 +40,28 @@ const PERIL_RATING_GUIDANCE = `Rate the residual risk to the site from this peri
 const HUMAN_EXPOSURE_GUIDANCE = `Assess the site's exposure to deliberate or opportunistic loss based on location, access, visibility, and surrounding activity. This is not an audit of security systems; controls may be noted as context only.`;
 
 const RATING_OPTIONS = [
-  { value: 5, label: '5 - Excellent', color: 'text-green-700' },
-  { value: 4, label: '4 - Good', color: 'text-blue-700' },
-  { value: 3, label: '3 - Adequate', color: 'text-slate-700' },
-  { value: 2, label: '2 - Poor', color: 'text-orange-700' },
-  { value: 1, label: '1 - Inadequate', color: 'text-red-700' },
+  { value: 1, label: 'Poor / Inadequate' },
+  { value: 2, label: 'Below Average' },
+  { value: 3, label: 'Average / Acceptable' },
+  { value: 4, label: 'Good' },
+  { value: 5, label: 'Excellent' },
 ];
+
+const getRatingColor = (rating: number, isSelected: boolean): string => {
+  if (rating <= 2) {
+    return isSelected
+      ? 'border-red-600 bg-red-50 text-red-900'
+      : 'border-red-300 bg-white text-red-700 hover:border-red-400';
+  }
+  if (rating === 3) {
+    return isSelected
+      ? 'border-amber-600 bg-amber-50 text-amber-900'
+      : 'border-amber-300 bg-white text-amber-700 hover:border-amber-400';
+  }
+  return isSelected
+    ? 'border-green-600 bg-green-50 text-green-900'
+    : 'border-green-300 bg-white text-green-700 hover:border-green-400';
+};
 
 export default function RE07ExposuresForm({
   moduleInstance,
@@ -146,9 +162,9 @@ export default function RE07ExposuresForm({
     }
   };
 
-  const getRatingColor = (rating: number): string => {
+  const getDerivedRatingColor = (rating: number): string => {
     if (rating >= 4) return 'text-green-700 bg-green-50 border-green-300';
-    if (rating === 3) return 'text-slate-700 bg-slate-50 border-slate-300';
+    if (rating === 3) return 'text-amber-700 bg-amber-50 border-amber-300';
     if (rating === 2) return 'text-orange-700 bg-orange-50 border-orange-300';
     return 'text-red-700 bg-red-50 border-red-300';
   };
@@ -162,21 +178,28 @@ export default function RE07ExposuresForm({
     onNotesChange: (value: string) => void
   ) => (
     <div className="border border-slate-200 rounded-lg p-4 space-y-3">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-3">
         <div className="flex-shrink-0">{icon}</div>
-        <h4 className="font-semibold text-slate-900 flex-1">{label}</h4>
-        <select
-          value={rating}
-          onChange={(e) => onRatingChange(Number(e.target.value))}
-          className={`px-3 py-1.5 border rounded-md font-medium ${getRatingColor(rating)}`}
-        >
-          {RATING_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <h4 className="font-semibold text-slate-900">{label}</h4>
       </div>
+
+      <div className="flex gap-2">
+        {RATING_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onRatingChange(opt.value)}
+            className={`flex-1 px-2 py-2 rounded-lg border-2 transition-all text-center ${getRatingColor(
+              opt.value,
+              rating === opt.value
+            )}`}
+          >
+            <div className="text-lg font-bold">{opt.value}</div>
+            <div className="text-xs mt-0.5">{opt.label}</div>
+          </button>
+        ))}
+      </div>
+
       <textarea
         value={notes}
         onChange={(e) => onNotesChange(e.target.value)}
@@ -247,7 +270,7 @@ export default function RE07ExposuresForm({
             {/* Other Peril (Optional) */}
             {hasOtherPeril ? (
               <div className="border border-slate-200 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-3">
                   <AlertTriangle className="w-5 h-5 text-slate-600 flex-shrink-0" />
                   <input
                     type="text"
@@ -256,24 +279,31 @@ export default function RE07ExposuresForm({
                     placeholder="Other peril name..."
                     className="flex-1 px-3 py-1.5 border border-slate-300 rounded-md"
                   />
-                  <select
-                    value={otherRating}
-                    onChange={(e) => setOtherRating(Number(e.target.value))}
-                    className={`px-3 py-1.5 border rounded-md font-medium ${getRatingColor(otherRating)}`}
-                  >
-                    {RATING_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
                   <button
                     onClick={() => setHasOtherPeril(false)}
-                    className="text-red-600 hover:text-red-700 text-sm"
+                    className="text-red-600 hover:text-red-700 text-sm font-medium"
                   >
                     Remove
                   </button>
                 </div>
+
+                <div className="flex gap-2">
+                  {RATING_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setOtherRating(opt.value)}
+                      className={`flex-1 px-2 py-2 rounded-lg border-2 transition-all text-center ${getRatingColor(
+                        opt.value,
+                        otherRating === opt.value
+                      )}`}
+                    >
+                      <div className="text-lg font-bold">{opt.value}</div>
+                      <div className="text-xs mt-0.5">{opt.label}</div>
+                    </button>
+                  ))}
+                </div>
+
                 <textarea
                   value={otherNotes}
                   onChange={(e) => setOtherNotes(e.target.value)}
@@ -293,7 +323,7 @@ export default function RE07ExposuresForm({
           </div>
 
           {/* Derived Environmental Rating */}
-          <div className={`mt-6 p-4 border-2 rounded-lg ${getRatingColor(derivedEnvironmentalRating)}`}>
+          <div className={`mt-6 p-4 border-2 rounded-lg ${getDerivedRatingColor(derivedEnvironmentalRating)}`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Environmental Risk Rating (Auto-Derived)</p>
@@ -318,19 +348,24 @@ export default function RE07ExposuresForm({
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mb-4">
-            <label className="text-sm font-medium text-slate-700">Exposure Rating:</label>
-            <select
-              value={humanExposureRating}
-              onChange={(e) => setHumanExposureRating(Number(e.target.value))}
-              className={`px-4 py-2 border rounded-md font-medium ${getRatingColor(humanExposureRating)}`}
-            >
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 mb-3">Exposure Rating (1-5):</label>
+            <div className="flex gap-2">
               {RATING_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setHumanExposureRating(opt.value)}
+                  className={`flex-1 px-2 py-2 rounded-lg border-2 transition-all text-center ${getRatingColor(
+                    opt.value,
+                    humanExposureRating === opt.value
+                  )}`}
+                >
+                  <div className="text-lg font-bold">{opt.value}</div>
+                  <div className="text-xs mt-0.5">{opt.label}</div>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -362,10 +397,10 @@ export default function RE07ExposuresForm({
                 This rating feeds into the Risk Ratings Summary as a global pillar
               </p>
             </div>
-            <div className={`px-6 py-4 rounded-lg border-2 ${getRatingColor(overallExposureRating)}`}>
+            <div className={`px-6 py-4 rounded-lg border-2 ${getDerivedRatingColor(overallExposureRating)}`}>
               <div className="text-3xl font-bold text-center">{overallExposureRating}</div>
               <div className="text-xs text-center mt-1 opacity-75">
-                {RATING_OPTIONS.find(o => o.value === overallExposureRating)?.label.split(' - ')[1]}
+                {RATING_OPTIONS.find(o => o.value === overallExposureRating)?.label}
               </div>
             </div>
           </div>

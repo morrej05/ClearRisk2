@@ -8,12 +8,6 @@ import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
 import { Plus, X, Trash2 } from 'lucide-react';
-import {
-  isHeavyOccupancy,
-  getSuggestedEquipment,
-  getEquipmentOptions,
-  STANDARD_EQUIPMENT_OPTIONS,
-} from '../../../lib/re/reference/occupancyCriticalEquipment';
 
 interface Document {
   id: string;
@@ -169,10 +163,6 @@ export default function RE08UtilitiesForm({
   const electricalHrgConfig = getHrgConfig(industryKey, ELECTRICAL_KEY);
   const equipmentHrgConfig = getHrgConfig(industryKey, EQUIPMENT_KEY);
 
-  const isHeavy = isHeavyOccupancy(industryKey);
-  const suggestedEquipment = getSuggestedEquipment(industryKey);
-  const equipmentOptions = getEquipmentOptions(industryKey);
-
   const handleRatingChange = async (canonicalKey: string, newRating: number) => {
     if (!riskEngInstanceId) return;
 
@@ -246,13 +236,11 @@ export default function RE08UtilitiesForm({
   const addCriticalEquipment = () => {
     if (!selectedEquipmentType) return;
 
-    const isCustom = selectedEquipmentType === 'Custom…';
     const newEquipment: CriticalEquipment = {
       id: crypto.randomUUID(),
-      equipment_type: isCustom ? 'custom' : selectedEquipmentType,
-      custom_label: isCustom ? customEquipmentLabel : undefined,
+      equipment_type: selectedEquipmentType,
       tag_or_name: '',
-      criticality: isHeavy ? 'high' : null,
+      criticality: null,
       redundancy: null,
       spares_strategy: null,
       condition_notes: '',
@@ -317,9 +305,6 @@ export default function RE08UtilitiesForm({
   };
 
   const getEquipmentLabel = (equipment: CriticalEquipment) => {
-    if (equipment.equipment_type === 'custom' && equipment.custom_label) {
-      return equipment.custom_label;
-    }
     return equipment.equipment_type;
   };
 
@@ -596,50 +581,17 @@ export default function RE08UtilitiesForm({
             {showEquipmentPicker && (
               <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Select Equipment Type</label>
-                {isHeavy && suggestedEquipment.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-medium text-slate-600 mb-2">Suggested for this occupancy:</p>
-                    <select
-                      value={selectedEquipmentType}
-                      onChange={(e) => setSelectedEquipmentType(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
-                    >
-                      <option value="">Choose equipment...</option>
-                      {equipmentOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {(!isHeavy || suggestedEquipment.length === 0) && (
-                  <select
-                    value={selectedEquipmentType}
-                    onChange={(e) => setSelectedEquipmentType(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
-                  >
-                    <option value="">Choose equipment type...</option>
-                    {STANDARD_EQUIPMENT_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {selectedEquipmentType === 'Custom…' && (
-                  <input
-                    type="text"
-                    value={customEquipmentLabel}
-                    onChange={(e) => setCustomEquipmentLabel(e.target.value)}
-                    placeholder="Enter custom equipment name"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
-                  />
-                )}
+                <input
+                  type="text"
+                  value={selectedEquipmentType}
+                  onChange={(e) => setSelectedEquipmentType(e.target.value)}
+                  placeholder="Enter equipment type (e.g., Turbine, Generator, Compressor, etc.)"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
+                />
                 <div className="flex gap-2">
                   <button
                     onClick={addCriticalEquipment}
-                    disabled={!selectedEquipmentType || (selectedEquipmentType === 'Custom…' && !customEquipmentLabel)}
+                    disabled={!selectedEquipmentType}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add Equipment

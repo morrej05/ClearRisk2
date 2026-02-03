@@ -52,6 +52,7 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
   const [documentStatus, setDocumentStatus] = useState<string>('draft');
   const [documentType, setDocumentType] = useState<string | null>(null);
   const [actionToDelete, setActionToDelete] = useState<string | null>(null);
+  const [moduleKey, setModuleKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isValidUUID(documentId)) {
@@ -66,6 +67,7 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
     }
     fetchActions();
     fetchDocumentStatus();
+    fetchModuleKey();
   }, [moduleInstanceId, documentId]);
 
   const fetchActions = async () => {
@@ -141,6 +143,28 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
       }
     } catch (error) {
       console.error('Error fetching document status:', error);
+    }
+  };
+
+  const fetchModuleKey = async () => {
+    if (!isValidUUID(moduleInstanceId)) {
+      console.error('ModuleActions.fetchModuleKey: Invalid moduleInstanceId:', moduleInstanceId);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('module_instances')
+        .select('module_key')
+        .eq('id', moduleInstanceId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setModuleKey(data.module_key);
+      }
+    } catch (error) {
+      console.error('Error fetching module key:', error);
     }
   };
 
@@ -243,21 +267,8 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
     );
   }
 
-  if (documentType === 'RE') {
-    return (
-      <div className="bg-blue-50 rounded-lg border border-blue-200 p-6 mt-6">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-sm font-bold text-blue-900 mb-1">Recommendations for Risk Engineering</h3>
-            <p className="text-sm text-blue-800">
-              Recommendations for Risk Engineering documents are managed in RE-09 Recommendations.
-              This module uses the FRA action workflow which is not applicable to Risk Engineering documents.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+  if (documentType === 'RE' && moduleKey !== 'RE_13_RECOMMENDATIONS') {
+    return null;
   }
 
   return (

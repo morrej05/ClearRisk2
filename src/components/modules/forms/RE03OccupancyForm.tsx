@@ -4,6 +4,7 @@ import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanit
 import ModuleActions from '../ModuleActions';
 import ReRatingPanel from '../../re/ReRatingPanel';
 import FloatingSaveBar from './FloatingSaveBar';
+import FeedbackModal from '../../FeedbackModal';
 import { getHrgConfig, HRG_MASTER_MAP } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
@@ -86,6 +87,20 @@ export default function RE03OccupancyForm({
   const [industryKey, setIndustryKey] = useState<string | null>(null);
   const [selectedHazardToAdd, setSelectedHazardToAdd] = useState('');
 
+  const [feedback, setFeedback] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+    autoClose?: boolean;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+    autoClose: false,
+  });
+
   useEffect(() => {
     async function loadRiskEngModule() {
       try {
@@ -142,7 +157,13 @@ export default function RE03OccupancyForm({
       }
     } catch (err) {
       console.error('Error updating rating:', err);
-      alert('Failed to update rating');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Failed to update rating',
+        message: 'Unable to save the rating change. Please try again.',
+        autoClose: false,
+      });
     }
   };
 
@@ -233,10 +254,22 @@ export default function RE03OccupancyForm({
         if (insertError) throw insertError;
       }
 
-      alert('Recommendation added to RE-9 successfully!');
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Recommendation added',
+        message: 'The recommendation has been successfully added.',
+        autoClose: true,
+      });
     } catch (err) {
       console.error('Error adding recommendation:', err);
-      alert('Failed to add recommendation. Please try again.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Failed to add recommendation',
+        message: 'Unable to add the recommendation. Please try again.',
+        autoClose: false,
+      });
     } finally {
       setIsAddingRecommendation(false);
     }
@@ -244,7 +277,13 @@ export default function RE03OccupancyForm({
 
   const handleAddIndustryRecommendation = () => {
     if (!formData.industry_special_hazards_notes.trim()) {
-      alert('Please add notes before creating a recommendation.');
+      setFeedback({
+        isOpen: true,
+        type: 'warning',
+        title: 'Notes required',
+        message: 'Please add notes before creating a recommendation.',
+        autoClose: false,
+      });
       return;
     }
     addRecommendation(
@@ -285,7 +324,13 @@ export default function RE03OccupancyForm({
       onSaved();
     } catch (error) {
       console.error('Error saving module:', error);
-      alert('Failed to save module. Please try again.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Save failed',
+        message: 'Unable to save changes. Please try again.',
+        autoClose: false,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -523,6 +568,15 @@ export default function RE03OccupancyForm({
       </div>
 
       <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+
+      <FeedbackModal
+        isOpen={feedback.isOpen}
+        onClose={() => setFeedback({ ...feedback, isOpen: false })}
+        type={feedback.type}
+        title={feedback.title}
+        message={feedback.message}
+        autoClose={feedback.autoClose}
+      />
     </>
   );
 }

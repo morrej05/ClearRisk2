@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import AddActionModal from '../actions/AddActionModal';
 import ActionDetailModal from '../actions/ActionDetailModal';
+import FeedbackModal from '../FeedbackModal';
 
 interface Action {
   id: string;
@@ -53,6 +54,20 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
   const [documentType, setDocumentType] = useState<string | null>(null);
   const [actionToDelete, setActionToDelete] = useState<string | null>(null);
   const [moduleKey, setModuleKey] = useState<string | null>(null);
+
+  const [feedback, setFeedback] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+    autoClose?: boolean;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+    autoClose: false,
+  });
 
   useEffect(() => {
     if (!isValidUUID(documentId)) {
@@ -170,12 +185,24 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
 
   const handleDeleteAction = async (actionId: string) => {
     if (documentStatus !== 'draft') {
-      alert('Actions can only be deleted when the document is in Draft status.');
+      setFeedback({
+        isOpen: true,
+        type: 'warning',
+        title: 'Cannot delete action',
+        message: 'Actions can only be deleted when the document is in Draft status.',
+        autoClose: false,
+      });
       return;
     }
 
     if (!user?.id) {
-      alert('User not found. Please refresh and try again.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'User not found',
+        message: 'Unable to identify user. Please refresh the page and try again.',
+        autoClose: false,
+      });
       return;
     }
 
@@ -193,9 +220,23 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
 
       setActionToDelete(null);
       fetchActions();
+
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Action deleted',
+        message: 'The action has been successfully removed.',
+        autoClose: true,
+      });
     } catch (error) {
       console.error('Error deleting action:', error);
-      alert('Failed to delete action. Please try again.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Delete failed',
+        message: 'Unable to delete the action. Please try again.',
+        autoClose: false,
+      });
     }
   };
 
@@ -439,6 +480,15 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
           Document is issued — actions cannot be deleted. You can close them instead.
         </p>
       )}
+
+      <FeedbackModal
+        isOpen={feedback.isOpen}
+        onClose={() => setFeedback({ ...feedback, isOpen: false })}
+        type={feedback.type}
+        title={feedback.title}
+        message={feedback.message}
+        autoClose={feedback.autoClose}
+      />
     </div>
   );
 }

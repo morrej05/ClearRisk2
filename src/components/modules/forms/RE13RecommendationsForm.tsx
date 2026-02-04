@@ -5,6 +5,7 @@ import { Plus, X, Upload, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
+import FeedbackModal from '../../FeedbackModal';
 
 interface Document {
   id: string;
@@ -58,6 +59,20 @@ export default function RE13RecommendationsForm({
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
 
+  const [feedback, setFeedback] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+    autoClose?: boolean;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+    autoClose: false,
+  });
+
   const addRecommendation = () => {
     setRecommendations([
       ...recommendations,
@@ -110,9 +125,23 @@ export default function RE13RecommendationsForm({
       updateRecommendation(recId, {
         photos: [...rec.photos, photo],
       });
+
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Photo uploaded',
+        message: 'The photo has been successfully attached.',
+        autoClose: true,
+      });
     } catch (error) {
       console.error('Error uploading photo:', error);
-      alert('Failed to upload photo. Please try again.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Upload failed',
+        message: 'Unable to upload the photo. Please try again.',
+        autoClose: false,
+      });
     } finally {
       setUploadingPhotoForRec(null);
     }
@@ -152,9 +181,23 @@ export default function RE13RecommendationsForm({
 
       if (error) throw error;
       onSaved();
+
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Saved successfully',
+        message: 'All changes have been saved.',
+        autoClose: true,
+      });
     } catch (error) {
       console.error('Error saving:', error);
-      alert('Failed to save. Please try again.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Save failed',
+        message: 'Unable to save changes. Please try again.',
+        autoClose: false,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -339,6 +382,15 @@ export default function RE13RecommendationsForm({
     </div>
 
       <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+
+      <FeedbackModal
+        isOpen={feedback.isOpen}
+        onClose={() => setFeedback({ ...feedback, isOpen: false })}
+        type={feedback.type}
+        title={feedback.title}
+        message={feedback.message}
+        autoClose={feedback.autoClose}
+      />
     </>
   );
 }

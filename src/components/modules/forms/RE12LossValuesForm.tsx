@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
-import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { AlertCircle } from 'lucide-react';
@@ -582,15 +581,6 @@ export default function RE12LossValuesForm({
           </div>
         </div>
       </div>
-
-      <OutcomePanel
-        outcome={outcome}
-        assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
-        onNotesChange={setAssessorNotes}
-        onSave={handleSave}
-        isSaving={isSaving}
-      />
 
       {document?.id && moduleInstance?.id && (
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />

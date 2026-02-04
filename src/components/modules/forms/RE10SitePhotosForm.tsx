@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { Plus, X, Upload, Image as ImageIcon, FileText, AlertCircle } from 'lucide-react';
-import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 
@@ -447,13 +446,6 @@ export default function RE10SitePhotosForm({
           </div>
         )}
       </div>
-
-      <OutcomePanel
-        outcome={outcome}
-        assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
-        onNotesChange={setAssessorNotes}
-      />
 
       {document?.id && moduleInstance?.id && (
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />

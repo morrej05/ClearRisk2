@@ -27,7 +27,7 @@ interface RE06FireProtectionFormProps {
 
 type WaterSupplyReliability = 'reliable' | 'unreliable' | 'unknown';
 type CoverageAdequacy = 'poor' | 'adequate' | 'good' | 'unknown';
-type MonitoringType = 'inherit' | 'none' | 'keyholder' | 'arc' | 'unknown';
+type MonitoringType = 'none' | 'keyholder' | 'arc' | 'unknown';
 type LocalisedProtectionLevel = 'yes' | 'partial' | 'no' | 'unknown';
 
 interface SprinklersData {
@@ -115,6 +115,80 @@ const RATING_HELP = {
   5: 'Robust / best practice - strong, resilient, well maintained'
 };
 
+function getMonitoringButtonStyles(type: MonitoringType, isSelected: boolean): string {
+  if (!isSelected) {
+    return 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent';
+  }
+
+  switch (type) {
+    case 'none':
+      return 'bg-red-50 text-red-900 border-2 border-red-600 font-semibold';
+    case 'keyholder':
+      return 'bg-amber-50 text-amber-900 border-2 border-amber-600 font-semibold';
+    case 'arc':
+      return 'bg-green-50 text-green-900 border-2 border-green-600 font-semibold';
+    case 'unknown':
+      return 'bg-slate-50 text-slate-900 border-2 border-slate-600 font-semibold';
+    default:
+      return 'bg-blue-50 text-blue-900 border-2 border-blue-600 font-semibold';
+  }
+}
+
+function getCoverageButtonStyles(level: CoverageAdequacy, isSelected: boolean): string {
+  if (!isSelected) {
+    return 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent';
+  }
+
+  switch (level) {
+    case 'poor':
+      return 'bg-red-50 text-red-900 border-2 border-red-600 font-semibold';
+    case 'adequate':
+      return 'bg-amber-50 text-amber-900 border-2 border-amber-600 font-semibold';
+    case 'good':
+      return 'bg-green-50 text-green-900 border-2 border-green-600 font-semibold';
+    case 'unknown':
+      return 'bg-slate-50 text-slate-900 border-2 border-slate-600 font-semibold';
+    default:
+      return 'bg-blue-50 text-blue-900 border-2 border-blue-600 font-semibold';
+  }
+}
+
+function getProtectionButtonStyles(level: LocalisedProtectionLevel, isSelected: boolean): string {
+  if (!isSelected) {
+    return 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent';
+  }
+
+  switch (level) {
+    case 'no':
+      return 'bg-red-50 text-red-900 border-2 border-red-600 font-semibold';
+    case 'partial':
+      return 'bg-amber-50 text-amber-900 border-2 border-amber-600 font-semibold';
+    case 'yes':
+      return 'bg-green-50 text-green-900 border-2 border-green-600 font-semibold';
+    case 'unknown':
+      return 'bg-slate-50 text-slate-900 border-2 border-slate-600 font-semibold';
+    default:
+      return 'bg-blue-50 text-blue-900 border-2 border-blue-600 font-semibold';
+  }
+}
+
+function getWaterSupplyButtonStyles(level: WaterSupplyReliability, isSelected: boolean): string {
+  if (!isSelected) {
+    return 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent';
+  }
+
+  switch (level) {
+    case 'unreliable':
+      return 'bg-red-50 text-red-900 border-2 border-red-600 font-semibold';
+    case 'reliable':
+      return 'bg-green-50 text-green-900 border-2 border-green-600 font-semibold';
+    case 'unknown':
+      return 'bg-slate-50 text-slate-900 border-2 border-slate-600 font-semibold';
+    default:
+      return 'bg-blue-50 text-blue-900 border-2 border-blue-600 font-semibold';
+  }
+}
+
 function createDefaultBuildingProtection(): BuildingFireProtection {
   return {
     suppression: {},
@@ -122,7 +196,7 @@ function createDefaultBuildingProtection(): BuildingFireProtection {
     detection_alarm: {
       system_type: '',
       coverage: 'unknown',
-      monitoring: 'inherit',
+      monitoring: 'unknown',
       notes: '',
       rating: 3
     },
@@ -145,6 +219,31 @@ function createDefaultSiteData(): SiteData {
   };
 }
 
+function migrateMonitoringValues(fireProtection: FireProtectionModule): FireProtectionModule {
+  const migratedBuildings = { ...fireProtection.buildings };
+
+  Object.keys(migratedBuildings).forEach((buildingId) => {
+    const building = migratedBuildings[buildingId];
+    if (building.detection_alarm) {
+      const currentMonitoring = building.detection_alarm.monitoring as any;
+      if (currentMonitoring === 'inherit' || !currentMonitoring) {
+        migratedBuildings[buildingId] = {
+          ...building,
+          detection_alarm: {
+            ...building.detection_alarm,
+            monitoring: 'unknown'
+          }
+        };
+      }
+    }
+  });
+
+  return {
+    ...fireProtection,
+    buildings: migratedBuildings
+  };
+}
+
 export default function RE06FireProtectionForm({
   moduleInstance,
   document,
@@ -157,10 +256,12 @@ export default function RE06FireProtectionForm({
   const [sectionGrade, setSectionGrade] = useState<number>(3);
 
   const d = moduleInstance.data || {};
-  const safeFireProtection: FireProtectionModule = {
+  const rawFireProtection: FireProtectionModule = {
     buildings: d.fire_protection?.buildings || {},
     site: d.fire_protection?.site || createDefaultSiteData()
   };
+
+  const safeFireProtection = migrateMonitoringValues(rawFireProtection);
 
   const [formData, setFormData] = useState<{ fire_protection: FireProtectionModule }>({
     fire_protection: safeFireProtection
@@ -902,20 +1003,21 @@ export default function RE06FireProtectionForm({
                         Hazard Protected?
                       </label>
                       <div className="grid grid-cols-4 gap-2">
-                        {(['yes', 'partial', 'no', 'unknown'] as LocalisedProtectionLevel[]).map((level) => (
-                          <button
-                            key={level}
-                            type="button"
-                            onClick={() => updateBuildingField(selectedBuildingId, ['localised_protection', 'foam', 'protected'], level)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                              selectedBuildingData.localised_protection.foam?.protected === level
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                          >
-                            {level}
-                          </button>
-                        ))}
+                        {(['yes', 'partial', 'no', 'unknown'] as LocalisedProtectionLevel[]).map((level) => {
+                          const isSelected = selectedBuildingData.localised_protection.foam?.protected === level;
+                          return (
+                            <button
+                              key={level}
+                              type="button"
+                              onClick={() => updateBuildingField(selectedBuildingId, ['localised_protection', 'foam', 'protected'], level)}
+                              className={`px-3 py-2 rounded-lg text-sm transition-colors capitalize ${
+                                getProtectionButtonStyles(level, isSelected)
+                              }`}
+                            >
+                              {level}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     <div>
@@ -970,20 +1072,21 @@ export default function RE06FireProtectionForm({
                         Hazard Protected?
                       </label>
                       <div className="grid grid-cols-4 gap-2">
-                        {(['yes', 'partial', 'no', 'unknown'] as LocalisedProtectionLevel[]).map((level) => (
-                          <button
-                            key={level}
-                            type="button"
-                            onClick={() => updateBuildingField(selectedBuildingId, ['localised_protection', 'gaseous', 'protected'], level)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                              selectedBuildingData.localised_protection.gaseous?.protected === level
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                          >
-                            {level}
-                          </button>
-                        ))}
+                        {(['yes', 'partial', 'no', 'unknown'] as LocalisedProtectionLevel[]).map((level) => {
+                          const isSelected = selectedBuildingData.localised_protection.gaseous?.protected === level;
+                          return (
+                            <button
+                              key={level}
+                              type="button"
+                              onClick={() => updateBuildingField(selectedBuildingId, ['localised_protection', 'gaseous', 'protected'], level)}
+                              className={`px-3 py-2 rounded-lg text-sm transition-colors capitalize ${
+                                getProtectionButtonStyles(level, isSelected)
+                              }`}
+                            >
+                              {level}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     <div>
@@ -1029,20 +1132,21 @@ export default function RE06FireProtectionForm({
                     Coverage Adequacy
                   </label>
                   <div className="grid grid-cols-4 gap-2">
-                    {(['poor', 'adequate', 'good', 'unknown'] as CoverageAdequacy[]).map((level) => (
-                      <button
-                        key={level}
-                        type="button"
-                        onClick={() => updateBuildingField(selectedBuildingId, ['detection_alarm', 'coverage'], level)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                          selectedBuildingData.detection_alarm.coverage === level
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {level}
-                      </button>
-                    ))}
+                    {(['poor', 'adequate', 'good', 'unknown'] as CoverageAdequacy[]).map((level) => {
+                      const isSelected = selectedBuildingData.detection_alarm.coverage === level;
+                      return (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() => updateBuildingField(selectedBuildingId, ['detection_alarm', 'coverage'], level)}
+                          className={`px-3 py-2 rounded-lg text-sm transition-colors capitalize ${
+                            getCoverageButtonStyles(level, isSelected)
+                          }`}
+                        >
+                          {level}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1050,21 +1154,25 @@ export default function RE06FireProtectionForm({
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Monitoring
                   </label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {(['inherit', 'none', 'keyholder', 'arc', 'unknown'] as MonitoringType[]).map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => updateBuildingField(selectedBuildingId, ['detection_alarm', 'monitoring'], type)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                          selectedBuildingData.detection_alarm.monitoring === type
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {type === 'arc' ? 'ARC' : type}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['none', 'keyholder', 'arc', 'unknown'] as MonitoringType[]).map((type) => {
+                      const currentMonitoring = selectedBuildingData.detection_alarm.monitoring as any;
+                      const normalizedMonitoring = (currentMonitoring === 'inherit' || !currentMonitoring) ? 'unknown' : currentMonitoring;
+                      const isSelected = normalizedMonitoring === type;
+
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => updateBuildingField(selectedBuildingId, ['detection_alarm', 'monitoring'], type)}
+                          className={`px-3 py-2 rounded-lg text-sm transition-colors capitalize ${
+                            getMonitoringButtonStyles(type, isSelected)
+                          }`}
+                        >
+                          {type === 'arc' ? 'ARC' : type}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1160,20 +1268,21 @@ export default function RE06FireProtectionForm({
                       Assessment
                     </label>
                     <div className="grid grid-cols-3 gap-2">
-                      {(['reliable', 'unreliable', 'unknown'] as WaterSupplyReliability[]).map((level) => (
-                        <button
-                          key={level}
-                          type="button"
-                          onClick={() => updateSiteField(['water_supply_reliability'], level)}
-                          className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
-                            formData.fire_protection.site.water_supply_reliability === level
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                          }`}
-                        >
-                          {level}
-                        </button>
-                      ))}
+                      {(['reliable', 'unreliable', 'unknown'] as WaterSupplyReliability[]).map((level) => {
+                        const isSelected = formData.fire_protection.site.water_supply_reliability === level;
+                        return (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => updateSiteField(['water_supply_reliability'], level)}
+                            className={`px-4 py-2 rounded-lg transition-colors capitalize ${
+                              getWaterSupplyButtonStyles(level, isSelected)
+                            }`}
+                          >
+                            {level}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 

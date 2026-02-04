@@ -282,46 +282,47 @@ useEffect(() => {
 }, [document.id]);
 
 useEffect(() => {
-  async function loadConstructionBuildings() {
-    // ✅ prevents repeated clobbering / “save delay” behaviour
-    if (hasLoadedConstructionRef.current) return;
+  useEffect(() => {
+  let cancelled = false;
 
+  async function loadConstructionBuildings() {
     try {
-      const { data: rows, error } = await supabase
+      const res = await supabase
         .from('module_instances')
-        .select('id, document_id, module_key, updated_at, data')
+        .select('id, updated_at, data')
         .eq('document_id', document.id)
         .eq('module_key', 'RE_02_CONSTRUCTION')
         .order('updated_at', { ascending: false })
         .limit(1);
 
-      if (error) throw error;
+      const rows = (res.data as any[]) || [];
+      if (res.error) throw res.error;
 
-      const constructionInstance = rows?.[0];
+      const constructionInstance = rows.length > 0 ? rows[0] : null;
 
-const buildings =
-  Array.isArray(constructionInstance?.data?.construction?.buildings)
-    ? constructionInstance.data.construction.buildings
-    : Array.isArray(constructionInstance?.data?.buildings)
-    ? constructionInstance.data.buildings
-    : [];
+      const canonical = constructionInstance?.data?.construction?.buildings;
+      const legacy = constructionInstance?.data?.buildings;
 
-      console.log('[RE06] FINAL buildings loaded:', buildings.length);
+      const buildings = Array.isArray(canonical)
+        ? canonical
+        : Array.isArray(legacy)
+        ? legacy
+        : [];
+
+      if (cancelled) return;
 
       setConstructionBuildings(buildings);
 
-      // ✅ never rely on stale selectedBuildingId from closure
       setSelectedBuildingId((prev) => {
-        if (prev && buildings.some((b: any) => b.id === prev)) return prev;
+        if (prev && buildings.some((b: any) => b?.id === prev)) return prev;
         return buildings[0]?.id ?? null;
       });
 
-      // ✅ add missing building shells, but do NOT wipe existing data
       setFormData((prev) => {
         const updatedBuildings = { ...prev.fire_protection.buildings };
 
-        for (const b of buildings as ConstructionBuilding[]) {
-          if (!updatedBuildings[b.id]) {
+        for (const b of buildings) {
+          if (b?.id && !updatedBuildings[b.id]) {
             updatedBuildings[b.id] = createDefaultBuildingProtection();
           }
         }
@@ -334,18 +335,19 @@ const buildings =
           },
         };
       });
-
-      // 🔒 lock after first successful hydrate
-      hasLoadedConstructionRef.current = true;
     } catch (err) {
-      console.error('[RE06] Error loading construction buildings:', err);
-      // IMPORTANT: don’t wipe state here; it causes flicker/clobbering
-      // setConstructionBuildings([]);
+      console.error('[RE06] loadConstructionBuildings failed:', err);
+      if (!cancelled) setConstructionBuildings([]);
     }
   }
 
   loadConstructionBuildings();
+
+  return () => {
+    cancelled = true;
+  };
 }, [document.id]);
+
 
   // Load section grade from document
   useEffect(() => {

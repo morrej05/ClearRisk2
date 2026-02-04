@@ -297,14 +297,14 @@ useEffect(() => {
 
       if (error) throw error;
 
-      const constructionInstance = rows?.[0] ?? null;
+      const constructionInstance = rows?.[0];
 
-      const buildings =
-        Array.isArray(constructionInstance?.data?.construction?.buildings)
-          ? constructionInstance?.data.construction.buildings ?? []
-          : Array.isArray(constructionInstance?.data?.buildings)
-          ? constructionInstance!.data.buildings
-          : [];
+const buildings =
+  Array.isArray(constructionInstance?.data?.construction?.buildings)
+    ? constructionInstance.data.construction.buildings
+    : Array.isArray(constructionInstance?.data?.buildings)
+    ? constructionInstance.data.buildings
+    : [];
 
       console.log('[RE06] FINAL buildings loaded:', buildings.length);
 

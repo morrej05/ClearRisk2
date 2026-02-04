@@ -965,27 +965,42 @@ console.log('✅ Using CANONICAL PATH: data.construction.buildings');
           console.error('❌ Read-back error:', readError);
         } else if (savedData) {
           // CANONICAL PATH: Read from top-level (data.buildings, data.construction.site_notes)
-          const dbRoofArea = savedData.moduleInstance.data.construction?.buildings?.[0]?.roof?.area_sqm ?? null;
-          const dbBuildingsCount = savedData.moduleInstance.data.construction?.buildings?.length || 0;
-          const dbFingerprint = savedData.data?.__debug?.re02_fingerprint || 'none';
-          const dbVersion = savedData.data?.__debug?.re02_save_version || 0;
+          const dbRoofArea =
+  savedData.data?.construction?.buildings?.[0]?.roof?.area_sqm ?? null;
 
-          console.group('✅ RE-02 TRACE: Read-Back Verification');
-          console.log('📥 DB buildings count:', dbBuildingsCount);
-          console.log('📥 Read back site notes:', savedData.data?.site_notes?.substring(0, 50) || '(empty)');
-          console.log('🔍 All buildings from DB:', savedData.moduleInstance.data.construction?.buildings);
-          console.log('🔍 Full first building from DB:', savedData.moduleInstance.data.construction?.buildings?.[0]);
-          console.log('🎯 DB roof area (building 0):', dbRoofArea);
-          console.log('🎯 DB roof area type:', typeof dbRoofArea);
-          console.log('🆔 DB Fingerprint:', dbFingerprint);
-          console.log('🔢 DB Version:', dbVersion);
+const dbBuildingsCount =
+  savedData.data?.construction?.buildings?.length || 0;
 
-          // Check for data loss
-          const expectedBuildings = buildingsWithoutCalculated.length;
-          const actualBuildings = savedData.moduleInstance.data.construction?.buildings?.length || 0;
-          if (expectedBuildings !== actualBuildings) {
-            console.error('❌ DATA LOSS: Expected', expectedBuildings, 'buildings, got', actualBuildings);
-          }
+const dbFingerprint =
+  savedData.data?.__debug?.re02_fingerprint || 'none';
+
+const dbVersion =
+  savedData.data?.__debug?.re02_save_version || 0;
+
+console.group('✅ RE-02 TRACE: Read-Back Verification');
+console.log('📥 DB buildings count:', dbBuildingsCount);
+
+// ✅ canonical site notes (if you’re moving to construction.site_notes)
+console.log(
+  '📥 Read back site notes:',
+  savedData.data?.construction?.site_notes?.substring(0, 50) || '(empty)'
+);
+
+console.log('🔍 All buildings from DB:', savedData.data?.construction?.buildings);
+console.log('🔍 Full first building from DB:', savedData.data?.construction?.buildings?.[0]);
+console.log('🎯 DB roof area (building 0):', dbRoofArea);
+console.log('🎯 DB roof area type:', typeof dbRoofArea);
+console.log('🆔 DB Fingerprint:', dbFingerprint);
+console.log('🔢 DB Version:', dbVersion);
+
+// Check for data loss
+const expectedBuildings = buildingsWithoutCalculated.length;
+const actualBuildings = savedData.data?.construction?.buildings?.length || 0;
+
+if (expectedBuildings !== actualBuildings) {
+  console.error('❌ DATA LOSS: Expected', expectedBuildings, 'buildings, got', actualBuildings);
+}
+
 
           // Check if area matches what we sent
           if (payloadRoofArea !== dbRoofArea) {

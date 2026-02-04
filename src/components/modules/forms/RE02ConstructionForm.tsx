@@ -850,7 +850,7 @@ const mergedPayload = {
   construction: {
     ...existingConstruction,
     buildings: buildingsWithoutCalculated,
-    site_notes: normalizedData.site_notes,
+    site_notes: normalizeddata.construction.site_notes,
   },
   ...(import.meta.env.DEV && {
     __debug: {
@@ -870,7 +870,7 @@ const mergedPayload = {
         console.log('📊 State buildings count:', currentFormData.buildings.length);
         console.log('📊 Normalized buildings count:', normalizedData.buildings.length);
         console.log('📊 Payload buildings count:', buildingsWithoutCalculated.length);
-        console.log('📝 Site notes:', normalizedData.site_notes?.substring(0, 50) || '(empty)');
+        console.log('📝 Site notes:', normalizeddata.construction.site_notes?.substring(0, 50) || '(empty)');
         console.log('💾 Payload keys:', Object.keys(mergedPayload));
 console.log('✅ Using CANONICAL PATH: data.construction.buildings');
 
@@ -937,17 +937,17 @@ console.log('✅ Using CANONICAL PATH: data.construction.buildings');
         if (readError) {
           console.error('❌ Read-back error:', readError);
         } else if (savedData) {
-          // CANONICAL PATH: Read from top-level (data.buildings, data.site_notes)
-          const dbRoofArea = savedData.data?.buildings?.[0]?.roof?.area_sqm ?? null;
-          const dbBuildingsCount = savedData.data?.buildings?.length || 0;
+          // CANONICAL PATH: Read from top-level (data.buildings, data.construction.site_notes)
+          const dbRoofArea = savedData.moduleInstance.data.construction?.buildings?.[0]?.roof?.area_sqm ?? null;
+          const dbBuildingsCount = savedData.moduleInstance.data.construction?.buildings?.length || 0;
           const dbFingerprint = savedData.data?.__debug?.re02_fingerprint || 'none';
           const dbVersion = savedData.data?.__debug?.re02_save_version || 0;
 
           console.group('✅ RE-02 TRACE: Read-Back Verification');
           console.log('📥 DB buildings count:', dbBuildingsCount);
           console.log('📥 Read back site notes:', savedData.data?.site_notes?.substring(0, 50) || '(empty)');
-          console.log('🔍 All buildings from DB:', savedData.data?.buildings);
-          console.log('🔍 Full first building from DB:', savedData.data?.buildings?.[0]);
+          console.log('🔍 All buildings from DB:', savedData.moduleInstance.data.construction?.buildings);
+          console.log('🔍 Full first building from DB:', savedData.moduleInstance.data.construction?.buildings?.[0]);
           console.log('🎯 DB roof area (building 0):', dbRoofArea);
           console.log('🎯 DB roof area type:', typeof dbRoofArea);
           console.log('🆔 DB Fingerprint:', dbFingerprint);
@@ -955,7 +955,7 @@ console.log('✅ Using CANONICAL PATH: data.construction.buildings');
 
           // Check for data loss
           const expectedBuildings = buildingsWithoutCalculated.length;
-          const actualBuildings = savedData.data?.buildings?.length || 0;
+          const actualBuildings = savedData.moduleInstance.data.construction?.buildings?.length || 0;
           if (expectedBuildings !== actualBuildings) {
             console.error('❌ DATA LOSS: Expected', expectedBuildings, 'buildings, got', actualBuildings);
           }
@@ -991,7 +991,7 @@ console.log('✅ Using CANONICAL PATH: data.construction.buildings');
           const calculated = calculateConstructionMetrics(b);
           return { ...formState, calculated };
         }),
-        site_notes: normalizedData.site_notes,
+        site_notes: normalizeddata.construction.site_notes,
       };
       setFormData(savedFormState);
 
@@ -1498,7 +1498,7 @@ console.log('✅ Using CANONICAL PATH: data.construction.buildings');
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Overall Site Construction Observations</label>
             <textarea
-              value={formData.site_notes}
+              value={formdata.construction.site_notes}
               onChange={(e) => setFormData((prev) => ({ ...prev, site_notes: e.target.value }))}
               rows={4}
               className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"

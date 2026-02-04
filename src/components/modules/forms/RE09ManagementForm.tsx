@@ -152,10 +152,8 @@ export default function RE09ManagementForm({
 
       setRiskEngData(updatedRiskEngData);
 
-      const updatedFormData = ensureAutoRecommendation(formData, CANONICAL_KEY, overallRating, industryKey);
-      if (updatedFormData !== formData) {
-        setFormData(updatedFormData);
-      }
+      // DO NOT call setFormData here - this would overwrite the user's rating selection
+      // Auto-recommendations are applied separately using functional setState
     } catch (err) {
       console.error('Error updating overall rating:', err);
     }
@@ -165,18 +163,39 @@ export default function RE09ManagementForm({
     // Ensure numeric values are stored as numbers
     const normalizedValue = field === 'rating_1_5' && value !== null ? Number(value) : value;
 
+    // First, update formData with the new category value
     setFormData((prev) => {
       const nextCategories = (prev.categories ?? []).map((c: any) =>
         c.key === key ? { ...c, [field]: normalizedValue } : c
       );
 
-      // Auto-update overall rating when a category rating changes
-      if (field === 'rating_1_5') {
-        updateOverallRating(nextCategories);
-      }
-
       return { ...prev, categories: nextCategories };
     });
+
+    // Then, trigger side effects OUTSIDE the setter (no async calls inside setState)
+    if (field === 'rating_1_5') {
+      // Use setTimeout to ensure side effects run after state update completes
+      setTimeout(() => {
+        // Get the latest formData for side effects
+        setFormData((prev) => {
+          const nextCategories = prev.categories ?? [];
+          const overallRating = calculateOverallRating(nextCategories);
+
+          // Update RISK_ENGINEERING module asynchronously
+          updateOverallRating(nextCategories);
+
+          // Apply auto-recommendation based on the NEW overall rating
+          if (overallRating !== null) {
+            const withAutoRec = ensureAutoRecommendation(prev, CANONICAL_KEY, overallRating, industryKey);
+            if (withAutoRec !== prev) {
+              return withAutoRec;
+            }
+          }
+
+          return prev;
+        });
+      }, 0);
+    }
   };
 
   const handleSave = async () => {

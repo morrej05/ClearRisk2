@@ -7,7 +7,7 @@ import ReRatingPanel from '../../re/ReRatingPanel';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
-import { getSuggestedEquipment, STANDARD_EQUIPMENT_OPTIONS } from '../../../lib/re/reference/occupancyCriticalEquipment';
+import { getSuggestedEquipment, STANDARD_EQUIPMENT_OPTIONS, isHeavyOccupancy } from '../../../lib/re/reference/occupancyCriticalEquipment';
 import { Plus, X, Trash2 } from 'lucide-react';
 
 interface Document {
@@ -117,12 +117,9 @@ export default function RE08UtilitiesForm({
       backup_power_present: null,
       generator_capacity_notes: '',
     },
-    shutdown_strategy: d.shutdown_strategy || { notes: '' },
     critical_services: safeCriticalServices,
     critical_equipment: safeCriticalEquipment,
   });
-
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
   const [showServicePicker, setShowServicePicker] = useState(false);
   const [showEquipmentPicker, setShowEquipmentPicker] = useState(false);
   const [selectedServiceType, setSelectedServiceType] = useState('');
@@ -287,7 +284,6 @@ export default function RE08UtilitiesForm({
         .from('module_instances')
         .update({
           data: sanitized.data,
-          assessor_notes: assessorNotes,
         })
         .eq('id', moduleInstance.id);
 
@@ -585,10 +581,20 @@ export default function RE08UtilitiesForm({
             {showEquipmentPicker && (() => {
               const suggestedEquipment = getSuggestedEquipment(industryKey);
               const showCustomInput = selectedEquipmentType === 'Custom…';
+              const isHeavy = isHeavyOccupancy(industryKey);
+              const showWarning = isHeavy && suggestedEquipment.length === 0;
 
               return (
                 <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                   <label className="block text-sm font-medium text-slate-700 mb-2">Select Equipment Type</label>
+
+                  {showWarning && industryKey && (
+                    <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                      <p className="text-sm text-amber-800">
+                        No suggested equipment configured for industry: <span className="font-medium">{industryKey}</span>
+                      </p>
+                    </div>
+                  )}
 
                   <select
                     value={selectedEquipmentType}
@@ -814,36 +820,6 @@ export default function RE08UtilitiesForm({
               ))}
             </div>
           </div>
-
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Shutdown Strategy</h3>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Emergency Shutdown Notes</label>
-              <textarea
-                value={formData.shutdown_strategy.notes}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    shutdown_strategy: { ...formData.shutdown_strategy, notes: e.target.value },
-                  })
-                }
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                placeholder="Describe emergency shutdown procedures and critical process isolation"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Assessor Notes</h3>
-          <textarea
-            value={assessorNotes}
-            onChange={(e) => setAssessorNotes(e.target.value)}
-            rows={4}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-            placeholder="Internal notes and observations"
-          />
         </div>
 
         {document?.id && moduleInstance?.id && (

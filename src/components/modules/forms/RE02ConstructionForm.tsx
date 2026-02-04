@@ -590,11 +590,11 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
   // CANONICAL PATH: data.buildings (top-level)
   // Migrate legacy data from data.construction.buildings if needed
-  const rawBuildings = Array.isArray(d.buildings)
-    ? d.buildings // Prefer top-level buildings (canonical)
-    : Array.isArray(d.construction?.buildings)
-    ? d.construction.buildings // Fallback to legacy path
-    : [];
+const rawBuildings = Array.isArray(d.construction?.buildings)
+  ? d.construction.buildings // ✅ canonical (matches RE-06)
+  : Array.isArray(d.buildings)
+  ? d.buildings // legacy fallback
+  : [];
 
   // DEV LOGGING: Track data migration
   if (import.meta.env.DEV && rawBuildings.length > 0) {

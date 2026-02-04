@@ -575,22 +575,64 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       // Remove calculated fields before saving
       const buildingsWithoutCalculated = formData.buildings.map(({ calculated, ...building }) => building);
 
-      // Build payload directly - save as jsonb without sanitization
-      const payload = {
-        construction: {
-          ...formData,
-          buildings: buildingsWithoutCalculated
-        }
+      // Build construction data
+      const constructionData = {
+        ...formData,
+        buildings: buildingsWithoutCalculated
       };
+
+      // CRITICAL: Merge with existing data instead of replacing entire data field
+      // This prevents data loss if other modules or metadata exist in the same record
+      const existingData = moduleInstance.data || {};
+      const mergedPayload = {
+        ...existingData,
+        construction: constructionData
+      };
+
+      // DEV LOGGING: Track what we're saving (only in development)
+      if (import.meta.env.DEV) {
+        console.group('🏗️ RE-02 Construction Save');
+        console.log('📊 Buildings count:', buildingsWithoutCalculated.length);
+        console.log('📝 Site notes:', formData.site_notes?.substring(0, 50) || '(empty)');
+        console.log('💾 Payload keys:', Object.keys(mergedPayload));
+        console.log('🔍 Full payload:', JSON.stringify(mergedPayload, null, 2));
+        console.groupEnd();
+      }
 
       const { error } = await supabase
         .from('module_instances')
         .update({
-          data: payload,
+          data: mergedPayload,
         })
         .eq('id', moduleInstance.id);
 
       if (error) throw error;
+
+      // DEV LOGGING: Verify save by reading back
+      if (import.meta.env.DEV) {
+        const { data: savedData, error: readError } = await supabase
+          .from('module_instances')
+          .select('data')
+          .eq('id', moduleInstance.id)
+          .single();
+
+        if (!readError && savedData) {
+          console.group('✅ RE-02 Save Verification');
+          console.log('📥 Read back buildings count:', savedData.data?.construction?.buildings?.length || 0);
+          console.log('📥 Read back site notes:', savedData.data?.construction?.site_notes?.substring(0, 50) || '(empty)');
+
+          // Check for data loss
+          const expectedBuildings = buildingsWithoutCalculated.length;
+          const actualBuildings = savedData.data?.construction?.buildings?.length || 0;
+          if (expectedBuildings !== actualBuildings) {
+            console.error('❌ DATA LOSS DETECTED! Expected', expectedBuildings, 'buildings, got', actualBuildings);
+          } else {
+            console.log('✅ All data saved successfully');
+          }
+          console.groupEnd();
+        }
+      }
+
       onSaved();
     } catch (error) {
       console.error('Error saving module:', error);

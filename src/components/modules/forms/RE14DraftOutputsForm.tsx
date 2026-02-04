@@ -102,6 +102,7 @@ export default function RE14DraftOutputsForm({
             riskEng.data
           );
 
+          console.log('[RE-11] industryKey', breakdown.industryKey);
           setIndustryKey(breakdown.industryKey);
           setIndustryLabel(breakdown.industryLabel);
           setOccupancyMissing(!breakdown.industryKey);

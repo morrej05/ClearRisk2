@@ -87,6 +87,7 @@ export async function buildRiskEngineeringScoreBreakdown(
   riskEngData: Record<string, any>
 ): Promise<RiskEngineeringScoreBreakdown> {
   const industryKey = riskEngData?.industry_key || null;
+  console.log('[breakdown] industryKey', industryKey);
   const industryLabel = industryKey ? humanizeIndustryKey(industryKey) : 'No Industry Selected';
 
   // Fetch section grades for global pillars

@@ -295,9 +295,13 @@ if (error) throw error;
 
 const constructionInstance = rows?.[0] ?? null;
 
-const buildings = Array.isArray(constructionInstance?.data?.construction?.buildings)
-  ? constructionInstance.data.construction.buildings
-  : [];
+const buildings =
+  Array.isArray(constructionInstance?.data?.construction?.buildings)
+    ? constructionInstance.data.construction.buildings
+    : Array.isArray(constructionInstance?.data?.buildings)
+    ? constructionInstance.data.buildings
+    : [];
+
 
 
         setConstructionBuildings(buildings);

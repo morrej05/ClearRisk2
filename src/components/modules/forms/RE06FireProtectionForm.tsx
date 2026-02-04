@@ -276,63 +276,76 @@ export default function RE06FireProtectionForm({
   });
 
   useEffect(() => {
-    async function loadConstructionBuildings() {
-      try {
-        const { data: rows, error } = await supabase
-  .from('module_instances')
-  .select('id, document_id, module_key, updated_at, data')
-  .eq('document_id', document.id)
-  .eq('module_key', 'RE_02_CONSTRUCTION')
-  .order('updated_at', { ascending: false });
+useEffect(() => {
+  // ✅ hard reset the guard when switching documents
+  hasLoadedConstructionRef.current = false;
+}, [document.id]);
 
-console.log('[RE06] document.id =', document.id);
-console.log('[RE06] matching RE_02_CONSTRUCTION rows =', rows?.length ?? 0);
-console.log(
-  '[RE06] row ids (newest first) =',
-  (rows ?? []).map(r => ({ id: r.id, updated_at: r.updated_at }))
-);
+useEffect(() => {
+  async function loadConstructionBuildings() {
+    // ✅ prevents repeated clobbering / “save delay” behaviour
+    if (hasLoadedConstructionRef.current) return;
 
-if (error) throw error;
+    try {
+      const { data: rows, error } = await supabase
+        .from('module_instances')
+        .select('id, document_id, module_key, updated_at, data')
+        .eq('document_id', document.id)
+        .eq('module_key', 'RE_02_CONSTRUCTION')
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
-const constructionInstance = rows?.[0] ?? null;
+      if (error) throw error;
 
-const buildings =
-  Array.isArray(constructionInstance?.data?.construction?.buildings)
-    ? constructionInstance.data.construction.buildings
-    : Array.isArray(constructionInstance?.data?.buildings)
-    ? constructionInstance.data.buildings
-    : [];
+      const constructionInstance = rows?.[0] ?? null;
 
-        setConstructionBuildings(buildings);
+      const buildings =
+        Array.isArray(constructionInstance?.data?.construction?.buildings)
+          ? constructionInstance!.data.construction.buildings
+          : Array.isArray(constructionInstance?.data?.buildings)
+          ? constructionInstance!.data.buildings
+          : [];
 
-        if (buildings.length > 0 && !selectedBuildingId) {
-          setSelectedBuildingId(buildings[0].id);
+      console.log('[RE06] FINAL buildings loaded:', buildings.length);
+
+      setConstructionBuildings(buildings);
+
+      // ✅ never rely on stale selectedBuildingId from closure
+      setSelectedBuildingId((prev) => {
+        if (prev && buildings.some((b: any) => b.id === prev)) return prev;
+        return buildings[0]?.id ?? null;
+      });
+
+      // ✅ add missing building shells, but do NOT wipe existing data
+      setFormData((prev) => {
+        const updatedBuildings = { ...prev.fire_protection.buildings };
+
+        for (const b of buildings as ConstructionBuilding[]) {
+          if (!updatedBuildings[b.id]) {
+            updatedBuildings[b.id] = createDefaultBuildingProtection();
+          }
         }
 
-        setFormData((prev) => {
-          const updatedBuildings = { ...prev.fire_protection.buildings };
-          buildings.forEach((b: ConstructionBuilding) => {
-            if (!updatedBuildings[b.id]) {
-              updatedBuildings[b.id] = createDefaultBuildingProtection();
-            }
-          });
+        return {
+          ...prev,
+          fire_protection: {
+            ...prev.fire_protection,
+            buildings: updatedBuildings,
+          },
+        };
+      });
 
-          return {
-            ...prev,
-            fire_protection: {
-              ...prev.fire_protection,
-              buildings: updatedBuildings
-            }
-          };
-        });
-      } catch (err) {
-        console.error('Error loading construction buildings:', err);
-        setConstructionBuildings([]);
-      }
+      // 🔒 lock after first successful hydrate
+      hasLoadedConstructionRef.current = true;
+    } catch (err) {
+      console.error('[RE06] Error loading construction buildings:', err);
+      // IMPORTANT: don’t wipe state here; it causes flicker/clobbering
+      // setConstructionBuildings([]);
     }
+  }
 
-    loadConstructionBuildings();
-  }, [moduleInstance.document_id]);
+  loadConstructionBuildings();
+}, [document.id]);
 
   // Load section grade from document
   useEffect(() => {

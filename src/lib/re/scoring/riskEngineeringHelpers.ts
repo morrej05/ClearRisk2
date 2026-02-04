@@ -1,5 +1,4 @@
 import { HRG_CANONICAL_KEYS, getHrgConfig, humanizeCanonicalKey, humanizeIndustryKey } from '../reference/hrgMasterMap';
-import { getEnabledFactors } from '../reference/occupancyRelevance';
 import { getConstructionRating } from './constructionRating';
 import { supabase } from '../../supabase';
 
@@ -64,6 +63,9 @@ export function calculateScore(rating: number, weight: number): number {
   return rating * weight;
 }
 
+// Global pillar keys that should NOT be included in occupancy drivers
+const GLOBAL_PILLAR_KEYS = ['construction', 'fire_protection', 'exposure', 'management'];
+
 /**
  * Canonical scoring builder for Risk Engineering.
  * Single source of truth for building score breakdowns.
@@ -71,13 +73,14 @@ export function calculateScore(rating: number, weight: number): number {
  * Returns:
  * - industryKey + industry label
  * - globalPillars[] (always included): construction, fire_protection, exposure, management
- * - occupancyDrivers[] (industry-specific, filtered by relevance/weight>0)
+ * - occupancyDrivers[] (industry-specific, derived from HRG weights, filtered by weight>0)
  * - totalScore, maxScore
  * - topContributors[] (top 3 by score)
  *
  * Inclusion/scoring rules:
  * - Global pillars ALWAYS included
- * - Industry-specific drivers included only if relevant (weight > 0 or relevance flag true per HRG map)
+ * - Occupancy drivers derived directly from HRG map weights (not from relevance map)
+ * - Include all HRG factors with weight > 0, excluding global pillars
  * - score = (rating ?? 0) * weight
  * - maxScore per factor = 5 * weight
  * - totals are sums across included factors
@@ -87,7 +90,6 @@ export async function buildRiskEngineeringScoreBreakdown(
   riskEngData: Record<string, any>
 ): Promise<RiskEngineeringScoreBreakdown> {
   const industryKey = riskEngData?.industry_key || null;
-  console.log('[breakdown] industryKey', industryKey);
   const industryLabel = industryKey ? humanizeIndustryKey(industryKey) : 'No Industry Selected';
 
   // Fetch section grades for global pillars
@@ -138,12 +140,10 @@ export async function buildRiskEngineeringScoreBreakdown(
     },
   ];
 
-  // Get enabled factors for this occupancy
-  const enabledFactors = getEnabledFactors(industryKey);
-
-  // Build occupancy driver factors (FILTERED BY OCCUPANCY RELEVANCE)
-  const candidates = HRG_CANONICAL_KEYS
-    .filter(key => enabledFactors.includes(key))
+  // Build occupancy driver factors directly from HRG map weights
+  // Include ALL factors with weight > 0, excluding the 4 global pillars
+  const occupancyDrivers: ScoreFactor[] = HRG_CANONICAL_KEYS
+    .filter(key => !GLOBAL_PILLAR_KEYS.includes(key)) // Exclude global pillars
     .map(canonicalKey => {
       const rating = getRating(riskEngData, canonicalKey);
       const config = getHrgConfig(industryKey, canonicalKey);
@@ -158,19 +158,19 @@ export async function buildRiskEngineeringScoreBreakdown(
         score,
         maxScore,
       };
-    });
-
-  const occupancyDrivers: ScoreFactor[] = candidates.filter(factor => factor.weight > 0); // Only include if weight > 0
-
-  console.log('[breakdown] driverCandidates', candidates.length, 'included', occupancyDrivers.length);
+    })
+    .filter(factor => factor.weight > 0); // Only include if weight > 0
 
   // Combine all factors for totals
   const allFactors = [...globalPillars, ...occupancyDrivers];
   const totalScore = allFactors.reduce((sum, factor) => sum + factor.score, 0);
   const maxScore = allFactors.reduce((sum, factor) => sum + factor.maxScore, 0);
 
-  console.log('[breakdown] globalPillars', globalPillars.map(x => x.key), 'len', globalPillars.length);
-  console.log('[breakdown] occupancyDrivers', occupancyDrivers.map(x => ({ key: x.key, weight: x.weight, rating: x.rating })), 'len', occupancyDrivers.length);
+  // Definitive diagnostics
+  console.log('[breakdown] industryKey', industryKey);
+  console.log('[breakdown] globalPillars len', globalPillars.length);
+  console.log('[breakdown] occupancyDrivers keys', occupancyDrivers.map(d => d.key), 'len', occupancyDrivers.length);
+  console.log('[breakdown] occupancyDrivers weights', occupancyDrivers.map(d => ({ k: d.key, w: d.weight, r: d.rating })));
   console.log('[breakdown] totals', { totalScore, maxScore });
 
   // Top 3 contributors by score

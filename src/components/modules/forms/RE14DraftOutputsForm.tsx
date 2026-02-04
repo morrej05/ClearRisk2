@@ -398,7 +398,7 @@ export default function RE14DraftOutputsForm({
                     <>
                       <tr className="bg-slate-50 border-t-2 border-slate-300">
                         <td colSpan={4} className="px-4 py-2 text-xs font-semibold text-slate-900 uppercase tracking-wide">
-                          Occupancy Loss Drivers (Filtered by Relevance)
+                          Occupancy Loss Drivers (Industry-Specific)
                         </td>
                       </tr>
                       {occupancyDrivers.map((factor, idx) => (

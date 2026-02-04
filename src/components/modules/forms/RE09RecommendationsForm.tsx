@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import FloatingSaveBar from './FloatingSaveBar';
+import FeedbackModal from '../../FeedbackModal';
+import ConfirmDialog from '../../ConfirmDialog';
 import { Plus, X, Upload, Image as ImageIcon, AlertTriangle, Filter, Table2, FileText } from 'lucide-react';
 
 interface Document {
@@ -103,6 +105,32 @@ export default function RE09RecommendationsForm({
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('editor');
 
+  const [feedback, setFeedback] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+    autoClose?: boolean;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+    autoClose: false,
+  });
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   // Load recommendations from database
   useEffect(() => {
     loadRecommendations();
@@ -122,7 +150,13 @@ export default function RE09RecommendationsForm({
       setRecommendations(data || []);
     } catch (error) {
       console.error('Error loading recommendations:', error);
-      alert('Failed to load recommendations. Please refresh the page.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Failed to load recommendations',
+        message: 'Unable to load recommendations. Please refresh the page and try again.',
+        autoClose: false,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -133,41 +167,57 @@ export default function RE09RecommendationsForm({
     setRecommendations([...recommendations, newRec]);
   };
 
-  const removeRecommendation = async (id: string) => {
+  const removeRecommendation = (id: string) => {
     const rec = recommendations.find((r) => r.id === id);
     if (!rec) return;
 
-    if (!confirm('Delete this recommendation? This action cannot be undone.')) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete recommendation',
+      message: 'Are you sure you want to delete this recommendation? This action cannot be undone.',
+      onConfirm: async () => {
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
 
-    try {
-      // If it has a rec_number, it exists in the database
-      if (rec.rec_number) {
-        // Mark as suppressed if it's auto-generated
-        if (rec.source_type === 'auto') {
-          const { error } = await supabase
-            .from('re_recommendations')
-            .update({ is_suppressed: true })
-            .eq('id', id);
+        try {
+          if (rec.rec_number) {
+            if (rec.source_type === 'auto') {
+              const { error } = await supabase
+                .from('re_recommendations')
+                .update({ is_suppressed: true })
+                .eq('id', id);
 
-          if (error) throw error;
-        } else {
-          // Actually delete manual recommendations
-          const { error } = await supabase
-            .from('re_recommendations')
-            .delete()
-            .eq('id', id);
+              if (error) throw error;
+            } else {
+              const { error } = await supabase
+                .from('re_recommendations')
+                .delete()
+                .eq('id', id);
 
-          if (error) throw error;
+              if (error) throw error;
+            }
+          }
+
+          setRecommendations(recommendations.filter((r) => r.id !== id));
+
+          setFeedback({
+            isOpen: true,
+            type: 'success',
+            title: 'Recommendation deleted',
+            message: 'The recommendation has been successfully removed.',
+            autoClose: true,
+          });
+        } catch (error) {
+          console.error('Error removing recommendation:', error);
+          setFeedback({
+            isOpen: true,
+            type: 'error',
+            title: 'Failed to delete recommendation',
+            message: 'Unable to delete the recommendation. Please try again.',
+            autoClose: false,
+          });
         }
-      }
-
-      setRecommendations(recommendations.filter((r) => r.id !== id));
-    } catch (error) {
-      console.error('Error removing recommendation:', error);
-      alert('Failed to delete recommendation.');
-    }
+      },
+    });
   };
 
   const updateRecommendation = (id: string, updates: Partial<Recommendation>) => {
@@ -179,19 +229,36 @@ export default function RE09RecommendationsForm({
   const handlePhotoUpload = async (recId: string, file: File) => {
     const rec = recommendations.find((r) => r.id === recId);
     if (!rec || rec.photos.length >= MAX_PHOTOS_PER_RECOMMENDATION) {
-      alert(`Maximum ${MAX_PHOTOS_PER_RECOMMENDATION} photos per recommendation`);
+      setFeedback({
+        isOpen: true,
+        type: 'warning',
+        title: 'Photo limit reached',
+        message: `You can attach a maximum of ${MAX_PHOTOS_PER_RECOMMENDATION} photos per recommendation.`,
+        autoClose: false,
+      });
       return;
     }
 
-    // Check file size
     if (file.size > MAX_PHOTO_SIZE_BYTES) {
-      alert(`Photo must be less than ${MAX_PHOTO_SIZE_MB}MB. Selected file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+      const actualSize = (file.size / 1024 / 1024).toFixed(1);
+      setFeedback({
+        isOpen: true,
+        type: 'warning',
+        title: 'File too large',
+        message: `Photo must be less than ${MAX_PHOTO_SIZE_MB}MB. Your file is ${actualSize}MB.`,
+        autoClose: false,
+      });
       return;
     }
 
-    // Check file type
     if (!file.type.startsWith('image/')) {
-      alert('Only image files are allowed (JPG, PNG, etc.)');
+      setFeedback({
+        isOpen: true,
+        type: 'warning',
+        title: 'Invalid file type',
+        message: 'Only image files are allowed. Please select a JPG or PNG file.',
+        autoClose: false,
+      });
       return;
     }
 
@@ -218,9 +285,23 @@ export default function RE09RecommendationsForm({
       updateRecommendation(recId, {
         photos: [...rec.photos, photo],
       });
+
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Photo uploaded',
+        message: 'The photo has been successfully attached to this recommendation.',
+        autoClose: true,
+      });
     } catch (error) {
       console.error('Error uploading photo:', error);
-      alert('Failed to upload photo. Please try again.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Upload failed',
+        message: 'Unable to upload the photo. Please try again.',
+        autoClose: false,
+      });
     } finally {
       setUploadingPhotoForRec(null);
     }
@@ -238,21 +319,25 @@ export default function RE09RecommendationsForm({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Validate all recommendations
       for (const rec of recommendations) {
         if (!rec.title.trim()) {
-          alert('All recommendations must have a title');
+          setFeedback({
+            isOpen: true,
+            type: 'warning',
+            title: 'Title required',
+            message: 'All recommendations must have a title. Please add a title before saving.',
+            autoClose: false,
+          });
           setIsSaving(false);
           return;
         }
       }
 
-      // Upsert each recommendation
       for (const rec of recommendations) {
         const recData = {
           id: rec.id,
           document_id: document.id,
-          rec_number: rec.rec_number || undefined, // Let database generate if empty
+          rec_number: rec.rec_number || undefined,
           source_type: rec.source_type,
           library_id: rec.library_id || null,
           source_module_key: rec.source_module_key,
@@ -278,12 +363,25 @@ export default function RE09RecommendationsForm({
         if (error) throw error;
       }
 
-      // Reload to get updated rec_numbers
       await loadRecommendations();
       onSaved();
+
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Saved successfully',
+        message: 'All recommendations have been saved.',
+        autoClose: true,
+      });
     } catch (error) {
       console.error('Error saving recommendations:', error);
-      alert('Failed to save recommendations. Please try again.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Save failed',
+        message: 'Unable to save recommendations. Please try again.',
+        autoClose: false,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -886,6 +984,26 @@ export default function RE09RecommendationsForm({
       </div>
 
       <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
+
+      <FeedbackModal
+        isOpen={feedback.isOpen}
+        onClose={() => setFeedback({ ...feedback, isOpen: false })}
+        type={feedback.type}
+        title={feedback.title}
+        message={feedback.message}
+        autoClose={feedback.autoClose}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 }

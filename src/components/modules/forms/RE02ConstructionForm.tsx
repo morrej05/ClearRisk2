@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Fragment } from 'react';
 import { supabase } from '../../../lib/supabase';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
@@ -916,8 +916,8 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
               <tbody className="divide-y divide-slate-200">
                 {formData.buildings.map((bldg) => (
-                  <>
-                    <tr key={bldg.id} className="hover:bg-slate-50">
+                  <Fragment key={bldg.id}>
+                    <tr className="hover:bg-slate-50">
                       <td className="px-3 py-2">
                         <input
                           type="text"
@@ -1109,7 +1109,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                     </tr>
 
                     {bldg.validationWarnings && bldg.validationWarnings.length > 0 && (
-                      <tr key={`${bldg.id}-warnings`}>
+                      <tr>
                         <td colSpan={9} className="px-3 py-2 bg-amber-50 border-l-4 border-amber-400">
                           <div className="flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -1121,7 +1121,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
 

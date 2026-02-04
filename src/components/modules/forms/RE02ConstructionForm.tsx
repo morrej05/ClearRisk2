@@ -1525,7 +1525,7 @@ console.log('✅ Using CANONICAL PATH: data.construction.buildings');
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Overall Site Construction Observations</label>
             <textarea
-              value={formdata.construction.site_notes}
+              value={formData.site_notes}
               onChange={(e) => setFormData((prev) => ({ ...prev, site_notes: e.target.value }))}
               rows={4}
               className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"

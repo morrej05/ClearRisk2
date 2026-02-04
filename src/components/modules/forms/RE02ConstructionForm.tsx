@@ -11,6 +11,8 @@ interface Document {
 
 interface ModuleInstance {
   id: string;
+  document_id: string;
+  module_key: string;
   outcome: string | null;
   assessor_notes: string;
   data: Record<string, any>;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { Plus, X, Upload, Image as ImageIcon, FileText, AlertCircle } from 'lucide-react';
@@ -11,6 +11,21 @@ const MAX_FILE_SIZE_MB = 15;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const MAX_BATCH_FILES = 20;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic'];
+
+// Helper to get signed URLs for private storage
+async function getSignedUrl(path: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.storage
+      .from('evidence')
+      .createSignedUrl(path, 600); // 10 minute expiry
+
+    if (error) throw error;
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error creating signed URL:', error);
+    return null;
+  }
+}
 
 interface Document {
   id: string;
@@ -59,6 +74,35 @@ export default function RE10SitePhotosForm({
   const [sitePlan, setSitePlan] = useState<SitePlan | null>(d.site_plan || null);
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+
+  // Track signed URLs for display
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [sitePlanUrl, setSitePlanUrl] = useState<string | null>(null);
+
+  // Load signed URLs when photos or site plan change
+  useEffect(() => {
+    async function loadSignedUrls() {
+      // Load photo URLs
+      const urls: Record<string, string> = {};
+      for (const photo of photos) {
+        if (photo.storage_path) {
+          const url = await getSignedUrl(photo.storage_path);
+          if (url) urls[photo.id] = url;
+        }
+      }
+      setPhotoUrls(urls);
+
+      // Load site plan URL
+      if (sitePlan?.storage_path) {
+        const url = await getSignedUrl(sitePlan.storage_path);
+        setSitePlanUrl(url);
+      } else {
+        setSitePlanUrl(null);
+      }
+    }
+
+    loadSignedUrls();
+  }, [photos, sitePlan]);
 
   const validateImageFile = (file: File): string | null => {
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -279,8 +323,16 @@ export default function RE10SitePhotosForm({
                 key={photo.id}
                 className="relative bg-slate-50 border border-slate-200 rounded-lg overflow-hidden"
               >
-                <div className="aspect-video bg-slate-100 flex items-center justify-center">
-                  <ImageIcon className="w-8 h-8 text-slate-400" />
+                <div className="aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
+                  {photoUrls[photo.id] ? (
+                    <img
+                      src={photoUrls[photo.id]}
+                      alt={photo.caption || 'Site photo'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <ImageIcon className="w-8 h-8 text-slate-400" />
+                  )}
                 </div>
                 <button
                   type="button"
@@ -338,20 +390,40 @@ export default function RE10SitePhotosForm({
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-slate-200 rounded flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-slate-600" />
-                </div>
-                <div>
+                {sitePlanUrl && sitePlan.storage_path.match(/\.(jpg|jpeg|png|heic)$/i) ? (
+                  <div className="w-32 h-24 bg-slate-200 rounded overflow-hidden flex-shrink-0">
+                    <img
+                      src={sitePlanUrl}
+                      alt="Site plan preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 bg-slate-200 rounded flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-6 h-6 text-slate-600" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-900">Site Plan Document</p>
                   <p className="text-xs text-slate-500">
                     Uploaded {new Date(sitePlan.uploaded_at).toLocaleDateString()}
                   </p>
+                  {sitePlanUrl && (
+                    <a
+                      href={sitePlanUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 mt-1"
+                    >
+                      View Full Size
+                    </a>
+                  )}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={removeSitePlan}
-                className="text-red-600 hover:text-red-700 p-1"
+                className="text-red-600 hover:text-red-700 p-1 flex-shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>

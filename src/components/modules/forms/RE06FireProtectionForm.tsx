@@ -1113,6 +1113,13 @@ export default function RE06FireProtectionForm({
                 Detection & Alarm
               </h3>
 
+              {/* DEBUG BANNER */}
+              <div className="w-full bg-pink-200 border-2 border-pink-600 rounded-lg p-4 mb-6">
+                <p className="font-bold text-slate-900 text-center text-lg">
+                  RE-04 DETECTION & ALARM RENDER CHECK — BUILD: 2026-02-04 — NO INHERIT SHOULD EXIST
+                </p>
+              </div>
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -1154,6 +1161,10 @@ export default function RE06FireProtectionForm({
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Monitoring
                   </label>
+                  {/* DEBUG: Show monitoring options array */}
+                  <div className="mb-2 p-2 bg-yellow-100 border border-yellow-400 rounded text-xs font-mono">
+                    <strong>DEBUG - Monitoring options:</strong> {(['none', 'keyholder', 'arc', 'unknown'] as MonitoringType[]).join(', ')}
+                  </div>
                   <div className="grid grid-cols-4 gap-2">
                     {(['none', 'keyholder', 'arc', 'unknown'] as MonitoringType[]).map((type) => {
                       const currentMonitoring = selectedBuildingData.detection_alarm.monitoring as any;

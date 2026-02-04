@@ -1,4 +1,3 @@
-import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';

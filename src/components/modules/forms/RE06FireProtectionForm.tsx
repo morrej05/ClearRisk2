@@ -301,7 +301,7 @@ useEffect(() => {
 
       const buildings =
         Array.isArray(constructionInstance?.data?.construction?.buildings)
-          ? constructionInstance!.data.construction.buildings
+          ? constructionInstance?.data.construction.buildings ?? []
           : Array.isArray(constructionInstance?.data?.buildings)
           ? constructionInstance!.data.buildings
           : [];

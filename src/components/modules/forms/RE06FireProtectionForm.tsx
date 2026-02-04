@@ -18,14 +18,15 @@ export default function RE06FireProtectionForm() {
         setStatus('loading');
 
         // Use the module_instances row for RE_02_CONSTRUCTION on the SAME document
-        const { data: mi, error } = await supabase
-          .from('module_instances')
-          .select('id, document_id, module_key, updated_at, data')
-          .eq('module_key', 'RE_02_CONSTRUCTION')
-          .order('updated_at', { ascending: false })
-          .limit(50);
+        const { data: row, error } = await supabase
+  .from('module_instances')
+  .select('id, document_id, module_key, updated_at, data')
+  .eq('document_id', rowDocumentId) // <-- defined just below
+  .eq('module_key', 'RE_02_CONSTRUCTION')
+  .maybeSingle();
 
-        if (error) throw error;
+if (error) throw error;
+
 
         // NOTE:
         // In the real app we filter by document_id. In this step we first prove we can read ANY rows,

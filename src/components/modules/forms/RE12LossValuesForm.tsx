@@ -641,230 +641,221 @@ export default function RE12LossValuesForm({
             </div>
           </div>
 
-          {/* Property Damage Loss Table - Compact */}
-          <div className="mb-3">
-            <h4 className="text-xs font-semibold text-slate-800 mb-2">Property Damage Loss</h4>
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-300">
-                  <th className="text-left py-1 text-slate-600 font-semibold">Category</th>
-                  <th className="text-right py-1 text-slate-600 font-semibold w-20">% Loss</th>
-                  <th className="text-right py-1 text-slate-600 font-semibold w-32">Sub-total</th>
-                  <th className="text-right py-1 text-slate-600 font-semibold w-32">Sum Insured</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-slate-100">
-                  <td className="py-1 text-slate-700">Buildings & Improvements</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.wle.property_damage.buildings_improvements_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        wle: {
-                          ...formData.wle,
-                          property_damage: {
-                            ...formData.wle.property_damage,
-                            buildings_improvements_pct: e.target.value ? parseFloat(e.target.value) : null,
+          {/* PD and BI Side-by-Side Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+            {/* LEFT: Property Damage Loss Table */}
+            <div>
+              <h4 className="text-xs font-semibold text-slate-800 mb-2">Property Damage Loss</h4>
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-300">
+                    <th className="text-left py-1 text-slate-600 font-semibold">Category</th>
+                    <th className="text-right py-1 text-slate-600 font-semibold w-16">% Loss</th>
+                    <th className="text-right py-1 text-slate-600 font-semibold w-24">Sub-total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1 text-slate-700">Buildings</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.wle.property_damage.buildings_improvements_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          wle: {
+                            ...formData.wle,
+                            property_damage: {
+                              ...formData.wle.property_damage,
+                              buildings_improvements_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
-                        },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcWLEPDSubtotal('buildings_improvements', formData.wle.property_damage.buildings_improvements_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.buildings_improvements || 0)}
-                  </td>
-                </tr>
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcWLEPDSubtotal('buildings_improvements', formData.wle.property_damage.buildings_improvements_pct))}
+                    </td>
+                  </tr>
 
-                <tr className="border-b border-slate-100">
-                  <td className="py-1 text-slate-700">Plant & Machinery + Contents</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.wle.property_damage.plant_machinery_contents_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        wle: {
-                          ...formData.wle,
-                          property_damage: {
-                            ...formData.wle.property_damage,
-                            plant_machinery_contents_pct: e.target.value ? parseFloat(e.target.value) : null,
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1 text-slate-700">Plant & Mach.</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.wle.property_damage.plant_machinery_contents_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          wle: {
+                            ...formData.wle,
+                            property_damage: {
+                              ...formData.wle.property_damage,
+                              plant_machinery_contents_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
-                        },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcWLEPDSubtotal('plant_machinery_contents', formData.wle.property_damage.plant_machinery_contents_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.plant_machinery_contents || 0)}
-                  </td>
-                </tr>
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcWLEPDSubtotal('plant_machinery_contents', formData.wle.property_damage.plant_machinery_contents_pct))}
+                    </td>
+                  </tr>
 
-                <tr className="border-b border-slate-100">
-                  <td className="py-1 text-slate-700">Stock & WIP</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.wle.property_damage.stock_wip_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        wle: {
-                          ...formData.wle,
-                          property_damage: {
-                            ...formData.wle.property_damage,
-                            stock_wip_pct: e.target.value ? parseFloat(e.target.value) : null,
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1 text-slate-700">Stock & WIP</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.wle.property_damage.stock_wip_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          wle: {
+                            ...formData.wle,
+                            property_damage: {
+                              ...formData.wle.property_damage,
+                              stock_wip_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
-                        },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcWLEPDSubtotal('stock_wip', formData.wle.property_damage.stock_wip_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.stock_wip || 0)}
-                  </td>
-                </tr>
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcWLEPDSubtotal('stock_wip', formData.wle.property_damage.stock_wip_pct))}
+                    </td>
+                  </tr>
 
-                <tr className="border-b border-slate-100">
-                  <td className="py-1 text-slate-700">Computers</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.wle.property_damage.computers_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        wle: {
-                          ...formData.wle,
-                          property_damage: {
-                            ...formData.wle.property_damage,
-                            computers_pct: e.target.value ? parseFloat(e.target.value) : null,
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1 text-slate-700">Computers</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.wle.property_damage.computers_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          wle: {
+                            ...formData.wle,
+                            property_damage: {
+                              ...formData.wle.property_damage,
+                              computers_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
-                        },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcWLEPDSubtotal('computers', formData.wle.property_damage.computers_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.computers || 0)}
-                  </td>
-                </tr>
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcWLEPDSubtotal('computers', formData.wle.property_damage.computers_pct))}
+                    </td>
+                  </tr>
 
-                <tr className="border-b border-slate-200">
-                  <td className="py-1 text-slate-700">{formData.sums_insured.property_damage.other_label}</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.wle.property_damage.other_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        wle: {
-                          ...formData.wle,
-                          property_damage: {
-                            ...formData.wle.property_damage,
-                            other_pct: e.target.value ? parseFloat(e.target.value) : null,
+                  <tr className="border-b border-slate-200">
+                    <td className="py-1 text-slate-700">{formData.sums_insured.property_damage.other_label}</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.wle.property_damage.other_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          wle: {
+                            ...formData.wle,
+                            property_damage: {
+                              ...formData.wle.property_damage,
+                              other_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcWLEPDSubtotal('other', formData.wle.property_damage.other_pct))}
+                    </td>
+                  </tr>
+
+                  <tr className="bg-slate-50 font-semibold">
+                    <td className="py-2 text-slate-900">WLE PD Total</td>
+                    <td></td>
+                    <td className="py-2 text-right text-slate-900">{formatCurrency(calcWLEPDTotal())}</td>
+                  </tr>
+                  <tr className="bg-slate-50">
+                    <td colSpan={3} className="py-1 text-right text-xs text-slate-700">{formatPct(calcWLEPDPctOfTotal())} of Total PD</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* RIGHT: Business Interruption Loss */}
+            <div>
+              <h4 className="text-xs font-semibold text-slate-800 mb-2">Business Interruption Loss</h4>
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr,100px] gap-2 items-center">
+                  <label className="text-xs text-slate-700">Outage duration (months)</label>
+                  <input
+                    type="number"
+                    value={formData.wle.business_interruption.outage_duration_months || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      wle: {
+                        ...formData.wle,
+                        business_interruption: {
+                          ...formData.wle.business_interruption,
+                          outage_duration_months: e.target.value ? parseFloat(e.target.value) : null,
                         },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcWLEPDSubtotal('other', formData.wle.property_damage.other_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.other || 0)}
-                  </td>
-                </tr>
-
-                <tr className="bg-slate-50 font-semibold">
-                  <td className="py-2 text-slate-900">WLE PD Total</td>
-                  <td></td>
-                  <td className="py-2 text-right text-slate-900">{formatCurrency(calcWLEPDTotal())}</td>
-                  <td className="py-2 text-right text-slate-700 text-xs">{formatPct(calcWLEPDPctOfTotal())} of Total PD</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Business Interruption Loss - Compact Grid */}
-          <div className="mb-3">
-            <h4 className="text-xs font-semibold text-slate-800 mb-2">Business Interruption Loss</h4>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-              <div className="grid grid-cols-[1fr,100px] gap-2 items-center">
-                <label className="text-xs text-slate-700">Outage duration (months)</label>
-                <input
-                  type="number"
-                  value={formData.wle.business_interruption.outage_duration_months || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    wle: {
-                      ...formData.wle,
-                      business_interruption: {
-                        ...formData.wle.business_interruption,
-                        outage_duration_months: e.target.value ? parseFloat(e.target.value) : null,
                       },
-                    },
-                  })}
-                  className="px-2 py-1 border border-slate-300 rounded text-xs text-right"
-                  placeholder="0"
-                />
-              </div>
+                    })}
+                    className="px-2 py-1 border border-slate-300 rounded text-xs text-right"
+                    placeholder="0"
+                  />
+                </div>
 
-              <div className="grid grid-cols-[1fr,100px] gap-2 items-center">
-                <label className="text-xs text-slate-700">% of Gross Profit</label>
-                <input
-                  type="number"
-                  value={formData.wle.business_interruption.gross_profit_pct || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    wle: {
-                      ...formData.wle,
-                      business_interruption: {
-                        ...formData.wle.business_interruption,
-                        gross_profit_pct: e.target.value ? parseFloat(e.target.value) : null,
+                <div className="grid grid-cols-[1fr,100px] gap-2 items-center">
+                  <label className="text-xs text-slate-700">% of Gross Profit</label>
+                  <input
+                    type="number"
+                    value={formData.wle.business_interruption.gross_profit_pct || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      wle: {
+                        ...formData.wle,
+                        business_interruption: {
+                          ...formData.wle.business_interruption,
+                          gross_profit_pct: e.target.value ? parseFloat(e.target.value) : null,
+                        },
                       },
-                    },
-                  })}
-                  className="px-2 py-1 border border-slate-300 rounded text-xs text-right"
-                  placeholder="0"
-                  min="0"
-                  max="100"
-                />
-              </div>
+                    })}
+                    className="px-2 py-1 border border-slate-300 rounded text-xs text-right"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                  />
+                </div>
 
-              <div className="col-span-2 grid grid-cols-[1fr,auto] gap-2 bg-slate-50 p-2 rounded border border-slate-200 mt-1">
-                <span className="text-xs font-semibold text-slate-900">WLE BI Total</span>
-                <div className="text-right">
-                  <div className="text-xs font-bold text-slate-900">{formatCurrency(calcWLEBITotal())}</div>
-                  <div className="text-xs text-slate-600">{formatPct(calcWLEBIPctOfTotal())} of Total BI</div>
+                <div className="bg-slate-50 p-2 rounded border border-slate-200 mt-3">
+                  <div className="grid grid-cols-[1fr,auto] gap-2 items-center">
+                    <span className="text-xs font-semibold text-slate-900">WLE BI Total</span>
+                    <span className="text-xs font-bold text-slate-900">{formatCurrency(calcWLEBITotal())}</span>
+                  </div>
+                  <div className="mt-1 text-right">
+                    <span className="text-xs text-slate-600">{formatPct(calcWLEBIPctOfTotal())} of Total BI</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -919,230 +910,221 @@ export default function RE12LossValuesForm({
             </div>
           </div>
 
-          {/* Property Damage Loss Table - Compact */}
-          <div className="mb-3">
-            <h4 className="text-xs font-semibold text-slate-800 mb-2">Property Damage Loss</h4>
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-300">
-                  <th className="text-left py-1 text-slate-600 font-semibold">Category</th>
-                  <th className="text-right py-1 text-slate-600 font-semibold w-20">% Loss</th>
-                  <th className="text-right py-1 text-slate-600 font-semibold w-32">Sub-total</th>
-                  <th className="text-right py-1 text-slate-600 font-semibold w-32">Sum Insured</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-slate-100">
-                  <td className="py-1 text-slate-700">Buildings & Improvements</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.nle.property_damage.buildings_improvements_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        nle: {
-                          ...formData.nle,
-                          property_damage: {
-                            ...formData.nle.property_damage,
-                            buildings_improvements_pct: e.target.value ? parseFloat(e.target.value) : null,
+          {/* PD and BI Side-by-Side Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+            {/* LEFT: Property Damage Loss Table */}
+            <div>
+              <h4 className="text-xs font-semibold text-slate-800 mb-2">Property Damage Loss</h4>
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-300">
+                    <th className="text-left py-1 text-slate-600 font-semibold">Category</th>
+                    <th className="text-right py-1 text-slate-600 font-semibold w-16">% Loss</th>
+                    <th className="text-right py-1 text-slate-600 font-semibold w-24">Sub-total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1 text-slate-700">Buildings</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.nle.property_damage.buildings_improvements_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nle: {
+                            ...formData.nle,
+                            property_damage: {
+                              ...formData.nle.property_damage,
+                              buildings_improvements_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
-                        },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcNLEPDSubtotal('buildings_improvements', formData.nle.property_damage.buildings_improvements_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.buildings_improvements || 0)}
-                  </td>
-                </tr>
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcNLEPDSubtotal('buildings_improvements', formData.nle.property_damage.buildings_improvements_pct))}
+                    </td>
+                  </tr>
 
-                <tr className="border-b border-slate-100">
-                  <td className="py-1 text-slate-700">Plant & Machinery + Contents</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.nle.property_damage.plant_machinery_contents_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        nle: {
-                          ...formData.nle,
-                          property_damage: {
-                            ...formData.nle.property_damage,
-                            plant_machinery_contents_pct: e.target.value ? parseFloat(e.target.value) : null,
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1 text-slate-700">Plant & Mach.</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.nle.property_damage.plant_machinery_contents_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nle: {
+                            ...formData.nle,
+                            property_damage: {
+                              ...formData.nle.property_damage,
+                              plant_machinery_contents_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
-                        },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcNLEPDSubtotal('plant_machinery_contents', formData.nle.property_damage.plant_machinery_contents_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.plant_machinery_contents || 0)}
-                  </td>
-                </tr>
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcNLEPDSubtotal('plant_machinery_contents', formData.nle.property_damage.plant_machinery_contents_pct))}
+                    </td>
+                  </tr>
 
-                <tr className="border-b border-slate-100">
-                  <td className="py-1 text-slate-700">Stock & WIP</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.nle.property_damage.stock_wip_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        nle: {
-                          ...formData.nle,
-                          property_damage: {
-                            ...formData.nle.property_damage,
-                            stock_wip_pct: e.target.value ? parseFloat(e.target.value) : null,
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1 text-slate-700">Stock & WIP</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.nle.property_damage.stock_wip_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nle: {
+                            ...formData.nle,
+                            property_damage: {
+                              ...formData.nle.property_damage,
+                              stock_wip_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
-                        },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcNLEPDSubtotal('stock_wip', formData.nle.property_damage.stock_wip_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.stock_wip || 0)}
-                  </td>
-                </tr>
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcNLEPDSubtotal('stock_wip', formData.nle.property_damage.stock_wip_pct))}
+                    </td>
+                  </tr>
 
-                <tr className="border-b border-slate-100">
-                  <td className="py-1 text-slate-700">Computers</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.nle.property_damage.computers_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        nle: {
-                          ...formData.nle,
-                          property_damage: {
-                            ...formData.nle.property_damage,
-                            computers_pct: e.target.value ? parseFloat(e.target.value) : null,
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1 text-slate-700">Computers</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.nle.property_damage.computers_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nle: {
+                            ...formData.nle,
+                            property_damage: {
+                              ...formData.nle.property_damage,
+                              computers_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
-                        },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcNLEPDSubtotal('computers', formData.nle.property_damage.computers_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.computers || 0)}
-                  </td>
-                </tr>
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcNLEPDSubtotal('computers', formData.nle.property_damage.computers_pct))}
+                    </td>
+                  </tr>
 
-                <tr className="border-b border-slate-200">
-                  <td className="py-1 text-slate-700">{formData.sums_insured.property_damage.other_label}</td>
-                  <td className="py-1">
-                    <input
-                      type="number"
-                      value={formData.nle.property_damage.other_pct || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        nle: {
-                          ...formData.nle,
-                          property_damage: {
-                            ...formData.nle.property_damage,
-                            other_pct: e.target.value ? parseFloat(e.target.value) : null,
+                  <tr className="border-b border-slate-200">
+                    <td className="py-1 text-slate-700">{formData.sums_insured.property_damage.other_label}</td>
+                    <td className="py-1">
+                      <input
+                        type="number"
+                        value={formData.nle.property_damage.other_pct || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nle: {
+                            ...formData.nle,
+                            property_damage: {
+                              ...formData.nle.property_damage,
+                              other_pct: e.target.value ? parseFloat(e.target.value) : null,
+                            },
                           },
+                        })}
+                        className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td className="py-1 text-right text-slate-900">
+                      {formatCurrency(calcNLEPDSubtotal('other', formData.nle.property_damage.other_pct))}
+                    </td>
+                  </tr>
+
+                  <tr className="bg-slate-50 font-semibold">
+                    <td className="py-2 text-slate-900">NLE PD Total</td>
+                    <td></td>
+                    <td className="py-2 text-right text-slate-900">{formatCurrency(calcNLEPDTotal())}</td>
+                  </tr>
+                  <tr className="bg-slate-50">
+                    <td colSpan={3} className="py-1 text-right text-xs text-slate-700">{formatPct(calcNLEPDPctOfTotal())} of Total PD</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* RIGHT: Business Interruption Loss */}
+            <div>
+              <h4 className="text-xs font-semibold text-slate-800 mb-2">Business Interruption Loss</h4>
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr,100px] gap-2 items-center">
+                  <label className="text-xs text-slate-700">Outage duration (months)</label>
+                  <input
+                    type="number"
+                    value={formData.nle.business_interruption.outage_duration_months || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      nle: {
+                        ...formData.nle,
+                        business_interruption: {
+                          ...formData.nle.business_interruption,
+                          outage_duration_months: e.target.value ? parseFloat(e.target.value) : null,
                         },
-                      })}
-                      className="w-full px-1 py-0.5 border border-slate-300 rounded text-xs text-right"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td className="py-1 text-right text-slate-900">
-                    {formatCurrency(calcNLEPDSubtotal('other', formData.nle.property_damage.other_pct))}
-                  </td>
-                  <td className="py-1 text-right text-slate-500">
-                    {formatCurrency(formData.sums_insured.property_damage.other || 0)}
-                  </td>
-                </tr>
-
-                <tr className="bg-slate-50 font-semibold">
-                  <td className="py-2 text-slate-900">NLE PD Total</td>
-                  <td></td>
-                  <td className="py-2 text-right text-slate-900">{formatCurrency(calcNLEPDTotal())}</td>
-                  <td className="py-2 text-right text-slate-700 text-xs">{formatPct(calcNLEPDPctOfTotal())} of Total PD</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Business Interruption Loss - Compact Grid */}
-          <div className="mb-3">
-            <h4 className="text-xs font-semibold text-slate-800 mb-2">Business Interruption Loss</h4>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-              <div className="grid grid-cols-[1fr,100px] gap-2 items-center">
-                <label className="text-xs text-slate-700">Outage duration (months)</label>
-                <input
-                  type="number"
-                  value={formData.nle.business_interruption.outage_duration_months || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    nle: {
-                      ...formData.nle,
-                      business_interruption: {
-                        ...formData.nle.business_interruption,
-                        outage_duration_months: e.target.value ? parseFloat(e.target.value) : null,
                       },
-                    },
-                  })}
-                  className="px-2 py-1 border border-slate-300 rounded text-xs text-right"
-                  placeholder="0"
-                />
-              </div>
+                    })}
+                    className="px-2 py-1 border border-slate-300 rounded text-xs text-right"
+                    placeholder="0"
+                  />
+                </div>
 
-              <div className="grid grid-cols-[1fr,100px] gap-2 items-center">
-                <label className="text-xs text-slate-700">% of Gross Profit</label>
-                <input
-                  type="number"
-                  value={formData.nle.business_interruption.gross_profit_pct || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    nle: {
-                      ...formData.nle,
-                      business_interruption: {
-                        ...formData.nle.business_interruption,
-                        gross_profit_pct: e.target.value ? parseFloat(e.target.value) : null,
+                <div className="grid grid-cols-[1fr,100px] gap-2 items-center">
+                  <label className="text-xs text-slate-700">% of Gross Profit</label>
+                  <input
+                    type="number"
+                    value={formData.nle.business_interruption.gross_profit_pct || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      nle: {
+                        ...formData.nle,
+                        business_interruption: {
+                          ...formData.nle.business_interruption,
+                          gross_profit_pct: e.target.value ? parseFloat(e.target.value) : null,
+                        },
                       },
-                    },
-                  })}
-                  className="px-2 py-1 border border-slate-300 rounded text-xs text-right"
-                  placeholder="0"
-                  min="0"
-                  max="100"
-                />
-              </div>
+                    })}
+                    className="px-2 py-1 border border-slate-300 rounded text-xs text-right"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                  />
+                </div>
 
-              <div className="col-span-2 grid grid-cols-[1fr,auto] gap-2 bg-slate-50 p-2 rounded border border-slate-200 mt-1">
-                <span className="text-xs font-semibold text-slate-900">NLE BI Total</span>
-                <div className="text-right">
-                  <div className="text-xs font-bold text-slate-900">{formatCurrency(calcNLEBITotal())}</div>
-                  <div className="text-xs text-slate-600">{formatPct(calcNLEBIPctOfTotal())} of Total BI</div>
+                <div className="bg-slate-50 p-2 rounded border border-slate-200 mt-3">
+                  <div className="grid grid-cols-[1fr,auto] gap-2 items-center">
+                    <span className="text-xs font-semibold text-slate-900">NLE BI Total</span>
+                    <span className="text-xs font-bold text-slate-900">{formatCurrency(calcNLEBITotal())}</span>
+                  </div>
+                  <div className="mt-1 text-right">
+                    <span className="text-xs text-slate-600">{formatPct(calcNLEBIPctOfTotal())} of Total BI</span>
+                  </div>
                 </div>
               </div>
             </div>

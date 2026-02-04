@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
-import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
-import ReRatingPanel from '../../re/ReRatingPanel';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
-import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
+import { setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
 
 interface Document {
@@ -40,6 +38,26 @@ const CATEGORY_LABELS: Record<string, string> = {
   change_management: 'Change Management',
 };
 
+const RATING_LABELS: Record<number, string> = {
+  1: 'Poor / Inadequate',
+  2: 'Below Average',
+  3: 'Average / Acceptable',
+  4: 'Good',
+  5: 'Excellent',
+};
+
+// Invert rating for UI display: stored 1=excellent, UI 1=poor
+const invertRatingForUI = (stored: number | null): number | null => {
+  if (stored === null) return null;
+  return 6 - stored;
+};
+
+// Invert rating for storage: UI 1=poor, stored 1=excellent
+const invertRatingForStorage = (ui: number | null): number | null => {
+  if (ui === null) return null;
+  return 6 - ui;
+};
+
 export default function RE09ManagementForm({
   moduleInstance,
   document,
@@ -48,21 +66,24 @@ export default function RE09ManagementForm({
   const [isSaving, setIsSaving] = useState(false);
   const d = moduleInstance.data || {};
 
+  // Initialize categories with UI-inverted ratings
+  const initialCategories = (d.categories || [
+    { key: 'housekeeping', rating_1_5: null, notes: '' },
+    { key: 'hot_work', rating_1_5: null, notes: '' },
+    { key: 'impairment_management', rating_1_5: null, notes: '' },
+    { key: 'contractor_control', rating_1_5: null, notes: '' },
+    { key: 'maintenance', rating_1_5: null, notes: '' },
+    { key: 'emergency_planning', rating_1_5: null, notes: '' },
+    { key: 'change_management', rating_1_5: null, notes: '' },
+  ]).map((cat: any) => ({
+    ...cat,
+    rating_1_5: invertRatingForUI(cat.rating_1_5),
+  }));
+
   const [formData, setFormData] = useState({
-    categories: d.categories || [
-      { key: 'housekeeping', rating_1_5: null, notes: '' },
-      { key: 'hot_work', rating_1_5: null, notes: '' },
-      { key: 'impairment_management', rating_1_5: null, notes: '' },
-      { key: 'contractor_control', rating_1_5: null, notes: '' },
-      { key: 'maintenance', rating_1_5: null, notes: '' },
-      { key: 'emergency_planning', rating_1_5: null, notes: '' },
-      { key: 'change_management', rating_1_5: null, notes: '' },
-    ],
+    categories: initialCategories,
     recommendations: d.recommendations || [],
   });
-
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
 
   const [riskEngData, setRiskEngData] = useState<any>({});
   const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
@@ -93,14 +114,31 @@ export default function RE09ManagementForm({
     loadRiskEngModule();
   }, [moduleInstance.document_id]);
 
-  const rating = getRating(riskEngData, CANONICAL_KEY);
   const hrgConfig = getHrgConfig(industryKey, CANONICAL_KEY);
 
-  const handleRatingChange = async (newRating: number) => {
+  // Calculate overall rating from categories (weighted average)
+  const calculateOverallRating = (categories: any[]): number | null => {
+    const rated = categories.filter((c) => c.rating_1_5 !== null);
+    if (rated.length === 0) return null;
+
+    // All categories have equal weight (1)
+    const sum = rated.reduce((acc, c) => acc + c.rating_1_5, 0);
+    const avg = sum / rated.length;
+
+    // Round and clamp to 1-5, then invert back to storage format (1=excellent)
+    const uiRating = Math.max(1, Math.min(5, Math.round(avg)));
+    return invertRatingForStorage(uiRating);
+  };
+
+  // Update overall rating in RISK_ENGINEERING module
+  const updateOverallRating = async (categories: any[]) => {
     if (!riskEngInstanceId) return;
 
+    const overallRating = calculateOverallRating(categories);
+    if (overallRating === null) return;
+
     try {
-      const updatedRiskEngData = setRating(riskEngData, CANONICAL_KEY, newRating);
+      const updatedRiskEngData = setRating(riskEngData, CANONICAL_KEY, overallRating);
 
       const { error } = await supabase
         .from('module_instances')
@@ -111,43 +149,49 @@ export default function RE09ManagementForm({
 
       setRiskEngData(updatedRiskEngData);
 
-      const updatedFormData = ensureAutoRecommendation(formData, CANONICAL_KEY, newRating, industryKey);
+      const updatedFormData = ensureAutoRecommendation(formData, CANONICAL_KEY, overallRating, industryKey);
       if (updatedFormData !== formData) {
         setFormData(updatedFormData);
-        const sanitized = sanitizeModuleInstancePayload({ data: updatedFormData });
-        await supabase
-          .from('module_instances')
-          .update({ data: sanitized.data })
-          .eq('id', moduleInstance.id);
       }
     } catch (err) {
-      console.error('Error updating rating:', err);
-      alert('Failed to update rating');
+      console.error('Error updating overall rating:', err);
     }
   };
 
   const updateCategory = (key: string, field: string, value: any) => {
+    const updatedCategories = formData.categories.map((c: any) =>
+      c.key === key ? { ...c, [field]: value } : c
+    );
+
     setFormData({
       ...formData,
-      categories: formData.categories.map((c: any) =>
-        c.key === key ? { ...c, [field]: value } : c
-      ),
+      categories: updatedCategories,
     });
+
+    // Auto-update overall rating when a category rating changes
+    if (field === 'rating_1_5') {
+      updateOverallRating(updatedCategories);
+    }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const completedAt = outcome ? new Date().toISOString() : null;
-      const sanitized = sanitizeModuleInstancePayload({ data: formData });
+      // Invert ratings back to storage format before saving
+      const dataToSave = {
+        ...formData,
+        categories: formData.categories.map((cat: any) => ({
+          ...cat,
+          rating_1_5: invertRatingForStorage(cat.rating_1_5),
+        })),
+      };
+
+      const sanitized = sanitizeModuleInstancePayload({ data: dataToSave });
 
       const { error } = await supabase
         .from('module_instances')
         .update({
           data: sanitized.data,
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          completed_at: completedAt,
         })
         .eq('id', moduleInstance.id);
 
@@ -161,6 +205,11 @@ export default function RE09ManagementForm({
     }
   };
 
+  // Calculate display values for overall rating
+  const overallRatingStored = calculateOverallRating(formData.categories);
+  const overallRatingUI = overallRatingStored ? invertRatingForUI(overallRatingStored) : null;
+  const overallRatingLabel = overallRatingUI ? RATING_LABELS[overallRatingUI] : 'Not rated';
+
   return (
     <>
     <div className="p-6 max-w-5xl mx-auto pb-24">
@@ -169,43 +218,51 @@ export default function RE09ManagementForm({
         <p className="text-slate-600">Assessment of operational management and control systems</p>
       </div>
 
-      <div className="mb-6">
-        <ReRatingPanel
-          canonicalKey={CANONICAL_KEY}
-          industryKey={industryKey}
-          rating={rating}
-          onChangeRating={handleRatingChange}
-          helpText={hrgConfig.helpText}
-          weight={hrgConfig.weight}
-        />
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-3">Overall Management Systems Rating</h3>
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <p className="text-sm text-slate-600 mb-2">
+              Auto-calculated from category ratings below (weighted average)
+            </p>
+            {hrgConfig.helpText && (
+              <p className="text-sm text-slate-500 italic">{hrgConfig.helpText}</p>
+            )}
+          </div>
+          <div className="text-right">
+            <div className="text-3xl font-bold text-blue-600">{overallRatingUI || '—'}</div>
+            <div className="text-sm text-slate-600">{overallRatingLabel}</div>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6 space-y-6">
-
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Management Categories</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Industry-Specific Risk Factors - Rating Panels</h3>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <p className="text-sm text-blue-900">
-              <strong>Rating Guidance:</strong> Rate each category 1–5 where 1 is excellent and 5 is poor/inadequate.
+              <strong>Rating Scale:</strong> 1 = Poor/Inadequate, 2 = Below Average, 3 = Average/Acceptable, 4 = Good, 5 = Excellent.
               Poor ratings should typically trigger recommendations for improvement.
             </p>
           </div>
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {formData.categories.map((category: any) => (
               <div key={category.key} className="border border-slate-200 rounded-lg p-4">
                 <h4 className="font-semibold text-slate-900 mb-3">{CATEGORY_LABELS[category.key]}</h4>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Rating (1-5)</label>
-                    <div className="flex gap-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Engineer Rating (1 = Poor, 5 = Excellent)
+                    </label>
+                    <div className="grid grid-cols-5 gap-2">
                       {[1, 2, 3, 4, 5].map((num) => (
                         <button
                           key={num}
                           type="button"
                           onClick={() => updateCategory(category.key, 'rating_1_5', num)}
-                          className={`flex-1 px-3 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
+                          className={`px-2 py-3 rounded-lg border-2 font-medium text-xs transition-all flex flex-col items-center gap-1 ${
                             category.rating_1_5 === num
-                              ? num <= 2
+                              ? num >= 4
                                 ? 'bg-green-100 border-green-500 text-green-700'
                                 : num === 3
                                 ? 'bg-amber-100 border-amber-500 text-amber-700'
@@ -213,11 +270,11 @@ export default function RE09ManagementForm({
                               : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                           }`}
                         >
-                          {num}
+                          <span className="text-lg font-bold">{num}</span>
+                          <span className="text-center leading-tight">{RATING_LABELS[num]}</span>
                         </button>
                       ))}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">1 = Excellent, 5 = Poor</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
@@ -235,15 +292,6 @@ export default function RE09ManagementForm({
           </div>
         </div>
       </div>
-
-      <OutcomePanel
-        outcome={outcome}
-        assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
-        onNotesChange={setAssessorNotes}
-        onSave={handleSave}
-        isSaving={isSaving}
-      />
 
       {document?.id && moduleInstance?.id && (
         <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />

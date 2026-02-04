@@ -706,9 +706,11 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       }
 
       const { error } = await supabase
-        .from('module_instances')
-        .update({ data: mergedPayload })
-        .eq('id', moduleInstance.id);
+  .from('module_instances')
+  .update({ data: mergedPayload })
+  .eq('document_id', moduleInstance.document_id)
+  .eq('module_key', moduleInstance.module_key);
+
 
       if (error) {
         console.error('❌ Supabase update error:', error);

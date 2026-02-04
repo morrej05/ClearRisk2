@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Flame, Bell, Shield, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import FloatingSaveBar from './FloatingSaveBar';

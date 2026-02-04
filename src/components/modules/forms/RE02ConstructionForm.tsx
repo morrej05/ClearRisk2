@@ -842,21 +842,24 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
       // CRITICAL: Merge with existing data instead of replacing entire data field
       // This prevents data loss if other modules or metadata exist in the same record
-      const existingData = moduleInstance.data || {};
-      const mergedPayload = {
-        ...existingData,
-        // CANONICAL PATH: Store at top-level (data.buildings, data.site_notes)
-        buildings: buildingsWithoutCalculated,
-        site_notes: normalizedData.site_notes,
-        // Add debug metadata (DEV only)
-        ...(import.meta.env.DEV && {
-          __debug: {
-            re02_fingerprint: debugFingerprint,
-            re02_save_version: debugVersion,
-            re02_save_timestamp: new Date().toISOString(),
-          },
-        }),
-      };
+const existingData = moduleInstance.data || {};
+const existingConstruction = existingData.construction || {};
+
+const mergedPayload = {
+  ...existingData,
+  construction: {
+    ...existingConstruction,
+    buildings: buildingsWithoutCalculated,
+    site_notes: normalizedData.site_notes,
+  },
+  ...(import.meta.env.DEV && {
+    __debug: {
+      re02_fingerprint: debugFingerprint,
+      re02_save_version: debugVersion,
+      re02_save_timestamp: new Date().toISOString(),
+    },
+  }),
+};
 
       // Track payload area for first building (DEV only)
       const payloadRoofArea = buildingsWithoutCalculated[0]?.roof?.area_sqm ?? null;

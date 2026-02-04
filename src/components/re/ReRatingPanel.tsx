@@ -11,6 +11,7 @@ interface ReRatingPanelProps {
   helpText: string;
   weight: number;
   defaultCollapsed?: boolean;
+  hasAutoRecommendation?: boolean;
 }
 
 const RATING_LABELS: Record<number, string> = {
@@ -21,6 +22,21 @@ const RATING_LABELS: Record<number, string> = {
   5: 'Excellent',
 };
 
+function getRatingButtonStyles(value: number, isSelected: boolean): string {
+  if (!isSelected) {
+    return 'border-slate-300 bg-white text-slate-700 hover:border-slate-400';
+  }
+
+  // Color-code based on rating value: 1-2=red, 3=amber, 4-5=green
+  if (value <= 2) {
+    return 'border-red-600 bg-red-50 text-red-900 font-semibold';
+  } else if (value === 3) {
+    return 'border-amber-600 bg-amber-50 text-amber-900 font-semibold';
+  } else {
+    return 'border-green-600 bg-green-50 text-green-900 font-semibold';
+  }
+}
+
 export default function ReRatingPanel({
   canonicalKey,
   industryKey,
@@ -28,12 +44,13 @@ export default function ReRatingPanel({
   onChangeRating,
   helpText,
   weight,
-  defaultCollapsed = true,
+  defaultCollapsed = false,
+  hasAutoRecommendation = false,
 }: ReRatingPanelProps) {
   const [isExpanded, setIsExpanded] = useState(!defaultCollapsed);
   const score = calculateScore(rating, weight);
   const label = humanizeCanonicalKey(canonicalKey);
-  const showAutoRecIndicator = rating <= 2;
+  const showAutoRecIndicator = hasAutoRecommendation;
 
   return (
     <div className="bg-white rounded-lg border border-slate-200">
@@ -97,9 +114,7 @@ export default function ReRatingPanel({
                     type="button"
                     onClick={() => onChangeRating(value)}
                     className={`flex-1 px-3 py-2 rounded-lg border-2 transition-all text-center ${
-                      rating === value
-                        ? 'border-blue-600 bg-blue-50 text-blue-900 font-semibold'
-                        : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'
+                      getRatingButtonStyles(value, rating === value)
                     }`}
                   >
                     <div className="text-lg font-bold">{value}</div>

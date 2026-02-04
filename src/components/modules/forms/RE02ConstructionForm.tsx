@@ -546,10 +546,34 @@ function hasAreaData(building: Building | BuildingFormState): boolean {
   return (roofArea ?? 0) > 0 || (mezzArea ?? 0) > 0;
 }
 
+// Debug trace state for tracking area values through the data flow
+interface DebugTrace {
+  inputDisplayedArea: string;
+  stateArea: string;
+  payloadArea: number | null;
+  dbArea: number | null;
+  hydratedArea: number | null;
+  lastSaveFingerprint: string;
+  lastSaveVersion: number;
+  timestamp: string;
+}
+
 export default function RE02ConstructionForm({ moduleInstance, document, onSaved }: RE02ConstructionFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const d = moduleInstance.data || {};
+
+  // Debug trace state (DEV only)
+  const [debugTrace, setDebugTrace] = useState<DebugTrace>({
+    inputDisplayedArea: 'N/A',
+    stateArea: 'N/A',
+    payloadArea: null,
+    dbArea: null,
+    hydratedArea: null,
+    lastSaveFingerprint: 'none',
+    lastSaveVersion: 0,
+    timestamp: new Date().toISOString(),
+  });
 
   const safeBuildings: Building[] = Array.isArray(d.construction?.buildings)
     ? d.construction.buildings.map((b: any) => {
@@ -653,10 +677,43 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     site_notes: string;
   }>(initialFormState);
 
+  // Track hydrated area value on initial load (DEV only)
+  useEffect(() => {
+    if (import.meta.env.DEV && initialFormState.buildings.length > 0) {
+      const firstBuilding = initialFormState.buildings[0];
+      const hydratedRoofArea = safeBuildings[0]?.roof?.area_sqm ?? null;
+
+      setDebugTrace((prev) => ({
+        ...prev,
+        hydratedArea: hydratedRoofArea,
+        stateArea: firstBuilding.roof.area_sqm,
+        inputDisplayedArea: firstBuilding.roof.area_sqm,
+        timestamp: new Date().toISOString(),
+      }));
+
+      console.group('🔍 RE-02 TRACE: Initial Hydration');
+      console.log('Raw DB value:', safeBuildings[0]?.roof?.area_sqm);
+      console.log('Hydrated to state:', firstBuilding.roof.area_sqm);
+      console.log('Full building:', safeBuildings[0]);
+      console.groupEnd();
+    }
+  }, []); // Run once on mount
+
   // Use a ref to always capture the latest state in handleSave
   const formDataRef = useRef(formData);
   useEffect(() => {
     formDataRef.current = formData;
+
+    // Update debug trace with current state (DEV only)
+    if (import.meta.env.DEV && formData.buildings.length > 0) {
+      const firstBuilding = formData.buildings[0];
+      setDebugTrace((prev) => ({
+        ...prev,
+        stateArea: firstBuilding.roof.area_sqm,
+        inputDisplayedArea: firstBuilding.roof.area_sqm,
+        timestamp: new Date().toISOString(),
+      }));
+    }
   }, [formData]);
 
   const [editingBreakdown, setEditingBreakdown] = useState<{
@@ -750,6 +807,10 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         // Ensure we don't save undefined or NaN values
       }));
 
+      // Generate debug fingerprint and version (DEV only)
+      const debugFingerprint = `RE02_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+      const debugVersion = (debugTrace.lastSaveVersion || 0) + 1;
+
       // Build construction data
       const constructionData = {
         buildings: buildingsWithoutCalculated,
@@ -762,16 +823,39 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       const mergedPayload = {
         ...existingData,
         construction: constructionData,
+        // Add debug metadata (DEV only)
+        ...(import.meta.env.DEV && {
+          __debug: {
+            re02_fingerprint: debugFingerprint,
+            re02_save_version: debugVersion,
+            re02_save_timestamp: new Date().toISOString(),
+          },
+        }),
       };
+
+      // Track payload area for first building (DEV only)
+      const payloadRoofArea = buildingsWithoutCalculated[0]?.roof?.area_sqm ?? null;
 
       // DEV LOGGING: Track what we're saving (only in development)
       if (import.meta.env.DEV) {
-        console.group('🏗️ RE-02 Construction Save');
+        console.group('🏗️ RE-02 TRACE: Save Starting');
         console.log('📊 Buildings count:', buildingsWithoutCalculated.length);
         console.log('📝 Site notes:', normalizedData.site_notes?.substring(0, 50) || '(empty)');
         console.log('💾 Payload keys:', Object.keys(mergedPayload));
-        console.log('🔍 Sample building:', buildingsWithoutCalculated[0]);
+        console.log('🔍 First building (full):', buildingsWithoutCalculated[0]);
+        console.log('🎯 Payload roof area (building 0):', payloadRoofArea);
+        console.log('🆔 Fingerprint:', debugFingerprint);
+        console.log('🔢 Version:', debugVersion);
         console.groupEnd();
+
+        // Update trace with payload value
+        setDebugTrace((prev) => ({
+          ...prev,
+          payloadArea: payloadRoofArea,
+          lastSaveFingerprint: debugFingerprint,
+          lastSaveVersion: debugVersion,
+          timestamp: new Date().toISOString(),
+        }));
       }
 
       const { error } = await supabase
@@ -781,9 +865,12 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         })
         .eq('id', moduleInstance.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase update error:', error);
+        throw error;
+      }
 
-      // DEV LOGGING: Verify save by reading back
+      // CRITICAL: Immediate read-back verification (DEV only - but always run to track DB value)
       if (import.meta.env.DEV) {
         const { data: savedData, error: readError } = await supabase
           .from('module_instances')
@@ -791,21 +878,48 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
           .eq('id', moduleInstance.id)
           .single();
 
-        if (!readError && savedData) {
-          console.group('✅ RE-02 Save Verification');
+        if (readError) {
+          console.error('❌ Read-back error:', readError);
+        } else if (savedData) {
+          const dbRoofArea = savedData.data?.construction?.buildings?.[0]?.roof?.area_sqm ?? null;
+          const dbFingerprint = savedData.data?.__debug?.re02_fingerprint || 'none';
+          const dbVersion = savedData.data?.__debug?.re02_save_version || 0;
+
+          console.group('✅ RE-02 TRACE: Read-Back Verification');
           console.log('📥 Read back buildings count:', savedData.data?.construction?.buildings?.length || 0);
           console.log('📥 Read back site notes:', savedData.data?.construction?.site_notes?.substring(0, 50) || '(empty)');
-          console.log('📥 Sample saved building:', savedData.data?.construction?.buildings?.[0]);
+          console.log('🔍 Full first building from DB:', savedData.data?.construction?.buildings?.[0]);
+          console.log('🎯 DB roof area (building 0):', dbRoofArea);
+          console.log('🆔 DB Fingerprint:', dbFingerprint);
+          console.log('🔢 DB Version:', dbVersion);
 
           // Check for data loss
           const expectedBuildings = buildingsWithoutCalculated.length;
           const actualBuildings = savedData.data?.construction?.buildings?.length || 0;
           if (expectedBuildings !== actualBuildings) {
-            console.error('❌ DATA LOSS DETECTED! Expected', expectedBuildings, 'buildings, got', actualBuildings);
-          } else {
-            console.log('✅ All data saved successfully');
+            console.error('❌ DATA LOSS: Expected', expectedBuildings, 'buildings, got', actualBuildings);
           }
+
+          // Check if area matches what we sent
+          if (payloadRoofArea !== dbRoofArea) {
+            console.error('❌ AREA MISMATCH!');
+            console.error('  Payload sent:', payloadRoofArea);
+            console.error('  DB returned:', dbRoofArea);
+            console.error('  This means DB write or read is corrupting the value!');
+          } else {
+            console.log('✅ Area verified: Payload matches DB');
+          }
+
           console.groupEnd();
+
+          // Update debug trace with DB value
+          setDebugTrace((prev) => ({
+            ...prev,
+            dbArea: dbRoofArea,
+            lastSaveFingerprint: dbFingerprint,
+            lastSaveVersion: dbVersion,
+            timestamp: new Date().toISOString(),
+          }));
         }
       }
 
@@ -886,6 +1000,99 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
           <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-02 - Construction</h2>
           <p className="text-slate-600">Building construction assessment with combustibility analysis</p>
         </div>
+
+        {/* DEV-ONLY: Trace Inspector */}
+        {import.meta.env.DEV && formData.buildings.length > 0 && (
+          <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Info className="w-5 h-5 text-purple-600" />
+              <h3 className="text-sm font-bold text-purple-900">
+                DEV TRACE INSPECTOR: Building 0 Roof Area
+              </h3>
+              <span className="text-xs text-purple-600 ml-auto">
+                v{debugTrace.lastSaveVersion} | {debugTrace.lastSaveFingerprint.substring(0, 16)}...
+              </span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-3 text-xs">
+              {/* Input Displayed */}
+              <div className="bg-white rounded p-2 border border-slate-200">
+                <div className="font-semibold text-slate-600 mb-1">Input Displayed</div>
+                <div className={`font-mono font-bold ${debugTrace.inputDisplayedArea ? 'text-blue-700' : 'text-slate-400'}`}>
+                  {debugTrace.inputDisplayedArea || '(empty)'}
+                </div>
+                <div className="text-slate-500 mt-1">What user sees</div>
+              </div>
+
+              {/* State Area */}
+              <div className="bg-white rounded p-2 border border-slate-200">
+                <div className="font-semibold text-slate-600 mb-1">React State</div>
+                <div className={`font-mono font-bold ${debugTrace.stateArea ? 'text-green-700' : 'text-slate-400'}`}>
+                  {debugTrace.stateArea || '(empty)'}
+                </div>
+                <div className="text-slate-500 mt-1">In formData</div>
+              </div>
+
+              {/* Payload Area */}
+              <div className="bg-white rounded p-2 border border-slate-200">
+                <div className="font-semibold text-slate-600 mb-1">Payload Sent</div>
+                <div className={`font-mono font-bold ${debugTrace.payloadArea !== null ? 'text-amber-700' : 'text-slate-400'}`}>
+                  {debugTrace.payloadArea !== null ? debugTrace.payloadArea : '(null)'}
+                </div>
+                <div className="text-slate-500 mt-1">To Supabase</div>
+              </div>
+
+              {/* DB Area */}
+              <div className="bg-white rounded p-2 border border-slate-200">
+                <div className="font-semibold text-slate-600 mb-1">DB Read-Back</div>
+                <div className={`font-mono font-bold ${debugTrace.dbArea !== null ? 'text-teal-700' : 'text-slate-400'}`}>
+                  {debugTrace.dbArea !== null ? debugTrace.dbArea : '(null)'}
+                </div>
+                <div className="text-slate-500 mt-1">From Supabase</div>
+              </div>
+
+              {/* Hydrated Area */}
+              <div className="bg-white rounded p-2 border border-slate-200">
+                <div className="font-semibold text-slate-600 mb-1">Hydrated</div>
+                <div className={`font-mono font-bold ${debugTrace.hydratedArea !== null ? 'text-purple-700' : 'text-slate-400'}`}>
+                  {debugTrace.hydratedArea !== null ? debugTrace.hydratedArea : '(null)'}
+                </div>
+                <div className="text-slate-500 mt-1">On load</div>
+              </div>
+            </div>
+
+            {/* Status Indicators */}
+            <div className="mt-3 flex gap-2 text-xs">
+              {debugTrace.inputDisplayedArea === debugTrace.stateArea ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded">✓ Input ↔ State OK</span>
+              ) : (
+                <span className="px-2 py-1 bg-red-100 text-red-800 rounded">✗ Input ≠ State</span>
+              )}
+
+              {debugTrace.payloadArea !== null && parseNumericInput(debugTrace.stateArea) === debugTrace.payloadArea ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded">✓ State ↔ Payload OK</span>
+              ) : debugTrace.payloadArea !== null ? (
+                <span className="px-2 py-1 bg-red-100 text-red-800 rounded">✗ State ≠ Payload</span>
+              ) : null}
+
+              {debugTrace.dbArea !== null && debugTrace.payloadArea === debugTrace.dbArea ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded">✓ Payload ↔ DB OK</span>
+              ) : debugTrace.dbArea !== null ? (
+                <span className="px-2 py-1 bg-red-100 text-red-800 rounded">✗ Payload ≠ DB</span>
+              ) : null}
+
+              {debugTrace.hydratedArea !== null && debugTrace.dbArea === debugTrace.hydratedArea ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded">✓ DB ↔ Hydrated OK</span>
+              ) : debugTrace.hydratedArea !== null && debugTrace.dbArea !== null ? (
+                <span className="px-2 py-1 bg-red-100 text-red-800 rounded">✗ DB ≠ Hydrated</span>
+              ) : null}
+
+              <span className="ml-auto px-2 py-1 bg-slate-100 text-slate-600 rounded">
+                Last update: {new Date(debugTrace.timestamp).toLocaleTimeString()}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Buildings Table */}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">

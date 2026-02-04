@@ -165,19 +165,18 @@ export default function RE09ManagementForm({
     // Ensure numeric values are stored as numbers
     const normalizedValue = field === 'rating_1_5' && value !== null ? Number(value) : value;
 
-    const updatedCategories = formData.categories.map((c: any) =>
-      c.key === key ? { ...c, [field]: normalizedValue } : c
-    );
+    setFormData((prev) => {
+      const nextCategories = (prev.categories ?? []).map((c: any) =>
+        c.key === key ? { ...c, [field]: normalizedValue } : c
+      );
 
-    setFormData({
-      ...formData,
-      categories: updatedCategories,
+      // Auto-update overall rating when a category rating changes
+      if (field === 'rating_1_5') {
+        updateOverallRating(nextCategories);
+      }
+
+      return { ...prev, categories: nextCategories };
     });
-
-    // Auto-update overall rating when a category rating changes
-    if (field === 'rating_1_5') {
-      updateOverallRating(updatedCategories);
-    }
   };
 
   const handleSave = async () => {
@@ -296,7 +295,7 @@ export default function RE09ManagementForm({
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
                     <textarea
-                      value={category.notes}
+                      value={category.notes ?? ''}
                       onChange={(e) => updateCategory(category.key, 'notes', e.target.value)}
                       rows={2}
                       className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"

@@ -1,21 +1,16 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { useState } from 'react';
+import FloatingSaveBar from './FloatingSaveBar';
 
 export default function RE06FireProtectionForm() {
-  const [ok, setOk] = useState(false);
-
-  useEffect(() => {
-    async function test() {
-      const { error } = await supabase.from('documents').select('id').limit(1);
-      setOk(!error);
-    }
-    test();
-  }, []);
+  const [saving, setSaving] = useState(false);
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2>RE06 is compiling</h2>
-      <p>Supabase import OK: {ok ? 'YES' : 'NO'}</p>
-    </div>
+    <>
+      <div style={{ padding: 24 }}>
+        <h2>RE06 is compiling</h2>
+        <button onClick={() => setSaving(!saving)}>Toggle Saving</button>
+      </div>
+      <FloatingSaveBar onSave={() => alert('save')} isSaving={saving} />
+    </>
   );
 }

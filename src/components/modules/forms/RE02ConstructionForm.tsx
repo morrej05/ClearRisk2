@@ -956,17 +956,17 @@ console.log('✅ RE-02 SAVE SUCCESS', {
 
               <tbody className="divide-y divide-slate-200">
                 {formData.buildings.map((bldg) => (
-                  <>
-                    <tr key={bldg.id} className="hover:bg-slate-50">
-                      <td className="px-3 py-2">
-                        <input
-                          type="text"
-                          value={bldg.building_name}
-                          onChange={(e) => updateBuilding(bldg.id, { building_name: e.target.value })}
-                          className="w-full min-w-[120px] px-2 py-1 border border-slate-300 rounded text-sm"
-                          placeholder="Building name"
-                        />
-                      </td>
+  <Fragment key={bldg.id}>
+    <tr className="hover:bg-slate-50">
+      <td className="px-3 py-2">
+        <input
+          type="text"
+          value={bldg.building_name}
+          onChange={(e) => updateBuilding(bldg.id, { building_name: e.target.value })}
+          className="w-full min-w-[120px] px-2 py-1 border border-slate-300 rounded text-sm"
+          placeholder="Building name"
+        />
+      </td>
 
                       <td className="px-3 py-2">
                         <div className="flex flex-col gap-1 min-w-[110px]">

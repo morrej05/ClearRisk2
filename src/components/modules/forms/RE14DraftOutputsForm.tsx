@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { AlertCircle, TrendingUp, FileText, Image as ImageIcon, Save, Sparkles, Copy, ArrowRight } from 'lucide-react';
+import { AlertCircle, TrendingUp, FileText, Save, Sparkles, Copy } from 'lucide-react';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { buildRiskEngineeringScoreBreakdown, type ScoreFactor } from '../../../lib/re/scoring/riskEngineeringHelpers';
@@ -43,7 +42,6 @@ export default function RE14DraftOutputsForm({
   document,
   onSaved,
 }: RE14DraftOutputsFormProps) {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -62,8 +60,6 @@ export default function RE14DraftOutputsForm({
     byPriority: { critical: 0, high: 0, medium: 0, low: 0 },
     highPriorityItems: [],
   });
-  const [hasPhotos, setHasPhotos] = useState(false);
-  const [hasSitePlan, setHasSitePlan] = useState(false);
   const [occupancyMissing, setOccupancyMissing] = useState(false);
 
   useEffect(() => {
@@ -79,14 +75,13 @@ export default function RE14DraftOutputsForm({
           .from('module_instances')
           .select('module_key, data')
           .eq('document_id', moduleInstance.document_id)
-          .in('module_key', ['RE_01_DOCUMENT_CONTROL', 'RISK_ENGINEERING', 'RE_13_RECOMMENDATIONS', 'RE_10_SITE_PHOTOS']);
+          .in('module_key', ['RE_01_DOCUMENT_CONTROL', 'RISK_ENGINEERING', 'RE_13_RECOMMENDATIONS']);
 
         if (error) throw error;
 
         const re01 = modules.find(m => m.module_key === 'RE_01_DOCUMENT_CONTROL');
         const riskEng = modules.find(m => m.module_key === 'RISK_ENGINEERING');
         const recommendations = modules.find(m => m.module_key === 'RE_13_RECOMMENDATIONS');
-        const sitePhotos = modules.find(m => m.module_key === 'RE_10_SITE_PHOTOS');
 
         if (re01?.data) {
           setSiteMetadata({
@@ -132,11 +127,6 @@ export default function RE14DraftOutputsForm({
               .map((r: any) => ({ text: r.text, priority: r.priority })),
           };
           setRecSummary(summary);
-        }
-
-        if (sitePhotos?.data) {
-          setHasPhotos((sitePhotos.data.photos || []).length > 0);
-          setHasSitePlan(!!sitePhotos.data.site_plan);
         }
       } catch (error) {
         console.error('Error loading summary data:', error);
@@ -490,33 +480,6 @@ export default function RE14DraftOutputsForm({
         ) : (
           <p className="text-sm text-slate-500">No recommendations available. Complete RE-09 Recommendations.</p>
         )}
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-2">
-              <ImageIcon className="w-5 h-5" />
-              Supporting Documentation
-            </h3>
-            <p className="text-sm text-slate-600">
-              {hasPhotos && hasSitePlan ? (
-                <span className="text-green-600 font-medium">Complete – All documentation uploaded</span>
-              ) : (
-                <span className="text-amber-600">
-                  {!hasPhotos && !hasSitePlan ? 'No documentation uploaded' : 'Partially complete'}
-                </span>
-              )}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate(`/app/documents/${document.id}?module=RE_SUPPORTING_DOCS`)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <span>View Documentation</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
       {document?.id && moduleInstance?.id && (

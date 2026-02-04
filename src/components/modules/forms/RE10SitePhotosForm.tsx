@@ -6,6 +6,12 @@ import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 
+// Upload limits
+const MAX_FILE_SIZE_MB = 15;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_BATCH_FILES = 20;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic'];
+
 interface Document {
   id: string;
   title: string;
@@ -46,6 +52,7 @@ export default function RE10SitePhotosForm({
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingSitePlan, setUploadingSitePlan] = useState(false);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const d = moduleInstance.data || {};
 
   const [photos, setPhotos] = useState<Photo[]>(d.photos || []);
@@ -53,30 +60,65 @@ export default function RE10SitePhotosForm({
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
 
-  const handlePhotoUpload = async (file: File) => {
+  const validateImageFile = (file: File): string | null => {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return `${file.name} exceeds ${MAX_FILE_SIZE_MB}MB limit (${(file.size / 1024 / 1024).toFixed(1)}MB)`;
+    }
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase())) {
+      return `${file.name} is not a supported image format (jpg, png, heic only)`;
+    }
+    return null;
+  };
+
+  const handleBatchPhotoUpload = async (files: FileList) => {
     setUploadingPhoto(true);
+    setUploadErrors([]);
+    const errors: string[] = [];
+    const newPhotos: Photo[] = [];
+
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `photo_${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `${moduleInstance.document_id}/${moduleInstance.id}/${fileName}`;
+      const filesToUpload = Array.from(files).slice(0, MAX_BATCH_FILES);
+      if (files.length > MAX_BATCH_FILES) {
+        errors.push(`Only first ${MAX_BATCH_FILES} files will be uploaded (limit: ${MAX_BATCH_FILES} per batch)`);
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('evidence')
-        .upload(filePath, file);
+      for (const file of filesToUpload) {
+        const validationError = validateImageFile(file);
+        if (validationError) {
+          errors.push(validationError);
+          continue;
+        }
 
-      if (uploadError) throw uploadError;
+        try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `photo_${crypto.randomUUID()}.${fileExt}`;
+          const filePath = `${moduleInstance.document_id}/${moduleInstance.id}/${fileName}`;
 
-      const photo: Photo = {
-        id: crypto.randomUUID(),
-        storage_path: filePath,
-        caption: '',
-        uploaded_at: new Date().toISOString(),
-      };
+          const { error: uploadError } = await supabase.storage
+            .from('evidence')
+            .upload(filePath, file);
 
-      setPhotos([...photos, photo]);
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      alert('Failed to upload photo. Please try again.');
+          if (uploadError) throw uploadError;
+
+          newPhotos.push({
+            id: crypto.randomUUID(),
+            storage_path: filePath,
+            caption: '',
+            uploaded_at: new Date().toISOString(),
+          });
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error);
+          errors.push(`Failed to upload ${file.name}`);
+        }
+      }
+
+      if (newPhotos.length > 0) {
+        setPhotos([...photos, ...newPhotos]);
+      }
+
+      if (errors.length > 0) {
+        setUploadErrors(errors);
+      }
     } finally {
       setUploadingPhoto(false);
     }
@@ -84,6 +126,23 @@ export default function RE10SitePhotosForm({
 
   const handleSitePlanUpload = async (file: File) => {
     setUploadingSitePlan(true);
+    setUploadErrors([]);
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setUploadErrors([`File exceeds ${MAX_FILE_SIZE_MB}MB limit (${(file.size / 1024 / 1024).toFixed(1)}MB)`]);
+      setUploadingSitePlan(false);
+      return;
+    }
+
+    // Validate file type (images + PDF)
+    const allowedTypes = [...ALLOWED_IMAGE_TYPES, 'application/pdf'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      setUploadErrors(['File must be an image (jpg, png, heic) or PDF']);
+      setUploadingSitePlan(false);
+      return;
+    }
+
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `site_plan_${crypto.randomUUID()}.${fileExt}`;
@@ -102,7 +161,7 @@ export default function RE10SitePhotosForm({
       });
     } catch (error) {
       console.error('Error uploading site plan:', error);
-      alert('Failed to upload site plan. Please try again.');
+      setUploadErrors(['Failed to upload site plan. Please try again.']);
     } finally {
       setUploadingSitePlan(false);
     }
@@ -157,29 +216,52 @@ export default function RE10SitePhotosForm({
         <div className="flex gap-3">
           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-blue-900">
-            <p className="font-semibold mb-1">Site Photos & Site Plan</p>
-            <p className="text-blue-800">
-              Upload general site photographs and site plan documentation to support the assessment.
-              Site photos have no limit, while the site plan is a single document (PDF or image).
+            <p className="font-semibold mb-1">RE-10 – Supporting Documentation</p>
+            <p className="text-blue-800 mb-2">
+              Upload site photographs and site plan documentation to support the assessment.
             </p>
+            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+              <li>Maximum {MAX_FILE_SIZE_MB}MB per file</li>
+              <li>Up to {MAX_BATCH_FILES} photos per batch upload</li>
+              <li>Supported formats: JPG, PNG, HEIC (+ PDF for site plan)</li>
+            </ul>
           </div>
         </div>
       </div>
+
+      {uploadErrors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-semibold text-red-900 mb-2">Upload Errors</p>
+              <ul className="text-red-800 space-y-1">
+                {uploadErrors.map((error, idx) => (
+                  <li key={idx} className="text-xs">{error}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-slate-900">Site Photos ({photos.length})</h3>
           <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
             <Upload className="w-4 h-4" />
-            Upload Photo
+            Upload Photos
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/jpg,image/png,image/heic"
+              multiple
               className="hidden"
               disabled={uploadingPhoto}
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handlePhotoUpload(file);
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                  handleBatchPhotoUpload(files);
+                }
                 e.target.value = '';
               }}
             />

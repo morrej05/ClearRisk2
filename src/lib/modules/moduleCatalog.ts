@@ -7,7 +7,7 @@ export interface ModuleDefinition {
 
 export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
   RISK_ENGINEERING: {
-    name: 'Risk Engineering – Summary',
+    name: 'RE-00 – Summary',
     docTypes: ['RE'],
     order: 0,
   },
@@ -57,14 +57,9 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     order: 9,
   },
   RE_10_SITE_PHOTOS: {
-    name: 'RE-10 – Site Photos & Site Plan',
+    name: 'RE-10 – Supporting Documentation',
     docTypes: ['RE'],
     order: 10,
-  },
-  RE_SUPPORTING_DOCS: {
-    name: 'Supporting Documentation',
-    docTypes: ['RE'],
-    order: 11,
   },
   RE_14_DRAFT_OUTPUTS: {
     name: 'RE-11 - Summary & Key Findings',

@@ -302,8 +302,6 @@ const buildings =
     ? constructionInstance.data.buildings
     : [];
 
-
-
         setConstructionBuildings(buildings);
 
         if (buildings.length > 0 && !selectedBuildingId) {

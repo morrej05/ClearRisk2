@@ -261,6 +261,7 @@ export default function RE06FireProtectionForm({
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [siteExpanded, setSiteExpanded] = useState(true);
   const [sectionGrade, setSectionGrade] = useState<number>(3);
+  const hasLoadedConstructionRef = useRef(false);
 
   const d = moduleInstance.data || {};
   const rawFireProtection: FireProtectionModule = {

@@ -75,10 +75,13 @@ export default function RE09ManagementForm({
     { key: 'maintenance', rating_1_5: null, notes: '' },
     { key: 'emergency_planning', rating_1_5: null, notes: '' },
     { key: 'change_management', rating_1_5: null, notes: '' },
-  ]).map((cat: any) => ({
-    ...cat,
-    rating_1_5: invertRatingForUI(cat.rating_1_5),
-  }));
+  ]).map((cat: any) => {
+    const uiRating = invertRatingForUI(cat.rating_1_5);
+    return {
+      ...cat,
+      rating_1_5: uiRating !== null ? Number(uiRating) : null,
+    };
+  });
 
   const [formData, setFormData] = useState({
     categories: initialCategories,
@@ -118,16 +121,16 @@ export default function RE09ManagementForm({
 
   // Calculate overall rating from categories (weighted average)
   const calculateOverallRating = (categories: any[]): number | null => {
-    const rated = categories.filter((c) => c.rating_1_5 !== null);
+    const rated = categories.filter((c) => c.rating_1_5 !== null && c.rating_1_5 !== undefined);
     if (rated.length === 0) return null;
 
     // All categories have equal weight (1)
-    const sum = rated.reduce((acc, c) => acc + c.rating_1_5, 0);
+    const sum = rated.reduce((acc, c) => acc + Number(c.rating_1_5), 0);
     const avg = sum / rated.length;
 
     // Round and clamp to 1-5, then invert back to storage format (1=excellent)
     const uiRating = Math.max(1, Math.min(5, Math.round(avg)));
-    return invertRatingForStorage(uiRating);
+    return Number(invertRatingForStorage(uiRating));
   };
 
   // Update overall rating in RISK_ENGINEERING module
@@ -159,8 +162,11 @@ export default function RE09ManagementForm({
   };
 
   const updateCategory = (key: string, field: string, value: any) => {
+    // Ensure numeric values are stored as numbers
+    const normalizedValue = field === 'rating_1_5' && value !== null ? Number(value) : value;
+
     const updatedCategories = formData.categories.map((c: any) =>
-      c.key === key ? { ...c, [field]: value } : c
+      c.key === key ? { ...c, [field]: normalizedValue } : c
     );
 
     setFormData({
@@ -180,10 +186,14 @@ export default function RE09ManagementForm({
       // Invert ratings back to storage format before saving
       const dataToSave = {
         ...formData,
-        categories: formData.categories.map((cat: any) => ({
-          ...cat,
-          rating_1_5: invertRatingForStorage(cat.rating_1_5),
-        })),
+        categories: formData.categories.map((cat: any) => {
+          const uiRating = cat.rating_1_5 !== null ? Number(cat.rating_1_5) : null;
+          const storedRating = invertRatingForStorage(uiRating);
+          return {
+            ...cat,
+            rating_1_5: storedRating !== null ? Number(storedRating) : null,
+          };
+        }),
       };
 
       const sanitized = sanitizeModuleInstancePayload({ data: dataToSave });
@@ -207,8 +217,8 @@ export default function RE09ManagementForm({
 
   // Calculate display values for overall rating
   const overallRatingStored = calculateOverallRating(formData.categories);
-  const overallRatingUI = overallRatingStored ? invertRatingForUI(overallRatingStored) : null;
-  const overallRatingLabel = overallRatingUI ? RATING_LABELS[overallRatingUI] : 'Not rated';
+  const overallRatingUI = overallRatingStored !== null ? Number(invertRatingForUI(overallRatingStored)) : null;
+  const overallRatingLabel = overallRatingUI !== null ? RATING_LABELS[overallRatingUI] : 'Not rated';
 
   return (
     <>
@@ -255,25 +265,32 @@ export default function RE09ManagementForm({
                       Engineer Rating (1 = Poor, 5 = Excellent)
                     </label>
                     <div className="grid grid-cols-5 gap-2">
-                      {[1, 2, 3, 4, 5].map((num) => (
-                        <button
-                          key={num}
-                          type="button"
-                          onClick={() => updateCategory(category.key, 'rating_1_5', num)}
-                          className={`px-2 py-3 rounded-lg border-2 font-medium text-xs transition-all flex flex-col items-center gap-1 ${
-                            category.rating_1_5 === num
-                              ? num >= 4
-                                ? 'bg-green-100 border-green-500 text-green-700'
-                                : num === 3
-                                ? 'bg-amber-100 border-amber-500 text-amber-700'
-                                : 'bg-red-100 border-red-500 text-red-700'
-                              : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                          }`}
-                        >
-                          <span className="text-lg font-bold">{num}</span>
-                          <span className="text-center leading-tight">{RATING_LABELS[num]}</span>
-                        </button>
-                      ))}
+                      {[1, 2, 3, 4, 5].map((num) => {
+                        const isSelected = Number(category.rating_1_5) === Number(num);
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              updateCategory(category.key, 'rating_1_5', Number(num));
+                            }}
+                            className={`px-2 py-3 rounded-lg border-2 font-medium text-xs transition-all flex flex-col items-center gap-1 ${
+                              isSelected
+                                ? num >= 4
+                                  ? 'bg-green-100 border-green-500 text-green-700'
+                                  : num === 3
+                                  ? 'bg-amber-100 border-amber-500 text-amber-700'
+                                  : 'bg-red-100 border-red-500 text-red-700'
+                                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="text-lg font-bold">{num}</span>
+                            <span className="text-center leading-tight">{RATING_LABELS[num]}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div>

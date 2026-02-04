@@ -770,8 +770,11 @@ export function humanizeCanonicalKey(key: string): string {
 }
 
 export function humanizeIndustryKey(key: string): string {
+  const wordsToRemove = ['sprinklered', 'unsprinklered', 'ceiling', 'sprinklers'];
+
   return key
     .split('_')
+    .filter((word) => !wordsToRemove.includes(word.toLowerCase()))
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }

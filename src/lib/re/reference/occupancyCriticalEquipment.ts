@@ -221,6 +221,7 @@ export const occupancyCriticalEquipmentMap: Record<string, string[]> = {
 
 /**
  * Standard equipment options for non-heavy occupancies
+ * Note: Fire protection equipment (sprinklers, fire pumps) belong in RE-04 Fire Protection module
  */
 export const STANDARD_EQUIPMENT_OPTIONS = [
   'Boiler',
@@ -229,8 +230,6 @@ export const STANDARD_EQUIPMENT_OPTIONS = [
   'HVAC system',
   'Cooling tower',
   'Chiller',
-  'Fire pump',
-  'Sprinkler system',
   'Building management system',
   'Custom…',
 ];

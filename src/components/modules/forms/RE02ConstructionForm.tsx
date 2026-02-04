@@ -897,7 +897,7 @@ const mergedPayload = {
         console.log('📊 State buildings count:', currentFormData.buildings.length);
         console.log('📊 Normalized buildings count:', normalizedData.buildings.length);
         console.log('📊 Payload buildings count:', buildingsWithoutCalculated.length);
-        console.log('📝 Site notes:', normalizeddata.construction.site_notes?.substring(0, 50) || '(empty)');
+console.log('📝 Site notes:', normalizedData.site_notes?.substring(0, 50) || '(empty)');
         console.log('💾 Payload keys:', Object.keys(mergedPayload));
 console.log('✅ Using CANONICAL PATH: data.construction.buildings');
 

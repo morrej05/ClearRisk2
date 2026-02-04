@@ -434,9 +434,14 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         },
       };
 
-      supabase.from('module_instances').update({ data: migrated }).eq('id', moduleInstance.id);
+      // Save to same row that RE-06 loads
+      supabase
+        .from('module_instances')
+        .update({ data: migrated })
+        .eq('document_id', moduleInstance.document_id)
+        .eq('module_key', 'RE_02_CONSTRUCTION');
     }
-  }, [moduleInstance.id]);
+  }, [moduleInstance.id, moduleInstance.document_id]);
 
   // Canonical buildings path (matches Fire Protection module)
   const rawBuildings = Array.isArray(d.construction?.buildings)
@@ -685,6 +690,10 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
       if (import.meta.env.DEV) {
         console.group('🏗️ RE-02 TRACE: Save Starting');
+        console.log('[RE02] saving to', {
+          document_id: moduleInstance.document_id,
+          module_key: 'RE_02_CONSTRUCTION'
+        });
         console.log('📊 State buildings count:', currentFormData.buildings.length);
         console.log('📊 Normalized buildings count:', normalizedData.buildings.length);
         console.log('📊 Payload buildings count:', buildingsWithoutCalculated.length);
@@ -705,11 +714,12 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         }));
       }
 
+      // Save to same row that RE-06 Fire Protection loads
       const { error } = await supabase
-  .from('module_instances')
-  .update({ data: mergedPayload })
-  .eq('document_id', moduleInstance.document_id)
-  .eq('module_key', moduleInstance.module_key);
+        .from('module_instances')
+        .update({ data: mergedPayload })
+        .eq('document_id', moduleInstance.document_id)
+        .eq('module_key', 'RE_02_CONSTRUCTION');
 
 
       if (error) {
@@ -722,8 +732,9 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         const { data: savedRow, error: readError } = await supabase
           .from('module_instances')
           .select('data')
-          .eq('id', moduleInstance.id)
-          .single();
+          .eq('document_id', moduleInstance.document_id)
+          .eq('module_key', 'RE_02_CONSTRUCTION')
+          .maybeSingle();
 
         if (readError) {
           console.error('❌ Read-back error:', readError);

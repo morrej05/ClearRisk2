@@ -7,6 +7,7 @@ import ReRatingPanel from '../../re/ReRatingPanel';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
+import { getSuggestedEquipment, STANDARD_EQUIPMENT_OPTIONS } from '../../../lib/re/reference/occupancyCriticalEquipment';
 import { Plus, X, Trash2 } from 'lucide-react';
 
 interface Document {
@@ -148,7 +149,9 @@ export default function RE08UtilitiesForm({
         if (instance) {
           setRiskEngInstanceId(instance.id);
           setRiskEngData(instance.data || {});
-          setIndustryKey(instance.data?.industry_key || null);
+          const loadedIndustryKey = instance.data?.industry_key || null;
+          setIndustryKey(loadedIndustryKey);
+          console.log('[RE-08] Loaded industry classification from RE-01:', loadedIndustryKey);
         }
       } catch (err) {
         console.error('Error loading RISK_ENGINEERING module:', err);
@@ -236,11 +239,13 @@ export default function RE08UtilitiesForm({
   const addCriticalEquipment = () => {
     if (!selectedEquipmentType) return;
 
+    const isCustom = selectedEquipmentType === 'Custom…';
     const newEquipment: CriticalEquipment = {
       id: crypto.randomUUID(),
-      equipment_type: selectedEquipmentType,
+      equipment_type: isCustom ? 'custom' : selectedEquipmentType,
+      custom_label: isCustom ? customEquipmentLabel : undefined,
       tag_or_name: '',
-      criticality: null,
+      criticality: 'high',
       redundancy: null,
       spares_strategy: null,
       condition_notes: '',
@@ -578,37 +583,72 @@ export default function RE08UtilitiesForm({
               </button>
             </div>
 
-            {showEquipmentPicker && (
-              <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Select Equipment Type</label>
-                <input
-                  type="text"
-                  value={selectedEquipmentType}
-                  onChange={(e) => setSelectedEquipmentType(e.target.value)}
-                  placeholder="Enter equipment type (e.g., Turbine, Generator, Compressor, etc.)"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={addCriticalEquipment}
-                    disabled={!selectedEquipmentType}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            {showEquipmentPicker && (() => {
+              const suggestedEquipment = getSuggestedEquipment(industryKey);
+              const showCustomInput = selectedEquipmentType === 'Custom…';
+
+              return (
+                <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Equipment Type</label>
+
+                  <select
+                    value={selectedEquipmentType}
+                    onChange={(e) => setSelectedEquipmentType(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
                   >
-                    Add Equipment
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowEquipmentPicker(false);
-                      setSelectedEquipmentType('');
-                      setCustomEquipmentLabel('');
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
+                    <option value="">Select equipment...</option>
+
+                    {suggestedEquipment.length > 0 && (
+                      <optgroup label="Suggested for this industry">
+                        {suggestedEquipment.map((equip) => (
+                          <option key={equip} value={equip}>
+                            {equip}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+
+                    <optgroup label="Other equipment">
+                      {STANDARD_EQUIPMENT_OPTIONS.map((equip) => (
+                        <option key={equip} value={equip}>
+                          {equip}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+
+                  {showCustomInput && (
+                    <input
+                      type="text"
+                      value={customEquipmentLabel}
+                      onChange={(e) => setCustomEquipmentLabel(e.target.value)}
+                      placeholder="Enter custom equipment type"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm mb-2"
+                    />
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={addCriticalEquipment}
+                      disabled={!selectedEquipmentType || (showCustomInput && !customEquipmentLabel)}
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Add Equipment
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowEquipmentPicker(false);
+                        setSelectedEquipmentType('');
+                        setCustomEquipmentLabel('');
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="space-y-4">
               {formData.critical_equipment.map((equipment) => (

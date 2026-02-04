@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
-import { Plus, Trash2, Edit2, X, Info } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Info, AlertCircle } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -33,6 +33,7 @@ interface CalculatedMetrics {
   combustible_percent: number; // 0-100 percentage
 }
 
+// Data model for database storage (normalized)
 interface Building {
   id: string;
   building_name: string;
@@ -63,6 +64,40 @@ interface Building {
   frame_type: 'steel' | 'protected_steel' | 'timber' | 'reinforced_concrete' | 'masonry' | 'other';
   notes: string;
   calculated?: CalculatedMetrics;
+}
+
+// Form state model (string-based numeric fields for controlled inputs)
+interface BuildingFormState {
+  id: string;
+  building_name: string;
+  roof: {
+    area_sqm: string; // stored as string during editing
+    breakdown: MaterialBreakdown[];
+    total_percent: number;
+  };
+  walls: {
+    breakdown: MaterialBreakdown[];
+    total_percent: number;
+  };
+  upper_floors_mezzanine: {
+    area_sqm: string; // stored as string during editing
+    breakdown: MaterialBreakdown[];
+    total_percent: number;
+  };
+  geometry: {
+    floors: string; // stored as string during editing
+    basements: string; // stored as string during editing
+    height_m: string; // stored as string during editing
+  };
+  combustible_cladding: {
+    present: boolean;
+    details: string;
+  };
+  compartmentation: 'low' | 'medium' | 'high' | 'unknown';
+  frame_type: 'steel' | 'protected_steel' | 'timber' | 'reinforced_concrete' | 'masonry' | 'other';
+  notes: string;
+  calculated?: CalculatedMetrics;
+  validationWarnings?: string[]; // inline validation warnings
 }
 
 const CONSTRUCTION_MATERIALS = [
@@ -97,6 +132,109 @@ const getMaterialOptionsForType = (type: 'roof' | 'walls' | 'mezzanine') => {
   if (type === 'mezzanine') return MEZZANINE_MATERIALS;
   return CONSTRUCTION_MATERIALS;
 };
+
+// Normalize a string numeric input to a number or null
+// Handles commas, whitespace, and invalid input
+function parseNumericInput(value: string): number | null {
+  if (!value || value.trim() === '') return null;
+
+  // Remove commas and whitespace
+  const cleaned = value.replace(/,/g, '').trim();
+
+  // Parse as float
+  const parsed = parseFloat(cleaned);
+
+  // Return null if invalid
+  if (isNaN(parsed)) return null;
+
+  return parsed;
+}
+
+// Convert form state (strings) to database model (numbers)
+function normalizeConstructionForSave(formState: { buildings: BuildingFormState[]; site_notes: string }): {
+  buildings: Building[];
+  site_notes: string;
+} {
+  return {
+    site_notes: formState.site_notes.trim(),
+    buildings: formState.buildings.map((b) => ({
+      id: b.id,
+      building_name: b.building_name.trim(),
+      roof: {
+        area_sqm: parseNumericInput(b.roof.area_sqm),
+        breakdown: b.roof.breakdown,
+        total_percent: b.roof.total_percent,
+      },
+      walls: {
+        breakdown: b.walls.breakdown,
+        total_percent: b.walls.total_percent,
+      },
+      upper_floors_mezzanine: {
+        area_sqm: parseNumericInput(b.upper_floors_mezzanine.area_sqm),
+        breakdown: b.upper_floors_mezzanine.breakdown,
+        total_percent: b.upper_floors_mezzanine.total_percent,
+      },
+      geometry: {
+        floors: parseNumericInput(b.geometry.floors),
+        basements: parseNumericInput(b.geometry.basements),
+        height_m: parseNumericInput(b.geometry.height_m),
+      },
+      combustible_cladding: b.combustible_cladding,
+      compartmentation: b.compartmentation,
+      frame_type: b.frame_type,
+      notes: b.notes.trim(),
+    })),
+  };
+}
+
+// Convert database model (numbers) to form state (strings)
+function buildingToFormState(building: Building): BuildingFormState {
+  return {
+    ...building,
+    roof: {
+      ...building.roof,
+      area_sqm: building.roof.area_sqm != null ? String(building.roof.area_sqm) : '',
+    },
+    upper_floors_mezzanine: {
+      ...building.upper_floors_mezzanine,
+      area_sqm: building.upper_floors_mezzanine.area_sqm != null ? String(building.upper_floors_mezzanine.area_sqm) : '',
+    },
+    geometry: {
+      floors: building.geometry.floors != null ? String(building.geometry.floors) : '',
+      basements: building.geometry.basements != null ? String(building.geometry.basements) : '',
+      height_m: building.geometry.height_m != null ? String(building.geometry.height_m) : '',
+    },
+    validationWarnings: [],
+  };
+}
+
+// Validate a building and return warnings (non-blocking)
+function validateBuilding(building: BuildingFormState): string[] {
+  const warnings: string[] = [];
+
+  // Check roof area
+  if (building.roof.area_sqm && parseNumericInput(building.roof.area_sqm) === null) {
+    warnings.push('Roof area contains invalid characters');
+  }
+
+  // Check mezzanine area
+  if (building.upper_floors_mezzanine.area_sqm && parseNumericInput(building.upper_floors_mezzanine.area_sqm) === null) {
+    warnings.push('Mezzanine area contains invalid characters');
+  }
+
+  // Check geometry
+  if (building.geometry.floors && parseNumericInput(building.geometry.floors) === null) {
+    warnings.push('Number of floors is invalid');
+  }
+  if (building.geometry.basements && parseNumericInput(building.geometry.basements) === null) {
+    warnings.push('Number of basements is invalid');
+  }
+  if (building.geometry.height_m && parseNumericInput(building.geometry.height_m) === null) {
+    warnings.push('Building height is invalid');
+  }
+
+  return warnings;
+}
 
 function createEmptyBuilding(): Building {
   return {
@@ -396,11 +534,16 @@ function calculateConstructionMetrics(building: Building): CalculatedMetrics {
     combustible_percent,
   };
 }
-function hasAreaData(building: Building): boolean {
-  return (
-    (building.roof?.area_sqm ?? 0) > 0 ||
-    (building.upper_floors_mezzanine?.area_sqm ?? 0) > 0
-  );
+// Check if building has area data (works with both Building and BuildingFormState)
+function hasAreaData(building: Building | BuildingFormState): boolean {
+  const roofArea = typeof building.roof?.area_sqm === 'string'
+    ? parseNumericInput(building.roof.area_sqm)
+    : building.roof?.area_sqm;
+  const mezzArea = typeof building.upper_floors_mezzanine?.area_sqm === 'string'
+    ? parseNumericInput(building.upper_floors_mezzanine.area_sqm)
+    : building.upper_floors_mezzanine?.area_sqm;
+
+  return (roofArea ?? 0) > 0 || (mezzArea ?? 0) > 0;
 }
 
 export default function RE02ConstructionForm({ moduleInstance, document, onSaved }: RE02ConstructionFormProps) {
@@ -494,26 +637,48 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       })
     : [];
 
-  const [formData, setFormData] = useState({
-    buildings: safeBuildings.map((b) => ({
-      ...b,
-      calculated: calculateConstructionMetrics(b),
-    })),
+  // Convert loaded buildings to form state (string-based numeric fields)
+  const initialFormState = {
+    buildings: safeBuildings.map((b) => {
+      const formState = buildingToFormState(b);
+      // Calculate metrics for display (needs normalized Building type)
+      const calculated = calculateConstructionMetrics(b);
+      return { ...formState, calculated };
+    }),
     site_notes: d.construction?.site_notes || '',
-  });
+  };
+
+  const [formData, setFormData] = useState<{
+    buildings: BuildingFormState[];
+    site_notes: string;
+  }>(initialFormState);
+
+  // Use a ref to always capture the latest state in handleSave
+  const formDataRef = useRef(formData);
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
 
   const [editingBreakdown, setEditingBreakdown] = useState<{
     buildingId: string;
     type: 'roof' | 'walls' | 'mezzanine';
   } | null>(null);
 
-  const updateBuilding = (id: string, updates: Partial<Building>) => {
+  const updateBuilding = (id: string, updates: Partial<BuildingFormState>) => {
     setFormData((prev) => ({
       ...prev,
       buildings: prev.buildings.map((b) => {
         if (b.id === id) {
-          const updated: Building = { ...b, ...updates } as Building;
-          const calculated = calculateConstructionMetrics(updated);
+          const updated: BuildingFormState = { ...b, ...updates } as BuildingFormState;
+
+          // Run validation
+          const warnings = validateBuilding(updated);
+          updated.validationWarnings = warnings;
+
+          // Calculate metrics for display (convert to normalized Building for calculation)
+          const normalized = normalizeConstructionForSave({ buildings: [updated], site_notes: '' }).buildings[0];
+          const calculated = calculateConstructionMetrics(normalized);
+
           return { ...updated, calculated };
         }
         return b;
@@ -523,10 +688,11 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
   const addBuilding = () => {
     const newBuilding = createEmptyBuilding();
+    const formState = buildingToFormState(newBuilding);
     const calculated = calculateConstructionMetrics(newBuilding);
     setFormData((prev) => ({
       ...prev,
-      buildings: [...prev.buildings, { ...newBuilding, calculated }],
+      buildings: [...prev.buildings, { ...formState, calculated }],
     }));
   };
 
@@ -548,8 +714,11 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     // Clear any previous errors
     setSaveError(null);
 
+    // CRITICAL: Capture the latest state from ref to avoid stale closure
+    const currentFormData = formDataRef.current;
+
     // Validate breakdown percentages
-    for (const building of formData.buildings) {
+    for (const building of currentFormData.buildings) {
       if (building.roof.breakdown.length > 0 && building.roof.total_percent !== 100) {
         const errorMsg = `Building "${building.building_name || 'Unnamed'}": Roof percentages must total 100% (currently ${building.roof.total_percent}%)`;
         setSaveError(errorMsg);
@@ -572,13 +741,19 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
     setIsSaving(true);
     try {
+      // Normalize form state (strings) to database model (numbers)
+      const normalizedData = normalizeConstructionForSave(currentFormData);
+
       // Remove calculated fields before saving
-      const buildingsWithoutCalculated = formData.buildings.map(({ calculated, ...building }) => building);
+      const buildingsWithoutCalculated = normalizedData.buildings.map(({ calculated, ...building }) => ({
+        ...building,
+        // Ensure we don't save undefined or NaN values
+      }));
 
       // Build construction data
       const constructionData = {
-        ...formData,
-        buildings: buildingsWithoutCalculated
+        buildings: buildingsWithoutCalculated,
+        site_notes: normalizedData.site_notes,
       };
 
       // CRITICAL: Merge with existing data instead of replacing entire data field
@@ -586,16 +761,16 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       const existingData = moduleInstance.data || {};
       const mergedPayload = {
         ...existingData,
-        construction: constructionData
+        construction: constructionData,
       };
 
       // DEV LOGGING: Track what we're saving (only in development)
       if (import.meta.env.DEV) {
         console.group('🏗️ RE-02 Construction Save');
         console.log('📊 Buildings count:', buildingsWithoutCalculated.length);
-        console.log('📝 Site notes:', formData.site_notes?.substring(0, 50) || '(empty)');
+        console.log('📝 Site notes:', normalizedData.site_notes?.substring(0, 50) || '(empty)');
         console.log('💾 Payload keys:', Object.keys(mergedPayload));
-        console.log('🔍 Full payload:', JSON.stringify(mergedPayload, null, 2));
+        console.log('🔍 Sample building:', buildingsWithoutCalculated[0]);
         console.groupEnd();
       }
 
@@ -620,6 +795,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
           console.group('✅ RE-02 Save Verification');
           console.log('📥 Read back buildings count:', savedData.data?.construction?.buildings?.length || 0);
           console.log('📥 Read back site notes:', savedData.data?.construction?.site_notes?.substring(0, 50) || '(empty)');
+          console.log('📥 Sample saved building:', savedData.data?.construction?.buildings?.[0]);
 
           // Check for data loss
           const expectedBuildings = buildingsWithoutCalculated.length;
@@ -632,6 +808,18 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
           console.groupEnd();
         }
       }
+
+      // Update local state with normalized data converted back to form state
+      // This prevents flicker and ensures UI shows exactly what was saved
+      const savedFormState = {
+        buildings: buildingsWithoutCalculated.map((b) => {
+          const formState = buildingToFormState(b);
+          const calculated = calculateConstructionMetrics(b);
+          return { ...formState, calculated };
+        }),
+        site_notes: normalizedData.site_notes,
+      };
+      setFormData(savedFormState);
 
       onSaved();
     } catch (error) {
@@ -646,7 +834,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
   const editingBuilding = editingBreakdown ? formData.buildings.find((b) => b.id === editingBreakdown.buildingId) : null;
 
-  const getBreakdownData = (building: Building, type: 'roof' | 'walls' | 'mezzanine') => {
+  const getBreakdownData = (building: BuildingFormState, type: 'roof' | 'walls' | 'mezzanine') => {
     switch (type) {
       case 'roof':
         return building.roof;
@@ -673,7 +861,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     type: 'roof' | 'walls' | 'mezzanine',
     data: { breakdown: MaterialBreakdown[]; total_percent: number }
   ) => {
-    const updates: Partial<Building> = {};
+    const updates: Partial<BuildingFormState> = {};
     if (type === 'roof') {
       const building = formData.buildings.find((b) => b.id === buildingId);
       if (building) updates.roof = { ...building.roof, ...data };
@@ -686,9 +874,9 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     updateBuilding(buildingId, updates);
   };
 
-  // Calculate totals for display
-  const totalRoofSqm = formData.buildings.reduce((sum, b) => sum + (b.roof.area_sqm ?? 0), 0);
-  const totalMezzSqm = formData.buildings.reduce((sum, b) => sum + (b.upper_floors_mezzanine.area_sqm ?? 0), 0);
+  // Calculate totals for display (parse string values)
+  const totalRoofSqm = formData.buildings.reduce((sum, b) => sum + (parseNumericInput(b.roof.area_sqm) ?? 0), 0);
+  const totalMezzSqm = formData.buildings.reduce((sum, b) => sum + (parseNumericInput(b.upper_floors_mezzanine.area_sqm) ?? 0), 0);
   const totalKnownSqm = totalRoofSqm + totalMezzSqm;
 
   return (
@@ -719,7 +907,8 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {formData.buildings.map((bldg) => (
-                  <tr key={bldg.id} className="hover:bg-slate-50">
+                  <>
+                    <tr key={bldg.id} className="hover:bg-slate-50">
                     <td className="px-3 py-2">
                       <input
                         type="text"
@@ -734,15 +923,15 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1 min-w-[110px]">
                         <input
-                          type="number"
-                          value={bldg.roof.area_sqm || ''}
+                          type="text"
+                          value={bldg.roof.area_sqm}
                           onChange={(e) =>
                             updateBuilding(bldg.id, {
-                              roof: { ...bldg.roof, area_sqm: e.target.value ? parseFloat(e.target.value) : null },
+                              roof: { ...bldg.roof, area_sqm: e.target.value },
                             })
                           }
                           className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
-                          placeholder="Area m²"
+                          placeholder="Area m² (e.g. 1,250)"
                         />
                         <button
                           onClick={() => setEditingBreakdown({ buildingId: bldg.id, type: 'roof' })}
@@ -769,18 +958,18 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1 min-w-[140px]">
                         <input
-                          type="number"
-                          value={bldg.upper_floors_mezzanine.area_sqm || ''}
+                          type="text"
+                          value={bldg.upper_floors_mezzanine.area_sqm}
                           onChange={(e) =>
                             updateBuilding(bldg.id, {
                               upper_floors_mezzanine: {
                                 ...bldg.upper_floors_mezzanine,
-                                area_sqm: e.target.value ? parseFloat(e.target.value) : null,
+                                area_sqm: e.target.value,
                               },
                             })
                           }
                           className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
-                          placeholder="Area m²"
+                          placeholder="Area m² (e.g. 500)"
                         />
                         <button
                           onClick={() => setEditingBreakdown({ buildingId: bldg.id, type: 'mezzanine' })}
@@ -798,41 +987,31 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                     <td className="px-3 py-2">
                       <div className="flex gap-1 min-w-[120px]">
                         <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={bldg.geometry.floors || ''}
-                          onChange={(e) => {
-                            const val = e.target.value ? Math.max(0, parseInt(e.target.value)) : null;
-                            updateBuilding(bldg.id, { geometry: { ...bldg.geometry, floors: val } });
-                          }}
+                          type="text"
+                          value={bldg.geometry.floors}
+                          onChange={(e) =>
+                            updateBuilding(bldg.id, { geometry: { ...bldg.geometry, floors: e.target.value } })
+                          }
                           className="w-12 px-1 py-1 border border-slate-300 rounded text-xs"
                           placeholder="F"
                           title="Floors (positive)"
                         />
                         <input
-                          type="number"
-                          max="-1"
-                          step="1"
-                          value={bldg.geometry.basements || ''}
-                          onChange={(e) => {
-                            if (!e.target.value) {
-                              updateBuilding(bldg.id, { geometry: { ...bldg.geometry, basements: null } });
-                            } else {
-                              const val = Math.min(-1, parseInt(e.target.value));
-                              updateBuilding(bldg.id, { geometry: { ...bldg.geometry, basements: val } });
-                            }
-                          }}
+                          type="text"
+                          value={bldg.geometry.basements}
+                          onChange={(e) =>
+                            updateBuilding(bldg.id, { geometry: { ...bldg.geometry, basements: e.target.value } })
+                          }
                           className="w-12 px-1 py-1 border border-slate-300 rounded text-xs"
                           placeholder="B"
                           title="Basements (negative)"
                         />
                         <input
-                          type="number"
-                          value={bldg.geometry.height_m || ''}
+                          type="text"
+                          value={bldg.geometry.height_m}
                           onChange={(e) =>
                             updateBuilding(bldg.id, {
-                              geometry: { ...bldg.geometry, height_m: e.target.value ? parseFloat(e.target.value) : null },
+                              geometry: { ...bldg.geometry, height_m: e.target.value },
                             })
                           }
                           className="w-12 px-1 py-1 border border-slate-300 rounded text-xs"
@@ -937,6 +1116,21 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                       </button>
                     </td>
                   </tr>
+                  {/* Inline validation warnings */}
+                  {bldg.validationWarnings && bldg.validationWarnings.length > 0 && (
+                    <tr key={`${bldg.id}-warnings`}>
+                      <td colSpan={9} className="px-3 py-2 bg-amber-50 border-l-4 border-amber-400">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div className="text-xs text-amber-800">
+                            <span className="font-semibold">{bldg.building_name || 'Unnamed building'}:</span>{' '}
+                            {bldg.validationWarnings.join(', ')}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </>
                 ))}
               </tbody>
               <tfoot className="bg-slate-50 border-t-2 border-slate-300">

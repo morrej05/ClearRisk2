@@ -6,6 +6,7 @@ import FloatingSaveBar from './FloatingSaveBar';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
+import RatingButtons from '../../re/RatingButtons';
 
 interface Document {
   id: string;
@@ -282,34 +283,12 @@ export default function RE09ManagementForm({
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Engineer Rating (1 = Poor, 5 = Excellent)
                     </label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {[1, 2, 3, 4, 5].map((num) => {
-                        const isSelected = Number(category.rating_1_5) === Number(num);
-                        return (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              updateCategory(category.key, 'rating_1_5', Number(num));
-                            }}
-                            className={`px-2 py-3 rounded-lg border-2 font-medium text-xs transition-all flex flex-col items-center gap-1 ${
-                              isSelected
-                                ? num >= 4
-                                  ? 'bg-green-100 border-green-500 text-green-700'
-                                  : num === 3
-                                  ? 'bg-amber-100 border-amber-500 text-amber-700'
-                                  : 'bg-red-100 border-red-500 text-red-700'
-                                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                            }`}
-                          >
-                            <span className="text-lg font-bold">{num}</span>
-                            <span className="text-center leading-tight">{RATING_LABELS[num]}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <RatingButtons
+                      value={category.rating_1_5 !== null ? Number(category.rating_1_5) : null}
+                      onChange={(num) => updateCategory(category.key, 'rating_1_5', Number(num))}
+                      labels={RATING_LABELS}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>

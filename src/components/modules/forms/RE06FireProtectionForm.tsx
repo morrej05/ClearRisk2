@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import FloatingSaveBar from './FloatingSaveBar';
 import SectionGrade from '../../SectionGrade';
 import { updateSectionGrade } from '../../../utils/sectionGrades';
+import RatingButtons from '../../re/RatingButtons';
 
 interface Document {
   id: string;
@@ -107,11 +108,17 @@ interface ConstructionBuilding {
   building_name: string;
 }
 
-const RATING_HELP = {
+const RATING_LABELS = {
+  1: 'Poor',
+  2: 'Below Avg',
+  3: 'Average',
+  4: 'Good',
+  5: 'Excellent',
+};
+
+const RATING_HELP_DETAIL = {
   1: 'Inadequate - materially below industry expectation',
-  2: 'Weak / marginal - significant gaps or reliability concerns',
   3: 'Generally adequate - meets normal industry expectation',
-  4: 'Good - above average, reliable, minor gaps only',
   5: 'Robust / best practice - strong, resilient, well maintained'
 };
 
@@ -448,26 +455,17 @@ export default function RE06FireProtectionForm({
   }) => (
     <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
       <label className="block text-sm font-semibold text-slate-900 mb-3">{label}</label>
-      <div className="flex items-center gap-2 mb-3">
-        {[1, 2, 3, 4, 5].map((rating) => (
-          <button
-            key={rating}
-            type="button"
-            onClick={() => onChange(rating)}
-            className={`flex-1 py-3 text-lg font-bold rounded-lg transition-colors ${
-              value === rating
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-slate-600 border border-slate-300 hover:border-blue-400'
-            }`}
-          >
-            {rating}
-          </button>
-        ))}
-      </div>
+      <RatingButtons
+        value={value}
+        onChange={onChange}
+        labels={RATING_LABELS}
+        size="md"
+        className="mb-3"
+      />
       <div className="text-xs text-slate-600 space-y-1 bg-white rounded p-3">
-        <div><strong>1:</strong> {RATING_HELP[1]}</div>
-        <div><strong>3:</strong> {RATING_HELP[3]}</div>
-        <div><strong>5:</strong> {RATING_HELP[5]}</div>
+        <div><strong>1:</strong> {RATING_HELP_DETAIL[1]}</div>
+        <div><strong>3:</strong> {RATING_HELP_DETAIL[3]}</div>
+        <div><strong>5:</strong> {RATING_HELP_DETAIL[5]}</div>
       </div>
     </div>
   );
@@ -1113,13 +1111,6 @@ export default function RE06FireProtectionForm({
                 Detection & Alarm
               </h3>
 
-              {/* DEBUG BANNER */}
-              <div className="w-full bg-pink-200 border-2 border-pink-600 rounded-lg p-4 mb-6">
-                <p className="font-bold text-slate-900 text-center text-lg">
-                  RE-04 DETECTION & ALARM RENDER CHECK — BUILD: 2026-02-04 — NO INHERIT SHOULD EXIST
-                </p>
-              </div>
-
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -1161,10 +1152,6 @@ export default function RE06FireProtectionForm({
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Monitoring
                   </label>
-                  {/* DEBUG: Show monitoring options array */}
-                  <div className="mb-2 p-2 bg-yellow-100 border border-yellow-400 rounded text-xs font-mono">
-                    <strong>DEBUG - Monitoring options:</strong> {(['none', 'keyholder', 'arc', 'unknown'] as MonitoringType[]).join(', ')}
-                  </div>
                   <div className="grid grid-cols-4 gap-2">
                     {(['none', 'keyholder', 'arc', 'unknown'] as MonitoringType[]).map((type) => {
                       const currentMonitoring = selectedBuildingData.detection_alarm.monitoring as any;

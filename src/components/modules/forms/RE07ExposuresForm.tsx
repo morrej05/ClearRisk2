@@ -5,6 +5,7 @@ import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { updateSectionGrade } from '../../../utils/sectionGrades';
 import { AlertTriangle, Shield, Cloud, Flame, Wind, Mountain } from 'lucide-react';
+import RatingButtons from '../../re/RatingButtons';
 
 interface Document {
   id: string;
@@ -39,28 +40,12 @@ const PERIL_RATING_GUIDANCE = `Rate the residual risk to the site from this peri
 
 const HUMAN_EXPOSURE_GUIDANCE = `Assess the site's exposure to deliberate or opportunistic loss based on location, access, visibility, and surrounding activity. This is not an audit of security systems; controls may be noted as context only.`;
 
-const RATING_OPTIONS = [
-  { value: 1, label: 'Poor / Inadequate' },
-  { value: 2, label: 'Below Average' },
-  { value: 3, label: 'Average / Acceptable' },
-  { value: 4, label: 'Good' },
-  { value: 5, label: 'Excellent' },
-];
-
-const getRatingColor = (rating: number, isSelected: boolean): string => {
-  if (rating <= 2) {
-    return isSelected
-      ? 'border-red-600 bg-red-50 text-red-900'
-      : 'border-red-300 bg-white text-red-700 hover:border-red-400';
-  }
-  if (rating === 3) {
-    return isSelected
-      ? 'border-amber-600 bg-amber-50 text-amber-900'
-      : 'border-amber-300 bg-white text-amber-700 hover:border-amber-400';
-  }
-  return isSelected
-    ? 'border-green-600 bg-green-50 text-green-900'
-    : 'border-green-300 bg-white text-green-700 hover:border-green-400';
+const RATING_LABELS: Record<number, string> = {
+  1: 'Poor / Inadequate',
+  2: 'Below Average',
+  3: 'Average / Acceptable',
+  4: 'Good',
+  5: 'Excellent',
 };
 
 export default function RE07ExposuresForm({
@@ -183,22 +168,12 @@ export default function RE07ExposuresForm({
         <h4 className="font-semibold text-slate-900">{label}</h4>
       </div>
 
-      <div className="flex gap-2">
-        {RATING_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onRatingChange(opt.value)}
-            className={`flex-1 px-2 py-2 rounded-lg border-2 transition-all text-center ${getRatingColor(
-              opt.value,
-              rating === opt.value
-            )}`}
-          >
-            <div className="text-lg font-bold">{opt.value}</div>
-            <div className="text-xs mt-0.5">{opt.label}</div>
-          </button>
-        ))}
-      </div>
+      <RatingButtons
+        value={rating}
+        onChange={onRatingChange}
+        labels={RATING_LABELS}
+        size="sm"
+      />
 
       <textarea
         value={notes}
@@ -287,22 +262,12 @@ export default function RE07ExposuresForm({
                   </button>
                 </div>
 
-                <div className="flex gap-2">
-                  {RATING_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setOtherRating(opt.value)}
-                      className={`flex-1 px-2 py-2 rounded-lg border-2 transition-all text-center ${getRatingColor(
-                        opt.value,
-                        otherRating === opt.value
-                      )}`}
-                    >
-                      <div className="text-lg font-bold">{opt.value}</div>
-                      <div className="text-xs mt-0.5">{opt.label}</div>
-                    </button>
-                  ))}
-                </div>
+                <RatingButtons
+                  value={otherRating}
+                  onChange={setOtherRating}
+                  labels={RATING_LABELS}
+                  size="sm"
+                />
 
                 <textarea
                   value={otherNotes}
@@ -350,22 +315,12 @@ export default function RE07ExposuresForm({
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-slate-700 mb-3">Exposure Rating (1-5):</label>
-            <div className="flex gap-2">
-              {RATING_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setHumanExposureRating(opt.value)}
-                  className={`flex-1 px-2 py-2 rounded-lg border-2 transition-all text-center ${getRatingColor(
-                    opt.value,
-                    humanExposureRating === opt.value
-                  )}`}
-                >
-                  <div className="text-lg font-bold">{opt.value}</div>
-                  <div className="text-xs mt-0.5">{opt.label}</div>
-                </button>
-              ))}
-            </div>
+            <RatingButtons
+              value={humanExposureRating}
+              onChange={setHumanExposureRating}
+              labels={RATING_LABELS}
+              size="sm"
+            />
           </div>
 
           <div className="space-y-3">
@@ -400,7 +355,7 @@ export default function RE07ExposuresForm({
             <div className={`px-6 py-4 rounded-lg border-2 ${getDerivedRatingColor(overallExposureRating)}`}>
               <div className="text-3xl font-bold text-center">{overallExposureRating}</div>
               <div className="text-xs text-center mt-1 opacity-75">
-                {RATING_OPTIONS.find(o => o.value === overallExposureRating)?.label}
+                {RATING_LABELS[overallExposureRating]}
               </div>
             </div>
           </div>

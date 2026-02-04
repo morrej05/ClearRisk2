@@ -575,6 +575,33 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const d = moduleInstance.data || {};
+  useEffect(() => {
+  if (!moduleInstance?.id) return;
+
+  const data = moduleInstance.data || {};
+  const hasCanonical = Array.isArray(data.construction?.buildings) && data.construction.buildings.length > 0;
+  const hasLegacy = Array.isArray(data.buildings) && data.buildings.length > 0;
+
+  // Only migrate if canonical is missing/empty but legacy exists
+  if (!hasCanonical && hasLegacy) {
+    const migrated = {
+      ...data,
+      construction: {
+        ...(data.construction ?? {}),
+        buildings: data.buildings,
+        site_notes: (data.construction?.site_notes ?? data.site_notes ?? ''),
+      },
+      // optional: keep legacy for now; remove later once stable
+      // buildings: undefined,
+      // site_notes: undefined,
+    };
+
+    supabase
+      .from('module_instances')
+      .update({ data: migrated })
+      .eq('id', moduleInstance.id);
+  }
+}, [moduleInstance.id]);
 
   // Debug trace state (DEV only)
   const [debugTrace, setDebugTrace] = useState<DebugTrace>({
@@ -850,7 +877,7 @@ const mergedPayload = {
   construction: {
     ...existingConstruction,
     buildings: buildingsWithoutCalculated,
-    site_notes: normalizeddata.construction.site_notes,
+    site_notes: normalizedData.site_notes, // ✅ correct
   },
   ...(import.meta.env.DEV && {
     __debug: {

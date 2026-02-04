@@ -6,7 +6,7 @@ export interface ModuleDefinition {
 
 export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
   RISK_ENGINEERING: {
-    name: 'Risk Engineering',
+    name: 'Risk Engineering – Summary',
     docTypes: ['RE'],
     order: 0,
   },

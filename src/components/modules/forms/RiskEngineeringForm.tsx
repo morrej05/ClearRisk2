@@ -1,3 +1,21 @@
+/**
+ * DEPRECATED: This component is no longer used in the UI.
+ *
+ * As of consolidation, RISK_ENGINEERING module now routes to RE14DraftOutputsForm (RE-11 Summary & Key Findings).
+ * This provides a single authoritative summary view with:
+ * - Global Pillars (always included)
+ * - Occupancy Loss Drivers (filtered by industry relevance)
+ * - Top 3 contributors
+ * - Executive summary editor
+ * - Recommendations summary
+ * - Supporting documentation status
+ *
+ * The underlying RISK_ENGINEERING data model and module_instances entry is preserved.
+ * Other RE modules continue to write ratings into RISK_ENGINEERING.data.ratings.
+ *
+ * This file is kept for reference only and may be removed in a future cleanup.
+ */
+
 import { useMemo } from 'react';
 import { HRG_CANONICAL_KEYS, HRG_MASTER_MAP, humanizeCanonicalKey, humanizeIndustryKey, getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, calculateScore } from '../../../lib/re/scoring/riskEngineeringHelpers';

@@ -3,12 +3,9 @@ import { supabase } from '../../../lib/supabase';
 import { AlertCircle, TrendingUp, FileText, Image as ImageIcon, Save, Sparkles, Copy } from 'lucide-react';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
-import { HRG_CANONICAL_KEYS, getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
-import { getRating, calculateScore } from '../../../lib/re/scoring/riskEngineeringHelpers';
+import { buildRiskEngineeringScoreBreakdown, type ScoreFactor } from '../../../lib/re/scoring/riskEngineeringHelpers';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import { generateRiskEngineeringSummary } from '../../../lib/ai/generateReSummary';
-import { getConstructionRating } from '../../../lib/re/scoring/constructionRating';
-import { getEnabledFactors } from '../../../lib/re/reference/occupancyRelevance';
 
 interface Document {
   id: string;
@@ -29,15 +26,6 @@ interface RE14DraftOutputsFormProps {
   onSaved: () => void;
 }
 
-interface RatingRow {
-  canonicalKey: string;
-  label: string;
-  rating: number;
-  weight: number;
-  score: number;
-  isPillar?: boolean;
-}
-
 interface RecommendationSummary {
   total: number;
   byPriority: {
@@ -47,13 +35,6 @@ interface RecommendationSummary {
     low: number;
   };
   highPriorityItems: Array<{ text: string; priority: string }>;
-}
-
-function formatCanonicalKey(key: string): string {
-  return key
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 }
 
 export default function RE14DraftOutputsForm({
@@ -66,11 +47,14 @@ export default function RE14DraftOutputsForm({
   const [generating, setGenerating] = useState(false);
   const [executiveSummary, setExecutiveSummary] = useState('');
   const [executiveSummaryAi, setExecutiveSummaryAi] = useState('');
-  const [industryKey, setIndustryKey] = useState('');
+  const [industryKey, setIndustryKey] = useState<string | null>(null);
+  const [industryLabel, setIndustryLabel] = useState('No Industry Selected');
   const [siteMetadata, setSiteMetadata] = useState<any>(null);
-  const [ratingRows, setRatingRows] = useState<RatingRow[]>([]);
+  const [globalPillars, setGlobalPillars] = useState<ScoreFactor[]>([]);
+  const [occupancyDrivers, setOccupancyDrivers] = useState<ScoreFactor[]>([]);
   const [totalScore, setTotalScore] = useState(0);
-  const [topContributors, setTopContributors] = useState<RatingRow[]>([]);
+  const [maxScore, setMaxScore] = useState(0);
+  const [topContributors, setTopContributors] = useState<ScoreFactor[]>([]);
   const [recSummary, setRecSummary] = useState<RecommendationSummary>({
     total: 0,
     byPriority: { critical: 0, high: 0, medium: 0, low: 0 },
@@ -112,88 +96,20 @@ export default function RE14DraftOutputsForm({
         }
 
         if (riskEng?.data) {
-          const industryKeyValue = riskEng.data.industry_key;
-          setIndustryKey(industryKeyValue);
-          setOccupancyMissing(!industryKeyValue);
+          // Use canonical scoring builder (single source of truth)
+          const breakdown = await buildRiskEngineeringScoreBreakdown(
+            moduleInstance.document_id,
+            riskEng.data
+          );
 
-          // Fetch section grades for global pillars
-          const { data: doc, error: docError } = await supabase
-            .from('documents')
-            .select('section_grades')
-            .eq('id', moduleInstance.document_id)
-            .maybeSingle();
-
-          const sectionGrades = doc?.section_grades || {};
-
-          // Get construction rating
-          const constructionResult = await getConstructionRating(moduleInstance.document_id);
-
-          // Build global pillar rows (ALWAYS INCLUDED)
-          const pillarRows: RatingRow[] = [
-            {
-              canonicalKey: 'construction_and_combustibility',
-              label: 'Construction & Combustibility',
-              rating: constructionResult.rating,
-              weight: getHrgConfig(industryKeyValue, 'construction').weight || 3,
-              score: constructionResult.rating * (getHrgConfig(industryKeyValue, 'construction').weight || 3),
-              isPillar: true,
-            },
-            {
-              canonicalKey: 'fire_protection',
-              label: 'Fire Protection',
-              rating: sectionGrades.fire_protection || 1,
-              weight: getHrgConfig(industryKeyValue, 'fire_protection').weight || 3,
-              score: (sectionGrades.fire_protection || 1) * (getHrgConfig(industryKeyValue, 'fire_protection').weight || 3),
-              isPillar: true,
-            },
-            {
-              canonicalKey: 'exposure',
-              label: 'Exposure',
-              rating: sectionGrades.exposure || 3,
-              weight: getHrgConfig(industryKeyValue, 'exposure').weight || 3,
-              score: (sectionGrades.exposure || 3) * (getHrgConfig(industryKeyValue, 'exposure').weight || 3),
-              isPillar: true,
-            },
-            {
-              canonicalKey: 'management_systems',
-              label: 'Management Systems',
-              rating: sectionGrades.management || 3,
-              weight: getHrgConfig(industryKeyValue, 'management').weight || 3,
-              score: (sectionGrades.management || 3) * (getHrgConfig(industryKeyValue, 'management').weight || 3),
-              isPillar: true,
-            },
-          ];
-
-          // Get enabled factors for this occupancy
-          const enabledFactors = getEnabledFactors(industryKeyValue);
-
-          // Build loss driver rows (FILTERED BY OCCUPANCY)
-          const lossDriverRows: RatingRow[] = HRG_CANONICAL_KEYS
-            .filter(key => enabledFactors.includes(key))
-            .map(canonicalKey => {
-              const rating = getRating(riskEng.data, canonicalKey);
-              const config = getHrgConfig(industryKeyValue, canonicalKey);
-              const score = calculateScore(rating, config.weight);
-
-              return {
-                canonicalKey,
-                label: formatCanonicalKey(canonicalKey),
-                rating,
-                weight: config.weight,
-                score,
-                isPillar: false,
-              };
-            });
-
-          // Combine pillars + loss drivers
-          const allRows = [...pillarRows, ...lossDriverRows];
-          setRatingRows(allRows);
-
-          const total = allRows.reduce((sum, row) => sum + row.score, 0);
-          setTotalScore(total);
-
-          const sorted = [...allRows].sort((a, b) => b.score - a.score);
-          setTopContributors(sorted.slice(0, 3));
+          setIndustryKey(breakdown.industryKey);
+          setIndustryLabel(breakdown.industryLabel);
+          setOccupancyMissing(!breakdown.industryKey);
+          setGlobalPillars(breakdown.globalPillars);
+          setOccupancyDrivers(breakdown.occupancyDrivers);
+          setTotalScore(breakdown.totalScore);
+          setMaxScore(breakdown.maxScore);
+          setTopContributors(breakdown.topContributors);
         }
 
         if (recommendations?.data?.recommendations) {
@@ -251,7 +167,7 @@ export default function RE14DraftOutputsForm({
   };
 
   const handleGenerateAiDraft = async () => {
-    if (!siteMetadata || !industryKey || ratingRows.length === 0) {
+    if (!siteMetadata || !industryKey || (globalPillars.length === 0 && occupancyDrivers.length === 0)) {
       alert('Please ensure all assessment data is complete before generating an AI summary.');
       return;
     }
@@ -446,7 +362,7 @@ export default function RE14DraftOutputsForm({
           </div>
         )}
 
-        {ratingRows.length > 0 ? (
+        {(globalPillars.length > 0 || occupancyDrivers.length > 0) ? (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -465,29 +381,29 @@ export default function RE14DraftOutputsForm({
                       Global Pillars (Always Included)
                     </td>
                   </tr>
-                  {ratingRows.filter(row => row.isPillar).map((row, idx) => (
-                    <tr key={row.canonicalKey} className="bg-blue-50/50">
-                      <td className="px-4 py-2 text-slate-900 font-medium">{row.label}</td>
-                      <td className="text-center px-4 py-2 text-slate-900">{row.rating}</td>
-                      <td className="text-center px-4 py-2 text-slate-900">{row.weight}</td>
-                      <td className="text-center px-4 py-2 font-medium text-slate-900">{row.score.toFixed(1)}</td>
+                  {globalPillars.map((factor, idx) => (
+                    <tr key={factor.key} className="bg-blue-50/50">
+                      <td className="px-4 py-2 text-slate-900 font-medium">{factor.label}</td>
+                      <td className="text-center px-4 py-2 text-slate-900">{factor.rating}</td>
+                      <td className="text-center px-4 py-2 text-slate-900">{factor.weight}</td>
+                      <td className="text-center px-4 py-2 font-medium text-slate-900">{factor.score.toFixed(1)}</td>
                     </tr>
                   ))}
 
                   {/* Occupancy Loss Drivers Section */}
-                  {ratingRows.filter(row => !row.isPillar).length > 0 && (
+                  {occupancyDrivers.length > 0 && (
                     <>
                       <tr className="bg-slate-50 border-t-2 border-slate-300">
                         <td colSpan={4} className="px-4 py-2 text-xs font-semibold text-slate-900 uppercase tracking-wide">
                           Occupancy Loss Drivers (Filtered by Relevance)
                         </td>
                       </tr>
-                      {ratingRows.filter(row => !row.isPillar).map((row, idx) => (
-                        <tr key={row.canonicalKey} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                          <td className="px-4 py-2 text-slate-900">{row.label}</td>
-                          <td className="text-center px-4 py-2 text-slate-900">{row.rating}</td>
-                          <td className="text-center px-4 py-2 text-slate-900">{row.weight}</td>
-                          <td className="text-center px-4 py-2 font-medium text-slate-900">{row.score.toFixed(1)}</td>
+                      {occupancyDrivers.map((factor, idx) => (
+                        <tr key={factor.key} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                          <td className="px-4 py-2 text-slate-900">{factor.label}</td>
+                          <td className="text-center px-4 py-2 text-slate-900">{factor.rating}</td>
+                          <td className="text-center px-4 py-2 text-slate-900">{factor.weight}</td>
+                          <td className="text-center px-4 py-2 font-medium text-slate-900">{factor.score.toFixed(1)}</td>
                         </tr>
                       ))}
                     </>
@@ -507,12 +423,12 @@ export default function RE14DraftOutputsForm({
             <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <h4 className="font-semibold text-amber-900 mb-2">Top 3 Risk Contributors</h4>
               <div className="space-y-2">
-                {topContributors.map((row, idx) => (
-                  <div key={row.canonicalKey} className="flex items-center justify-between text-sm">
+                {topContributors.map((factor, idx) => (
+                  <div key={factor.key} className="flex items-center justify-between text-sm">
                     <span className="text-amber-900">
-                      <span className="font-semibold">#{idx + 1}</span> {row.label}
+                      <span className="font-semibold">#{idx + 1}</span> {factor.label}
                     </span>
-                    <span className="font-medium text-amber-900">Score: {row.score.toFixed(1)}</span>
+                    <span className="font-medium text-amber-900">Score: {factor.score.toFixed(1)}</span>
                   </div>
                 ))}
               </div>

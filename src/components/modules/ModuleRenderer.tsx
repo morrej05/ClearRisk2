@@ -31,7 +31,7 @@ import DSEAR10HierarchyControlForm from './forms/DSEAR10HierarchyControlForm';
 import DSEAR11ExplosionEmergencyResponseForm from './forms/DSEAR11ExplosionEmergencyResponseForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
-import RiskEngineeringForm from './forms/RiskEngineeringForm';
+// RiskEngineeringForm is deprecated - RISK_ENGINEERING now routes to RE14DraftOutputsForm (RE-11 Summary)
 import RE01DocumentControlForm from './forms/RE01DocumentControlForm';
 import RE02ConstructionForm from './forms/RE02ConstructionForm';
 import RE03OccupancyForm from './forms/RE03OccupancyForm';
@@ -280,7 +280,8 @@ export default function ModuleRenderer({
   }
 
   if (moduleInstance.module_key === 'RISK_ENGINEERING') {
-    return <RiskEngineeringForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    // Route to RE-11 Summary & Key Findings (single authoritative summary view)
+    return <RE14DraftOutputsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }
 
   if (moduleInstance.module_key === 'RE_01_DOC_CONTROL') {

@@ -730,7 +730,7 @@ return (
               />
             )}
 
-            {document.document_type === 'RE' && (
+            {document.document_type === 'RE' && selectedModule?.module_key === 'RISK_ENGINEERING' && (
               <div className="mb-6">
                 <OverallGradeWidget documentId={document.id} />
               </div>

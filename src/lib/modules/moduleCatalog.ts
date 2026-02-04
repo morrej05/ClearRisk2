@@ -2,6 +2,7 @@ export interface ModuleDefinition {
   name: string;
   docTypes: string[];
   order: number;
+  hidden?: boolean; // If true, hide from navigation but allow programmatic access
 }
 
 export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
@@ -10,70 +11,66 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     docTypes: ['RE'],
     order: 0,
   },
-    RE_01_DOC_CONTROL: {
-    name: 'RE-1 - Document Control',
+  RE_01_DOC_CONTROL: {
+    name: 'RE-01 – Document Control',
     docTypes: ['RE'],
     order: 1,
   },
-
-  RE_03_OCCUPANCY: {
-    name: 'RE-3 - Occupancy',
+  RE_02_CONSTRUCTION: {
+    name: 'RE-02 – Construction',
     docTypes: ['RE'],
     order: 2,
   },
-
-  RE_02_CONSTRUCTION: {
-    name: 'RE-2 - Construction',
+  RE_03_OCCUPANCY: {
+    name: 'RE-03 – Occupancy',
     docTypes: ['RE'],
     order: 3,
   },
-
   RE_06_FIRE_PROTECTION: {
-    name: 'RE-4 - Fire Protection',
+    name: 'RE-04 – Fire Protection',
     docTypes: ['RE'],
     order: 4,
   },
-
   RE_07_NATURAL_HAZARDS: {
-    name: 'RE-5 - Exposures',
+    name: 'RE-05 – Exposures',
     docTypes: ['RE'],
     order: 5,
   },
-
   RE_08_UTILITIES: {
-    name: 'RE-6 - Utilities & Critical Services',
+    name: 'RE-06 – Utilities & Critical Services',
     docTypes: ['RE'],
     order: 6,
   },
-
   RE_09_MANAGEMENT: {
-    name: 'RE-7 - Management Systems',
+    name: 'RE-07 – Management Systems',
     docTypes: ['RE'],
     order: 7,
   },
-
   RE_12_LOSS_VALUES: {
-    name: 'RE-8 - Loss & Values',
+    name: 'RE-08 – Loss & Values',
     docTypes: ['RE'],
     order: 8,
   },
-
   RE_13_RECOMMENDATIONS: {
-    name: 'RE-9 - Recommendations',
+    name: 'RE-09 – Recommendations',
     docTypes: ['RE'],
     order: 9,
   },
-
   RE_10_SITE_PHOTOS: {
-    name: 'RE-10 - Site Photos & Site Plan',
+    name: 'RE-10 – Site Photos & Site Plan',
     docTypes: ['RE'],
     order: 10,
   },
-
+  RE_SUPPORTING_DOCS: {
+    name: 'Supporting Documentation',
+    docTypes: ['RE'],
+    order: 11,
+  },
   RE_14_DRAFT_OUTPUTS: {
     name: 'RE-11 - Summary & Key Findings',
     docTypes: ['RE'],
-    order: 11,
+    order: 999,
+    hidden: true, // Hidden from navigation - RISK_ENGINEERING routes to this component
   },
 
 
@@ -235,7 +232,7 @@ export function sortModulesByOrder(
 
 export function getModuleKeysForDocType(docType: string): string[] {
   return Object.entries(MODULE_CATALOG)
-    .filter(([_, def]) => def.docTypes.includes(docType))
+    .filter(([_, def]) => def.docTypes.includes(docType) && !def.hidden)
     .sort((a, b) => (a[1].order ?? 999) - (b[1].order ?? 999))
     .map(([key]) => key);
 }

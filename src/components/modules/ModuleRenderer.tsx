@@ -44,6 +44,7 @@ import RE10SitePhotosForm from './forms/RE10SitePhotosForm';
 import RE12LossValuesForm from './forms/RE12LossValuesForm';
 import RE09RecommendationsForm from './forms/RE09RecommendationsForm';
 import RE14DraftOutputsForm from './forms/RE14DraftOutputsForm';
+import RE11SupportingDocsForm from './forms/RE11SupportingDocsForm';
 
 interface Document {
   id: string;
@@ -330,6 +331,10 @@ export default function ModuleRenderer({
 
   if (moduleInstance.module_key === 'RE_14_DRAFT_OUTPUTS') {
     return <RE14DraftOutputsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  }
+
+  if (moduleInstance.module_key === 'RE_SUPPORTING_DOCS') {
+    return <RE11SupportingDocsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
   }
 
   if (moduleInstance.module_key === 'DSEAR_1_DANGEROUS_SUBSTANCES') {

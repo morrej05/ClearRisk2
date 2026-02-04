@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { AlertCircle, TrendingUp, FileText, Image as ImageIcon, Save, Sparkles, Copy } from 'lucide-react';
+import { AlertCircle, TrendingUp, FileText, Image as ImageIcon, Save, Sparkles, Copy, ArrowRight } from 'lucide-react';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { buildRiskEngineeringScoreBreakdown, type ScoreFactor } from '../../../lib/re/scoring/riskEngineeringHelpers';
@@ -42,6 +43,7 @@ export default function RE14DraftOutputsForm({
   document,
   onSaved,
 }: RE14DraftOutputsFormProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -490,32 +492,31 @@ export default function RE14DraftOutputsForm({
         )}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-          <ImageIcon className="w-5 h-5" />
-          Supporting Documentation
-        </h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <span className="text-slate-700">Site Photos</span>
-            {hasPhotos ? (
-              <span className="text-green-600 font-medium">Available</span>
-            ) : (
-              <span className="text-slate-400">Not uploaded</span>
-            )}
+      <div className="bg-white border border-slate-200 rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-2">
+              <ImageIcon className="w-5 h-5" />
+              Supporting Documentation
+            </h3>
+            <p className="text-sm text-slate-600">
+              {hasPhotos && hasSitePlan ? (
+                <span className="text-green-600 font-medium">Complete – All documentation uploaded</span>
+              ) : (
+                <span className="text-amber-600">
+                  {!hasPhotos && !hasSitePlan ? 'No documentation uploaded' : 'Partially complete'}
+                </span>
+              )}
+            </p>
           </div>
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <span className="text-slate-700">Site Plan</span>
-            {hasSitePlan ? (
-              <span className="text-green-600 font-medium">Available</span>
-            ) : (
-              <span className="text-slate-400">Not uploaded</span>
-            )}
-          </div>
+          <button
+            onClick={() => navigate(`/app/documents/${document.id}?module=RE_SUPPORTING_DOCS`)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <span>View Documentation</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
-        <p className="text-xs text-slate-500 italic">
-          Supporting documentation is available in RE-10 Site Photos & Site Plan.
-        </p>
       </div>
 
       {document?.id && moduleInstance?.id && (

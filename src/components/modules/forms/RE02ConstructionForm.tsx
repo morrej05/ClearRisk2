@@ -872,7 +872,7 @@ const mergedPayload = {
         console.log('📊 Payload buildings count:', buildingsWithoutCalculated.length);
         console.log('📝 Site notes:', normalizedData.site_notes?.substring(0, 50) || '(empty)');
         console.log('💾 Payload keys:', Object.keys(mergedPayload));
-        console.log('✅ Using CANONICAL PATH: data.buildings (top-level)');
+console.log('✅ Using CANONICAL PATH: data.construction.buildings');
 
         // Show detailed comparison for first building
         if (currentFormData.buildings.length > 0) {

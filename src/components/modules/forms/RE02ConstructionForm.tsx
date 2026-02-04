@@ -666,8 +666,15 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       const debugFingerprint = `RE02_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
       const debugVersion = (debugTrace.lastSaveVersion || 0) + 1;
 
-      const existingData = moduleInstance.data || {};
-      const existingConstruction = existingData.construction || {};
+      // --- CLEAN LEGACY KEYS (single source of truth) ---
+// Strip top-level legacy keys so RE-06 cannot accidentally read stale data
+const {
+  buildings: _legacyBuildings,
+  site_notes: _legacySiteNotes,
+  ...cleanData
+} = moduleInstance.data || {};
+
+const existingConstruction = cleanData.construction || {};
 
       // ✅ canonical: data.construction.buildings
       const mergedPayload = {

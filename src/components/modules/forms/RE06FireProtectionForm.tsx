@@ -280,7 +280,7 @@ export default function RE06FireProtectionForm({
         const { data: constructionInstance, error } = await supabase
           .from('module_instances')
           .select('data')
-          .eq('document_id', moduleInstance.document_id)
+          .eq('document_id', document.id)
           .eq('module_key', 'RE_02_CONSTRUCTION')
           .maybeSingle();
 

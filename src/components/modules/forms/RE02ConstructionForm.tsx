@@ -155,6 +155,19 @@ function normalizeConstructionForSave(formState: { buildings: BuildingFormState[
   buildings: Building[];
   site_notes: string;
 } {
+  // DEV LOGGING: Track normalization for debugging
+  if (import.meta.env.DEV && formState.buildings.length > 0) {
+    const firstBuilding = formState.buildings[0];
+    console.group('🔄 RE-02 TRACE: Normalization Starting');
+    console.log('Input buildings count:', formState.buildings.length);
+    console.log('First building roof.area_sqm (raw string):', firstBuilding.roof.area_sqm);
+    console.log('Type of roof.area_sqm:', typeof firstBuilding.roof.area_sqm);
+    const parsed = parseNumericInput(firstBuilding.roof.area_sqm);
+    console.log('After parseNumericInput:', parsed);
+    console.log('Type after parse:', typeof parsed);
+    console.groupEnd();
+  }
+
   return {
     site_notes: formState.site_notes.trim(),
     buildings: formState.buildings.map((b) => ({
@@ -839,10 +852,36 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       // DEV LOGGING: Track what we're saving (only in development)
       if (import.meta.env.DEV) {
         console.group('🏗️ RE-02 TRACE: Save Starting');
-        console.log('📊 Buildings count:', buildingsWithoutCalculated.length);
+        console.log('📊 State buildings count:', currentFormData.buildings.length);
+        console.log('📊 Normalized buildings count:', normalizedData.buildings.length);
+        console.log('📊 Payload buildings count:', buildingsWithoutCalculated.length);
         console.log('📝 Site notes:', normalizedData.site_notes?.substring(0, 50) || '(empty)');
         console.log('💾 Payload keys:', Object.keys(mergedPayload));
-        console.log('🔍 First building (full):', buildingsWithoutCalculated[0]);
+
+        // Show detailed comparison for first building
+        if (currentFormData.buildings.length > 0) {
+          console.log('\n🔍 DETAILED FIRST BUILDING TRACE:');
+          console.log('  State (raw):', {
+            id: currentFormData.buildings[0].id,
+            name: currentFormData.buildings[0].building_name,
+            roof_area_sqm: currentFormData.buildings[0].roof.area_sqm,
+            roof_area_type: typeof currentFormData.buildings[0].roof.area_sqm,
+          });
+          console.log('  Normalized:', {
+            id: normalizedData.buildings[0].id,
+            name: normalizedData.buildings[0].building_name,
+            roof_area_sqm: normalizedData.buildings[0].roof.area_sqm,
+            roof_area_type: typeof normalizedData.buildings[0].roof.area_sqm,
+          });
+          console.log('  Payload (after removing calculated):', {
+            id: buildingsWithoutCalculated[0].id,
+            name: buildingsWithoutCalculated[0].building_name,
+            roof_area_sqm: buildingsWithoutCalculated[0].roof.area_sqm,
+            roof_area_type: typeof buildingsWithoutCalculated[0].roof.area_sqm,
+          });
+        }
+
+        console.log('\n🔍 First building (full):', buildingsWithoutCalculated[0]);
         console.log('🎯 Payload roof area (building 0):', payloadRoofArea);
         console.log('🆔 Fingerprint:', debugFingerprint);
         console.log('🔢 Version:', debugVersion);
@@ -852,6 +891,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         setDebugTrace((prev) => ({
           ...prev,
           payloadArea: payloadRoofArea,
+          payloadBuildingsCount: buildingsWithoutCalculated.length,
           lastSaveFingerprint: debugFingerprint,
           lastSaveVersion: debugVersion,
           timestamp: new Date().toISOString(),
@@ -882,14 +922,17 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
           console.error('❌ Read-back error:', readError);
         } else if (savedData) {
           const dbRoofArea = savedData.data?.construction?.buildings?.[0]?.roof?.area_sqm ?? null;
+          const dbBuildingsCount = savedData.data?.construction?.buildings?.length || 0;
           const dbFingerprint = savedData.data?.__debug?.re02_fingerprint || 'none';
           const dbVersion = savedData.data?.__debug?.re02_save_version || 0;
 
           console.group('✅ RE-02 TRACE: Read-Back Verification');
-          console.log('📥 Read back buildings count:', savedData.data?.construction?.buildings?.length || 0);
+          console.log('📥 DB buildings count:', dbBuildingsCount);
           console.log('📥 Read back site notes:', savedData.data?.construction?.site_notes?.substring(0, 50) || '(empty)');
+          console.log('🔍 All buildings from DB:', savedData.data?.construction?.buildings);
           console.log('🔍 Full first building from DB:', savedData.data?.construction?.buildings?.[0]);
           console.log('🎯 DB roof area (building 0):', dbRoofArea);
+          console.log('🎯 DB roof area type:', typeof dbRoofArea);
           console.log('🆔 DB Fingerprint:', dbFingerprint);
           console.log('🔢 DB Version:', dbVersion);
 

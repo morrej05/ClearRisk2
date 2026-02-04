@@ -34,6 +34,7 @@ export function SurveyBadgeRow({ status, jurisdiction, enabledModules, className
 
   const hasFRA = enabledModules?.some(m => m.startsWith('FRA_'));
   const hasFSD = enabledModules?.some(m => m.startsWith('FSD_'));
+  const hasRE = enabledModules?.includes('RE');
 
   let moduleLabel = '';
   let moduleColor = '';
@@ -49,6 +50,9 @@ export function SurveyBadgeRow({ status, jurisdiction, enabledModules, className
     moduleColor = 'bg-cyan-100 text-cyan-700 border-cyan-300';
   }
 
+  // Risk Engineering is jurisdiction-neutral - hide jurisdiction badge for pure RE documents
+  const showJurisdiction = !hasRE || hasFRA || hasFSD;
+
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
       <span
@@ -58,11 +62,13 @@ export function SurveyBadgeRow({ status, jurisdiction, enabledModules, className
         {statusLabels[status]}
       </span>
 
-      <span
-        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${jurisdictionColors[jurisdiction]}`}
-      >
-        {jurisdictionLabels[jurisdiction]}
-      </span>
+      {showJurisdiction && (
+        <span
+          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${jurisdictionColors[jurisdiction]}`}
+        >
+          {jurisdictionLabels[jurisdiction]}
+        </span>
+      )}
 
       {moduleLabel && (
         <span

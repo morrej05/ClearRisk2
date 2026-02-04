@@ -593,12 +593,16 @@ const fetchModules = async () => {
             jurisdiction={document.jurisdiction as 'UK' | 'IE'}
             enabledModules={document.enabled_modules}
           />
-          <JurisdictionSelector
-            documentId={document.id}
-            currentJurisdiction={document.jurisdiction as 'UK' | 'IE'}
-            status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
-            onUpdate={fetchDocument}
-          />
+          {/* Risk Engineering is jurisdiction-neutral - hide selector for pure RE documents */}
+          {(document.document_type !== 'RE' && !document.enabled_modules?.includes('RE')) ||
+           document.enabled_modules?.some(m => m.startsWith('FRA_') || m.startsWith('FSD_') || m.startsWith('DSEAR_')) ? (
+            <JurisdictionSelector
+              documentId={document.id}
+              currentJurisdiction={document.jurisdiction as 'UK' | 'IE'}
+              status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
+              onUpdate={fetchDocument}
+            />
+          ) : null}
         </div>
       </div>
 

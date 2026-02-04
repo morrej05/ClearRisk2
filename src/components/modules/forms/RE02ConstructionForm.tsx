@@ -715,17 +715,34 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       }
 
       // Save to same row that RE-06 Fire Protection loads
-      const { error } = await supabase
-        .from('module_instances')
-        .update({ data: mergedPayload })
-        .eq('document_id', moduleInstance.document_id)
-        .eq('module_key', 'RE_02_CONSTRUCTION');
+      // 🔗 CRITICAL: Save to the SAME row RE-06 reads (document_id + module_key)
+const { data: updatedRows, error } = await supabase
+  .from('module_instances')
+  .update({ data: mergedPayload })
+  .eq('document_id', document.id)          // ✅ guaranteed to exist
+  .eq('module_key', 'RE_02_CONSTRUCTION')  // ✅ must match RE-06
+  .select('id, document_id, module_key, data');
 
+if (error) {
+  console.error('❌ RE-02 SAVE ERROR:', error);
+  throw error;
+}
 
-      if (error) {
-        console.error('❌ Supabase update error:', error);
-        throw error;
-      }
+if (!updatedRows || updatedRows.length === 0) {
+  console.error('❌ RE-02 SAVE: Updated 0 rows', {
+    document_id: document.id,
+    module_key: 'RE_02_CONSTRUCTION',
+  });
+  throw new Error('RE-02 save matched 0 rows');
+}
+
+console.log('✅ RE-02 SAVE SUCCESS', {
+  id: updatedRows[0].id,
+  document_id: updatedRows[0].document_id,
+  module_key: updatedRows[0].module_key,
+  buildingsCount: updatedRows[0].data?.construction?.buildings?.length ?? 0,
+});
+
 
       // ✅ Read-back verification (correct shape)
       if (import.meta.env.DEV) {

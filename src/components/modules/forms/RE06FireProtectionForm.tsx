@@ -277,18 +277,28 @@ export default function RE06FireProtectionForm({
   useEffect(() => {
     async function loadConstructionBuildings() {
       try {
-        const { data: constructionInstance, error } = await supabase
-          .from('module_instances')
-          .select('data')
-          .eq('document_id', document.id)
-          .eq('module_key', 'RE_02_CONSTRUCTION')
-          .maybeSingle();
+        const { data: rows, error } = await supabase
+  .from('module_instances')
+  .select('id, document_id, module_key, updated_at, data')
+  .eq('document_id', document.id)
+  .eq('module_key', 'RE_02_CONSTRUCTION')
+  .order('updated_at', { ascending: false });
 
-        if (error) throw error;
+console.log('[RE06] document.id =', document.id);
+console.log('[RE06] matching RE_02_CONSTRUCTION rows =', rows?.length ?? 0);
+console.log(
+  '[RE06] row ids (newest first) =',
+  (rows ?? []).map(r => ({ id: r.id, updated_at: r.updated_at }))
+);
 
-        const buildings = Array.isArray(constructionInstance?.data?.construction?.buildings)
-          ? constructionInstance.data.construction.buildings
-          : [];
+if (error) throw error;
+
+const constructionInstance = rows?.[0] ?? null;
+
+const buildings = Array.isArray(constructionInstance?.data?.construction?.buildings)
+  ? constructionInstance.data.construction.buildings
+  : [];
+
 
         setConstructionBuildings(buildings);
 

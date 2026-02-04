@@ -138,6 +138,41 @@ export const OCCUPANCY_RELEVANCE_MAP: Record<string, OccupancyRelevanceConfig> =
       'emergency_response_and_bcp',
     ],
   },
+  mining_coal_preparation: {
+    enabled_factors: [
+      'process_control_and_stability',
+      'critical_equipment_reliability',
+      'electrical_and_utilities_reliability',
+      'natural_hazard_exposure_and_controls',
+      'emergency_response_and_bcp',
+    ],
+  },
+  mining_metallurgical_refining: {
+    enabled_factors: [
+      'high_energy_materials_control',
+      'process_safety_management',
+      'critical_equipment_reliability',
+      'electrical_and_utilities_reliability',
+      'emergency_response_and_bcp',
+    ],
+  },
+  mining_mineral_processing: {
+    enabled_factors: [
+      'process_control_and_stability',
+      'critical_equipment_reliability',
+      'electrical_and_utilities_reliability',
+      'natural_hazard_exposure_and_controls',
+      'emergency_response_and_bcp',
+    ],
+  },
+  mining_ore_distribution: {
+    enabled_factors: [
+      'critical_equipment_reliability',
+      'natural_hazard_exposure_and_controls',
+      'electrical_and_utilities_reliability',
+      'emergency_response_and_bcp',
+    ],
+  },
 };
 
 /**

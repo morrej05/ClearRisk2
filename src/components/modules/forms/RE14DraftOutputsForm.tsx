@@ -103,6 +103,8 @@ export default function RE14DraftOutputsForm({
           );
 
           console.log('[RE-11] industryKey', breakdown.industryKey);
+          console.log('[RE-11] globalPillars len', breakdown.globalPillars.length);
+          console.log('[RE-11] occupancyDrivers len', breakdown.occupancyDrivers.length);
           setIndustryKey(breakdown.industryKey);
           setIndustryLabel(breakdown.industryLabel);
           setOccupancyMissing(!breakdown.industryKey);

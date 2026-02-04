@@ -142,7 +142,7 @@ export async function buildRiskEngineeringScoreBreakdown(
   const enabledFactors = getEnabledFactors(industryKey);
 
   // Build occupancy driver factors (FILTERED BY OCCUPANCY RELEVANCE)
-  const occupancyDrivers: ScoreFactor[] = HRG_CANONICAL_KEYS
+  const candidates = HRG_CANONICAL_KEYS
     .filter(key => enabledFactors.includes(key))
     .map(canonicalKey => {
       const rating = getRating(riskEngData, canonicalKey);
@@ -158,13 +158,20 @@ export async function buildRiskEngineeringScoreBreakdown(
         score,
         maxScore,
       };
-    })
-    .filter(factor => factor.weight > 0); // Only include if weight > 0
+    });
+
+  const occupancyDrivers: ScoreFactor[] = candidates.filter(factor => factor.weight > 0); // Only include if weight > 0
+
+  console.log('[breakdown] driverCandidates', candidates.length, 'included', occupancyDrivers.length);
 
   // Combine all factors for totals
   const allFactors = [...globalPillars, ...occupancyDrivers];
   const totalScore = allFactors.reduce((sum, factor) => sum + factor.score, 0);
   const maxScore = allFactors.reduce((sum, factor) => sum + factor.maxScore, 0);
+
+  console.log('[breakdown] globalPillars', globalPillars.map(x => x.key), 'len', globalPillars.length);
+  console.log('[breakdown] occupancyDrivers', occupancyDrivers.map(x => ({ key: x.key, weight: x.weight, rating: x.rating })), 'len', occupancyDrivers.length);
+  console.log('[breakdown] totals', { totalScore, maxScore });
 
   // Top 3 contributors by score
   const topContributors = [...allFactors]

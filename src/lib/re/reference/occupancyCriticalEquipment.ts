@@ -220,17 +220,22 @@ export const occupancyCriticalEquipmentMap: Record<string, string[]> = {
 };
 
 /**
- * Standard equipment options for non-heavy occupancies
- * Note: Fire protection equipment (sprinklers, fire pumps) belong in RE-04 Fire Protection module
+ * Generic equipment options for non-heavy occupancies
+ * These are site/building systems suitable for light industry, offices, retail, etc.
+ * Note: Heavy plant items (turbines, boilers, generators, etc.) are only available via:
+ *   - "Suggested for this industry" (for heavy industries)
+ *   - "Custom..." free-text entry
+ * Fire protection equipment (sprinklers, fire pumps) belong in RE-04 Fire Protection module
  */
 export const STANDARD_EQUIPMENT_OPTIONS = [
-  'Boiler',
-  'Turbine',
-  'Generator',
   'HVAC system',
-  'Cooling tower',
-  'Chiller',
   'Building management system',
+  'UPS (Uninterruptible Power Supply)',
+  'Switchgear / Distribution panel',
+  'Chiller',
+  'IT systems (Network / ERP)',
+  'OT systems (SCADA / PLC)',
+  'Compressor',
   'Custom…',
 ];
 

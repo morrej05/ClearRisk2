@@ -151,7 +151,6 @@ export default function RE08UtilitiesForm({
           setRiskEngData(instance.data || {});
           const loadedIndustryKey = instance.data?.industry_key || null;
           setIndustryKey(loadedIndustryKey);
-          console.log('[RE-08] Loaded industry classification from RE-01:', loadedIndustryKey);
         }
       } catch (err) {
         console.error('Error loading RISK_ENGINEERING module:', err);

@@ -588,8 +588,24 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     timestamp: new Date().toISOString(),
   });
 
-  const safeBuildings: Building[] = Array.isArray(d.construction?.buildings)
-    ? d.construction.buildings.map((b: any) => {
+  // CANONICAL PATH: data.buildings (top-level)
+  // Migrate legacy data from data.construction.buildings if needed
+  const rawBuildings = Array.isArray(d.buildings)
+    ? d.buildings // Prefer top-level buildings (canonical)
+    : Array.isArray(d.construction?.buildings)
+    ? d.construction.buildings // Fallback to legacy path
+    : [];
+
+  // DEV LOGGING: Track data migration
+  if (import.meta.env.DEV && rawBuildings.length > 0) {
+    const usingLegacyPath = !Array.isArray(d.buildings) && Array.isArray(d.construction?.buildings);
+    if (usingLegacyPath) {
+      console.warn('🔄 RE-02: Migrating from legacy path (data.construction.buildings) → canonical path (data.buildings)');
+      console.log('  Legacy buildings count:', rawBuildings.length);
+    }
+  }
+
+  const safeBuildings: Building[] = rawBuildings.map((b: any) => {
         // Migrate old cladding to combustible_cladding
         const combustible_cladding = b.combustible_cladding
           ? { ...createEmptyBuilding().combustible_cladding, ...b.combustible_cladding }
@@ -671,8 +687,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
           frame_type,
           notes: b.notes || '',
         };
-      })
-    : [];
+      });
 
   // Convert loaded buildings to form state (string-based numeric fields)
   const initialFormState = {
@@ -682,7 +697,8 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       const calculated = calculateConstructionMetrics(b);
       return { ...formState, calculated };
     }),
-    site_notes: d.construction?.site_notes || '',
+    // Migrate site_notes from legacy path if needed
+    site_notes: d.site_notes || d.construction?.site_notes || '',
   };
 
   const [formData, setFormData] = useState<{
@@ -824,18 +840,14 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       const debugFingerprint = `RE02_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
       const debugVersion = (debugTrace.lastSaveVersion || 0) + 1;
 
-      // Build construction data
-      const constructionData = {
-        buildings: buildingsWithoutCalculated,
-        site_notes: normalizedData.site_notes,
-      };
-
       // CRITICAL: Merge with existing data instead of replacing entire data field
       // This prevents data loss if other modules or metadata exist in the same record
       const existingData = moduleInstance.data || {};
       const mergedPayload = {
         ...existingData,
-        construction: constructionData,
+        // CANONICAL PATH: Store at top-level (data.buildings, data.site_notes)
+        buildings: buildingsWithoutCalculated,
+        site_notes: normalizedData.site_notes,
         // Add debug metadata (DEV only)
         ...(import.meta.env.DEV && {
           __debug: {
@@ -857,6 +869,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         console.log('📊 Payload buildings count:', buildingsWithoutCalculated.length);
         console.log('📝 Site notes:', normalizedData.site_notes?.substring(0, 50) || '(empty)');
         console.log('💾 Payload keys:', Object.keys(mergedPayload));
+        console.log('✅ Using CANONICAL PATH: data.buildings (top-level)');
 
         // Show detailed comparison for first building
         if (currentFormData.buildings.length > 0) {
@@ -921,16 +934,17 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         if (readError) {
           console.error('❌ Read-back error:', readError);
         } else if (savedData) {
-          const dbRoofArea = savedData.data?.construction?.buildings?.[0]?.roof?.area_sqm ?? null;
-          const dbBuildingsCount = savedData.data?.construction?.buildings?.length || 0;
+          // CANONICAL PATH: Read from top-level (data.buildings, data.site_notes)
+          const dbRoofArea = savedData.data?.buildings?.[0]?.roof?.area_sqm ?? null;
+          const dbBuildingsCount = savedData.data?.buildings?.length || 0;
           const dbFingerprint = savedData.data?.__debug?.re02_fingerprint || 'none';
           const dbVersion = savedData.data?.__debug?.re02_save_version || 0;
 
           console.group('✅ RE-02 TRACE: Read-Back Verification');
           console.log('📥 DB buildings count:', dbBuildingsCount);
-          console.log('📥 Read back site notes:', savedData.data?.construction?.site_notes?.substring(0, 50) || '(empty)');
-          console.log('🔍 All buildings from DB:', savedData.data?.construction?.buildings);
-          console.log('🔍 Full first building from DB:', savedData.data?.construction?.buildings?.[0]);
+          console.log('📥 Read back site notes:', savedData.data?.site_notes?.substring(0, 50) || '(empty)');
+          console.log('🔍 All buildings from DB:', savedData.data?.buildings);
+          console.log('🔍 Full first building from DB:', savedData.data?.buildings?.[0]);
           console.log('🎯 DB roof area (building 0):', dbRoofArea);
           console.log('🎯 DB roof area type:', typeof dbRoofArea);
           console.log('🆔 DB Fingerprint:', dbFingerprint);
@@ -938,7 +952,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
 
           // Check for data loss
           const expectedBuildings = buildingsWithoutCalculated.length;
-          const actualBuildings = savedData.data?.construction?.buildings?.length || 0;
+          const actualBuildings = savedData.data?.buildings?.length || 0;
           if (expectedBuildings !== actualBuildings) {
             console.error('❌ DATA LOSS: Expected', expectedBuildings, 'buildings, got', actualBuildings);
           }

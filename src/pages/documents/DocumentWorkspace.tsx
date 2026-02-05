@@ -14,6 +14,17 @@ import { JurisdictionSelector } from '../../components/JurisdictionSelector';
 import DocumentStatusBadge from '../../components/documents/DocumentStatusBadge';
 import OverallGradeWidget from '../../components/re/OverallGradeWidget';
 
+// Modules with dedicated routes that should NOT be rendered in workspace
+const DEDICATED_MODULE_KEYS = new Set(['RE_06_FIRE_PROTECTION']);
+
+function isDedicatedModule(moduleKey: string): boolean {
+  return DEDICATED_MODULE_KEYS.has(moduleKey);
+}
+
+function pickFirstWorkspaceModule(modules: ModuleInstance[]): ModuleInstance | null {
+  return modules.find(m => !isDedicatedModule(m.module_key)) ?? null;
+}
+
 interface Document {
   id: string;
   document_type: string;
@@ -191,64 +202,74 @@ export default function DocumentWorkspace() {
     }
   }, [id, organisation?.id]);
 
-  // Validate and correct module selection to only allow visible modules
+  // Validate and correct module selection to only allow workspace modules
   useEffect(() => {
     if (modules.length === 0) return;
 
     const moduleParam = searchParams.get('m');
+
+    // Case A: URL has ?m= parameter (explicit navigation)
+    if (moduleParam) {
+      const requestedModule = modules.find((m) => m.id === moduleParam);
+
+      if (requestedModule && isDedicatedModule(requestedModule.module_key)) {
+        // A) Explicitly requested a dedicated module via ?m= → redirect to dedicated page
+        if (id) {
+          navigate(getModuleNavigationPath(id, requestedModule.module_key, requestedModule.id), { replace: true });
+        }
+        return;
+      }
+
+      if (requestedModule && !isDedicatedModule(requestedModule.module_key)) {
+        // A) Valid workspace module - use it
+        if (selectedModuleId !== requestedModule.id) {
+          setSelectedModuleId(requestedModule.id);
+        }
+        // Save to localStorage (safe - already verified not dedicated)
+        if (id) {
+          localStorage.setItem(`ezirisk:lastModule:${id}`, requestedModule.id);
+        }
+        return;
+      }
+
+      // A) Invalid module ID in URL - fall through to Case B logic below
+    }
+
+    // Case B: No ?m= in URL - check localStorage or pick default
     const savedModuleId = id ? localStorage.getItem(`ezirisk:lastModule:${id}`) : null;
+    const savedModule = savedModuleId ? modules.find((m) => m.id === savedModuleId) : null;
 
-    // Try URL param first, then localStorage, then null
-    const requestedModuleId = moduleParam || savedModuleId;
+    let targetModule: ModuleInstance | null = null;
 
-    // Check if requested module exists in visible modules
-    const requestedModule = requestedModuleId
-      ? modules.find((m) => m.id === requestedModuleId)
-      : null;
-
-    if (requestedModule) {
-      // CRITICAL: RE-06 has a dedicated route - redirect if user lands on workspace
-      if (requestedModule.module_key === 'RE_06_FIRE_PROTECTION' && id) {
-        console.log('[DocumentWorkspace] RE-06 detected in workspace - redirecting to dedicated page');
-        navigate(getModuleNavigationPath(id, requestedModule.module_key, requestedModule.id), { replace: true });
-        return;
-      }
-
-      // Valid module - set it
-      if (selectedModuleId !== requestedModule.id) {
-        setSelectedModuleId(requestedModule.id);
-      }
-      // Ensure URL and localStorage are in sync
-      if (moduleParam !== requestedModule.id) {
-        setSearchParams({ m: requestedModule.id }, { replace: true });
-      }
-      if (id && savedModuleId !== requestedModule.id) {
-        localStorage.setItem(`ezirisk:lastModule:${id}`, requestedModule.id);
-      }
+    if (savedModule && !isDedicatedModule(savedModule.module_key)) {
+      // B) localStorage has valid workspace module - use it
+      targetModule = savedModule;
     } else {
-      // Invalid or missing module - auto-correct to first visible module
-      const firstIncomplete = modules.find((m) => !m.completed_at);
-      const targetModule = firstIncomplete ?? modules[0];
+      // B) No saved module OR saved module is dedicated → pick first workspace module
+      if (savedModule && isDedicatedModule(savedModule.module_key) && id) {
+        // Clear the dedicated module from localStorage
+        localStorage.removeItem(`ezirisk:lastModule:${id}`);
+      }
 
-      // CRITICAL: Check if auto-corrected module is RE-06
-      if (targetModule.module_key === 'RE_06_FIRE_PROTECTION' && id) {
-        console.log('[DocumentWorkspace] Auto-corrected to RE-06 - redirecting to dedicated page');
-        navigate(getModuleNavigationPath(id, targetModule.module_key, targetModule.id), { replace: true });
+      targetModule = pickFirstWorkspaceModule(modules);
+
+      if (!targetModule) {
+        console.error('[DocumentWorkspace] No workspace modules available');
         return;
       }
+    }
 
-      if (selectedModuleId !== targetModule.id) {
-        console.warn(
-          `[DocumentWorkspace] Invalid module selection (${requestedModuleId}). Auto-correcting to first visible module (${targetModule.id})`
-        );
-        setSelectedModuleId(targetModule.id);
-      }
+    // Set the target module
+    if (selectedModuleId !== targetModule.id) {
+      setSelectedModuleId(targetModule.id);
+    }
 
-      // Force update URL and localStorage with valid module
-      setSearchParams({ m: targetModule.id }, { replace: true });
-      if (id) {
-        localStorage.setItem(`ezirisk:lastModule:${id}`, targetModule.id);
-      }
+    // Update URL to include ?m=
+    setSearchParams({ m: targetModule.id }, { replace: true });
+
+    // Save to localStorage (safe - already verified not dedicated)
+    if (id) {
+      localStorage.setItem(`ezirisk:lastModule:${id}`, targetModule.id);
     }
   }, [modules, id, searchParams, selectedModuleId, navigate]);
 
@@ -364,22 +385,22 @@ const fetchModules = async () => {
   const handleModuleSelect = (moduleId: string) => {
     // Find the module to get its module_key
     const targetModule = modules.find(m => m.id === moduleId);
+    if (!targetModule) return;
 
-    // RE-06 Fire Protection has a dedicated route - navigate directly
-    if (targetModule?.module_key === 'RE_06_FIRE_PROTECTION' && id) {
+    // Dedicated modules have their own routes - navigate directly
+    if (isDedicatedModule(targetModule.module_key) && id) {
       navigate(getModuleNavigationPath(id, targetModule.module_key, targetModule.id));
       setIsMobileMenuOpen(false);
-      // Save last visited module to localStorage
-      localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
+      // DO NOT save dedicated modules to localStorage
       return;
     }
 
-    // All other modules use workspace with search params
+    // Workspace modules: update state and URL
     setSelectedModuleId(moduleId);
     setSearchParams({ m: moduleId });
-    setIsMobileMenuOpen(false); // Close mobile menu on selection
+    setIsMobileMenuOpen(false);
 
-    // Save last visited module to localStorage
+    // Save workspace module to localStorage (safe - already verified not dedicated)
     if (id) {
       localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
     }

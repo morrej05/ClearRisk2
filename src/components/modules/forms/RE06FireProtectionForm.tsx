@@ -1,10 +1,3 @@
-import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Flame, Bell, Shield, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
-import FloatingSaveBar from './FloatingSaveBar';
-import SectionGrade from '../../SectionGrade';
-import { updateSectionGrade } from '../../../utils/sectionGrades';
-import RatingButtons from '../../re/RatingButtons';
 import BuildingsEditor from "../../re/BuildingsEditor";
 
 interface Document {

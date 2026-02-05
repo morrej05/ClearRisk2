@@ -113,7 +113,6 @@ function App() {
             }
           />
           <Route path="/documents/:documentId/re/buildings" element={<BuildingsPage />} />
-
           <Route
             path="/documents/:id/preview"
             element={

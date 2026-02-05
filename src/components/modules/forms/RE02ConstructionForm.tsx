@@ -411,6 +411,7 @@ interface DebugTrace {
 }
 
 export default function RE02ConstructionForm({ moduleInstance, document, onSaved }: RE02ConstructionFormProps) {
+    return <BuildingsEditor documentId={document.id} />;
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BuildingInput } from '../../lib/re/buildingsModel';
 import { createEmptyBuilding } from '../../lib/re/buildingsModel';
-import { Save, Trash2, Pencil, CheckCircle2, AlertTriangle, CircleDashed } from 'lucide-react';
+import { Save, Trash2, Pencil, CheckCircle2, AlertTriangle, CircleDashed, Info } from 'lucide-react';
 import {
   listBuildings,
   upsertBuilding,
@@ -9,6 +9,7 @@ import {
   getBuildingExtra,
   upsertBuildingExtra,
 } from '../../lib/re/buildingsRepo';
+import { computeConstruction } from '../../lib/re/buildingsCompute';
 import { supabase } from '../../lib/supabase';
 
 type GridMode = 'all' | 'construction' | 'fire_protection';
@@ -394,6 +395,25 @@ async function saveMezz() {
     };
   }, [rows]);
 
+  // Compute site-wide combustible percentage
+  const siteCombustiblePercent = useMemo(() => {
+    const buildingsWithData = rows.filter(b => b.id && buildingExtras[b.id!]).map(b => {
+      const extra = buildingExtras[b.id!];
+      const computed = computeConstruction(b, extra);
+      const area = (b.roof_area_m2 ?? 0) + (b.mezzanine_area_m2 ?? 0);
+      return { combustiblePercent: computed.combustiblePercent, area };
+    }).filter(({ combustiblePercent, area }) => !isNaN(combustiblePercent) && area > 0);
+
+    if (buildingsWithData.length === 0) {
+      return NaN;
+    }
+
+    const totalArea = buildingsWithData.reduce((sum, { area }) => sum + area, 0);
+    const weightedSum = buildingsWithData.reduce((sum, { combustiblePercent, area }) => sum + combustiblePercent * area, 0);
+
+    return Math.round(weightedSum / totalArea);
+  }, [rows, buildingExtras]);
+
   // Helper component for completion status with icons
   const CompletionBadge = ({ status }: { status: 'missing' | 'complete' | 'incomplete' }) => {
     if (status === 'missing') {
@@ -473,30 +493,35 @@ async function saveMezz() {
           </thead>
 
           <tbody>
-            {rows.map((b, idx) => (
-              <tr key={b.id ?? `tmp-${idx}`} className="border-b">
-                <td className="p-2">
-                  <input
-                    className="w-full border rounded p-2"
-                    value={b.ref ?? ''}
-                    onChange={e => updateRow(idx, { ref: e.target.value })}
-                    placeholder="B1"
-                  />
-                </td>
+            {rows.map((b, idx) => {
+              const extra = b.id ? buildingExtras[b.id] : null;
+              const computed = b.id ? computeConstruction(b, extra) : null;
+
+              return (
+                <>
+                  <tr key={b.id ?? `tmp-${idx}`} className="border-b">
+                    <td className="p-2">
+                      <input
+                        className="w-72 border rounded p-2"
+                        value={b.ref ?? ''}
+                        onChange={e => updateRow(idx, { ref: e.target.value })}
+                        placeholder="B1"
+                      />
+                    </td>
 
                 {mode !== 'fire_protection' && (
                   <td className="p-2">
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        className="w-24 border rounded p-2"
+                        className="w-20 border rounded p-2"
                         value={b.roof_area_m2 ?? ''}
                         onChange={e =>
                           updateRow(idx, { roof_area_m2: e.target.value === '' ? null : Number(e.target.value) })
                         }
                         placeholder="m²"
                       />
-                  
+
                       {b.id ? (
                         <>
                           <button
@@ -521,7 +546,7 @@ async function saveMezz() {
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        className="w-28 border rounded p-2"
+                        className="w-20 border rounded p-2"
                         value={b.mezzanine_area_m2 ?? ''}
                         onChange={e =>
                           updateRow(idx, { mezzanine_area_m2: e.target.value === '' ? null : Number(e.target.value) })
@@ -694,7 +719,35 @@ async function saveMezz() {
                   </div>
                 </td>
               </tr>
-            ))}
+
+              {/* Computed score row - only in construction/all mode */}
+              {mode !== 'fire_protection' && computed && (
+                <tr className="bg-slate-50/50 text-sm">
+                  <td className="px-2 py-1" colSpan={mode === 'all' ? 10 : 7}>
+                    <div className="flex items-center gap-4">
+                      <span className="font-medium">
+                        RE-02 score: <span className="text-blue-700">{computed.score}</span>
+                      </span>
+                      <span className="text-slate-600">
+                        Combustible %: <span className="font-medium">{isNaN(computed.combustiblePercent) ? '—' : `${computed.combustiblePercent}%`}</span>
+                      </span>
+                      <span className="text-xs text-slate-500" title={`Roof: ${isNaN(computed.roofCombustiblePercent) ? '—' : computed.roofCombustiblePercent + '%'} | Walls: ${isNaN(computed.wallCombustiblePercent) ? '—' : computed.wallCombustiblePercent + '%'} | Mezz: ${isNaN(computed.mezzCombustiblePercent) ? '—' : computed.mezzCombustiblePercent + '%'}`}>
+                        (R: {isNaN(computed.roofCombustiblePercent) ? '—' : `${computed.roofCombustiblePercent}%`} | W: {isNaN(computed.wallCombustiblePercent) ? '—' : `${computed.wallCombustiblePercent}%`} | M: {isNaN(computed.mezzCombustiblePercent) ? '—' : `${computed.mezzCombustiblePercent}%`})
+                      </span>
+                      <button
+                        className="ml-auto flex items-center gap-1 text-slate-600 hover:text-slate-900"
+                        title={computed.explanation}
+                      >
+                        <Info className="w-4 h-4" />
+                        <span className="text-xs">Explanation</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </>
+            );
+          })}
 
             {/* Totals row – construction / all only */}
               {mode !== 'fire_protection' && (
@@ -713,7 +766,12 @@ async function saveMezz() {
                     className="p-2"
                     colSpan={mode === 'all' ? 8 : 4}
                   >
-                    Known total (roof + mezz): {(totals.roof + totals.mezz).toLocaleString()} m²
+                    <div className="flex items-center gap-4">
+                      <span>Known total (roof + mezz): {(totals.roof + totals.mezz).toLocaleString()} m²</span>
+                      <span className="text-blue-700">
+                        Site combustible %: {isNaN(siteCombustiblePercent) ? '—' : `${siteCombustiblePercent}%`}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               )}

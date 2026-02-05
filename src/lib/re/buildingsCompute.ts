@@ -159,23 +159,25 @@ export function computeConstruction(building: any, extra: any): ConstructionComp
   const wallIndex = computeAvgWeight(wallComposition, WALL_COMBUSTIBILITY);
   const mezzIndex = computeAvgWeight(mezzComposition, MEZZ_COMBUSTIBILITY);
 
-  // ROOF-dominant scoring
+  // ROOF-dominant scoring (1 = worst, 5 = best)
   let score: number = 3;
   const flags: string[] = [];
   const drivers: string[] = [];
+  let hasHighlyCombustibleRoof = false;
 
   // 1) Roof dominates
   if (!isNaN(roofIndex)) {
     if (roofIndex >= 3.0) {
-      score += 2;
+      score -= 2;
+      hasHighlyCombustibleRoof = true;
       flags.push('Highly combustible roof/ceiling');
       drivers.push('highly combustible roof/ceiling construction');
     } else if (roofIndex >= 2.0) {
-      score += 1;
+      score -= 1;
       flags.push('Combustible roof/ceiling');
       drivers.push('combustible roof/ceiling construction');
     } else if (roofIndex <= 0.5) {
-      score -= 1;
+      score += 1;
       flags.push('Predominantly non-combustible roof/ceiling');
       drivers.push('predominantly non-combustible roof/ceiling');
     }
@@ -184,11 +186,11 @@ export function computeConstruction(building: any, extra: any): ConstructionComp
   // 2) Mezzanine/floors
   if (!isNaN(mezzIndex)) {
     if (mezzIndex >= 2.5) {
-      score += 1;
+      score -= 1;
       flags.push('Combustible mezzanine/upper floors');
       drivers.push('combustible upper floors');
     } else if (mezzIndex <= 0.5) {
-      score -= 1;
+      score += 1;
       flags.push('Predominantly non-combustible upper floors');
       drivers.push('predominantly non-combustible upper floors');
     }
@@ -197,18 +199,18 @@ export function computeConstruction(building: any, extra: any): ConstructionComp
   // 3) Frame type
   const frameType = building.frame_type;
   if (frameType === 'reinforced_concrete' || frameType === 'masonry') {
-    score -= 1;
+    score += 1;
     flags.push('Robust non-combustible frame');
     drivers.push('robust non-combustible frame');
   } else if (frameType === 'protected_steel') {
     flags.push('Protected steel frame');
     drivers.push('protected steel frame');
   } else if (frameType === 'steel') {
-    score += 1;
+    score -= 1;
     flags.push('Unprotected steel frame');
     drivers.push('unprotected steel frame increases collapse risk');
   } else if (frameType === 'timber') {
-    score += 2;
+    score -= 2;
     flags.push('Combustible structural frame');
     drivers.push('combustible structural frame');
   }
@@ -217,15 +219,15 @@ export function computeConstruction(building: any, extra: any): ConstructionComp
   const compartmentation = building.compartmentation_minutes;
   if (compartmentation !== null && compartmentation !== undefined) {
     if (compartmentation === 0) {
-      score += 1;
+      score -= 1;
       flags.push('No/limited compartmentation');
       drivers.push('no/limited compartmentation');
     } else if (compartmentation >= 240) {
-      score -= 2;
+      score += 2;
       flags.push('High compartmentation (4h)');
       drivers.push('high compartmentation (4h)');
     } else if (compartmentation >= 180) {
-      score -= 1;
+      score += 1;
       flags.push('Enhanced compartmentation');
       drivers.push('enhanced compartmentation');
     }
@@ -235,7 +237,7 @@ export function computeConstruction(building: any, extra: any): ConstructionComp
   const claddingPresent = building.cladding_present;
   const claddingCombustible = building.cladding_combustible;
   if (claddingPresent && claddingCombustible) {
-    score += 1;
+    score -= 1;
     flags.push('Combustible cladding/external envelope');
     drivers.push('combustible cladding/external envelope');
   }
@@ -243,7 +245,7 @@ export function computeConstruction(building: any, extra: any): ConstructionComp
   // Walls index impact (capped)
   if (!isNaN(wallIndex)) {
     if (wallIndex >= 3.0) {
-      score += 1;
+      score -= 1;
       flags.push('Combustible external walls');
       drivers.push('combustible external walls');
     }
@@ -257,6 +259,11 @@ export function computeConstruction(building: any, extra: any): ConstructionComp
 
   // Clamp score 1..5
   score = Math.max(1, Math.min(5, Math.round(score))) as 1 | 2 | 3 | 4 | 5;
+
+  // ROOF DOMINANCE CAP: If highly combustible roof, cap at 3 maximum
+  if (hasHighlyCombustibleRoof && score > 3) {
+    score = 3;
+  }
 
   // Deduplicate flags
   const uniqueFlags = Array.from(new Set(flags));

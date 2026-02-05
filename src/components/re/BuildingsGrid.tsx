@@ -395,23 +395,43 @@ async function saveMezz() {
     };
   }, [rows]);
 
-  // Compute site-wide combustible percentage
-  const siteCombustiblePercent = useMemo(() => {
+  // Compute site-wide combustible percentage and RE-02 score
+  const siteMetrics = useMemo(() => {
     const buildingsWithData = rows.filter(b => b.id && buildingExtras[b.id!]).map(b => {
       const extra = buildingExtras[b.id!];
       const computed = computeConstruction(b, extra);
-      const area = (b.roof_area_m2 ?? 0) + (b.mezzanine_area_m2 ?? 0);
-      return { combustiblePercent: computed.combustiblePercent, area };
-    }).filter(({ combustiblePercent, area }) => !isNaN(combustiblePercent) && area > 0);
+      let area = (b.roof_area_m2 ?? 0) + (b.mezzanine_area_m2 ?? 0);
+      if (area <= 0) area = 1; // Default weight
+      return {
+        combustiblePercent: computed.combustiblePercent,
+        score: computed.score,
+        area
+      };
+    });
 
     if (buildingsWithData.length === 0) {
-      return NaN;
+      return { combustiblePercent: NaN, score: NaN };
     }
 
-    const totalArea = buildingsWithData.reduce((sum, { area }) => sum + area, 0);
-    const weightedSum = buildingsWithData.reduce((sum, { combustiblePercent, area }) => sum + combustiblePercent * area, 0);
+    const totalWeight = buildingsWithData.reduce((sum, { area }) => sum + area, 0);
 
-    return Math.round(weightedSum / totalArea);
+    // Combustible percent (only for buildings with known data)
+    const buildingsWithCombData = buildingsWithData.filter(({ combustiblePercent }) => !isNaN(combustiblePercent));
+    let combustiblePercent = NaN;
+    if (buildingsWithCombData.length > 0) {
+      const combWeight = buildingsWithCombData.reduce((sum, { area }) => sum + area, 0);
+      const combWeightedSum = buildingsWithCombData.reduce((sum, { combustiblePercent, area }) => sum + combustiblePercent * area, 0);
+      combustiblePercent = Math.round(combWeightedSum / combWeight);
+    }
+
+    // RE-02 score (weighted by area)
+    const scoreWeightedSum = buildingsWithData.reduce((sum, { score, area }) => sum + score * area, 0);
+    const siteScore = scoreWeightedSum / totalWeight;
+
+    return {
+      combustiblePercent,
+      score: Math.round(siteScore * 10) / 10 // 1 decimal place
+    };
   }, [rows, buildingExtras]);
 
   // Helper component for completion status with icons
@@ -768,8 +788,11 @@ async function saveMezz() {
                   >
                     <div className="flex items-center gap-4">
                       <span>Known total (roof + mezz): {(totals.roof + totals.mezz).toLocaleString()} m²</span>
+                      <span className="text-blue-700 font-semibold">
+                        Site RE-02 score: {isNaN(siteMetrics.score) ? '—' : siteMetrics.score.toFixed(1)}
+                      </span>
                       <span className="text-blue-700">
-                        Site combustible %: {isNaN(siteCombustiblePercent) ? '—' : `${siteCombustiblePercent}%`}
+                        Site combustible %: {isNaN(siteMetrics.combustiblePercent) ? '—' : `${siteMetrics.combustiblePercent}%`}
                       </span>
                     </div>
                   </td>

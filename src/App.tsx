@@ -35,6 +35,7 @@ import AuthedLayout from './components/AuthedLayout';
 import AdminLayout from './components/AdminLayout';
 import PlatformLayout from './components/PlatformLayout';
 import ErrorBoundary from './components/ErrorBoundary';
+import BuildingsPage from '@/pages/re/BuildingsPage';
 
 function App() {
   return (
@@ -111,6 +112,8 @@ function App() {
               </AuthedLayout>
             }
           />
+          <Route path="/documents/:documentId/re/buildings" element={<BuildingsPage />} />
+
           <Route
             path="/documents/:id/preview"
             element={

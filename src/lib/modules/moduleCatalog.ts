@@ -27,7 +27,7 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     order: 3,
   },
   RE_06_FIRE_PROTECTION: {
-    name: 'RE-04 – Fire Protection',
+    name: 'RE-06 – Fire Protection',
     docTypes: ['RE'],
     order: 4,
   },

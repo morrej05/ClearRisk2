@@ -1,4 +1,4 @@
-import BuildingsEditor from "../../re/BuildingsEditor";
+import BuildingsGrid from "../../re/BuildingsGrid";
 
 interface Document {
   id: string;

@@ -5,6 +5,8 @@ import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import BuildingsGrid from "../../re/BuildingsGrid";
+
 
 interface Document {
   id: string;

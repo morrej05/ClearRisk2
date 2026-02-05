@@ -1,4 +1,4 @@
-import BuildingsGrid from "../../re/BuildingsGrid";
+import FireProtectionForm from "../../re/FireProtectionForm";
 
 interface Document {
   id: string;
@@ -25,5 +25,5 @@ export default function RE06FireProtectionForm({
   document,
   onSaved
 }: RE06FireProtectionFormProps) {
-  return <BuildingsGrid documentId={document.id} mode="fire_protection" onAfterSave={onSaved} />;
+  return <FireProtectionForm documentId={document.id} onSaved={onSaved} />;
 }

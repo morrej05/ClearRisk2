@@ -303,6 +303,32 @@ export default function BuildingsGrid({
                   />
                 </td>
 
+                {mode !== 'construction' && (
+                  <td className="p-2">
+                    <select
+                      className="border rounded p-2"
+                      value={b.sprinklers_present ? 'yes' : 'no'}
+                      onChange={e => updateRow(idx, { sprinklers_present: e.target.value === 'yes' })}
+                    >
+                      <option value="no">No</option>
+                      <option value="yes">Yes</option>
+                    </select>
+                  </td>
+                )}
+                
+                {mode !== 'construction' && (
+                  <td className="p-2">
+                    <select
+                      className="border rounded p-2"
+                      value={b.detection_present ? 'yes' : 'no'}
+                      onChange={e => updateRow(idx, { detection_present: e.target.value === 'yes' })}
+                    >
+                      <option value="no">No</option>
+                      <option value="yes">Yes</option>
+                    </select>
+                  </td>
+                )}
+
                 <td className="p-2">
                   <input
                     type="checkbox"

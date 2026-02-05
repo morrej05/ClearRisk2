@@ -479,28 +479,36 @@ async function saveMezz() {
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        className="w-32 border rounded p-2"
+                        className="w-24 border rounded p-2"
                         value={b.roof_area_m2 ?? ''}
                         onChange={e =>
                           updateRow(idx, { roof_area_m2: e.target.value === '' ? null : Number(e.target.value) })
                         }
                         placeholder="m²"
                       />
+                  
                       {b.id ? (
-                        <>
-                          <button
-                            className="p-2 border rounded"
-                            onClick={() => openRoof(b.id!)}
-                            aria-label="Edit roof composition"
-                            title="Edit roof composition (%)"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <CompletionBadge status={getCompletionStatus(b.id, 'roof_construction_percent')} />
-                        </>
+                        <button
+                          className="p-2 border rounded"
+                          onClick={() => openRoof(b.id!)}
+                          aria-label="Edit roof composition"
+                          title="Edit roof composition (%)"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                       ) : (
                         <span className="text-xs opacity-70">Save first</span>
                       )}
+                  
+                      <span className="text-xs">
+                        {roofStatusById[b.id ?? ''] === 'complete' ? (
+                          <span className="text-green-700">Complete</span>
+                        ) : roofStatusById[b.id ?? ''] === 'incomplete' ? (
+                          <span className="text-amber-700">Incomplete</span>
+                        ) : (
+                          <span className="text-slate-500">Missing</span>
+                        )}
+                      </span>
                     </div>
                   </td>
                 )}

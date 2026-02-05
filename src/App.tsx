@@ -36,6 +36,7 @@ import AdminLayout from './components/AdminLayout';
 import PlatformLayout from './components/PlatformLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import BuildingsPage from "./pages/re/BuildingsPage";
+import FireProtectionPage from "./pages/re/FireProtectionPage";
 
 function App() {
   return (
@@ -113,6 +114,7 @@ function App() {
             }
           />
           <Route path="/documents/:id/re/buildings" element={<BuildingsPage />} />
+          <Route path="/documents/:id/re/fire-protection" element={<FireProtectionPage />} />
           <Route
             path="/documents/:id/preview"
             element={

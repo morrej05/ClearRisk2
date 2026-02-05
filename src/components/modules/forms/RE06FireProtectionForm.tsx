@@ -275,14 +275,12 @@ export default function RE06FireProtectionForm({
     fire_protection: safeFireProtection
   });
 
-  useEffect(() => {
-useEffect(() => {
   // ✅ hard reset the guard when switching documents
+useEffect(() => {
   hasLoadedConstructionRef.current = false;
 }, [document.id]);
 
 useEffect(() => {
-  useEffect(() => {
   let cancelled = false;
 
   async function loadConstructionBuildings() {
@@ -308,32 +306,32 @@ useEffect(() => {
         : Array.isArray(legacy)
         ? legacy
         : [];
-        // ---- Normalize building IDs (legacy compatibility) ----
-        const normalizedBuildings = (buildings ?? []).map((b: any) => {
-          const legacyId = b?.building_id ?? b?.buildingId ?? b?._id;
-          if (!b?.id && legacyId) return { ...b, id: legacyId };
-          return b;
-        });
-        // --------------------------------------------------------
 
-      
+      // ---- Normalize building IDs (legacy compatibility) ----
+      const normalizedBuildings = (buildings ?? []).map((b: any) => {
+        const legacyId = b?.building_id ?? b?.buildingId ?? b?._id;
+        if (!b?.id && legacyId) return { ...b, id: legacyId };
+        return b;
+      });
+      // --------------------------------------------------------
+
       if (cancelled) return;
 
       setConstructionBuildings(normalizedBuildings);
 
       setSelectedBuildingId((prev) => {
-  if (prev && normalizedBuildings.some((b: any) => b?.id === prev)) return prev;
-  return normalizedBuildings[0]?.id ?? null;
-});
+        if (prev && normalizedBuildings.some((b: any) => b?.id === prev)) return prev;
+        return normalizedBuildings[0]?.id ?? null;
+      });
 
       setFormData((prev) => {
         const updatedBuildings = { ...prev.fire_protection.buildings };
 
         for (const b of normalizedBuildings) {
-  if (b?.id && !updatedBuildings[b.id]) {
-    updatedBuildings[b.id] = createDefaultBuildingProtection();
-  }
-}
+          if (b?.id && !updatedBuildings[b.id]) {
+            updatedBuildings[b.id] = createDefaultBuildingProtection();
+          }
+        }
 
         return {
           ...prev,
@@ -349,13 +347,18 @@ useEffect(() => {
     }
   }
 
-  loadConstructionBuildings();
+  // Optional: prevents reloading multiple times if you have guards elsewhere
+  if (!hasLoadedConstructionRef.current) {
+    hasLoadedConstructionRef.current = true;
+    loadConstructionBuildings();
+  } else {
+    loadConstructionBuildings();
+  }
 
   return () => {
     cancelled = true;
   };
 }, [document.id]);
-
 
   // Load section grade from document
   useEffect(() => {

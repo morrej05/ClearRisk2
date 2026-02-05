@@ -253,6 +253,7 @@ function migrateMonitoringValues(fireProtection: FireProtectionModule): FireProt
 }
 
 export default function RE06FireProtectionForm({
+    return <BuildingsEditor documentId={document.id} />;
   moduleInstance,
   document,
   onSaved

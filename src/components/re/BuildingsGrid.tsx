@@ -206,12 +206,37 @@ export default function BuildingsGrid({
           <thead className="bg-slate-50">
             <tr>
               <th className="text-left p-2 border-b">Ref / Name</th>
-              <th className="text-left p-2 border-b">Roof (m²)</th>
-              <th className="text-left p-2 border-b">Upper floors / mezz (m²)</th>
-              <th className="text-left p-2 border-b">Walls (%)</th>
+          
+              {mode !== 'fire_protection' && (
+                <th className="text-left p-2 border-b">Roof (m²)</th>
+              )}
+          
+              {mode !== 'fire_protection' && (
+                <th className="text-left p-2 border-b">Upper floors / mezz (m²)</th>
+              )}
+          
+              {mode !== 'fire_protection' && (
+                <th className="text-left p-2 border-b">Walls (%)</th>
+              )}
+          
               <th className="text-left p-2 border-b">Storeys</th>
-              <th className="text-left p-2 border-b">Comb. cladding</th>
-              <th className="text-left p-2 border-b">Frame</th>
+          
+              {mode !== 'construction' && (
+                <th className="text-left p-2 border-b">Sprinklers</th>
+              )}
+          
+              {mode !== 'construction' && (
+                <th className="text-left p-2 border-b">Detection</th>
+              )}
+          
+              {mode !== 'fire_protection' && (
+                <th className="text-left p-2 border-b">Comb. cladding</th>
+              )}
+          
+              {mode !== 'fire_protection' && (
+                <th className="text-left p-2 border-b">Frame</th>
+              )}
+          
               <th className="text-left p-2 border-b">Actions</th>
             </tr>
           </thead>

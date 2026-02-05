@@ -8,6 +8,7 @@ export interface BuildingInput {
   footprint_m2?: number | null;
   height_m?: number | null;
   storeys?: number | null;
+  basements?: number | null;
 
   roof_type: string;
   roof_covering?: string | null;

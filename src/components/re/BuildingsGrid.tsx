@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BuildingInput } from '../../lib/re/buildingsModel';
 import { createEmptyBuilding } from '../../lib/re/buildingsModel';
+import { Save, Trash2, Pencil } from 'lucide-react';
 import {
   listBuildings,
   upsertBuilding,

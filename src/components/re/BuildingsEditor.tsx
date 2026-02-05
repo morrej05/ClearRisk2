@@ -10,7 +10,7 @@ type Props = {
   onAfterSave?: () => Promise<void> | void;
 };
 
-export default function BuildingsEditor({ documentId }: Props) {
+export default function BuildingsEditor({ documentId, onAfterSave }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -103,6 +103,16 @@ export default function DocumentOverview() {
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
+  // Helper to get the correct navigation path for a module
+  const getModuleNavigationPath = (module: ModuleInstance): string => {
+    // RE-06 Fire Protection has a dedicated page route
+    if (module.module_key === 'RE_06_FIRE_PROTECTION') {
+      return `/documents/${id}/re/fire-protection`;
+    }
+    // All other modules use workspace
+    return `/documents/${id}/workspace?m=${module.id}`;
+  };
+
   const getDashboardRoute = () => {
     if (returnToPath === '/dashboard/actions') {
       return '/dashboard/actions';
@@ -376,18 +386,19 @@ const handleDownloadDefencePack = async () => {
     if (firstIncomplete) {
       // Don't save to localStorage - let workspace save it when loaded
       // This keeps Continue and Open Workspace destinations separate
-      navigate(`/documents/${id}/workspace?m=${firstIncomplete.id}`, {
+      navigate(getModuleNavigationPath(firstIncomplete), {
         state: { returnTo: `/documents/${id}` }
       });
     } else {
       // All modules complete, go to last visited or first module
       const lastVisited = getLastVisitedModule();
-      const targetModule = lastVisited && modules.find(m => m.id === lastVisited)
+      const targetModuleId = lastVisited && modules.find(m => m.id === lastVisited)
         ? lastVisited
         : modules[0]?.id;
 
+      const targetModule = modules.find(m => m.id === targetModuleId);
       if (targetModule) {
-        navigate(`/documents/${id}/workspace?m=${targetModule}`, {
+        navigate(getModuleNavigationPath(targetModule), {
           state: { returnTo: `/documents/${id}` }
         });
       }
@@ -399,13 +410,14 @@ const handleDownloadDefencePack = async () => {
 
     // Check last visited module first, or fall back to first module
     const lastVisited = getLastVisitedModule();
-    const targetModule = lastVisited && modules.find(m => m.id === lastVisited)
+    const targetModuleId = lastVisited && modules.find(m => m.id === lastVisited)
       ? lastVisited
       : modules[0]?.id;
 
+    const targetModule = modules.find(m => m.id === targetModuleId);
     if (targetModule) {
       // Don't save to localStorage - let workspace save it when loaded
-      navigate(`/documents/${id}/workspace?m=${targetModule}`, {
+      navigate(getModuleNavigationPath(targetModule), {
         state: { returnTo: `/documents/${id}` }
       });
     } else {
@@ -1015,7 +1027,7 @@ try {
                   className="px-6 py-4 hover:bg-neutral-50 transition-colors cursor-pointer"
                   onClick={() => {
                     // Don't save here - workspace will save when loaded
-                    navigate(`/documents/${id}/workspace?m=${module.id}`);
+                    navigate(getModuleNavigationPath(module));
                   }}
                 >
                   <div className="flex items-center justify-between">

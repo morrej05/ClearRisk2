@@ -7,6 +7,7 @@ import { computeBuilding } from '../../lib/re/buildingsCompute';
 
 type Props = {
   documentId: string;
+  onAfterSave?: () => Promise<void> | void;
 };
 
 export default function BuildingsEditor({ documentId }: Props) {

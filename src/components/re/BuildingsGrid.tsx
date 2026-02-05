@@ -382,15 +382,27 @@ export default function BuildingsGrid({
               </tr>
             ))}
 
-            {/* Totals row */}
-            <tr className="bg-slate-50 font-medium">
-              <td className="p-2">Totals</td>
-              <td className="p-2">Roof: {totals.roof.toLocaleString()} m²</td>
-              <td className="p-2">Mezz: {totals.mezz.toLocaleString()} m²</td>
-              <td className="p-2" colSpan={5}>
-                Known total (roof + mezz): {(totals.roof + totals.mezz).toLocaleString()} m²
-              </td>
-            </tr>
+            {/* Totals row – construction / all only */}
+              {mode !== 'fire_protection' && (
+                <tr className="bg-slate-50 font-medium">
+                  <td className="p-2">Totals</td>
+              
+                  <td className="p-2">
+                    Roof: {totals.roof.toLocaleString()} m²
+                  </td>
+              
+                  <td className="p-2">
+                    Mezz: {totals.mezz.toLocaleString()} m²
+                  </td>
+              
+                  <td
+                    className="p-2"
+                    colSpan={mode === 'all' ? 7 : 3}
+                  >
+                    Known total (roof + mezz): {(totals.roof + totals.mezz).toLocaleString()} m²
+                  </td>
+                </tr>
+              )}
           </tbody>
         </table>
       </div>

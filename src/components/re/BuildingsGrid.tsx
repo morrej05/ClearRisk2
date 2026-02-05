@@ -337,15 +337,29 @@ async function saveMezz() {
 
                 {mode !== 'fire_protection' && (
                   <td className="p-2">
-                    <input
-                      type="number"
-                      className="w-32 border rounded p-2"
-                      value={b.roof_area_m2 ?? ''}
-                      onChange={e =>
-                        updateRow(idx, { roof_area_m2: e.target.value === '' ? null : Number(e.target.value) })
-                      }
-                      placeholder="m²"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        className="w-32 border rounded p-2"
+                        value={b.roof_area_m2 ?? ''}
+                        onChange={e =>
+                          updateRow(idx, { roof_area_m2: e.target.value === '' ? null : Number(e.target.value) })
+                        }
+                        placeholder="m²"
+                      />
+                      {b.id ? (
+                        <button
+                          className="p-2 border rounded"
+                          onClick={() => openRoof(b.id!)}
+                          aria-label="Edit roof composition"
+                          title="Edit roof composition (%)"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <span className="text-xs opacity-70">Save first</span>
+                      )}
+                    </div>
                   </td>
                 )}
                 

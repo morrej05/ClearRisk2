@@ -9,8 +9,11 @@ import {
   upsertBuildingExtra,
 } from '../../lib/re/buildingsRepo';
 
+type GridMode = 'all' | 'construction' | 'fire_protection';
+
 type Props = {
   documentId: string;
+  mode?: GridMode;
   onAfterSave?: () => Promise<void> | void;
 };
 

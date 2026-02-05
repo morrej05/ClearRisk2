@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { Plus, Trash2, Edit2, X, Info, AlertCircle } from 'lucide-react';
+import BuildingsEditor from '../../components/re/BuildingsEditor';
 
 interface Document {
   id: string;

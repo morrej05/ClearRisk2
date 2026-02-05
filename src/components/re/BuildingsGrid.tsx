@@ -221,6 +221,10 @@ export default function BuildingsGrid({
               )}
           
               <th className="text-left p-2 border-b">Storeys</th>
+
+              {mode !== 'fire_protection' && (
+  <th className="text-left p-2 border-b">Basements</th>
+)}
           
               {mode !== 'construction' && (
                 <th className="text-left p-2 border-b">Sprinklers</th>

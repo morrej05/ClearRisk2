@@ -9,6 +9,7 @@ export interface BuildingInput {
   height_m?: number | null;
   storeys?: number | null;
   basements?: number | null;
+  compartmentation_minutes?: number | null;
 
   roof_type: string;
   roof_covering?: string | null;
@@ -65,6 +66,7 @@ export function createEmptyBuilding(documentId: string, ref = 'B1'): BuildingInp
     height_m: null,
     storeys: null,
     basements: null,
+    compartmentation_minutes: null,
 
     roof_area_m2: null,
     mezzanine_area_m2: null,

@@ -9,6 +9,7 @@ import {
   getBuildingExtra,
   upsertBuildingExtra,
 } from '../../lib/re/buildingsRepo';
+import { supabase } from '../../lib/supabase';
 
 type GridMode = 'all' | 'construction' | 'fire_protection';
 
@@ -41,12 +42,16 @@ export default function BuildingsGrid({
   ]);
   const [wallsError, setWallsError] = useState<string | null>(null);
   const [roofOpenForId, setRoofOpenForId] = useState<string | null>(null);
-  const [roofDraft, setRoofDraft] = useState<WallRow[]>([{ material: 'noncombustible', percent: 100 }]);
+  const [roofDraft, setRoofDraft] = useState<WallRow[]>([{ material: 'unknown', percent: 100 }]);
   const [roofError, setRoofError] = useState<string | null>(null);
   
   const [mezzOpenForId, setMezzOpenForId] = useState<string | null>(null);
   const [mezzDraft, setMezzDraft] = useState<WallRow[]>([{ material: 'noncombustible', percent: 100 }]);
   const [mezzError, setMezzError] = useState<string | null>(null);
+
+  // Site notes state
+  const [constructionNotes, setConstructionNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -61,8 +66,44 @@ export default function BuildingsGrid({
     }
   }
 
+  async function loadSiteNotes() {
+    try {
+      const { data, error } = await supabase
+        .from('re_site_notes')
+        .select('construction_notes')
+        .eq('document_id', documentId)
+        .maybeSingle();
+
+      if (error) throw error;
+      setConstructionNotes(data?.construction_notes || '');
+    } catch (e: any) {
+      console.error('Failed to load site notes:', e);
+    }
+  }
+
+  async function saveSiteNotes() {
+    setSavingNotes(true);
+    try {
+      const { error } = await supabase
+        .from('re_site_notes')
+        .upsert({
+          document_id: documentId,
+          construction_notes: constructionNotes,
+        }, {
+          onConflict: 'document_id'
+        });
+
+      if (error) throw error;
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to save site notes');
+    } finally {
+      setSavingNotes(false);
+    }
+  }
+
   useEffect(() => {
     refresh();
+    loadSiteNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
 
@@ -203,7 +244,7 @@ async function openRoof(buildingId: string) {
           material,
           percent: Number(percent),
         }))
-      : [{ material: 'noncombustible', percent: 100 }];
+      : [{ material: 'unknown', percent: 100 }];
   setRoofDraft(existing);
 }
 
@@ -318,7 +359,11 @@ async function saveMezz() {
               {mode !== 'fire_protection' && (
                 <th className="text-left p-2 border-b">Frame</th>
               )}
-          
+
+              {mode !== 'fire_protection' && (
+                <th className="text-left p-2 border-b">Compartmentation</th>
+              )}
+
               <th className="text-left p-2 border-b">Actions</th>
             </tr>
           </thead>
@@ -492,6 +537,23 @@ async function saveMezz() {
                   </td>
                 )}
 
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    <select
+                      className="border rounded p-2 w-full"
+                      value={b.compartmentation_minutes ?? ''}
+                      onChange={e => updateRow(idx, { compartmentation_minutes: e.target.value === '' ? null : Number(e.target.value) })}
+                    >
+                      <option value="">Unknown</option>
+                      <option value="0">None / open plan</option>
+                      <option value="60">Basic (≤60 min)</option>
+                      <option value="120">Standard (90–120 min)</option>
+                      <option value="180">Enhanced (180 min)</option>
+                      <option value="240">High (240 min / 4 hours)</option>
+                    </select>
+                  </td>
+                )}
+
                 <td className="p-2">
                   <div className="flex gap-2">
                     <button
@@ -522,18 +584,18 @@ async function saveMezz() {
               {mode !== 'fire_protection' && (
                 <tr className="bg-slate-50 font-medium">
                   <td className="p-2">Totals</td>
-              
+
                   <td className="p-2">
                     Roof: {totals.roof.toLocaleString()} m²
                   </td>
-              
+
                   <td className="p-2">
                     Mezz: {totals.mezz.toLocaleString()} m²
                   </td>
-              
+
                   <td
                     className="p-2"
-                    colSpan={mode === 'all' ? 7 : 3}
+                    colSpan={mode === 'all' ? 8 : 4}
                   >
                     Known total (roof + mezz): {(totals.roof + totals.mezz).toLocaleString()} m²
                   </td>
@@ -542,6 +604,28 @@ async function saveMezz() {
           </tbody>
         </table>
       </div>
+
+      {/* Site-level construction notes */}
+      {mode !== 'fire_protection' && (
+        <div className="mt-6 border rounded p-4">
+          <label className="block font-semibold mb-2">Site-level construction notes</label>
+          <textarea
+            className="w-full border rounded p-2 min-h-[100px]"
+            value={constructionNotes}
+            onChange={e => setConstructionNotes(e.target.value)}
+            placeholder="Enter general construction observations that apply across the site..."
+          />
+          <div className="flex justify-end mt-2">
+            <button
+              className="px-3 py-2 border rounded bg-white hover:bg-slate-50"
+              onClick={saveSiteNotes}
+              disabled={savingNotes}
+            >
+              {savingNotes ? 'Saving...' : 'Save notes'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Walls modal */}
       {wallsOpenForId && (
@@ -639,14 +723,27 @@ async function saveMezz() {
             <div className="flex flex-col gap-2">
               {roofDraft.map((r, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2">
-                  <input
+                  <select
                     className="col-span-8 border rounded p-2"
                     value={r.material}
                     onChange={e => {
                       const v = e.target.value;
                       setRoofDraft(prev => prev.map((x, idx) => (idx === i ? { ...x, material: v } : x)));
                     }}
-                  />
+                  >
+                    <option value="unknown">Unknown</option>
+                    <option value="heavy_noncombustible_concrete">Heavy non-combustible / concrete</option>
+                    <option value="metal_deck_noncomb_insul">Metal deck + non-combustible insulation</option>
+                    <option value="metal_deck_comb_insul">Metal deck + combustible insulation</option>
+                    <option value="sandwich_phenolic">Composite sandwich panel — Phenolic</option>
+                    <option value="sandwich_pir">Composite sandwich panel — PIR</option>
+                    <option value="sandwich_pur">Composite sandwich panel — PUR</option>
+                    <option value="sandwich_eps">Composite sandwich panel — EPS / polystyrene</option>
+                    <option value="built_up_felt">Built-up bitumen/felt</option>
+                    <option value="single_ply">Single-ply membrane</option>
+                    <option value="fibre_cement">Fibre cement sheets</option>
+                    <option value="timber_deck">Timber deck / combustible</option>
+                  </select>
                   <input
                     type="number"
                     className="col-span-3 border rounded p-2"
@@ -670,7 +767,7 @@ async function saveMezz() {
             <div className="flex items-center justify-between mt-3">
               <button
                 className="px-3 py-2 border rounded"
-                onClick={() => setRoofDraft(prev => [...prev, { material: 'noncombustible', percent: 0 }])}
+                onClick={() => setRoofDraft(prev => [...prev, { material: 'unknown', percent: 0 }])}
               >
                 + Add row
               </button>

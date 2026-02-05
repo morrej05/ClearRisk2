@@ -397,6 +397,7 @@ useEffect(() => {
   };
 
   const handleSave = async () => {
+    console.log('[RE06] handleSave called');
     if (isSaving) return;
     setIsSaving(true);
 

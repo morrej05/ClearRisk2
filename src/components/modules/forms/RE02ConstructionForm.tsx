@@ -622,6 +622,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
   };
 
   const handleSave = async () => {
+    console.log('[RE02] handleSave called');
     if (isSaving) return;
     setSaveError(null);
 

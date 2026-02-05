@@ -520,27 +520,21 @@ async function saveMezz() {
                       />
                   
                       {b.id ? (
-                        <button
-                          className="p-2 border rounded"
-                          onClick={() => openMezz(b.id!)}
-                          aria-label="Edit mezzanine/floors composition"
-                          title="Edit mezzanine/floors composition (%)"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            className="p-2 border rounded"
+                            onClick={() => openMezz(b.id!)}
+                            aria-label="Edit mezzanine/floors composition"
+                            title="Edit mezzanine/floors composition (%)"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                  
+                          <CompletionBadge status={getCompletionStatus(b.id, 'mezzanine_construction_percent')} />
+                        </>
                       ) : (
                         <span className="text-xs opacity-70">Save first</span>
                       )}
-                  
-                      <span className="text-xs">
-                        {mezzStatusById[b.id ?? ''] === 'complete' ? (
-                          <span className="text-green-700">Complete</span>
-                        ) : mezzStatusById[b.id ?? ''] === 'incomplete' ? (
-                          <span className="text-amber-700">Incomplete</span>
-                        ) : (
-                          <span className="text-slate-500">Missing</span>
-                        )}
-                      </span>
                     </div>
                   </td>
                 )}

@@ -344,20 +344,22 @@ export default function BuildingsGrid({
                   </td>
                 )}
 
-                <td className="p-2">
-                  <select
-                    className="border rounded p-2"
-                    value={b.frame_type}
-                    onChange={e => updateRow(idx, { frame_type: e.target.value })}
-                  >
-                    <option value="unknown">Unknown</option>
-                    <option value="steel">Steel</option>
-                    <option value="reinforced_concrete">Reinforced concrete</option>
-                    <option value="timber">Timber</option>
-                    <option value="masonry">Masonry</option>
-                    <option value="mixed">Mixed</option>
-                  </select>
-                </td>
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    <select
+                      className="border rounded p-2"
+                      value={b.frame_type}
+                      onChange={e => updateRow(idx, { frame_type: e.target.value })}
+                    >
+                      <option value="unknown">Unknown</option>
+                      <option value="steel">Steel</option>
+                      <option value="reinforced_concrete">Reinforced concrete</option>
+                      <option value="timber">Timber</option>
+                      <option value="masonry">Masonry</option>
+                      <option value="mixed">Mixed</option>
+                    </select>
+                  </td>
+                )}
 
                 <td className="p-2">
                   <div className="flex gap-2">

@@ -23,7 +23,11 @@ function sum(nums: Array<number | null | undefined>) {
   return nums.reduce((acc, n) => acc + (typeof n === 'number' ? n : 0), 0);
 }
 
-export default function BuildingsGrid({ documentId, onAfterSave }: Props) {
+export default function BuildingsGrid({
+  documentId,
+  mode = 'all',
+  onAfterSave,
+}: Props) {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<BuildingInput[]>([]);
   const [error, setError] = useState<string | null>(null);

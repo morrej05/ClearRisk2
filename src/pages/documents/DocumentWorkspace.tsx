@@ -207,6 +207,13 @@ export default function DocumentWorkspace() {
       : null;
 
     if (requestedModule) {
+      // CRITICAL: RE-06 has a dedicated route - redirect if user lands on workspace
+      if (requestedModule.module_key === 'RE_06_FIRE_PROTECTION' && id) {
+        console.log('[DocumentWorkspace] RE-06 detected in workspace - redirecting to dedicated page');
+        navigate(getModuleNavigationPath(id, requestedModule.module_key, requestedModule.id), { replace: true });
+        return;
+      }
+
       // Valid module - set it
       if (selectedModuleId !== requestedModule.id) {
         setSelectedModuleId(requestedModule.id);
@@ -223,6 +230,13 @@ export default function DocumentWorkspace() {
       const firstIncomplete = modules.find((m) => !m.completed_at);
       const targetModule = firstIncomplete ?? modules[0];
 
+      // CRITICAL: Check if auto-corrected module is RE-06
+      if (targetModule.module_key === 'RE_06_FIRE_PROTECTION' && id) {
+        console.log('[DocumentWorkspace] Auto-corrected to RE-06 - redirecting to dedicated page');
+        navigate(getModuleNavigationPath(id, targetModule.module_key, targetModule.id), { replace: true });
+        return;
+      }
+
       if (selectedModuleId !== targetModule.id) {
         console.warn(
           `[DocumentWorkspace] Invalid module selection (${requestedModuleId}). Auto-correcting to first visible module (${targetModule.id})`
@@ -236,7 +250,7 @@ export default function DocumentWorkspace() {
         localStorage.setItem(`ezirisk:lastModule:${id}`, targetModule.id);
       }
     }
-  }, [modules, id, searchParams, selectedModuleId]);
+  }, [modules, id, searchParams, selectedModuleId, navigate]);
 
   const fetchDocument = async () => {
     if (!id || !organisation?.id) {

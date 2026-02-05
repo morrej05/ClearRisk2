@@ -322,9 +322,9 @@ useEffect(() => {
       setConstructionBuildings(normalizedBuildings);
 
       setSelectedBuildingId((prev) => {
-        if (prev && buildings.some((b: any) => b?.id === prev)) return prev;
-        return buildings[0]?.id ?? null;
-      });
+  if (prev && normalizedBuildings.some((b: any) => b?.id === prev)) return prev;
+  return normalizedBuildings[0]?.id ?? null;
+});
 
       setFormData((prev) => {
         const updatedBuildings = { ...prev.fire_protection.buildings };

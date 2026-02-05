@@ -391,6 +391,24 @@ async function saveMezz() {
                   </td>
                 )}
 
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    <div className="flex items-center gap-2">
+                      {b.id ? (
+                        <button
+                          className="p-2 border rounded"
+                          onClick={() => openWalls(b.id!)}
+                          aria-label="Edit walls composition"
+                          title="Edit walls composition (%)"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <span className="text-xs opacity-70">Save first</span>
+                      )}
+                    </div>
+                  </td>
+                )}
 
                 <td className="p-2">
                   <input
@@ -400,6 +418,20 @@ async function saveMezz() {
                     onChange={e => updateRow(idx, { storeys: e.target.value === '' ? null : Number(e.target.value) })}
                   />
                 </td>
+
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    <input
+                      type="number"
+                      className="w-24 border rounded p-2"
+                      value={b.basements ?? ''}
+                      onChange={e => updateRow(idx, { basements: e.target.value === '' ? null : Number(e.target.value) })}
+                      placeholder="0"
+                      max={0}
+                      title="Basements (0 or negative)"
+                    />
+                  </td>
+                )}
 
                 {mode !== 'construction' && (
                   <td className="p-2">
@@ -579,6 +611,154 @@ async function saveMezz() {
               </button>
               <button className="px-3 py-2 border rounded" onClick={saveWalls}>
                 Save walls %
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Roof modal */}
+      {roofOpenForId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white border rounded-lg w-full max-w-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold">Roof construction (%)</div>
+              <button className="px-2 py-1 border rounded" onClick={() => setRoofOpenForId(null)}>
+                Close
+              </button>
+            </div>
+
+            {roofError && <div className="mb-3 p-2 border rounded bg-red-50 text-red-800 text-sm">{roofError}</div>}
+
+            <div className="grid grid-cols-12 gap-2 text-xs font-medium mb-2">
+              <div className="col-span-8">Material</div>
+              <div className="col-span-3">Percent</div>
+              <div className="col-span-1"></div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {roofDraft.map((r, i) => (
+                <div key={i} className="grid grid-cols-12 gap-2">
+                  <input
+                    className="col-span-8 border rounded p-2"
+                    value={r.material}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setRoofDraft(prev => prev.map((x, idx) => (idx === i ? { ...x, material: v } : x)));
+                    }}
+                  />
+                  <input
+                    type="number"
+                    className="col-span-3 border rounded p-2"
+                    value={r.percent}
+                    onChange={e => {
+                      const v = Number(e.target.value);
+                      setRoofDraft(prev => prev.map((x, idx) => (idx === i ? { ...x, percent: v } : x)));
+                    }}
+                  />
+                  <button
+                    className="col-span-1 border rounded"
+                    onClick={() => setRoofDraft(prev => prev.filter((_, idx) => idx !== i))}
+                    aria-label="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between mt-3">
+              <button
+                className="px-3 py-2 border rounded"
+                onClick={() => setRoofDraft(prev => [...prev, { material: 'noncombustible', percent: 0 }])}
+              >
+                + Add row
+              </button>
+              <div className="text-sm">
+                Total: <span className={rowsTotal(roofDraft) === 100 ? '' : 'text-red-700'}>{rowsTotal(roofDraft)}%</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button className="px-3 py-2 border rounded" onClick={() => setRoofOpenForId(null)}>
+                Cancel
+              </button>
+              <button className="px-3 py-2 border rounded" onClick={saveRoof}>
+                Save roof %
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mezzanine modal */}
+      {mezzOpenForId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white border rounded-lg w-full max-w-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold">Upper floors / Mezzanine construction (%)</div>
+              <button className="px-2 py-1 border rounded" onClick={() => setMezzOpenForId(null)}>
+                Close
+              </button>
+            </div>
+
+            {mezzError && <div className="mb-3 p-2 border rounded bg-red-50 text-red-800 text-sm">{mezzError}</div>}
+
+            <div className="grid grid-cols-12 gap-2 text-xs font-medium mb-2">
+              <div className="col-span-8">Material</div>
+              <div className="col-span-3">Percent</div>
+              <div className="col-span-1"></div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {mezzDraft.map((r, i) => (
+                <div key={i} className="grid grid-cols-12 gap-2">
+                  <input
+                    className="col-span-8 border rounded p-2"
+                    value={r.material}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setMezzDraft(prev => prev.map((x, idx) => (idx === i ? { ...x, material: v } : x)));
+                    }}
+                  />
+                  <input
+                    type="number"
+                    className="col-span-3 border rounded p-2"
+                    value={r.percent}
+                    onChange={e => {
+                      const v = Number(e.target.value);
+                      setMezzDraft(prev => prev.map((x, idx) => (idx === i ? { ...x, percent: v } : x)));
+                    }}
+                  />
+                  <button
+                    className="col-span-1 border rounded"
+                    onClick={() => setMezzDraft(prev => prev.filter((_, idx) => idx !== i))}
+                    aria-label="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between mt-3">
+              <button
+                className="px-3 py-2 border rounded"
+                onClick={() => setMezzDraft(prev => [...prev, { material: 'noncombustible', percent: 0 }])}
+              >
+                + Add row
+              </button>
+              <div className="text-sm">
+                Total: <span className={rowsTotal(mezzDraft) === 100 ? '' : 'text-red-700'}>{rowsTotal(mezzDraft)}%</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button className="px-3 py-2 border rounded" onClick={() => setMezzOpenForId(null)}>
+                Cancel
+              </button>
+              <button className="px-3 py-2 border rounded" onClick={saveMezz}>
+                Save mezzanine %
               </button>
             </div>
           </div>

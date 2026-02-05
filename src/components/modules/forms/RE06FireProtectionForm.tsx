@@ -397,22 +397,30 @@ useEffect(() => {
   };
 
   const handleSave = async () => {
-    console.log('[RE06] handleSave called');
+    console.log('[RE06] save click', { isSaving });
     if (isSaving) return;
     setIsSaving(true);
 
     try {
-      const { error } = await supabase
+      const { data: saved, error } = await supabase
         .from('module_instances')
         .update({
           data: formData
         })
-        .eq('id', moduleInstance.id);
+        .eq('id', moduleInstance.id)
+        .select('id, updated_at, data')
+        .single();
 
       if (error) throw error;
+
+      console.log('[RE06] ✅ Saved successfully');
+      console.log('[RE06] Updated at:', saved.updated_at);
+      console.log('[RE06] Buildings count:', Object.keys(saved.data?.fire_protection?.buildings || {}).length);
+      console.log('[RE06] Saved keys:', Object.keys(saved.data || {}));
+
       onSaved();
     } catch (error) {
-      console.error('Error saving module:', error);
+      console.error('[RE06] ❌ Save failed:', error);
       alert('Failed to save module. Please try again.');
     } finally {
       setIsSaving(false);

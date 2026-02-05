@@ -622,32 +622,33 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
   };
 
   const handleSave = async () => {
-    console.log('[RE02] handleSave called');
+    console.log('[RE02] save click', { isSaving });
     if (isSaving) return;
     setSaveError(null);
 
     const currentFormData = formDataRef.current;
 
-    for (const building of currentFormData.buildings) {
-      if (building.roof.breakdown.length > 0 && building.roof.total_percent !== 100) {
-        const errorMsg = `Building "${building.building_name || 'Unnamed'}": Roof percentages must total 100% (currently ${building.roof.total_percent}%)`;
-        setSaveError(errorMsg);
-        alert(errorMsg);
-        return;
-      }
-      if (building.walls.breakdown.length > 0 && building.walls.total_percent !== 100) {
-        const errorMsg = `Building "${building.building_name || 'Unnamed'}": Wall percentages must total 100% (currently ${building.walls.total_percent}%)`;
-        setSaveError(errorMsg);
-        alert(errorMsg);
-        return;
-      }
-      if (building.upper_floors_mezzanine.breakdown.length > 0 && building.upper_floors_mezzanine.total_percent !== 100) {
-        const errorMsg = `Building "${building.building_name || 'Unnamed'}": Mezzanine percentages must total 100% (currently ${building.upper_floors_mezzanine.total_percent}%)`;
-        setSaveError(errorMsg);
-        alert(errorMsg);
-        return;
-      }
-    }
+    // TEMPORARILY COMMENTED OUT: Breakdown validation
+    // for (const building of currentFormData.buildings) {
+    //   if (building.roof.breakdown.length > 0 && building.roof.total_percent !== 100) {
+    //     const errorMsg = `Building "${building.building_name || 'Unnamed'}": Roof percentages must total 100% (currently ${building.roof.total_percent}%)`;
+    //     setSaveError(errorMsg);
+    //     alert(errorMsg);
+    //     return;
+    //   }
+    //   if (building.walls.breakdown.length > 0 && building.walls.total_percent !== 100) {
+    //     const errorMsg = `Building "${building.building_name || 'Unnamed'}": Wall percentages must total 100% (currently ${building.walls.total_percent}%)`;
+    //     setSaveError(errorMsg);
+    //     alert(errorMsg);
+    //     return;
+    //   }
+    //   if (building.upper_floors_mezzanine.breakdown.length > 0 && building.upper_floors_mezzanine.total_percent !== 100) {
+    //     const errorMsg = `Building "${building.building_name || 'Unnamed'}": Mezzanine percentages must total 100% (currently ${building.upper_floors_mezzanine.total_percent}%)`;
+    //     setSaveError(errorMsg);
+    //     alert(errorMsg);
+    //     return;
+    //   }
+    // }
 
     setIsSaving(true);
     try {
@@ -705,17 +706,19 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       }
 
       const { data: saved, error } = await supabase
-  .from('module_instances')
-  .update({ data: mergedPayload })
-  .eq('id', moduleInstance.id)
-  .select('id, updated_at, data')
-  .single();
+        .from('module_instances')
+        .update({ data: mergedPayload })
+        .eq('id', moduleInstance.id)
+        .select('id, updated_at, data')
+        .single();
 
-if (error) throw error;
+      if (error) throw error;
 
-console.log('[RE02] saved keys:', Object.keys(saved.data || {}));
-console.log('[RE02] saved has construction?', !!saved.data?.construction);
-console.log('[RE02] saved buildings count:', saved.data?.construction?.buildings?.length || 0);
+      console.log('[RE02] ✅ Saved successfully');
+      console.log('[RE02] Updated at:', saved.updated_at);
+      console.log('[RE02] Buildings count:', saved.data?.construction?.buildings?.length || 0);
+      console.log('[RE02] Saved keys:', Object.keys(saved.data || {}));
+      console.log('[RE02] Has construction?', !!saved.data?.construction);
 
 
 

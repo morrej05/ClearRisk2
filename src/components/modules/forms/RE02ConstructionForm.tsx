@@ -704,15 +704,19 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
         }));
       }
 
-      const { error } = await supabase
-        .from('module_instances')
-        .update({ data: mergedPayload })
-        .eq('id', moduleInstance.id);
+      const { data: saved, error } = await supabase
+  .from('module_instances')
+  .update({ data: mergedPayload })
+  .eq('id', moduleInstance.id)
+  .select('id, updated_at, data')
+  .single();
 
-      if (error) {
-        console.error('❌ Supabase update error:', error);
-        throw error;
-      }
+if (error) throw error;
+
+console.log('[RE02] saved keys:', Object.keys(saved.data || {}));
+console.log('[RE02] saved has construction?', !!saved.data?.construction);
+console.log('[RE02] saved buildings count:', saved.data?.construction?.buildings?.length || 0);
+
 
       // ✅ Read-back verification (correct shape)
       if (import.meta.env.DEV) {

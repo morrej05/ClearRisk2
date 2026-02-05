@@ -1,9 +1,9 @@
 // src/components/re/BuildingsEditor.tsx
 import { useEffect, useMemo, useState } from 'react';
-import type { BuildingInput } from '@/lib/re/buildingsModel';
-import { createEmptyBuilding } from '@/lib/re/buildingsModel';
-import { listBuildings, upsertBuilding, deleteBuilding } from '@/lib/re/buildingsRepo';
-import { computeBuilding } from '@/lib/re/buildingsCompute';
+import type { BuildingInput } from '../../lib/re/buildingsModel';
+import { createEmptyBuilding } from '../../lib/re/buildingsModel';
+import { listBuildings, upsertBuilding, deleteBuilding } from '../../lib/re/buildingsRepo';
+import { computeBuilding } from '../../lib/re/buildingsCompute';
 
 type Props = {
   documentId: string;

@@ -500,9 +500,7 @@ async function saveMezz() {
                         <span className="text-xs opacity-70">Save first</span>
                       )}
                   
-                      <span className="text-xs">
-                        {roofStatusById[b.id ?? ''] === 'complete' ? (
-                          <span className="text-green-700">Complete</span>
+                      {b.id ? <CompletionBadge status={getCompletionStatus(b.id, 'roof_construction_percent')} /> : null}
                         ) : roofStatusById[b.id ?? ''] === 'incomplete' ? (
                           <span className="text-amber-700">Incomplete</span>
                         ) : (

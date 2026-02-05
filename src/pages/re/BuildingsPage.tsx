@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import BuildingsEditor from '@/components/re/BuildingsEditor';
+import BuildingsEditor from "../../components/re/BuildingsEditor";
 
 export default function BuildingsPage() {
   const { documentId } = useParams<{ documentId: string }>();

@@ -463,18 +463,23 @@ async function saveMezz() {
                 <td className="p-2">
                   <div className="flex gap-2">
                     <button
-                      className="px-3 py-2 border rounded"
+                      className="p-2 border rounded"
                       onClick={() => saveRow(idx)}
                       disabled={savingId !== null}
+                      aria-label="Save building"
+                      title="Save"
                     >
-                      {savingId && (savingId === b.id || savingId === `new-${idx}`) ? 'Saving…' : 'Save'}
+                      <Save className="w-4 h-4" />
                     </button>
+                
                     <button
-                      className="px-3 py-2 border rounded"
+                      className="p-2 border rounded"
                       onClick={() => removeRow(idx)}
                       disabled={savingId !== null}
+                      aria-label="Delete building"
+                      title="Delete"
                     >
-                      Delete
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </td>

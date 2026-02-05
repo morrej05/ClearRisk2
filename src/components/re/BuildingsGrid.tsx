@@ -281,15 +281,18 @@ export default function BuildingsGrid({
                   </td>
                 )}
 
-                <td className="p-2">
-                  {b.id ? (
-                    <button className="px-2 py-1 border rounded" onClick={() => openWalls(b.id!)}>
-                      Edit
-                    </button>
-                  ) : (
-                    <div className="text-xs opacity-70">Save building first</div>
-                  )}
-                </td>
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    {b.id ? (
+                      <button className="px-2 py-1 border rounded" onClick={() => openWalls(b.id!)}>
+                        Edit
+                      </button>
+                    ) : (
+                      <div className="text-xs opacity-70">Save building first</div>
+                    )}
+                  </td>
+                )}
+
 
                 <td className="p-2">
                   <input

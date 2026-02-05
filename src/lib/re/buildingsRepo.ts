@@ -33,3 +33,25 @@ export async function deleteBuilding(buildingId: string): Promise<void> {
   const { error } = await supabase.from(TABLE).delete().eq('id', buildingId);
   if (error) throw error;
 }
+
+const EXTRA_TABLE = 're_building_extra';
+
+export async function getBuildingExtra(buildingId: string): Promise<any> {
+  const { data, error } = await supabase
+    .from(EXTRA_TABLE)
+    .select('data')
+    .eq('building_id', buildingId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.data ?? {};
+}
+
+export async function upsertBuildingExtra(buildingId: string, extra: any): Promise<void> {
+  const { error } = await supabase
+    .from(EXTRA_TABLE)
+    .upsert({ building_id: buildingId, data: extra })
+    .eq('building_id', buildingId);
+
+  if (error) throw error;
+}

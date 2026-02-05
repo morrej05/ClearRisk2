@@ -40,6 +40,13 @@ export default function BuildingsGrid({
     { material: 'masonry', percent: 100 },
   ]);
   const [wallsError, setWallsError] = useState<string | null>(null);
+  const [roofOpenForId, setRoofOpenForId] = useState<string | null>(null);
+  const [roofDraft, setRoofDraft] = useState<WallRow[]>([{ material: 'noncombustible', percent: 100 }]);
+  const [roofError, setRoofError] = useState<string | null>(null);
+  
+  const [mezzOpenForId, setMezzOpenForId] = useState<string | null>(null);
+  const [mezzDraft, setMezzDraft] = useState<WallRow[]>([{ material: 'noncombustible', percent: 100 }]);
+  const [mezzError, setMezzError] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);

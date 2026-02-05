@@ -354,6 +354,7 @@ export default function BuildingsGrid({
                     >
                       <option value="unknown">Unknown</option>
                       <option value="steel">Steel</option>
+                      <option value="protected_steel">Protected steel</option>
                       <option value="reinforced_concrete">Reinforced concrete</option>
                       <option value="timber">Timber</option>
                       <option value="masonry">Masonry</option>

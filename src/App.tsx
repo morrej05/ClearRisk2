@@ -35,7 +35,7 @@ import AuthedLayout from './components/AuthedLayout';
 import AdminLayout from './components/AdminLayout';
 import PlatformLayout from './components/PlatformLayout';
 import ErrorBoundary from './components/ErrorBoundary';
-import BuildingsPage from '@/pages/re/BuildingsPage';
+import BuildingsPage from "./pages/re/BuildingsPage";
 
 function App() {
   return (

@@ -518,28 +518,36 @@ async function saveMezz() {
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        className="w-40 border rounded p-2"
+                        className="w-28 border rounded p-2"
                         value={b.mezzanine_area_m2 ?? ''}
                         onChange={e =>
                           updateRow(idx, { mezzanine_area_m2: e.target.value === '' ? null : Number(e.target.value) })
                         }
                         placeholder="m²"
                       />
+                  
                       {b.id ? (
-                        <>
-                          <button
-                            className="p-2 border rounded"
-                            onClick={() => openMezz(b.id!)}
-                            aria-label="Edit mezzanine/floors materials"
-                            title="Edit mezzanine/floors materials (%)"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <CompletionBadge status={getCompletionStatus(b.id, 'mezzanine_construction_percent')} />
-                        </>
+                        <button
+                          className="p-2 border rounded"
+                          onClick={() => openMezz(b.id!)}
+                          aria-label="Edit mezzanine/floors composition"
+                          title="Edit mezzanine/floors composition (%)"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                       ) : (
                         <span className="text-xs opacity-70">Save first</span>
                       )}
+                  
+                      <span className="text-xs">
+                        {mezzStatusById[b.id ?? ''] === 'complete' ? (
+                          <span className="text-green-700">Complete</span>
+                        ) : mezzStatusById[b.id ?? ''] === 'incomplete' ? (
+                          <span className="text-amber-700">Incomplete</span>
+                        ) : (
+                          <span className="text-slate-500">Missing</span>
+                        )}
+                      </span>
                     </div>
                   </td>
                 )}

@@ -552,28 +552,6 @@ async function saveMezz() {
                   </td>
                 )}
 
-                {mode !== 'fire_protection' && (
-                  <td className="p-2">
-                    <div className="flex items-center gap-2">
-                      {b.id ? (
-                        <>
-                          <button
-                            className="p-2 border rounded"
-                            onClick={() => openWalls(b.id!)}
-                            aria-label="Edit walls composition"
-                            title="Edit walls composition (%)"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <CompletionBadge status={getCompletionStatus(b.id, 'wall_construction_percent')} />
-                        </>
-                      ) : (
-                        <span className="text-xs opacity-70">Save first</span>
-                      )}
-                    </div>
-                  </td>
-                )}
-
                 <td className="p-2">
                   <input
                     type="number"

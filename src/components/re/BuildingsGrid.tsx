@@ -189,6 +189,76 @@ export default function BuildingsGrid({
     }
   }
 
+  function rowsTotal(r: WallRow[]) {
+  return r.reduce((acc, x) => acc + (Number.isFinite(x.percent) ? x.percent : 0), 0);
+}
+
+async function openRoof(buildingId: string) {
+  setRoofError(null);
+  setRoofOpenForId(buildingId);
+  const extra = await getBuildingExtra(buildingId);
+  const existing: WallRow[] =
+    extra?.roof_construction_percent && typeof extra.roof_construction_percent === 'object'
+      ? Object.entries(extra.roof_construction_percent).map(([material, percent]) => ({
+          material,
+          percent: Number(percent),
+        }))
+      : [{ material: 'noncombustible', percent: 100 }];
+  setRoofDraft(existing);
+}
+
+async function saveRoof() {
+  if (!roofOpenForId) return;
+  const total = rowsTotal(roofDraft);
+  if (total !== 100) {
+    setRoofError(`Roof % must total 100. Current total: ${total}`);
+    return;
+  }
+  const extra = await getBuildingExtra(roofOpenForId);
+  await upsertBuildingExtra(roofOpenForId, {
+    ...(extra ?? {}),
+    roof_construction_percent: roofDraft.reduce<Record<string, number>>((acc, r) => {
+      const key = (r.material || '').trim();
+      if (key) acc[key] = Number(r.percent);
+      return acc;
+    }, {}),
+  });
+  setRoofOpenForId(null);
+}
+
+async function openMezz(buildingId: string) {
+  setMezzError(null);
+  setMezzOpenForId(buildingId);
+  const extra = await getBuildingExtra(buildingId);
+  const existing: WallRow[] =
+    extra?.mezzanine_construction_percent && typeof extra.mezzanine_construction_percent === 'object'
+      ? Object.entries(extra.mezzanine_construction_percent).map(([material, percent]) => ({
+          material,
+          percent: Number(percent),
+        }))
+      : [{ material: 'noncombustible', percent: 100 }];
+  setMezzDraft(existing);
+}
+
+async function saveMezz() {
+  if (!mezzOpenForId) return;
+  const total = rowsTotal(mezzDraft);
+  if (total !== 100) {
+    setMezzError(`Mezzanine/floors % must total 100. Current total: ${total}`);
+    return;
+  }
+  const extra = await getBuildingExtra(mezzOpenForId);
+  await upsertBuildingExtra(mezzOpenForId, {
+    ...(extra ?? {}),
+    mezzanine_construction_percent: mezzDraft.reduce<Record<string, number>>((acc, r) => {
+      const key = (r.material || '').trim();
+      if (key) acc[key] = Number(r.percent);
+      return acc;
+    }, {}),
+  });
+  setMezzOpenForId(null);
+}
+
   const totals = useMemo(() => {
     return {
       roof: sum(rows.map(r => r.roof_area_m2)),

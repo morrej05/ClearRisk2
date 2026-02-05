@@ -64,6 +64,7 @@ export function createEmptyBuilding(documentId: string, ref = 'B1'): BuildingInp
     footprint_m2: null,
     height_m: null,
     storeys: null,
+    basements: null,
 
     roof_area_m2: null,
     mezzanine_area_m2: null,

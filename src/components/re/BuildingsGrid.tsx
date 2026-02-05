@@ -390,15 +390,27 @@ async function saveMezz() {
     };
   }, [rows]);
 
-  // Helper component for completion status
+  // Helper component for completion status with icons
   const CompletionBadge = ({ status }: { status: 'missing' | 'complete' | 'incomplete' }) => {
     if (status === 'missing') {
-      return <span className="text-xs text-neutral-400">Missing</span>;
+      return (
+        <span className="text-neutral-400" title="Missing composition data">
+          ⚪
+        </span>
+      );
     }
     if (status === 'complete') {
-      return <span className="text-xs text-green-600 font-medium">Complete</span>;
+      return (
+        <span className="text-green-600 font-bold" title="Complete (100%)">
+          ✓
+        </span>
+      );
     }
-    return <span className="text-xs text-amber-600 font-medium">Incomplete</span>;
+    return (
+      <span className="text-amber-600 font-bold" title="Incomplete (does not total 100%)">
+        ⚠
+      </span>
+    );
   };
 
   if (loading) return <div className="p-4">Loading…</div>;
@@ -518,7 +530,7 @@ async function saveMezz() {
                         }
                         placeholder="m²"
                       />
-                  
+
                       {b.id ? (
                         <>
                           <button
@@ -529,8 +541,30 @@ async function saveMezz() {
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
-                  
+
                           <CompletionBadge status={getCompletionStatus(b.id, 'mezzanine_construction_percent')} />
+                        </>
+                      ) : (
+                        <span className="text-xs opacity-70">Save first</span>
+                      )}
+                    </div>
+                  </td>
+                )}
+
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    <div className="flex items-center gap-2">
+                      {b.id ? (
+                        <>
+                          <button
+                            className="p-2 border rounded"
+                            onClick={() => openWalls(b.id!)}
+                            aria-label="Edit walls composition"
+                            title="Edit walls composition (%)"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <CompletionBadge status={getCompletionStatus(b.id, 'wall_construction_percent')} />
                         </>
                       ) : (
                         <span className="text-xs opacity-70">Save first</span>

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'reac
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck, Menu, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getModuleName, sortModulesByOrder, getModuleKeysForDocType } from '../../lib/modules/moduleCatalog';
+import { getModuleName, sortModulesByOrder, getModuleKeysForDocType, getModuleNavigationPath } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
 import EditLockBanner from '../../components/EditLockBanner';
@@ -348,6 +348,19 @@ const fetchModules = async () => {
 
 
   const handleModuleSelect = (moduleId: string) => {
+    // Find the module to get its module_key
+    const targetModule = modules.find(m => m.id === moduleId);
+
+    // RE-06 Fire Protection has a dedicated route - navigate directly
+    if (targetModule?.module_key === 'RE_06_FIRE_PROTECTION' && id) {
+      navigate(getModuleNavigationPath(id, targetModule.module_key, targetModule.id));
+      setIsMobileMenuOpen(false);
+      // Save last visited module to localStorage
+      localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
+      return;
+    }
+
+    // All other modules use workspace with search params
     setSelectedModuleId(moduleId);
     setSearchParams({ m: moduleId });
     setIsMobileMenuOpen(false); // Close mobile menu on selection

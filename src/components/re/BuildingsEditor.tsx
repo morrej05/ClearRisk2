@@ -79,6 +79,7 @@ export default function BuildingsEditor({ documentId, onAfterSave }: Props) {
       const saved = await upsertBuilding(selected);
       await refresh();
       if (saved.id) setSelectedId(saved.id);
+      if (onAfterSave) await onAfterSave();
     } catch (e: any) {
       setError(e?.message ?? 'Failed to save');
     } finally {

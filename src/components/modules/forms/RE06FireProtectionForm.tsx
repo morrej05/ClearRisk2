@@ -250,7 +250,7 @@ export default function RE06FireProtectionForm({
   document,
   onSaved
 }: RE06FireProtectionFormProps) {
-  return <BuildingsEditor documentId={document.id} />;
+  return <BuildingsEditor documentId={document.id} onAfterSave={onSaved} />;
   const [isSaving, setIsSaving] = useState(false);
   const [constructionBuildings, setConstructionBuildings] = useState<ConstructionBuilding[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);

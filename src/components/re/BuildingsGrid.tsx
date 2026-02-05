@@ -486,6 +486,31 @@ async function saveMezz() {
             .eq('id', moduleInstance.id);
 
           if (updateError) throw updateError;
+
+          // Also update documents.section_grades.construction (for OverallGradeWidget)
+          if (ratingChanged) {
+            const { data: doc, error: docFetchError } = await supabase
+              .from('documents')
+              .select('section_grades')
+              .eq('id', documentId)
+              .maybeSingle();
+
+            if (!docFetchError && doc) {
+              const updatedSectionGrades = {
+                ...(doc.section_grades || {}),
+                construction: constructionRating,
+              };
+
+              const { error: docUpdateError } = await supabase
+                .from('documents')
+                .update({ section_grades: updatedSectionGrades })
+                .eq('id', documentId);
+
+              if (docUpdateError) {
+                console.error('Failed to update documents.section_grades:', docUpdateError);
+              }
+            }
+          }
         }
       } catch (e: any) {
         console.error('Failed to update RISK_ENGINEERING module with site score:', e);

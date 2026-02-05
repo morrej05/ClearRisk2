@@ -105,19 +105,36 @@ export async function buildRiskEngineeringScoreBreakdown(
 
   const sectionGrades = doc?.section_grades || {};
 
-  // Get construction rating (priority: section_grades > computed from RE-02 > default 3)
-  const constructionResult = await getConstructionRating(documentId);
+  // Get construction rating and metadata
+  // Priority: 1) riskEngData.sectionGrades.construction, 2) documents.section_grades, 3) computed, 4) default 3
+  let constructionRating = 3;
+  let constructionMetadata = riskEngData?.sectionMeta?.construction;
+
+  if (riskEngData?.sectionGrades?.construction) {
+    // First priority: use persisted rating from RISK_ENGINEERING module
+    constructionRating = riskEngData.sectionGrades.construction;
+  } else if (sectionGrades.construction) {
+    // Second priority: use documents.section_grades
+    constructionRating = sectionGrades.construction;
+  } else {
+    // Third priority: compute from RE-02
+    const constructionResult = await getConstructionRating(documentId);
+    constructionRating = constructionResult.rating;
+    if (!constructionMetadata) {
+      constructionMetadata = constructionResult.metadata;
+    }
+  }
 
   // Build global pillar factors (ALWAYS INCLUDED)
   const globalPillars: ScoreFactor[] = [
     {
       key: 'construction_and_combustibility',
       label: 'Construction & Combustibility',
-      rating: constructionResult.rating,
+      rating: constructionRating,
       weight: getHrgConfig(industryKey, 'construction').weight || 3,
-      score: constructionResult.rating * (getHrgConfig(industryKey, 'construction').weight || 3),
+      score: constructionRating * (getHrgConfig(industryKey, 'construction').weight || 3),
       maxScore: 5 * (getHrgConfig(industryKey, 'construction').weight || 3),
-      metadata: constructionResult.metadata,
+      metadata: constructionMetadata,
     },
     {
       key: 'fire_protection',

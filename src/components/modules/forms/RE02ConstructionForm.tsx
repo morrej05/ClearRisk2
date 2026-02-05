@@ -718,57 +718,6 @@ console.log('[RE02] saved has construction?', !!saved.data?.construction);
 console.log('[RE02] saved buildings count:', saved.data?.construction?.buildings?.length || 0);
 
 
-      // ✅ Read-back verification (correct shape)
-      if (import.meta.env.DEV) {
-        const { data: savedRow, error: readError } = await supabase
-          .from('module_instances')
-          .select('data')
-          .eq('id', moduleInstance.id)
-          .single();
-
-        if (readError) {
-          console.error('❌ Read-back error:', readError);
-        } else if (savedRow) {
-          const dbRoofArea = savedRow.data?.construction?.buildings?.[0]?.roof?.area_sqm ?? null;
-          const dbBuildingsCount = savedRow.data?.construction?.buildings?.length || 0;
-          const dbFingerprint = savedRow.data?.__debug?.re02_fingerprint || 'none';
-          const dbVersion = savedRow.data?.__debug?.re02_save_version || 0;
-
-          console.group('✅ RE-02 TRACE: Read-Back Verification');
-          console.log('📥 DB buildings count:', dbBuildingsCount);
-          console.log('📥 Read back site notes:', savedRow.data?.construction?.site_notes?.substring(0, 50) || '(empty)');
-          console.log('🔍 All buildings from DB:', savedRow.data?.construction?.buildings);
-          console.log('🔍 Full first building from DB:', savedRow.data?.construction?.buildings?.[0]);
-          console.log('🎯 DB roof area (building 0):', dbRoofArea);
-          console.log('🎯 DB roof area type:', typeof dbRoofArea);
-          console.log('🆔 DB Fingerprint:', dbFingerprint);
-          console.log('🔢 DB Version:', dbVersion);
-
-          const expectedBuildings = buildingsWithoutCalculated.length;
-          const actualBuildings = savedRow.data?.construction?.buildings?.length || 0;
-          if (expectedBuildings !== actualBuildings) {
-            console.error('❌ DATA LOSS: Expected', expectedBuildings, 'buildings, got', actualBuildings);
-          }
-
-          if (payloadRoofArea !== dbRoofArea) {
-            console.error('❌ AREA MISMATCH!');
-            console.error('  Payload sent:', payloadRoofArea);
-            console.error('  DB returned:', dbRoofArea);
-          } else {
-            console.log('✅ Area verified: Payload matches DB');
-          }
-
-          console.groupEnd();
-
-          setDebugTrace((prev) => ({
-            ...prev,
-            dbArea: dbRoofArea,
-            lastSaveFingerprint: dbFingerprint,
-            lastSaveVersion: dbVersion,
-            timestamp: new Date().toISOString(),
-          }));
-        }
-      }
 
       const savedFormState = {
         buildings: buildingsWithoutCalculated.map((b) => {

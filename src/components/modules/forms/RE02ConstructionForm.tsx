@@ -577,9 +577,12 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     }
   }, [formData]);
 
+  // ═══════════════════════════════════════════════════════════════════
+  // SINGLE SOURCE OF TRUTH: formData.buildings is canonical after load
+  // ═══════════════════════════════════════════════════════════════════
+
   // Synchronized state updater: updates both state AND ref immediately
-  // This prevents the "ghost building" bug where deletions require two saves
-  const setFormDataSync = (updater: (prev: { buildings: BuildingFormState[]; site_notes: string }) => { buildings: BuildingFormState[]; site_notes: string }) => {
+  const applyFormUpdate = (updater: (prev: { buildings: BuildingFormState[]; site_notes: string }) => { buildings: BuildingFormState[]; site_notes: string }) => {
     setFormData((prev) => {
       const next = updater(prev);
       formDataRef.current = next; // ✓ Sync ref immediately, don't wait for useEffect
@@ -587,37 +590,39 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     });
   };
 
+  // Immutable building update helper
+  const updateBuilding = (buildingId: string, updater: (building: BuildingFormState) => BuildingFormState) => {
+    applyFormUpdate((prev) => ({
+      ...prev,
+      buildings: prev.buildings.map((b) => {
+        if (b.id !== buildingId) return b;
+
+        const updated = updater(b);
+        updated.validationWarnings = validateBuilding(updated);
+
+        // Recalculate metrics based on updated form state
+        const normalized = normalizeConstructionForSave({ buildings: [updated], site_notes: '' }).buildings[0];
+        const calculated = calculateConstructionMetrics(normalized);
+
+        return { ...updated, calculated };
+      }),
+    }));
+  };
+
   const [editingBreakdown, setEditingBreakdown] = useState<{
     buildingId: string;
     type: 'roof' | 'walls' | 'mezzanine';
   } | null>(null);
 
-  const updateBuilding = (id: string, updates: Partial<BuildingFormState>) => {
-    setFormDataSync((prev) => ({
-      ...prev,
-      buildings: prev.buildings.map((b) => {
-        if (b.id === id) {
-          const updated: BuildingFormState = { ...b, ...updates } as BuildingFormState;
-          updated.validationWarnings = validateBuilding(updated);
-
-          const normalized = normalizeConstructionForSave({ buildings: [updated], site_notes: '' }).buildings[0];
-          const calculated = calculateConstructionMetrics(normalized);
-
-          return { ...updated, calculated };
-        }
-        return b;
-      }),
-    }));
-  };
-
   const addBuilding = () => {
     const newBuilding = createEmptyBuilding();
     const formState = buildingToFormState(newBuilding);
     const calculated = calculateConstructionMetrics(newBuilding);
-    setFormDataSync((prev) => ({
+    applyFormUpdate((prev) => ({
       ...prev,
       buildings: [...prev.buildings, { ...formState, calculated }],
     }));
+    console.log('[RE02] Building added, ref updated synchronously');
   };
 
   const removeBuilding = (id: string) => {
@@ -625,7 +630,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       alert('At least one building must remain');
       return;
     }
-    setFormDataSync((prev) => ({
+    applyFormUpdate((prev) => ({
       ...prev,
       buildings: prev.buildings.filter((b) => b.id !== id),
     }));
@@ -732,18 +737,10 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       console.log('[RE02] Saved keys:', Object.keys(saved.data || {}));
       console.log('[RE02] Has construction?', !!saved.data?.construction);
 
+      // ✅ DO NOT re-hydrate from saved data - formData is already correct
+      // Keep formData as single source of truth after save
+      console.log('[RE02] 🎯 Keeping formData as-is (no re-hydration)');
 
-
-      const savedFormState = {
-        buildings: buildingsWithoutCalculated.map((b) => {
-          const formState = buildingToFormState(b);
-          const calculated = calculateConstructionMetrics(b);
-          return { ...formState, calculated };
-        }),
-        site_notes: normalizedData.site_notes,
-      };
-
-      setFormData(savedFormState);
       onSaved();
     } catch (error) {
       console.error('Error saving module:', error);
@@ -784,17 +781,16 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     type: 'roof' | 'walls' | 'mezzanine',
     data: { breakdown: MaterialBreakdown[]; total_percent: number }
   ) => {
-    const updates: Partial<BuildingFormState> = {};
-    if (type === 'roof') {
-      const building = formData.buildings.find((b) => b.id === buildingId);
-      if (building) updates.roof = { ...building.roof, ...data };
-    } else if (type === 'walls') {
-      updates.walls = data;
-    } else if (type === 'mezzanine') {
-      const building = formData.buildings.find((b) => b.id === buildingId);
-      if (building) updates.upper_floors_mezzanine = { ...building.upper_floors_mezzanine, ...data };
-    }
-    updateBuilding(buildingId, updates);
+    updateBuilding(buildingId, (b) => {
+      if (type === 'roof') {
+        return { ...b, roof: { ...b.roof, ...data } };
+      } else if (type === 'walls') {
+        return { ...b, walls: data };
+      } else if (type === 'mezzanine') {
+        return { ...b, upper_floors_mezzanine: { ...b.upper_floors_mezzanine, ...data } };
+      }
+      return b;
+    });
   };
 
   const totalRoofSqm = formData.buildings.reduce((sum, b) => sum + (parseNumericInput(b.roof.area_sqm) ?? 0), 0);
@@ -891,7 +887,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                         <input
                           type="text"
                           value={bldg.building_name}
-                          onChange={(e) => updateBuilding(bldg.id, { building_name: e.target.value })}
+                          onChange={(e) => updateBuilding(bldg.id, (b) => ({ ...b, building_name: e.target.value }))}
                           className="w-full min-w-[120px] px-2 py-1 border border-slate-300 rounded text-sm"
                           placeholder="Building name"
                         />
@@ -903,9 +899,10 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                             type="text"
                             value={bldg.roof.area_sqm}
                             onChange={(e) =>
-                              updateBuilding(bldg.id, {
-                                roof: { ...bldg.roof, area_sqm: e.target.value },
-                              })
+                              updateBuilding(bldg.id, (b) => ({
+                                ...b,
+                                roof: { ...b.roof, area_sqm: e.target.value },
+                              }))
                             }
                             className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
                             placeholder="Area m² (e.g. 1,250)"
@@ -936,12 +933,13 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                             type="text"
                             value={bldg.upper_floors_mezzanine.area_sqm}
                             onChange={(e) =>
-                              updateBuilding(bldg.id, {
+                              updateBuilding(bldg.id, (b) => ({
+                                ...b,
                                 upper_floors_mezzanine: {
-                                  ...bldg.upper_floors_mezzanine,
+                                  ...b.upper_floors_mezzanine,
                                   area_sqm: e.target.value,
                                 },
-                              })
+                              }))
                             }
                             className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
                             placeholder="Area m² (e.g. 500)"
@@ -961,7 +959,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                           <input
                             type="text"
                             value={bldg.geometry.floors}
-                            onChange={(e) => updateBuilding(bldg.id, { geometry: { ...bldg.geometry, floors: e.target.value } })}
+                            onChange={(e) => updateBuilding(bldg.id, (b) => ({ ...b, geometry: { ...b.geometry, floors: e.target.value } }))}
                             className="w-12 px-1 py-1 border border-slate-300 rounded text-xs"
                             placeholder="F"
                             title="Floors (positive)"
@@ -969,15 +967,21 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                           <input
                             type="text"
                             value={bldg.geometry.basements}
-                            onChange={(e) => updateBuilding(bldg.id, { geometry: { ...bldg.geometry, basements: e.target.value } })}
+                            onChange={(e) => {
+                              const numValue = parseNumericInput(e.target.value);
+                              // Clamp basements to max 0 (must be negative or zero)
+                              const clampedValue = numValue !== null ? Math.min(0, numValue).toString() : e.target.value;
+                              updateBuilding(bldg.id, (b) => ({ ...b, geometry: { ...b.geometry, basements: clampedValue } }));
+                            }}
                             className="w-12 px-1 py-1 border border-slate-300 rounded text-xs"
                             placeholder="B"
-                            title="Basements (negative)"
+                            title="Basements (0 or negative)"
+                            max={0}
                           />
                           <input
                             type="text"
                             value={bldg.geometry.height_m}
-                            onChange={(e) => updateBuilding(bldg.id, { geometry: { ...bldg.geometry, height_m: e.target.value } })}
+                            onChange={(e) => updateBuilding(bldg.id, (b) => ({ ...b, geometry: { ...b.geometry, height_m: e.target.value } }))}
                             className="w-12 px-1 py-1 border border-slate-300 rounded text-xs"
                             placeholder="H"
                             title="Height (m)"
@@ -990,9 +994,10 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                           type="checkbox"
                           checked={bldg.combustible_cladding.present}
                           onChange={(e) =>
-                            updateBuilding(bldg.id, {
-                              combustible_cladding: { ...bldg.combustible_cladding, present: e.target.checked },
-                            })
+                            updateBuilding(bldg.id, (b) => ({
+                              ...b,
+                              combustible_cladding: { ...b.combustible_cladding, present: e.target.checked },
+                            }))
                           }
                           className="rounded"
                           title="Combustible cladding"
@@ -1002,7 +1007,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                       <td className="px-3 py-2">
                         <select
                           value={bldg.compartmentation}
-                          onChange={(e) => updateBuilding(bldg.id, { compartmentation: e.target.value as any })}
+                          onChange={(e) => updateBuilding(bldg.id, (b) => ({ ...b, compartmentation: e.target.value as any }))}
                           className="w-full min-w-[90px] px-2 py-1 border border-slate-300 rounded text-sm"
                         >
                           <option value="unknown">Unknown</option>
@@ -1015,7 +1020,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                       <td className="px-3 py-2">
                         <select
                           value={bldg.frame_type}
-                          onChange={(e) => updateBuilding(bldg.id, { frame_type: e.target.value as any })}
+                          onChange={(e) => updateBuilding(bldg.id, (b) => ({ ...b, frame_type: e.target.value as any }))}
                           className="w-full min-w-[120px] px-2 py-1 border border-slate-300 rounded text-sm"
                         >
                           {FRAME_TYPES.map((ft) => (
@@ -1130,8 +1135,8 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Overall Site Construction Observations</label>
             <textarea
-              value={formData.site_notes} // ✅ correct binding
-              onChange={(e) => setFormDataSync((prev) => ({ ...prev, site_notes: e.target.value }))}
+              value={formData.site_notes}
+              onChange={(e) => applyFormUpdate((prev) => ({ ...prev, site_notes: e.target.value }))}
               rows={4}
               className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
               placeholder="Document overall site construction observations, context, common patterns across buildings, or summary notes..."
@@ -1264,9 +1269,10 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                         <textarea
                           value={editingBuilding.combustible_cladding.details}
                           onChange={(e) =>
-                            updateBuilding(editingBuilding.id, {
-                              combustible_cladding: { ...editingBuilding.combustible_cladding, details: e.target.value },
-                            })
+                            updateBuilding(editingBuilding.id, (b) => ({
+                              ...b,
+                              combustible_cladding: { ...b.combustible_cladding, details: e.target.value },
+                            }))
                           }
                           rows={2}
                           className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
@@ -1279,7 +1285,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
                       <label className="block text-sm font-medium text-slate-700 mb-1">Building Notes</label>
                       <textarea
                         value={editingBuilding.notes}
-                        onChange={(e) => updateBuilding(editingBuilding.id, { notes: e.target.value })}
+                        onChange={(e) => updateBuilding(editingBuilding.id, (b) => ({ ...b, notes: e.target.value }))}
                         rows={3}
                         className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
                         placeholder="Additional observations about this building..."

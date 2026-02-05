@@ -308,7 +308,15 @@ useEffect(() => {
         : Array.isArray(legacy)
         ? legacy
         : [];
+        // ---- Normalize building IDs (legacy compatibility) ----
+        const normalizedBuildings = (buildings ?? []).map((b: any) => {
+          const legacyId = b?.building_id ?? b?.buildingId ?? b?._id;
+          if (!b?.id && legacyId) return { ...b, id: legacyId };
+          return b;
+        });
+        // --------------------------------------------------------
 
+      
       if (cancelled) return;
 
       setConstructionBuildings(buildings);

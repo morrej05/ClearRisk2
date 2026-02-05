@@ -329,11 +329,11 @@ useEffect(() => {
       setFormData((prev) => {
         const updatedBuildings = { ...prev.fire_protection.buildings };
 
-        for (const b of buildings) {
-          if (b?.id && !updatedBuildings[b.id]) {
-            updatedBuildings[b.id] = createDefaultBuildingProtection();
-          }
-        }
+        for (const b of normalizedBuildings) {
+  if (b?.id && !updatedBuildings[b.id]) {
+    updatedBuildings[b.id] = createDefaultBuildingProtection();
+  }
+}
 
         return {
           ...prev,

@@ -21,6 +21,43 @@ type Props = {
 
 type WallRow = { material: string; percent: number };
 
+// Material options for dropdowns
+const ROOF_MATERIAL_OPTIONS = [
+  { value: 'unknown', label: 'Unknown' },
+  { value: 'heavy_noncombustible_concrete', label: 'Heavy non-combustible / concrete' },
+  { value: 'metal_deck_noncomb_insul', label: 'Metal deck + non-combustible insulation' },
+  { value: 'metal_deck_comb_insul', label: 'Metal deck + combustible insulation' },
+  { value: 'sandwich_phenolic', label: 'Composite sandwich panel — Phenolic' },
+  { value: 'sandwich_pir', label: 'Composite sandwich panel — PIR' },
+  { value: 'sandwich_pur', label: 'Composite sandwich panel — PUR' },
+  { value: 'sandwich_eps', label: 'Composite sandwich panel — EPS / polystyrene' },
+  { value: 'built_up_felt', label: 'Built-up bitumen/felt' },
+  { value: 'single_ply', label: 'Single-ply membrane' },
+  { value: 'fibre_cement', label: 'Fibre cement sheets' },
+  { value: 'timber_deck', label: 'Timber deck / combustible' },
+];
+
+const MEZZ_MATERIAL_OPTIONS = [
+  { value: 'unknown', label: 'Unknown' },
+  { value: 'reinforced_concrete', label: 'Reinforced concrete' },
+  { value: 'precast_concrete', label: 'Precast concrete' },
+  { value: 'steel_concrete_deck', label: 'Steel + concrete deck' },
+  { value: 'steel_timber_deck', label: 'Steel + timber deck' },
+  { value: 'timber_joists_deck', label: 'Timber joists / timber deck' },
+  { value: 'grp_composite_deck', label: 'Composite / GRP deck' },
+];
+
+const WALL_MATERIAL_OPTIONS = [
+  { value: 'unknown', label: 'Unknown' },
+  { value: 'masonry', label: 'Masonry' },
+  { value: 'precast_concrete', label: 'Precast concrete' },
+  { value: 'metal_cladding_noncomb', label: 'Metal cladding (non-combustible)' },
+  { value: 'metal_cladding_comb_core', label: 'Metal cladding (combustible core)' },
+  { value: 'composite_panels_comb', label: 'Composite panels (combustible)' },
+  { value: 'timber_cladding', label: 'Timber cladding' },
+  { value: 'curtain_wall_glazing', label: 'Curtain wall / glazing' },
+];
+
 function sum(nums: Array<number | null | undefined>) {
   return nums.reduce((acc, n) => acc + (typeof n === 'number' ? n : 0), 0);
 }
@@ -38,16 +75,19 @@ export default function BuildingsGrid({
   // Walls modal state
   const [wallsOpenForId, setWallsOpenForId] = useState<string | null>(null);
   const [wallsDraft, setWallsDraft] = useState<WallRow[]>([
-    { material: 'masonry', percent: 100 },
+    { material: 'unknown', percent: 100 },
   ]);
   const [wallsError, setWallsError] = useState<string | null>(null);
   const [roofOpenForId, setRoofOpenForId] = useState<string | null>(null);
   const [roofDraft, setRoofDraft] = useState<WallRow[]>([{ material: 'unknown', percent: 100 }]);
   const [roofError, setRoofError] = useState<string | null>(null);
-  
+
   const [mezzOpenForId, setMezzOpenForId] = useState<string | null>(null);
-  const [mezzDraft, setMezzDraft] = useState<WallRow[]>([{ material: 'noncombustible', percent: 100 }]);
+  const [mezzDraft, setMezzDraft] = useState<WallRow[]>([{ material: 'unknown', percent: 100 }]);
   const [mezzError, setMezzError] = useState<string | null>(null);
+
+  // Completion indicators - store extra data per building
+  const [buildingExtras, setBuildingExtras] = useState<Record<string, any>>({});
 
   // Site notes state
   const [constructionNotes, setConstructionNotes] = useState('');
@@ -59,11 +99,44 @@ export default function BuildingsGrid({
     try {
       const data = await listBuildings(documentId);
       setRows(data);
+      // Load extras for completion indicators
+      await loadAllExtras(data);
     } catch (e: any) {
       setError(e?.message ?? 'Failed to load buildings');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadAllExtras(buildings: BuildingInput[]) {
+    const extras: Record<string, any> = {};
+    for (const b of buildings) {
+      if (b.id) {
+        try {
+          const extra = await getBuildingExtra(b.id);
+          if (extra) {
+            extras[b.id] = extra;
+          }
+        } catch (e) {
+          console.error(`Failed to load extra for building ${b.id}:`, e);
+        }
+      }
+    }
+    setBuildingExtras(extras);
+  }
+
+  function getCompletionStatus(buildingId: string, key: 'roof_construction_percent' | 'wall_construction_percent' | 'mezzanine_construction_percent'): 'missing' | 'complete' | 'incomplete' {
+    const extra = buildingExtras[buildingId];
+    if (!extra || !extra[key]) return 'missing';
+
+    const data = extra[key];
+    if (typeof data !== 'object') return 'missing';
+
+    const entries = Object.entries(data);
+    if (entries.length === 0) return 'missing';
+
+    const total = entries.reduce((sum, [, percent]) => sum + Number(percent), 0);
+    return total === 100 ? 'complete' : 'incomplete';
   }
 
   async function loadSiteNotes() {
@@ -185,12 +258,12 @@ export default function BuildingsGrid({
               material,
               percent: Number(percent),
             }))
-          : [{ material: 'masonry', percent: 100 }];
+          : [{ material: 'unknown', percent: 100 }];
 
       setWallsDraft(existing);
     } catch (e: any) {
       setWallsError(e?.message ?? 'Failed to load wall %');
-      setWallsDraft([{ material: 'masonry', percent: 100 }]);
+      setWallsDraft([{ material: 'unknown', percent: 100 }]);
     }
   }
 
@@ -224,6 +297,8 @@ export default function BuildingsGrid({
       };
 
       await upsertBuildingExtra(buildingId, nextExtra);
+      // Update extras for completion indicator
+      setBuildingExtras(prev => ({ ...prev, [buildingId]: nextExtra }));
       setWallsOpenForId(null);
     } catch (e: any) {
       setWallsError(e?.message ?? 'Failed to save wall %');
@@ -255,15 +330,19 @@ async function saveRoof() {
     setRoofError(`Roof % must total 100. Current total: ${total}`);
     return;
   }
-  const extra = await getBuildingExtra(roofOpenForId);
-  await upsertBuildingExtra(roofOpenForId, {
+  const buildingId = roofOpenForId;
+  const extra = await getBuildingExtra(buildingId);
+  const nextExtra = {
     ...(extra ?? {}),
     roof_construction_percent: roofDraft.reduce<Record<string, number>>((acc, r) => {
       const key = (r.material || '').trim();
       if (key) acc[key] = Number(r.percent);
       return acc;
     }, {}),
-  });
+  };
+  await upsertBuildingExtra(buildingId, nextExtra);
+  // Update extras for completion indicator
+  setBuildingExtras(prev => ({ ...prev, [buildingId]: nextExtra }));
   setRoofOpenForId(null);
 }
 
@@ -277,7 +356,7 @@ async function openMezz(buildingId: string) {
           material,
           percent: Number(percent),
         }))
-      : [{ material: 'noncombustible', percent: 100 }];
+      : [{ material: 'unknown', percent: 100 }];
   setMezzDraft(existing);
 }
 
@@ -288,15 +367,19 @@ async function saveMezz() {
     setMezzError(`Mezzanine/floors % must total 100. Current total: ${total}`);
     return;
   }
-  const extra = await getBuildingExtra(mezzOpenForId);
-  await upsertBuildingExtra(mezzOpenForId, {
+  const buildingId = mezzOpenForId;
+  const extra = await getBuildingExtra(buildingId);
+  const nextExtra = {
     ...(extra ?? {}),
     mezzanine_construction_percent: mezzDraft.reduce<Record<string, number>>((acc, r) => {
       const key = (r.material || '').trim();
       if (key) acc[key] = Number(r.percent);
       return acc;
     }, {}),
-  });
+  };
+  await upsertBuildingExtra(buildingId, nextExtra);
+  // Update extras for completion indicator
+  setBuildingExtras(prev => ({ ...prev, [buildingId]: nextExtra }));
   setMezzOpenForId(null);
 }
 
@@ -306,6 +389,17 @@ async function saveMezz() {
       mezz: sum(rows.map(r => r.mezzanine_area_m2)),
     };
   }, [rows]);
+
+  // Helper component for completion status
+  const CompletionBadge = ({ status }: { status: 'missing' | 'complete' | 'incomplete' }) => {
+    if (status === 'missing') {
+      return <span className="text-xs text-neutral-400">Missing</span>;
+    }
+    if (status === 'complete') {
+      return <span className="text-xs text-green-600 font-medium">Complete</span>;
+    }
+    return <span className="text-xs text-amber-600 font-medium">Incomplete</span>;
+  };
 
   if (loading) return <div className="p-4">Loading…</div>;
 
@@ -393,14 +487,17 @@ async function saveMezz() {
                         placeholder="m²"
                       />
                       {b.id ? (
-                        <button
-                          className="p-2 border rounded"
-                          onClick={() => openRoof(b.id!)}
-                          aria-label="Edit roof composition"
-                          title="Edit roof composition (%)"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            className="p-2 border rounded"
+                            onClick={() => openRoof(b.id!)}
+                            aria-label="Edit roof composition"
+                            title="Edit roof composition (%)"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <CompletionBadge status={getCompletionStatus(b.id, 'roof_construction_percent')} />
+                        </>
                       ) : (
                         <span className="text-xs opacity-70">Save first</span>
                       )}
@@ -421,14 +518,17 @@ async function saveMezz() {
                         placeholder="m²"
                       />
                       {b.id ? (
-                        <button
-                          className="p-2 border rounded"
-                          onClick={() => openMezz(b.id!)}
-                          aria-label="Edit mezzanine/floors materials"
-                          title="Edit mezzanine/floors materials (%)"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            className="p-2 border rounded"
+                            onClick={() => openMezz(b.id!)}
+                            aria-label="Edit mezzanine/floors materials"
+                            title="Edit mezzanine/floors materials (%)"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <CompletionBadge status={getCompletionStatus(b.id, 'mezzanine_construction_percent')} />
+                        </>
                       ) : (
                         <span className="text-xs opacity-70">Save first</span>
                       )}
@@ -440,14 +540,17 @@ async function saveMezz() {
                   <td className="p-2">
                     <div className="flex items-center gap-2">
                       {b.id ? (
-                        <button
-                          className="p-2 border rounded"
-                          onClick={() => openWalls(b.id!)}
-                          aria-label="Edit walls composition"
-                          title="Edit walls composition (%)"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            className="p-2 border rounded"
+                            onClick={() => openWalls(b.id!)}
+                            aria-label="Edit walls composition"
+                            title="Edit walls composition (%)"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <CompletionBadge status={getCompletionStatus(b.id, 'wall_construction_percent')} />
+                        </>
                       ) : (
                         <span className="text-xs opacity-70">Save first</span>
                       )}
@@ -649,14 +752,18 @@ async function saveMezz() {
             <div className="flex flex-col gap-2">
               {wallsDraft.map((r, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2">
-                  <input
+                  <select
                     className="col-span-8 border rounded p-2"
                     value={r.material}
                     onChange={e => {
                       const v = e.target.value;
                       setWallsDraft(prev => prev.map((x, idx) => (idx === i ? { ...x, material: v } : x)));
                     }}
-                  />
+                  >
+                    {WALL_MATERIAL_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                   <input
                     type="number"
                     className="col-span-3 border rounded p-2"
@@ -680,7 +787,7 @@ async function saveMezz() {
             <div className="flex items-center justify-between mt-3">
               <button
                 className="px-3 py-2 border rounded"
-                onClick={() => setWallsDraft(prev => [...prev, { material: 'metal_clad', percent: 0 }])}
+                onClick={() => setWallsDraft(prev => [...prev, { material: 'unknown', percent: 0 }])}
               >
                 + Add row
               </button>
@@ -731,18 +838,9 @@ async function saveMezz() {
                       setRoofDraft(prev => prev.map((x, idx) => (idx === i ? { ...x, material: v } : x)));
                     }}
                   >
-                    <option value="unknown">Unknown</option>
-                    <option value="heavy_noncombustible_concrete">Heavy non-combustible / concrete</option>
-                    <option value="metal_deck_noncomb_insul">Metal deck + non-combustible insulation</option>
-                    <option value="metal_deck_comb_insul">Metal deck + combustible insulation</option>
-                    <option value="sandwich_phenolic">Composite sandwich panel — Phenolic</option>
-                    <option value="sandwich_pir">Composite sandwich panel — PIR</option>
-                    <option value="sandwich_pur">Composite sandwich panel — PUR</option>
-                    <option value="sandwich_eps">Composite sandwich panel — EPS / polystyrene</option>
-                    <option value="built_up_felt">Built-up bitumen/felt</option>
-                    <option value="single_ply">Single-ply membrane</option>
-                    <option value="fibre_cement">Fibre cement sheets</option>
-                    <option value="timber_deck">Timber deck / combustible</option>
+                    {ROOF_MATERIAL_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                   </select>
                   <input
                     type="number"
@@ -810,14 +908,18 @@ async function saveMezz() {
             <div className="flex flex-col gap-2">
               {mezzDraft.map((r, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2">
-                  <input
+                  <select
                     className="col-span-8 border rounded p-2"
                     value={r.material}
                     onChange={e => {
                       const v = e.target.value;
                       setMezzDraft(prev => prev.map((x, idx) => (idx === i ? { ...x, material: v } : x)));
                     }}
-                  />
+                  >
+                    {MEZZ_MATERIAL_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                   <input
                     type="number"
                     className="col-span-3 border rounded p-2"
@@ -841,7 +943,7 @@ async function saveMezz() {
             <div className="flex items-center justify-between mt-3">
               <button
                 className="px-3 py-2 border rounded"
-                onClick={() => setMezzDraft(prev => [...prev, { material: 'noncombustible', percent: 0 }])}
+                onClick={() => setMezzDraft(prev => [...prev, { material: 'unknown', percent: 0 }])}
               >
                 + Add row
               </button>

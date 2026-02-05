@@ -702,21 +702,6 @@ return (
           </h3>
         </div>
 
-        <Link
-  to={`/documents/${id}/re/buildings`}
-  className="w-full text-left px-4 py-3 transition-colors md:px-2 lg:px-4 hover:bg-neutral-50 border-l-4 border-transparent"
->
-  <div className="flex items-start gap-3 md:flex-col md:items-center md:gap-1 lg:flex-row lg:items-start lg:gap-3">
-    <div className="flex-shrink-0 mt-0.5 md:mt-0">
-      <div className="w-5 h-5 rounded-full border-2 border-neutral-300" />
-    </div>
-    <div className="flex-1 min-w-0 md:hidden lg:block">
-      <p className="text-sm font-medium text-neutral-900 mb-1">Buildings</p>
-      <div className="text-xs opacity-70">RE-02 / RE-06 base data</div>
-    </div>
-  </div>
-</Link>
-
         {reModules.map((module) => (
           <ModuleNavItem key={module.id} module={module} />
         ))}

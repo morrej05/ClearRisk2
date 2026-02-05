@@ -329,18 +329,20 @@ export default function BuildingsGrid({
                   </td>
                 )}
 
-                <td className="p-2">
-                  <input
-                    type="checkbox"
-                    checked={b.cladding_present === true && b.cladding_combustible === true}
-                    onChange={e =>
-                      updateRow(idx, {
-                        cladding_present: e.target.checked,
-                        cladding_combustible: e.target.checked ? true : null,
-                      })
-                    }
-                  />
-                </td>
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    <input
+                      type="checkbox"
+                      checked={b.cladding_present === true && b.cladding_combustible === true}
+                      onChange={e =>
+                        updateRow(idx, {
+                          cladding_present: e.target.checked,
+                          cladding_combustible: e.target.checked ? true : null,
+                        })
+                      }
+                    />
+                  </td>
+                )}
 
                 <td className="p-2">
                   <select

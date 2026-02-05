@@ -465,7 +465,7 @@ async function saveMezz() {
                     <button
                       className="p-2 border rounded"
                       onClick={() => saveRow(idx)}
-                      disabled={savingId !== null}
+                      disabled={savingId === (b.id ?? `new-${idx}`)}
                       aria-label="Save building"
                       title="Save"
                     >
@@ -475,7 +475,7 @@ async function saveMezz() {
                     <button
                       className="p-2 border rounded"
                       onClick={() => removeRow(idx)}
-                      disabled={savingId !== null}
+                      disabled={savingId === (b.id ?? `new-${idx}`)}
                       aria-label="Delete building"
                       title="Delete"
                     >

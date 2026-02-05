@@ -11,6 +11,10 @@ export interface ConstructionRatingResult {
   rating: number;
   source: 'section_grade' | 'computed' | 'default';
   details?: string;
+  metadata?: {
+    site_score?: number;
+    site_combustible_percent?: number | null;
+  };
 }
 
 /**
@@ -22,6 +26,16 @@ export interface ConstructionRatingResult {
  */
 export async function getConstructionRating(documentId: string): Promise<ConstructionRatingResult> {
   try {
+    // Fetch metadata from RISK_ENGINEERING module (sectionMeta.construction)
+    const { data: riskEngModule } = await supabase
+      .from('module_instances')
+      .select('data')
+      .eq('document_id', documentId)
+      .eq('module_key', 'RISK_ENGINEERING')
+      .maybeSingle();
+
+    const metadata = riskEngModule?.data?.sectionMeta?.construction;
+
     // 1. Try to get from section_grades first
     const { data: doc, error: docError } = await supabase
       .from('documents')
@@ -34,6 +48,7 @@ export async function getConstructionRating(documentId: string): Promise<Constru
         rating: doc.section_grades.construction,
         source: 'section_grade',
         details: 'From documents.section_grades.construction',
+        metadata,
       };
     }
 
@@ -51,6 +66,7 @@ export async function getConstructionRating(documentId: string): Promise<Constru
         rating: computed.rating,
         source: 'computed',
         details: computed.details,
+        metadata,
       };
     }
 
@@ -59,6 +75,7 @@ export async function getConstructionRating(documentId: string): Promise<Constru
       rating: 3,
       source: 'default',
       details: 'No construction data available - defaulting to 3 (Adequate)',
+      metadata,
     };
   } catch (error) {
     console.error('[getConstructionRating] Error:', error);

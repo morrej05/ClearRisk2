@@ -434,6 +434,67 @@ async function saveMezz() {
     };
   }, [rows, buildingExtras]);
 
+  // Persist site score to RISK_ENGINEERING module (debounced)
+  useEffect(() => {
+    if (mode === 'fire_protection' || isNaN(siteMetrics.score)) {
+      return; // Only persist in construction/all modes and when score is valid
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        // Find RISK_ENGINEERING module instance
+        const { data: moduleInstance, error } = await supabase
+          .from('module_instances')
+          .select('id, data')
+          .eq('document_id', documentId)
+          .eq('module_key', 'RISK_ENGINEERING')
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!moduleInstance) return; // Module not yet created
+
+        const currentData = moduleInstance.data || {};
+        const sectionGrades = currentData.sectionGrades || {};
+        const sectionMeta = currentData.sectionMeta || {};
+
+        const constructionRating = Math.max(1, Math.min(5, Math.round(siteMetrics.score)));
+        const newConstructionMeta = {
+          site_score: Math.round(siteMetrics.score * 10) / 10,
+          site_combustible_percent: isNaN(siteMetrics.combustiblePercent) ? null : siteMetrics.combustiblePercent,
+        };
+
+        // Only update if changed
+        const ratingChanged = sectionGrades.construction !== constructionRating;
+        const metaChanged = JSON.stringify(sectionMeta.construction) !== JSON.stringify(newConstructionMeta);
+
+        if (ratingChanged || metaChanged) {
+          const updatedData = {
+            ...currentData,
+            sectionGrades: {
+              ...sectionGrades,
+              construction: constructionRating,
+            },
+            sectionMeta: {
+              ...sectionMeta,
+              construction: newConstructionMeta,
+            },
+          };
+
+          const { error: updateError } = await supabase
+            .from('module_instances')
+            .update({ data: updatedData })
+            .eq('id', moduleInstance.id);
+
+          if (updateError) throw updateError;
+        }
+      } catch (e: any) {
+        console.error('Failed to update RISK_ENGINEERING module with site score:', e);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [documentId, mode, siteMetrics.score, siteMetrics.combustiblePercent]);
+
   // Helper component for completion status with icons
   const CompletionBadge = ({ status }: { status: 'missing' | 'complete' | 'incomplete' }) => {
     if (status === 'missing') {

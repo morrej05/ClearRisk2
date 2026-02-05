@@ -378,7 +378,17 @@ export default function RE14DraftOutputsForm({
                   </tr>
                   {globalPillars.map((factor, idx) => (
                     <tr key={factor.key} className="bg-blue-50/50">
-                      <td className="px-4 py-2 text-slate-900 font-medium">{factor.label}</td>
+                      <td className="px-4 py-2 text-slate-900 font-medium">
+                        {factor.label}
+                        {factor.metadata?.site_score && (
+                          <div className="text-xs text-slate-600 font-normal mt-0.5">
+                            Site score: {factor.metadata.site_score.toFixed(1)}
+                            {factor.metadata.site_combustible_percent !== null && factor.metadata.site_combustible_percent !== undefined && (
+                              <span> • Combustible: {factor.metadata.site_combustible_percent}%</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="text-center px-4 py-2 text-slate-900">{factor.rating}</td>
                       <td className="text-center px-4 py-2 text-slate-900">{factor.weight}</td>
                       <td className="text-center px-4 py-2 font-medium text-slate-900">{factor.score.toFixed(1)}</td>

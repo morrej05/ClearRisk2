@@ -14,6 +14,10 @@ export interface ScoreFactor {
   weight: number;
   score: number;
   maxScore: number;
+  metadata?: {
+    site_score?: number;
+    site_combustible_percent?: number | null;
+  };
 }
 
 export interface RiskEngineeringScoreBreakdown {
@@ -113,6 +117,7 @@ export async function buildRiskEngineeringScoreBreakdown(
       weight: getHrgConfig(industryKey, 'construction').weight || 3,
       score: constructionResult.rating * (getHrgConfig(industryKey, 'construction').weight || 3),
       maxScore: 5 * (getHrgConfig(industryKey, 'construction').weight || 3),
+      metadata: constructionResult.metadata,
     },
     {
       key: 'fire_protection',

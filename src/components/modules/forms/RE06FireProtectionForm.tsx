@@ -5,6 +5,7 @@ import FloatingSaveBar from './FloatingSaveBar';
 import SectionGrade from '../../SectionGrade';
 import { updateSectionGrade } from '../../../utils/sectionGrades';
 import RatingButtons from '../../re/RatingButtons';
+import BuildingsEditor from "../../re/BuildingsEditor";
 
 interface Document {
   id: string;

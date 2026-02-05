@@ -67,6 +67,10 @@ export function calculateScore(rating: number, weight: number): number {
   return rating * weight;
 }
 
+export function clamp1to5(n: number): number {
+  return Math.max(1, Math.min(5, Number.isFinite(n) ? n : 3));
+}
+
 // Global pillar keys that should NOT be included in occupancy drivers
 const GLOBAL_PILLAR_KEYS = ['construction', 'fire_protection', 'exposure', 'management'];
 
@@ -110,12 +114,14 @@ export async function buildRiskEngineeringScoreBreakdown(
   let constructionRating = 3;
   let constructionMetadata = riskEngData?.sectionMeta?.construction;
 
-  if (riskEngData?.sectionGrades?.construction) {
+  if (riskEngData?.sectionGrades?.construction !== undefined) {
     // First priority: use persisted rating from RISK_ENGINEERING module
-    constructionRating = riskEngData.sectionGrades.construction;
-  } else if (sectionGrades.construction) {
+    constructionRating = clamp1to5(Number(riskEngData.sectionGrades.construction));
+    console.log('[ScoreBreakdown] Using riskEngData.sectionGrades.construction:', riskEngData.sectionGrades.construction, '→', constructionRating);
+  } else if (sectionGrades.construction !== undefined) {
     // Second priority: use documents.section_grades
-    constructionRating = sectionGrades.construction;
+    constructionRating = clamp1to5(Number(sectionGrades.construction));
+    console.log('[ScoreBreakdown] Using documents.section_grades.construction:', sectionGrades.construction, '→', constructionRating);
   } else {
     // Third priority: compute from RE-02
     const constructionResult = await getConstructionRating(documentId);
@@ -123,6 +129,7 @@ export async function buildRiskEngineeringScoreBreakdown(
     if (!constructionMetadata) {
       constructionMetadata = constructionResult.metadata;
     }
+    console.log('[ScoreBreakdown] Computed construction rating:', constructionRating);
   }
 
   // Build global pillar factors (ALWAYS INCLUDED)

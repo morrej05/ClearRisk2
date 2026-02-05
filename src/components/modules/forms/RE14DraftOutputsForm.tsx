@@ -93,6 +93,10 @@ export default function RE14DraftOutputsForm({
         }
 
         if (riskEng?.data) {
+          // Debug: log what's in the RISK_ENGINEERING module data
+          console.log('[RE14] sectionGrades.construction', riskEng.data?.sectionGrades?.construction);
+          console.log('[RE14] sectionMeta.construction', riskEng.data?.sectionMeta?.construction);
+
           // Use canonical scoring builder (single source of truth)
           const breakdown = await buildRiskEngineeringScoreBreakdown(
             moduleInstance.document_id,
@@ -102,6 +106,7 @@ export default function RE14DraftOutputsForm({
           console.log('[RE-11] industryKey', breakdown.industryKey);
           console.log('[RE-11] globalPillars len', breakdown.globalPillars.length);
           console.log('[RE-11] occupancyDrivers len', breakdown.occupancyDrivers.length);
+          console.log('[RE14] Construction factor rating:', breakdown.globalPillars.find(p => p.key === 'construction_and_combustibility')?.rating);
           setIndustryKey(breakdown.industryKey);
           setIndustryLabel(breakdown.industryLabel);
           setOccupancyMissing(!breakdown.industryKey);

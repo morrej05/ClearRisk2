@@ -463,6 +463,9 @@ async function saveMezz() {
           site_combustible_percent: isNaN(siteMetrics.combustiblePercent) ? null : siteMetrics.combustiblePercent,
         };
 
+        console.log('[RE02->persist] ratingInt', constructionRating, 'siteScore', siteMetrics.score);
+        console.log('[RE02->persist] newConstructionMeta', newConstructionMeta);
+
         // Only update if changed
         const ratingChanged = sectionGrades.construction !== constructionRating;
         const metaChanged = JSON.stringify(sectionMeta.construction) !== JSON.stringify(newConstructionMeta);
@@ -487,6 +490,8 @@ async function saveMezz() {
 
           if (updateError) throw updateError;
 
+          console.log('[RE02->persist] ✓ Updated RISK_ENGINEERING module with rating:', constructionRating);
+
           // Also update documents.section_grades.construction (for OverallGradeWidget)
           if (ratingChanged) {
             const { data: doc, error: docFetchError } = await supabase
@@ -508,6 +513,8 @@ async function saveMezz() {
 
               if (docUpdateError) {
                 console.error('Failed to update documents.section_grades:', docUpdateError);
+              } else {
+                console.log('[RE02->persist] ✓ Updated documents.section_grades.construction:', constructionRating);
               }
             }
           }

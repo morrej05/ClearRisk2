@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation } from 'react-rout
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getModuleName } from '../../lib/modules/moduleCatalog';
+import { getModuleName, getModuleNavigationPath as getModulePath } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
@@ -102,16 +102,6 @@ export default function DocumentOverview() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
-
-  // Helper to get the correct navigation path for a module
-  const getModuleNavigationPath = (module: ModuleInstance): string => {
-    // RE-06 Fire Protection has a dedicated page route
-    if (module.module_key === 'RE_06_FIRE_PROTECTION') {
-      return `/documents/${id}/re/fire-protection`;
-    }
-    // All other modules use workspace
-    return `/documents/${id}/workspace?m=${module.id}`;
-  };
 
   const getDashboardRoute = () => {
     if (returnToPath === '/dashboard/actions') {
@@ -386,7 +376,7 @@ const handleDownloadDefencePack = async () => {
     if (firstIncomplete) {
       // Don't save to localStorage - let workspace save it when loaded
       // This keeps Continue and Open Workspace destinations separate
-      navigate(getModuleNavigationPath(firstIncomplete), {
+      navigate(getModulePath(id, firstIncomplete.module_key, firstIncomplete.id), {
         state: { returnTo: `/documents/${id}` }
       });
     } else {
@@ -398,7 +388,7 @@ const handleDownloadDefencePack = async () => {
 
       const targetModule = modules.find(m => m.id === targetModuleId);
       if (targetModule) {
-        navigate(getModuleNavigationPath(targetModule), {
+        navigate(getModulePath(id, targetModule.module_key, targetModule.id), {
           state: { returnTo: `/documents/${id}` }
         });
       }
@@ -417,7 +407,7 @@ const handleDownloadDefencePack = async () => {
     const targetModule = modules.find(m => m.id === targetModuleId);
     if (targetModule) {
       // Don't save to localStorage - let workspace save it when loaded
-      navigate(getModuleNavigationPath(targetModule), {
+      navigate(getModulePath(id, targetModule.module_key, targetModule.id), {
         state: { returnTo: `/documents/${id}` }
       });
     } else {
@@ -1027,7 +1017,7 @@ try {
                   className="px-6 py-4 hover:bg-neutral-50 transition-colors cursor-pointer"
                   onClick={() => {
                     // Don't save here - workspace will save when loaded
-                    navigate(getModuleNavigationPath(module));
+                    navigate(getModulePath(id!, module.module_key, module.id));
                   }}
                 >
                   <div className="flex items-center justify-between">

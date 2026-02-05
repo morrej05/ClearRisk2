@@ -4,7 +4,7 @@ import { X, AlertTriangle, CheckCircle, FileCheck, Shield, ArrowRight, Lock } fr
 import { issueDocument, validateDocumentForIssue } from '../../utils/documentVersioning';
 import { assignActionReferenceNumbers } from '../../utils/actionReferenceNumbers';
 import { supabase } from '../../lib/supabase';
-import { getModuleName } from '../../lib/modules/moduleCatalog';
+import { getModuleName, getModuleNavigationPath } from '../../lib/modules/moduleCatalog';
 import { Button, Callout } from '../ui/DesignSystem';
 
 interface IssueDocumentModalProps {
@@ -104,7 +104,7 @@ export default function IssueDocumentModal({
 
       if (moduleInstance) {
         onClose();
-        navigate(`/documents/${documentId}/workspace?m=${moduleInstance.id}`, {
+        navigate(getModuleNavigationPath(documentId, moduleKey, moduleInstance.id), {
           state: { returnTo: `/documents/${documentId}` }
         });
       }

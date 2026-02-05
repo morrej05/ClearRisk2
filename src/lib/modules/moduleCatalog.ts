@@ -231,3 +231,21 @@ export function getModuleKeysForDocType(docType: string): string[] {
     .sort((a, b) => (a[1].order ?? 999) - (b[1].order ?? 999))
     .map(([key]) => key);
 }
+
+/**
+ * Single source of truth for module navigation paths.
+ * Returns the correct URL path for a given module instance.
+ */
+export function getModuleNavigationPath(
+  documentId: string,
+  moduleKey: string,
+  moduleInstanceId: string
+): string {
+  // RE-06 Fire Protection has a dedicated page route
+  if (moduleKey === 'RE_06_FIRE_PROTECTION') {
+    return `/documents/${documentId}/re/fire-protection`;
+  }
+
+  // All other modules use the workspace route with module instance ID
+  return `/documents/${documentId}/workspace?m=${moduleInstanceId}`;
+}

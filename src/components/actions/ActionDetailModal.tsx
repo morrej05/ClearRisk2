@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadEvidenceFile, createAttachmentRow, getSignedUrl, isValidAttachment, deleteAttachment } from '../../lib/supabase/attachments';
 import ConfirmModal from '../ConfirmModal';
+import { getModuleNavigationPath } from '../../lib/modules/moduleCatalog';
 
 interface ActionDetailModalProps {
   action: {
@@ -264,10 +265,11 @@ export default function ActionDetailModal({
   };
 
   const handleGoToModule = () => {
-    if (!action.document?.id || !action.module_instance?.id) return;
-    navigate(`/documents/${action.document.id}/workspace?m=${action.module_instance.id}`, {
-      state: { returnTo: returnToPath || '/dashboard/actions' }
-    });
+    if (!action.document?.id || !action.module_instance?.id || !action.module_instance?.module_key) return;
+    navigate(
+      getModuleNavigationPath(action.document.id, action.module_instance.module_key, action.module_instance.id),
+      { state: { returnTo: returnToPath || '/dashboard/actions' } }
+    );
   };
 
   const handleBackToActions = () => {

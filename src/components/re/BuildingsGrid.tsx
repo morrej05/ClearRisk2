@@ -267,17 +267,19 @@ export default function BuildingsGrid({
                   </td>
                 )}
                 
-                <td className="p-2">
-                  <input
-                    type="number"
-                    className="w-40 border rounded p-2"
-                    value={b.mezzanine_area_m2 ?? ''}
-                    onChange={e =>
-                      updateRow(idx, { mezzanine_area_m2: e.target.value === '' ? null : Number(e.target.value) })
-                    }
-                    placeholder="m²"
-                  />
-                </td>
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    <input
+                      type="number"
+                      className="w-40 border rounded p-2"
+                      value={b.mezzanine_area_m2 ?? ''}
+                      onChange={e =>
+                        updateRow(idx, { mezzanine_area_m2: e.target.value === '' ? null : Number(e.target.value) })
+                      }
+                      placeholder="m²"
+                    />
+                  </td>
+                )}
 
                 <td className="p-2">
                   {b.id ? (

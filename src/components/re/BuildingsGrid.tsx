@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BuildingInput } from '../../lib/re/buildingsModel';
 import { createEmptyBuilding } from '../../lib/re/buildingsModel';
-import { Save, Trash2, Pencil } from 'lucide-react';
+import { Save, Trash2, Pencil, CheckCircle2, AlertTriangle, CircleDashed } from 'lucide-react';
 import {
   listBuildings,
   upsertBuilding,
@@ -54,6 +54,10 @@ const WALL_MATERIAL_OPTIONS = [
   { value: 'metal_cladding_noncomb', label: 'Metal cladding (non-combustible)' },
   { value: 'metal_cladding_comb_core', label: 'Metal cladding (combustible core)' },
   { value: 'composite_panels_comb', label: 'Composite panels (combustible)' },
+  { value: 'sandwich_phenolic', label: 'Composite sandwich panel — Phenolic' },
+  { value: 'sandwich_pir', label: 'Composite sandwich panel — PIR' },
+  { value: 'sandwich_pur', label: 'Composite sandwich panel — PUR' },
+  { value: 'sandwich_eps', label: 'Composite sandwich panel — EPS / polystyrene' },
   { value: 'timber_cladding', label: 'Timber cladding' },
   { value: 'curtain_wall_glazing', label: 'Curtain wall / glazing' },
 ];
@@ -394,22 +398,16 @@ async function saveMezz() {
   const CompletionBadge = ({ status }: { status: 'missing' | 'complete' | 'incomplete' }) => {
     if (status === 'missing') {
       return (
-        <span className="text-neutral-400" title="Missing composition data">
-          ⚪
-        </span>
+        <CircleDashed className="w-4 h-4 text-slate-400" title="Missing" />
       );
     }
     if (status === 'complete') {
       return (
-        <span className="text-green-600 font-bold" title="Complete (100%)">
-          ✓
-        </span>
+        <CheckCircle2 className="w-4 h-4 text-green-600" title="Complete" />
       );
     }
     return (
-      <span className="text-amber-600 font-bold" title="Incomplete (does not total 100%)">
-        ⚠
-      </span>
+      <AlertTriangle className="w-4 h-4 text-amber-600" title="Incomplete" />
     );
   };
 

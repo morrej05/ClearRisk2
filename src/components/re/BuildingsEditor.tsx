@@ -257,6 +257,122 @@ export default function BuildingsEditor({ documentId, onAfterSave }: Props) {
               </label>
             </div>
 
+            <label className="text-sm">
+              Frame fire protection
+              <select
+                className="mt-1 w-full border rounded p-2"
+                value={selected.frame_fire_protection}
+                onChange={e => updateField('frame_fire_protection', e.target.value)}
+              >
+                <option value="unknown">Unknown</option>
+                <option value="none">None</option>
+                <option value="partial">Partial</option>
+                <option value="full">Full</option>
+              </select>
+            </label>
+            
+            <label className="text-sm">
+              External wall type
+              <select
+                className="mt-1 w-full border rounded p-2"
+                value={selected.wall_type}
+                onChange={e => updateField('wall_type', e.target.value)}
+              >
+                <option value="unknown">Unknown</option>
+                <option value="masonry">Masonry</option>
+                <option value="concrete_panel">Concrete panel</option>
+                <option value="metal_clad">Metal clad</option>
+                <option value="timber">Timber</option>
+                <option value="mixed">Mixed</option>
+              </select>
+            </label>
+            
+            <label className="text-sm">
+              Cladding present
+              <select
+                className="mt-1 w-full border rounded p-2"
+                value={selected.cladding_present ? 'yes' : 'no'}
+                onChange={e => updateField('cladding_present', e.target.value === 'yes')}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </label>
+            
+            {selected.cladding_present && (
+              <label className="text-sm">
+                Cladding combustible?
+                <select
+                  className="mt-1 w-full border rounded p-2"
+                  value={selected.cladding_combustible === true ? 'yes' : selected.cladding_combustible === false ? 'no' : 'unknown'}
+                  onChange={e =>
+                    updateField(
+                      'cladding_combustible',
+                      e.target.value === 'yes' ? true : e.target.value === 'no' ? false : null
+                    )
+                  }
+                >
+                  <option value="unknown">Unknown</option>
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </label>
+            )}
+            
+            <label className="text-sm">
+              Smoke venting type
+              <select
+                className="mt-1 w-full border rounded p-2"
+                value={selected.smoke_venting_type}
+                onChange={e => updateField('smoke_venting_type', e.target.value)}
+              >
+                <option value="unknown">Unknown</option>
+                <option value="none">None</option>
+                <option value="natural">Natural</option>
+                <option value="mechanical">Mechanical</option>
+              </select>
+            </label>
+            
+            <label className="text-sm">
+              Smoke venting coverage
+              <select
+                className="mt-1 w-full border rounded p-2"
+                value={selected.smoke_venting_coverage}
+                onChange={e => updateField('smoke_venting_coverage', e.target.value)}
+              >
+                <option value="unknown">Unknown</option>
+                <option value="none">None</option>
+                <option value="partial">Partial</option>
+                <option value="full">Full</option>
+              </select>
+            </label>
+            
+            <label className="text-sm">
+              Rooflights present
+              <select
+                className="mt-1 w-full border rounded p-2"
+                value={selected.rooflights_present ? 'yes' : 'no'}
+                onChange={e => updateField('rooflights_present', e.target.value === 'yes')}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </label>
+            
+            {selected.rooflights_present && (
+              <label className="text-sm">
+                Rooflights % of roof
+                <input
+                  type="number"
+                  className="mt-1 w-full border rounded p-2"
+                  value={selected.rooflights_percent_of_roof ?? ''}
+                  onChange={e =>
+                    updateField('rooflights_percent_of_roof', e.target.value === '' ? null : Number(e.target.value))
+                  }
+                />
+              </label>
+            )}
+
             {/* Computed */}
             <div className="mt-4 border rounded-lg p-3 bg-slate-50">
               <div className="font-semibold mb-2">Computed (not saved)</div>

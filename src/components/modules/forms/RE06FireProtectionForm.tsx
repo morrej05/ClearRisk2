@@ -246,11 +246,11 @@ function migrateMonitoringValues(fireProtection: FireProtectionModule): FireProt
 }
 
 export default function RE06FireProtectionForm({
-    return <BuildingsEditor documentId={document.id} />;
   moduleInstance,
   document,
   onSaved
 }: RE06FireProtectionFormProps) {
+  return <BuildingsEditor documentId={document.id} />;
   const [isSaving, setIsSaving] = useState(false);
   const [constructionBuildings, setConstructionBuildings] = useState<ConstructionBuilding[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);

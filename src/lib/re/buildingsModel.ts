@@ -61,6 +61,10 @@ export function createEmptyBuilding(documentId: string, ref = 'B1'): BuildingInp
     height_m: null,
     storeys: null,
 
+    roof_area_m2?: number | null;
+    mezzanine_area_m2?: number | null;
+
+
     roof_type: 'unknown',
     roof_covering: null,
     roof_insulation: null,

@@ -577,13 +577,23 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     }
   }, [formData]);
 
+  // Synchronized state updater: updates both state AND ref immediately
+  // This prevents the "ghost building" bug where deletions require two saves
+  const setFormDataSync = (updater: (prev: { buildings: BuildingFormState[]; site_notes: string }) => { buildings: BuildingFormState[]; site_notes: string }) => {
+    setFormData((prev) => {
+      const next = updater(prev);
+      formDataRef.current = next; // ✓ Sync ref immediately, don't wait for useEffect
+      return next;
+    });
+  };
+
   const [editingBreakdown, setEditingBreakdown] = useState<{
     buildingId: string;
     type: 'roof' | 'walls' | 'mezzanine';
   } | null>(null);
 
   const updateBuilding = (id: string, updates: Partial<BuildingFormState>) => {
-    setFormData((prev) => ({
+    setFormDataSync((prev) => ({
       ...prev,
       buildings: prev.buildings.map((b) => {
         if (b.id === id) {
@@ -604,7 +614,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     const newBuilding = createEmptyBuilding();
     const formState = buildingToFormState(newBuilding);
     const calculated = calculateConstructionMetrics(newBuilding);
-    setFormData((prev) => ({
+    setFormDataSync((prev) => ({
       ...prev,
       buildings: [...prev.buildings, { ...formState, calculated }],
     }));
@@ -615,10 +625,11 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
       alert('At least one building must remain');
       return;
     }
-    setFormData((prev) => ({
+    setFormDataSync((prev) => ({
       ...prev,
       buildings: prev.buildings.filter((b) => b.id !== id),
     }));
+    console.log('[RE02] Building removed, ref updated synchronously');
   };
 
   const handleSave = async () => {
@@ -627,6 +638,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
     setSaveError(null);
 
     const currentFormData = formDataRef.current;
+    console.log('[RE02] Buildings in ref at save:', currentFormData.buildings.length);
 
     // TEMPORARILY COMMENTED OUT: Breakdown validation
     // for (const building of currentFormData.buildings) {
@@ -1119,7 +1131,7 @@ export default function RE02ConstructionForm({ moduleInstance, document, onSaved
             <label className="block text-sm font-medium text-slate-700 mb-1">Overall Site Construction Observations</label>
             <textarea
               value={formData.site_notes} // ✅ correct binding
-              onChange={(e) => setFormData((prev) => ({ ...prev, site_notes: e.target.value }))}
+              onChange={(e) => setFormDataSync((prev) => ({ ...prev, site_notes: e.target.value }))}
               rows={4}
               className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
               placeholder="Document overall site construction observations, context, common patterns across buildings, or summary notes..."

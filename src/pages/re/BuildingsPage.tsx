@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import BuildingsEditor from '../../components/re/BuildingsEditor';
+import BuildingsGrid from '../../components/re/BuildingsGrid';
 
 export default function BuildingsPage() {
   const { id } = useParams<{ id: string }>();

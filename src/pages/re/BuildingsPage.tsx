@@ -16,7 +16,7 @@ export default function BuildingsPage() {
         ← Back to Modules
       </button>
 
-      <BuildingsEditor documentId={id} />
+      <BuildingsGrid documentId={id} />
     </div>
   );
 }

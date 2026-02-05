@@ -319,7 +319,7 @@ useEffect(() => {
       
       if (cancelled) return;
 
-      setConstructionBuildings(buildings);
+      setConstructionBuildings(normalizedBuildings);
 
       setSelectedBuildingId((prev) => {
         if (prev && buildings.some((b: any) => b?.id === prev)) return prev;

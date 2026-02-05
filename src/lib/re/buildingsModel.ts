@@ -30,6 +30,9 @@ export interface BuildingInput {
   smoke_venting_type: string;
   smoke_venting_coverage: string;
 
+  roof_area_m2?: number | null;
+  mezzanine_area_m2?: number | null;
+
   sprinklers_present: boolean;
   sprinkler_standard: string;
   sprinkler_coverage: string;
@@ -63,11 +66,6 @@ export function createEmptyBuilding(documentId: string, ref = 'B1'): BuildingInp
 
     roof_area_m2: null,
     mezzanine_area_m2: null,
-
-
-    roof_area_m2?: number | null;
-    mezzanine_area_m2?: number | null;
-
 
     roof_type: 'unknown',
     roof_covering: null,

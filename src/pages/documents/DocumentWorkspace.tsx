@@ -15,8 +15,6 @@ import DocumentStatusBadge from '../../components/documents/DocumentStatusBadge'
 import OverallGradeWidget from '../../components/re/OverallGradeWidget';
 import ModuleSidebar from '../../components/modules/ModuleSidebar';
 
-console.log('[DocumentWorkspace] version=2026-02-06-A');
-
 // Modules with dedicated routes that should NOT be rendered in workspace
 const DEDICATED_MODULE_KEYS = new Set(['RE_06_FIRE_PROTECTION']);
 

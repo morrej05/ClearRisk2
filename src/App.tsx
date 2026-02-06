@@ -24,92 +24,26 @@ function App() {
       <ClientBrandingProvider>
         <ErrorBoundary>
           <Routes>
-            {/* Dashboard */}
-            <Route
-              path="/dashboard"
-              element={
-                <AuthedLayout>
-                  <ActionsDashboard />
-                </AuthedLayout>
-              }
-            />
+            {/* Everything in-app shares ONE AuthedLayout instance */}
+            <Route element={<AuthedLayout />}>
+              {/* Dashboard */}
+              <Route path="/dashboard" element={<ActionsDashboard />} />
+              <Route path="/dashboard/actions" element={<ActionsDashboard />} />
+              <Route path="/dashboard/action-register" element={<ActionRegisterPage />} />
 
-            <Route
-              path="/dashboard/actions"
-              element={
-                <AuthedLayout>
-                  <ActionsDashboard />
-                </AuthedLayout>
-              }
-            />
+              {/* Documents */}
+              <Route path="/documents/:id" element={<DocumentOverview />} />
+              <Route path="/documents/:id/workspace" element={<DocumentWorkspace />} />
+              <Route path="/documents/:id/evidence" element={<DocumentEvidence />} />
+              <Route path="/documents/:id/preview" element={<DocumentPreviewPage />} />
 
-            <Route
-              path="/dashboard/action-register"
-              element={
-                <AuthedLayout>
-                  <ActionRegisterPage />
-                </AuthedLayout>
-              }
-            />
+              {/* Risk Engineering */}
+              <Route path="/documents/:id/re/buildings" element={<BuildingsPage />} />
+              <Route path="/documents/:id/re/fire-protection" element={<FireProtectionPage />} />
 
-            {/* Documents */}
-            <Route
-              path="/documents/:id"
-              element={
-                <AuthedLayout>
-                  <DocumentOverview />
-                </AuthedLayout>
-              }
-            />
-
-            <Route
-              path="/documents/:id/workspace"
-              element={
-                <AuthedLayout>
-                  <DocumentWorkspace />
-                </AuthedLayout>
-              }
-            />
-
-            <Route
-              path="/documents/:id/evidence"
-              element={
-                <AuthedLayout>
-                  <DocumentEvidence />
-                </AuthedLayout>
-              }
-            />
-
-            <Route
-              path="/documents/:id/preview"
-              element={
-                <AuthedLayout>
-                  <DocumentPreviewPage />
-                </AuthedLayout>
-              }
-            />
-
-            {/* Risk Engineering */}
-            <Route
-              path="/documents/:id/re/buildings"
-              element={
-                <AuthedLayout>
-                  <BuildingsPage />
-                </AuthedLayout>
-              }
-            />
-
-            <Route
-              path="/documents/:id/re/fire-protection"
-              element={
-                <AuthedLayout>
-                  <FireProtectionPage />
-                </AuthedLayout>
-              }
-            />
-
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Route>
           </Routes>
         </ErrorBoundary>
       </ClientBrandingProvider>

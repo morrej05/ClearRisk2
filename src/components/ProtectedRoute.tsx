@@ -1,4 +1,3 @@
-console.log('✅ USING ProtectedRoute.tsx v2', new Date().toISOString());
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,19 +18,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
   const { user, authInitialized, loading } = useAuth();
 
-  // During bootstrap / refresh, never render nothing and never redirect
+  // Always render something while auth/profile is hydrating
   if (!authInitialized || loading) {
     return <FullPageLoading />;
   }
-console.warn('[ProtectedRoute redirect]', {
-  to: '/signin',
-  path: location.pathname,
-  authInitialized,
-  loading,
-  hasUser: !!user,
-});
 
-  // If logged out, always go to sign-in and preserve where they were headed
+  // ✅ Only gate on actual sign-in state
   if (!user) {
     return (
       <Navigate
@@ -42,5 +34,6 @@ console.warn('[ProtectedRoute redirect]', {
     );
   }
 
+  // ✅ If user exists, never redirect from here
   return <>{children}</>;
 }

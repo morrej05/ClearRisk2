@@ -10,18 +10,22 @@ import AuthedLayout from './components/AuthedLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ClientBrandingProvider } from './contexts/ClientBrandingContext';
 
-import DashboardPage from './pages/DashboardPage';
-import ActionRegisterPage from './pages/ActionRegisterPage';
-import ActionsDashboard from './pages/ActionsDashboard';
+// Dashboard (confirmed paths from your tree)
+import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
+import ActionsDashboard from './pages/dashboard/ActionsDashboard';
 
+// Documents (confirmed paths from your tree)
 import DocumentOverview from './pages/documents/DocumentOverview';
 import DocumentWorkspace from './pages/documents/DocumentWorkspace';
 import DocumentEvidence from './pages/documents/DocumentEvidence';
 import DocumentPreviewPage from './pages/documents/DocumentPreviewPage';
 
+// RE pages (these existed earlier in your App.tsx)
 import BuildingsPage from './pages/re/BuildingsPage';
 import FireProtectionPage from './pages/re/FireProtectionPage';
 
+// These routes existed in your earlier App.tsx.
+// If any of these imports fail, we’ll correct them based on your tree next.
 import AssessmentsPage from './pages/AssessmentsPage';
 import NewAssessmentPage from './pages/NewAssessmentPage';
 import ReportsPage from './pages/ReportsPage';
@@ -58,7 +62,8 @@ function App() {
               path="/dashboard"
               element={
                 <AuthedLayout>
-                  <DashboardPage />
+                  {/* If you have a dedicated DashboardPage, swap it back in later */}
+                  <ActionsDashboard />
                 </AuthedLayout>
               }
             />
@@ -78,6 +83,12 @@ function App() {
                 </AuthedLayout>
               }
             />
+
+            {/* Legacy redirects */}
+            <Route path="/legacy-dashboard" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/common-dashboard" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard/fire" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard/explosion" element={<Navigate to="/dashboard" replace />} />
 
             {/* Documents */}
             <Route
@@ -113,7 +124,7 @@ function App() {
               }
             />
 
-            {/* RE pages */}
+            {/* RE */}
             <Route
               path="/documents/:id/re/buildings"
               element={
@@ -131,7 +142,7 @@ function App() {
               }
             />
 
-            {/* Other */}
+            {/* Other app pages */}
             <Route
               path="/assessments"
               element={
@@ -196,14 +207,6 @@ function App() {
                 </AuthedLayout>
               }
             />
-            <Route
-              path="/archived-assessments"
-              element={
-                <AuthedLayout>
-                  <ArchivedAssessments />
-                </AuthedLayout>
-              }
-            />
 
             {/* Admin */}
             <Route
@@ -233,11 +236,15 @@ function App() {
               }
             />
 
-            {/* Redirects / fallback */}
-            <Route path="/legacy-dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/common-dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard/fire" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard/explosion" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/archived-assessments"
+              element={
+                <AuthedLayout>
+                  <ArchivedAssessments />
+                </AuthedLayout>
+              }
+            />
+
             <Route path="/super-admin" element={<Navigate to="/platform" replace />} />
             <Route path="/legacy-admin" element={<Navigate to="/admin" replace />} />
 

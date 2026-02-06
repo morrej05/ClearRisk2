@@ -4,8 +4,8 @@ import AuthedLayout from './components/AuthedLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ClientBrandingProvider } from './contexts/ClientBrandingContext';
 
-// ✅ Add your sign-in page (adjust path to your actual file)
-import SignInPage from './pages/auth/SignInPage';
+// ✅ Use your existing sign-in component (adjust the path to wherever it lives)
+import SignIn from './pages/SignIn';
 
 // Dashboard
 import FireSafetyDashboard from './pages/dashboard/FireSafetyDashboard';
@@ -28,10 +28,10 @@ function App() {
       <ClientBrandingProvider>
         <ErrorBoundary>
           <Routes>
-            {/* ✅ PUBLIC ROUTES (outside AuthedLayout) */}
-            <Route path="/signin" element={<SignInPage />} />
+            {/* ✅ PUBLIC */}
+            <Route path="/signin" element={<SignIn />} />
 
-            {/* One shared authed shell */}
+            {/* ✅ AUTHED */}
             <Route element={<AuthedLayout />}>
               {/* Dashboard */}
               <Route path="/dashboard" element={<FireSafetyDashboard />} />
@@ -49,7 +49,7 @@ function App() {
               <Route path="/documents/:id/re/fire-protection" element={<FireProtectionPage />} />
             </Route>
 
-            {/* ✅ GLOBAL FALLBACK: never bounce logged-out users into AuthedLayout */}
+            {/* ✅ GLOBAL FALLBACK */}
             <Route path="*" element={<Navigate to="/signin" replace />} />
           </Routes>
         </ErrorBoundary>

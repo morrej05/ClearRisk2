@@ -232,8 +232,8 @@ export default function DocumentWorkspace() {
           setSelectedModuleId(requestedModule.id);
         }
         // Save to localStorage (safe - already verified not dedicated)
-        if (id) {
-          localStorage.setItem(`ezirisk:lastModule:${id}`, requestedModule.id);
+        if (id && !isDedicatedModule(requestedModule.module_key)) {
+        localStorage.setItem(`ezirisk:lastModule:${id}`, requestedModule.id);
         }
         return;
       }

@@ -3,8 +3,14 @@ import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
-// Register service worker for safe navigation handling
-if ('serviceWorker' in navigator) {
+// IMPORTANT:
+// Service Workers + hard navigation cause full reloads and flicker in SPA routing,
+// especially in StackBlitz / dev environments.
+// Disable SW entirely unless you explicitly need it in production.
+
+const isProd = import.meta.env.PROD;
+
+if (isProd && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
@@ -16,16 +22,9 @@ if ('serviceWorker' in navigator) {
       });
   });
 
-  // Handle navigation messages from service worker
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'NAVIGATE') {
-      // Navigate using relative URL only
-      const url = event.data.url;
-      if (url && typeof url === 'string') {
-        window.location.href = url;
-      }
-    }
-  });
+  // ⚠️ DO NOT force window.location navigation inside SPA
+  // If you ever re-enable this, it must route via React Router instead
+  // navigator.serviceWorker.addEventListener('message', ...)
 }
 
 createRoot(document.getElementById('root')!).render(

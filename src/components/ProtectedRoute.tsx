@@ -1,3 +1,4 @@
+console.log('✅ USING ProtectedRoute.tsx v2', new Date().toISOString());
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';

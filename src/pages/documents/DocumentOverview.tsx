@@ -1,7 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  FileText,
+  Calendar,
+  User,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  FileDown,
+  Edit3,
+  AlertTriangle,
+  Image,
+  List,
+  FileCheck,
+  Shield,
+  Package,
+  Trash2,
+  PlayCircle
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName, getModuleNavigationPath as getModulePath } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
@@ -31,7 +49,7 @@ import {
   formatFileSize,
   type DefencePack,
 } from '../../utils/defencePack';
-import { Button, Badge, Card, Callout, PageHeader } from '../../components/ui/DesignSystem';
+import { Button, Badge, Card, Callout } from '../../components/ui/DesignSystem';
 
 interface Document {
   id: string;
@@ -66,6 +84,11 @@ interface Document {
   locked_pdf_size_bytes: number | null;
   locked_pdf_sha256: string | null;
   jurisdiction: string;
+
+  // optional fields referenced elsewhere in app
+  executive_summary_mode?: string | null;
+  executive_summary_ai?: string | null;
+  executive_summary_author?: string | null;
 }
 
 interface ModuleInstance {
@@ -74,7 +97,10 @@ interface ModuleInstance {
   outcome: string | null;
   completed_at: string | null;
   updated_at: string;
+  created_at?: string;
 }
+
+const SHOW_CHANGE_SUMMARY = true;
 
 export default function DocumentOverview() {
   const { id } = useParams<{ id: string }>();
@@ -82,208 +108,70 @@ export default function DocumentOverview() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { organisation, user } = useAuth();
+
   const [document, setDocument] = useState<Document | null>(null);
-  const SHOW_CHANGE_SUMMARY = true;
   const [modules, setModules] = useState<ModuleInstance[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Split loading so we don't "blank" the entire page once doc is loaded
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [docLoading, setDocLoading] = useState(false);
+  const [modulesLoading, setModulesLoading] = useState(false);
+
   const [documentNotFound, setDocumentNotFound] = useState(false);
+
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
   const [totalActions, setTotalActions] = useState(0);
   const [evidenceCount, setEvidenceCount] = useState(0);
+
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showNewVersionModal, setShowNewVersionModal] = useState(false);
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showClientAccessModal, setShowClientAccessModal] = useState(false);
+
   const [defencePack, setDefencePack] = useState<DefencePack | null>(null);
   const [isBuildingDefencePack, setIsBuildingDefencePack] = useState(false);
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
-  const getDashboardRoute = () => {
-    if (returnToPath === '/dashboard/actions') {
-      return '/dashboard/actions';
+  // Dedicated-page module keys (never use workspace path)
+  const isDedicatedModuleKey = useCallback((moduleKey: string) => {
+    return moduleKey === 'RE_06_FIRE_PROTECTION';
+  }, []);
+
+  // Single source of truth for navigation path (fixes Fire Protection flicker)
+  const getNavPath = useCallback((documentId: string, moduleKey: string, moduleInstanceId: string) => {
+    if (isDedicatedModuleKey(moduleKey)) {
+      return `/documents/${documentId}/re/fire-protection`;
     }
+    return getModulePath(documentId, moduleKey, moduleInstanceId);
+  }, [isDedicatedModuleKey]);
+
+  const getDashboardRoute = useCallback(() => {
+    if (returnToPath === '/dashboard/actions') return '/dashboard/actions';
 
     const fromParam = searchParams.get('from');
     const pathToCheck = returnToPath || fromParam;
 
     const legacyPaths = ['/common-dashboard', '/dashboard/fire', '/dashboard/explosion', '/legacy-dashboard'];
-    if (pathToCheck && legacyPaths.includes(pathToCheck)) {
-      return '/dashboard';
-    }
+    if (pathToCheck && legacyPaths.includes(pathToCheck)) return '/dashboard';
 
-    if (returnToPath) {
-      return returnToPath;
-    }
+    return returnToPath || fromParam || '/dashboard';
+  }, [returnToPath, searchParams]);
 
-    if (fromParam) {
-      return fromParam;
-    }
-
-    return '/dashboard';
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
-
-  useEffect(() => {
-    if (id && organisation?.id) {
-      fetchDocument();
-      fetchModules();
-      fetchActionCounts();
-      fetchEvidenceCount();
-      fetchDefencePack();
-    }
-  }, [id, organisation?.id]);
-
-  const fetchDocument = async () => {
-    if (!id || !organisation?.id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('id', id)
-        .eq('organisation_id', organisation.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (!data) {
-        setDocument(null);
-        setDocumentNotFound(true);
-        setIsLoading(false);
-        return;
-      }
-
-      setDocument(data);
-      setDocumentNotFound(false);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching document:', error);
-      setDocument(null);
-      setDocumentNotFound(true);
-      setIsLoading(false);
-    }
-  };
-
-  const fetchModules = async () => {
-    if (!id || !organisation?.id) return;
-
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('module_instances')
-        .select('*')
-        .eq('document_id', id)
-        .eq('organisation_id', organisation.id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setModules(data || []);
-    } catch (error) {
-      console.error('Error fetching modules:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchActionCounts = async () => {
-    if (!id || !organisation?.id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('actions')
-        .select('priority_band, status')
-        .eq('document_id', id)
-        .eq('organisation_id', organisation.id)
-        .eq('status', 'open')
-        .is('deleted_at', null);
-
-      if (error) throw error;
-
-      const counts = { P1: 0, P2: 0, P3: 0, P4: 0 };
-      (data || []).forEach((action) => {
-        if (action.priority_band && action.priority_band in counts) {
-          counts[action.priority_band as keyof typeof counts]++;
-        }
-      });
-
-      setActionCounts(counts);
-      setTotalActions((data || []).length);
-    } catch (error) {
-      console.error('Error fetching action counts:', error);
-    }
-  };
-
-  const fetchEvidenceCount = async () => {
-    if (!id || !organisation) return;
-
-    try {
-      const { count, error } = await supabase
-        .from('attachments')
-        .select('*', { count: 'exact', head: true })
-        .eq('document_id', id)
-        .eq('organisation_id', organisation.id);
-
-      if (error) throw error;
-      setEvidenceCount(count || 0);
-    } catch (error) {
-      console.error('Error fetching evidence count:', error);
-    }
-  };
-
-  const fetchDefencePack = async () => {
-    if (!id) return;
-
-    try {
-      const pack = await getDefencePack(id);
-      setDefencePack(pack);
-    } catch (error) {
-      console.error('Error fetching defence pack:', error);
-    }
-  };
-
-  const handleBuildDefencePack = async () => {
-    if (!id) return;
-
-    setIsBuildingDefencePack(true);
-    try {
-      const result = await buildDefencePack(id);
-
-      if (result.success) {
-        setDefencePack(result.pack || null);
-        alert('Defence pack created successfully!');
-      } else {
-        alert(result.error || 'Failed to create defence pack');
-      }
-    } catch (error: any) {
-      console.error('Error building defence pack:', error);
-      alert(error.message || 'Failed to create defence pack');
-    } finally {
-      setIsBuildingDefencePack(false);
-    }
-  };
-
-const handleDownloadDefencePack = async () => {
-  if (!defencePack) return;
-
-  try {
-    if (!document?.id) return;
-
-    const filename = `defence_pack_${(document.title || '').replace(/[^a-z0-9]/gi, '_')}_v${document.version_number}.zip`;
-    const result = await downloadDefencePack(document.id, filename);
-
-    if (!result.success) {
-      alert(result.error || 'Failed to download defence pack');
-    }
-  } catch (error: any) {
-    console.error('Error downloading defence pack:', error);
-    alert(error.message || 'Failed to download defence pack');
-  }
-};
-
 
   const getOutcomeBadgeVariant = (outcome: string | null): 'neutral' | 'risk-low' | 'risk-medium' | 'risk-high' | 'info' => {
     switch (outcome) {
@@ -320,15 +208,6 @@ const handleDownloadDefencePack = async () => {
     }
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return '—';
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
   const getStatusBadgeVariant = (status: string): 'neutral' | 'success' | 'warning' => {
     switch (status) {
       case 'issued':
@@ -340,11 +219,143 @@ const handleDownloadDefencePack = async () => {
     }
   };
 
+  const fetchDocument = useCallback(async () => {
+    if (!id || !organisation?.id) return;
+
+    setDocLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', id)
+        .eq('organisation_id', organisation.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        setDocument(null);
+        setDocumentNotFound(true);
+        return;
+      }
+
+      setDocument(data as any);
+      setDocumentNotFound(false);
+    } catch (error) {
+      console.error('Error fetching document:', error);
+      setDocument(null);
+      setDocumentNotFound(true);
+    } finally {
+      setDocLoading(false);
+    }
+  }, [id, organisation?.id]);
+
+  const fetchModules = useCallback(async () => {
+    if (!id || !organisation?.id) return;
+
+    setModulesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('module_instances')
+        .select('*')
+        .eq('document_id', id)
+        .eq('organisation_id', organisation.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setModules((data as any[]) || []);
+    } catch (error) {
+      console.error('Error fetching modules:', error);
+    } finally {
+      setModulesLoading(false);
+    }
+  }, [id, organisation?.id]);
+
+  const fetchActionCounts = useCallback(async () => {
+    if (!id || !organisation?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('actions')
+        .select('priority_band, status')
+        .eq('document_id', id)
+        .eq('organisation_id', organisation.id)
+        .eq('status', 'open')
+        .is('deleted_at', null);
+
+      if (error) throw error;
+
+      const counts = { P1: 0, P2: 0, P3: 0, P4: 0 };
+      (data || []).forEach((action: any) => {
+        if (action.priority_band && action.priority_band in counts) {
+          counts[action.priority_band as keyof typeof counts]++;
+        }
+      });
+
+      setActionCounts(counts);
+      setTotalActions((data || []).length);
+    } catch (error) {
+      console.error('Error fetching action counts:', error);
+    }
+  }, [id, organisation?.id]);
+
+  const fetchEvidenceCount = useCallback(async () => {
+    if (!id || !organisation?.id) return;
+
+    try {
+      const { count, error } = await supabase
+        .from('attachments')
+        .select('*', { count: 'exact', head: true })
+        .eq('document_id', id)
+        .eq('organisation_id', organisation.id);
+
+      if (error) throw error;
+      setEvidenceCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching evidence count:', error);
+    }
+  }, [id, organisation?.id]);
+
+  const fetchDefencePack = useCallback(async () => {
+    if (!id) return;
+    try {
+      const pack = await getDefencePack(id);
+      setDefencePack(pack);
+    } catch (error) {
+      console.error('Error fetching defence pack:', error);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!id || !organisation?.id) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setInitialLoading(true);
+      try {
+        await fetchDocument();
+        if (!cancelled) {
+          await Promise.all([
+            fetchModules(),
+            fetchActionCounts(),
+            fetchEvidenceCount(),
+            fetchDefencePack(),
+          ]);
+        }
+      } finally {
+        if (!cancelled) setInitialLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [id, organisation?.id, fetchDocument, fetchModules, fetchActionCounts, fetchEvidenceCount, fetchDefencePack]);
+
   const handleIssueSuccess = () => {
     fetchDocument();
   };
 
-  const handleNewVersionSuccess = (newDocumentId: string, newVersionNumber: number) => {
+  const handleNewVersionSuccess = (newDocumentId: string) => {
     navigate(`/documents/${newDocumentId}`);
   };
 
@@ -354,51 +365,28 @@ const handleDownloadDefencePack = async () => {
 
   // Save last visited module to localStorage
   const saveLastVisitedModule = (moduleId: string) => {
-    if (id) {
-      localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
-    }
+    if (id) localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
   };
 
   // Get last visited module from localStorage
   const getLastVisitedModule = (): string | null => {
-    if (id) {
-      return localStorage.getItem(`ezirisk:lastModule:${id}`);
-    }
-    return null;
+    if (!id) return null;
+    return localStorage.getItem(`ezirisk:lastModule:${id}`);
   };
+
+  const firstIncomplete = useMemo(() => modules.find(m => !m.completed_at), [modules]);
 
   const handleContinueAssessment = () => {
     if (!id) return;
 
-    // Find first incomplete REQUIRED module
-    const firstIncomplete = modules.find(m => !m.completed_at);
-
-    if (firstIncomplete) {
-      // Don't save to localStorage - let workspace save it when loaded
-      // This keeps Continue and Open Workspace destinations separate
-      navigate(getModulePath(id, firstIncomplete.module_key, firstIncomplete.id), {
+    const next = firstIncomplete;
+    if (next) {
+      navigate(getNavPath(id, next.module_key, next.id), {
         state: { returnTo: `/documents/${id}` }
       });
-    } else {
-      // All modules complete, go to last visited or first module
-      const lastVisited = getLastVisitedModule();
-      const targetModuleId = lastVisited && modules.find(m => m.id === lastVisited)
-        ? lastVisited
-        : modules[0]?.id;
-
-      const targetModule = modules.find(m => m.id === targetModuleId);
-      if (targetModule) {
-        navigate(getModulePath(id, targetModule.module_key, targetModule.id), {
-          state: { returnTo: `/documents/${id}` }
-        });
-      }
+      return;
     }
-  };
 
-  const handleOpenWorkspace = () => {
-    if (!id) return;
-
-    // Check last visited module first, or fall back to first module
     const lastVisited = getLastVisitedModule();
     const targetModuleId = lastVisited && modules.find(m => m.id === lastVisited)
       ? lastVisited
@@ -406,79 +394,80 @@ const handleDownloadDefencePack = async () => {
 
     const targetModule = modules.find(m => m.id === targetModuleId);
     if (targetModule) {
-      // Don't save to localStorage - let workspace save it when loaded
-      navigate(getModulePath(id, targetModule.module_key, targetModule.id), {
-        state: { returnTo: `/documents/${id}` }
-      });
-    } else {
-      navigate(`/documents/${id}/workspace`, {
+      navigate(getNavPath(id, targetModule.module_key, targetModule.id), {
         state: { returnTo: `/documents/${id}` }
       });
     }
   };
 
-  const handleDeleteDocument = async () => {
-    if (!id || !user?.id || !organisation?.id) return;
+  const handleOpenWorkspace = () => {
+    if (!id) return;
 
-    setIsDeleting(true);
+    const lastVisited = getLastVisitedModule();
+    const targetModuleId = lastVisited && modules.find(m => m.id === lastVisited)
+      ? lastVisited
+      : modules[0]?.id;
+
+    const targetModule = modules.find(m => m.id === targetModuleId);
+    if (!targetModule) {
+      navigate(`/documents/${id}/workspace`, { state: { returnTo: `/documents/${id}` } });
+      return;
+    }
+
+    // Important: Fire Protection is dedicated; do NOT send via workspace navigation
+    navigate(getNavPath(id, targetModule.module_key, targetModule.id), {
+      state: { returnTo: `/documents/${id}` }
+    });
+  };
+
+  const handleBuildDefencePack = async () => {
+    if (!id) return;
+
+    setIsBuildingDefencePack(true);
     try {
-      // Only allow deleting draft documents
-      if (document?.issue_status !== 'draft') {
-        alert('Only draft documents can be deleted');
-        return;
+      const result = await buildDefencePack(id);
+
+      if (result.success) {
+        setDefencePack(result.pack || null);
+        alert('Defence pack created successfully!');
+      } else {
+        alert(result.error || 'Failed to create defence pack');
       }
-
-      // Soft delete: set deleted_at and deleted_by
-      const { error } = await supabase
-        .from('documents')
-        .update({
-          deleted_at: new Date().toISOString(),
-          deleted_by: user.id
-        })
-        .eq('id', id)
-        .eq('organisation_id', organisation.id)
-        .eq('issue_status', 'draft');
-
-      if (error) {
-        console.error('Error deleting document:', error);
-        throw new Error(error.message || 'Failed to delete document');
-      }
-
-      // Navigate back to dashboard
-      navigate(getDashboardRoute(), { replace: true });
     } catch (error: any) {
-      console.error('Error deleting document:', error);
-      alert(error.message || 'Failed to delete document');
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
+      console.error('Error building defence pack:', error);
+      alert(error.message || 'Failed to create defence pack');
+    } finally {
+      setIsBuildingDefencePack(false);
+    }
+  };
+
+  const handleDownloadDefencePack = async () => {
+    if (!defencePack || !document?.id) return;
+
+    try {
+      const filename = `defence_pack_${(document.title || '').replace(/[^a-z0-9]/gi, '_')}_v${document.version_number}.zip`;
+      const result = await downloadDefencePack(document.id, filename);
+      if (!result.success) alert(result.error || 'Failed to download defence pack');
+    } catch (error: any) {
+      console.error('Error downloading defence pack:', error);
+      alert(error.message || 'Failed to download defence pack');
     }
   };
 
   const handleGeneratePdf = async () => {
     if (!id || !document || !organisation) return;
 
-setIsGeneratingPdf(true);
-try {
-  console.log('[PDF Download] Document status:', document.issue_status);
-  const pdfInfo = await getLockedPdfInfo(id);
+    setIsGeneratingPdf(true);
+    try {
+      const pdfInfo = await getLockedPdfInfo(id);
 
-  // If document has a pre-generated locked PDF, open it via signed URL
-  if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
-    console.log('[PDF Download] Found locked PDF, requesting signed URL for document:', id);
-
-    const downloadResult = await downloadLockedPdf(id);
-
-    if (downloadResult.success && downloadResult.signedUrl) {
-      console.log('[PDF Download] Opening signed URL in new tab');
-      window.open(downloadResult.signedUrl, '_blank', 'noopener,noreferrer');
-      setIsGeneratingPdf(false);
-      return;
-    }
-
-    console.warn('[PDF Download] Failed to get signed URL, falling back to regeneration:', downloadResult.error);
-  } else if (document.issue_status !== 'draft') {
-    console.log('[PDF Download] No locked PDF found for issued document, generating on-demand');
-  }
+      if (document.issue_status !== 'draft' && pdfInfo?.locked_pdf_path) {
+        const downloadResult = await downloadLockedPdf(id);
+        if (downloadResult.success && downloadResult.signedUrl) {
+          window.open(downloadResult.signedUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+      }
 
       const { data: moduleInstances, error: moduleError } = await supabase
         .from('module_instances')
@@ -498,8 +487,8 @@ try {
 
       if (actionsError) throw actionsError;
 
-      const actionIds = (actions || []).map(a => a.id);
-      let actionRatings = [];
+      const actionIds = (actions || []).map((a: any) => a.id);
+      let actionRatings: any[] = [];
       if (actionIds.length > 0) {
         const { data: ratings } = await supabase
           .from('action_ratings')
@@ -515,92 +504,114 @@ try {
         moduleInstances: moduleInstances || [],
         actions: actions || [],
         actionRatings,
-        organisation: { id: organisation.id, name: organisation.name, branding_logo_path: organisation.branding_logo_path },
+        organisation: { id: organisation.id, name: organisation.name, branding_logo_path: (organisation as any).branding_logo_path },
         renderMode: (document.issue_status === 'issued' || document.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
       };
 
-      console.log('[PDF Download] Starting PDF generation');
-      console.log('[PDF Download] Document type:', document.document_type);
-      console.log('[PDF Download] Render mode:', pdfOptions.renderMode);
-
-      let pdfBytes;
       const enabledModules = document.enabled_modules || [document.document_type];
-      const isCombined = enabledModules.length > 1 &&
-                         enabledModules.includes('FRA') &&
-                         enabledModules.includes('FSD');
-
-      console.log('[PDF Download] Enabled modules:', enabledModules);
-      console.log('[PDF Download] Is combined:', isCombined);
+      const isCombined = enabledModules.length > 1 && enabledModules.includes('FRA') && enabledModules.includes('FSD');
 
       const PDF_GENERATION_TIMEOUT = 30000;
 
+      let pdfBytes: Uint8Array;
+
       try {
         if (isCombined) {
-          console.log('[PDF Download] Building combined FRA+FSD PDF');
           pdfBytes = await withTimeout(
             buildCombinedPdf(pdfOptions),
             PDF_GENERATION_TIMEOUT,
             'Combined PDF generation timed out after 30 seconds'
           );
         } else if (document.document_type === 'FSD') {
-          console.log('[PDF Download] Building FSD PDF');
           pdfBytes = await withTimeout(
             buildFsdPdf(pdfOptions),
             PDF_GENERATION_TIMEOUT,
             'FSD PDF generation timed out after 30 seconds'
           );
         } else if (document.document_type === 'DSEAR') {
-          console.log('[PDF Download] Building DSEAR PDF');
           pdfBytes = await withTimeout(
             buildDsearPdf(pdfOptions),
             PDF_GENERATION_TIMEOUT,
             'DSEAR PDF generation timed out after 30 seconds'
           );
         } else {
-          console.log('[PDF Download] Building FRA PDF');
           pdfBytes = await withTimeout(
             buildFraPdf(pdfOptions),
             PDF_GENERATION_TIMEOUT,
             'FRA PDF generation timed out after 30 seconds'
           );
         }
-
-        console.log('[PDF Download] PDF generation complete, size:', pdfBytes.length, 'bytes');
-        console.log('[PDF Download] Generated for', document.issue_status === 'issued' ? 'ISSUED' : 'DRAFT', 'document');
-
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const siteName = document.title
-          .replace(/[^a-z0-9]/gi, '_')
-          .replace(/_+/g, '_')
-          .toLowerCase();
-        const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
-        const docType = document.document_type || 'FRA';
-        const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
-
-        console.log('[PDF Download] Downloading file:', filename);
-        saveAs(blob, filename);
-        console.log('[PDF Download] Download complete');
       } catch (pdfError) {
         if (isTimeoutError(pdfError)) {
-          console.error('[PDF Download] PDF generation timed out');
           throw new Error('PDF generation timed out. Please try again or contact support if this persists.');
         }
         throw pdfError;
       }
+
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const siteName = (document.title || '')
+        .replace(/[^a-z0-9]/gi, '_')
+        .replace(/_+/g, '_')
+        .toLowerCase();
+      const dateStr = new Date(document.assessment_date).toISOString().split('T')[0];
+      const docType = document.document_type || 'FRA';
+      const filename = `${docType}_${siteName}_${dateStr}_v${document.version_number}.pdf`;
+
+      saveAs(blob, filename);
     } catch (error) {
       console.error('[PDF Download] Error generating PDF:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       alert(`Failed to generate PDF: ${errorMessage}`);
     } finally {
-      console.log('[PDF Download] Resetting UI state');
       setIsGeneratingPdf(false);
     }
   };
 
-  const completedModules = modules.filter((m) => m.outcome !== null || m.completed_at !== null).length;
+  const handleDeleteDocument = async () => {
+    if (!id || !user?.id || !organisation?.id) return;
+
+    setIsDeleting(true);
+    try {
+      if (document?.issue_status !== 'draft') {
+        alert('Only draft documents can be deleted');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user.id
+        })
+        .eq('id', id)
+        .eq('organisation_id', organisation.id)
+        .eq('issue_status', 'draft');
+
+      if (error) throw new Error(error.message || 'Failed to delete document');
+      navigate(getDashboardRoute(), { replace: true });
+    } catch (error: any) {
+      console.error('Error deleting document:', error);
+      alert(error.message || 'Failed to delete document');
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const completedModules = useMemo(() => {
+    return modules.filter((m) => m.outcome !== null || m.completed_at !== null).length;
+  }, [modules]);
+
   const totalModules = modules.length;
   const completionPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
-  const firstIncomplete = modules.find(m => !m.completed_at);
+
+  // Initial-only spinner (prevents flicker after doc is loaded)
+  if (initialLoading && !document && !documentNotFound) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-red-600" />
+      </div>
+    );
+  }
 
   if (documentNotFound) {
     return (
@@ -621,10 +632,21 @@ try {
     );
   }
 
-  if (isLoading || !document) {
+  if (!document) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-red-600"></div>
+        <Card className="max-w-md mx-auto text-center">
+          <div className="mb-4">
+            <AlertCircle className="w-12 h-12 text-amber-600 mx-auto" />
+          </div>
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Unable to Load Document</h2>
+          <p className="text-neutral-600 mb-6">
+            Please refresh and try again.
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Reload
+          </Button>
+        </Card>
       </div>
     );
   }
@@ -632,6 +654,7 @@ try {
   return (
     <div className="min-h-screen bg-neutral-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
         {/* Back Navigation */}
         <div className="mb-6">
           <button
@@ -689,9 +712,9 @@ try {
           <DraftCompletenessBanner
             documentId={id!}
             issueStatus={document.issue_status}
-            executiveSummaryMode={(document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'ai'}
-            executiveSummaryAi={document.executive_summary_ai}
-            executiveSummaryAuthor={document.executive_summary_author}
+            executiveSummaryMode={(document.executive_summary_mode as any) || 'ai'}
+            executiveSummaryAi={document.executive_summary_ai as any}
+            executiveSummaryAuthor={document.executive_summary_author as any}
             totalActions={totalActions}
             evidenceCount={evidenceCount}
             approvalStatus={document.approval_status}
@@ -721,6 +744,11 @@ try {
                     </Badge>
                     <span className="text-sm text-neutral-500">v{document.version_number}</span>
                     <ApprovalStatusBadge status={document.approval_status} size="sm" />
+                    {(docLoading) && (
+                      <Badge variant="neutral" className="text-xs">
+                        Updating…
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -866,7 +894,7 @@ try {
               >
                 {isGeneratingPdf ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent mr-2" />
                     Downloading...
                   </>
                 ) : (
@@ -987,6 +1015,16 @@ try {
                 <Clock className="w-4 h-4 text-neutral-600" />
                 <span className="text-neutral-900">Version History</span>
               </button>
+              <button
+                onClick={handleBuildDefencePack}
+                disabled={isBuildingDefencePack}
+                className="w-full text-left px-3 py-2 rounded-md hover:bg-neutral-50 transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+              >
+                <Shield className="w-4 h-4 text-neutral-600" />
+                <span className="text-neutral-900">
+                  {isBuildingDefencePack ? 'Building Defence Pack…' : 'Build Defence Pack'}
+                </span>
+              </button>
             </div>
           </Card>
         </div>
@@ -996,13 +1034,13 @@ try {
           <div className="px-6 py-4 border-b border-neutral-200">
             <h2 className="text-lg font-semibold text-neutral-900">Modules</h2>
             <p className="text-sm text-neutral-600 mt-1">
-              Click on a module to open its workspace
+              Click on a module to open it
             </p>
           </div>
 
-          {isLoading ? (
+          {modulesLoading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-red-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-red-600" />
             </div>
           ) : modules.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center px-6">
@@ -1016,8 +1054,12 @@ try {
                   key={module.id}
                   className="px-6 py-4 hover:bg-neutral-50 transition-colors cursor-pointer"
                   onClick={() => {
-                    // Don't save here - workspace will save when loaded
-                    navigate(getModulePath(id!, module.module_key, module.id));
+                    // Save last visited in overview (optional)
+                    saveLastVisitedModule(module.id);
+
+                    navigate(getNavPath(id!, module.module_key, module.id), {
+                      state: { returnTo: `/documents/${id}` }
+                    });
                   }}
                 >
                   <div className="flex items-center justify-between">
@@ -1089,7 +1131,7 @@ try {
           approvalDate={document.approval_date}
           userId={user.id}
           organisationId={organisation.id}
-          userRole={user.role || 'viewer'}
+          userRole={(user as any)?.role || 'viewer'}
           onClose={() => setShowApprovalModal(false)}
           onSuccess={handleIssueSuccess}
         />
@@ -1151,7 +1193,7 @@ try {
               >
                 {isDeleting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                     Deleting...
                   </>
                 ) : (

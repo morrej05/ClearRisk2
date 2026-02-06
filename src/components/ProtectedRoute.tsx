@@ -23,6 +23,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (!authInitialized || loading) {
     return <FullPageLoading />;
   }
+console.warn('[ProtectedRoute redirect]', {
+  to: '/signin',
+  path: location.pathname,
+  authInitialized,
+  loading,
+  hasUser: !!user,
+});
 
   // If logged out, always go to sign-in and preserve where they were headed
   if (!user) {

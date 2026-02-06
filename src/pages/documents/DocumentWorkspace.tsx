@@ -407,9 +407,10 @@ const fetchModules = async () => {
     setIsMobileMenuOpen(false);
 
     // Save workspace module to localStorage (safe - already verified not dedicated)
-    if (id) {
-      localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
-    }
+    if (id && !isDedicatedModule(targetModule.module_key)) {
+  localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
+}
+
   };
 
   const handleModuleSaved = () => {

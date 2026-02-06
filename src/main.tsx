@@ -3,29 +3,26 @@ import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
-// IMPORTANT:
-// Service Workers + hard navigation cause full reloads and flicker in SPA routing,
-// especially in StackBlitz / dev environments.
-// Disable SW entirely unless you explicitly need it in production.
-
 const isProd = import.meta.env.PROD;
 
-if (isProd && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('[App] Service Worker registered:', registration.scope);
-      })
-      .catch((error) => {
-        console.warn('[App] Service Worker registration failed:', error);
-      });
+// DEV: force-remove any previously registered Service Workers + caches
+// This prevents stale SW behaviour causing "flicker" / hard reload / remount loops.
+if (!isProd && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister());
   });
 
-  // ⚠️ DO NOT force window.location navigation inside SPA
-  // If you ever re-enable this, it must route via React Router instead
-  // navigator.serviceWorker.addEventListener('message', ...)
+  if ('caches' in window) {
+    caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+  }
 }
+
+// PROD: (optional) you can re-enable SW later, but do not do hard navigations via window.location
+// if (isProd && 'serviceWorker' in navigator) {
+//   window.addEventListener('load', () => {
+//     navigator.serviceWorker.register('/sw.js').catch(() => {});
+//   });
+// }
 
 createRoot(document.getElementById('root')!).render(
   <AuthProvider>

@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import FireProtectionForm from '../../components/re/FireProtectionForm';
 import ModuleSidebar from '../../components/modules/ModuleSidebar';
-import { getModuleNavigationPath, sortModulesByOrder } from '../../lib/modules/moduleCatalog';
+import { getModuleNavigationPath, sortModulesByOrder, getModuleKeysForDocType } from '../../lib/modules/moduleCatalog';
 import EditLockBanner from '../../components/EditLockBanner';
 import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
 import { JurisdictionSelector } from '../../components/JurisdictionSelector';
@@ -78,7 +78,13 @@ export default function FireProtectionPage() {
           .order('created_at', { ascending: true });
 
         if (modulesData) {
-          const sorted = sortModulesByOrder(modulesData as ModuleInstance[]);
+          // Filter modules to only include those defined in MODULE_CATALOG for RE documents
+          // This excludes hidden modules and any legacy/invalid module keys
+          const expectedKeys = getModuleKeysForDocType('RE');
+          const filtered = modulesData.filter((m: ModuleInstance) =>
+            expectedKeys.includes(m.module_key)
+          );
+          const sorted = sortModulesByOrder(filtered as ModuleInstance[]);
           setModules(sorted);
         }
       }

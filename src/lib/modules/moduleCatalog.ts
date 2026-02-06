@@ -26,13 +26,13 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     docTypes: ['RE'],
     order: 3,
   },
-  RE_06_FIRE_PROTECTION: {
-    name: 'RE-06 – Fire Protection',
+  RE_07_NATURAL_HAZARDS: {
+    name: 'RE-05 – Exposures',
     docTypes: ['RE'],
     order: 4,
   },
-  RE_07_NATURAL_HAZARDS: {
-    name: 'RE-05 – Exposures',
+  RE_06_FIRE_PROTECTION: {
+    name: 'RE-06 – Fire Protection',
     docTypes: ['RE'],
     order: 5,
   },

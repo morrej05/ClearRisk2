@@ -18,7 +18,7 @@ import ModuleSidebar from '../../components/modules/ModuleSidebar';
 console.log('✅ DocumentWorkspace.tsx LOADED - FileText import is present');
 
 // Modules with dedicated routes that should NOT be rendered in workspace
-const DEDICATED_MODULE_KEYS = new Set(['RE_06_FIRE_PROTECTION']);
+const DEDICATED_MODULE_KEYS = new Set<string>([]);
 
 function isDedicatedModule(moduleKey: string): boolean {
   return DEDICATED_MODULE_KEYS.has(moduleKey);

@@ -241,11 +241,6 @@ export function getModuleNavigationPath(
   moduleKey: string,
   moduleInstanceId: string
 ): string {
-  // RE-06 Fire Protection has a dedicated page route
-  if (moduleKey === 'RE_06_FIRE_PROTECTION') {
-    return `/documents/${documentId}/re/fire-protection`;
-  }
-
-  // All other modules use the workspace route with module instance ID
+  // All modules use the workspace route with module instance ID
   return `/documents/${documentId}/workspace?m=${moduleInstanceId}`;
 }

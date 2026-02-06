@@ -24,7 +24,7 @@ function App() {
       <ClientBrandingProvider>
         <ErrorBoundary>
           <Routes>
-            {/* Everything in-app shares ONE AuthedLayout instance */}
+            {/* One shared authed shell */}
             <Route element={<AuthedLayout />}>
               {/* Dashboard */}
               <Route path="/dashboard" element={<ActionsDashboard />} />
@@ -37,7 +37,7 @@ function App() {
               <Route path="/documents/:id/evidence" element={<DocumentEvidence />} />
               <Route path="/documents/:id/preview" element={<DocumentPreviewPage />} />
 
-              {/* Risk Engineering */}
+              {/* Risk Engineering dedicated pages */}
               <Route path="/documents/:id/re/buildings" element={<BuildingsPage />} />
               <Route path="/documents/:id/re/fire-protection" element={<FireProtectionPage />} />
 

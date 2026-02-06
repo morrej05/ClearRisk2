@@ -1,28 +1,37 @@
 import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
+function FullPageLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center text-slate-600">
+      Loading…
+    </div>
+  );
+}
+
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const location = useLocation();
   const { user, authInitialized, loading } = useAuth();
 
-  // Don't decide anything until auth bootstrap finished
+  // During bootstrap / refresh, never render nothing and never redirect
   if (!authInitialized || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <FullPageLoading />;
   }
 
+  // If logged out, always go to sign-in and preserve where they were headed
   if (!user) {
-    return <Navigate to="/signin" replace />;
+    return (
+      <Navigate
+        to="/signin"
+        replace
+        state={{ from: location.pathname + location.search }}
+      />
+    );
   }
 
   return <>{children}</>;

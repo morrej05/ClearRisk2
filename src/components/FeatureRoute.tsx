@@ -30,7 +30,7 @@ export default function FeatureRoute({
   if (isPlatformAdmin(user)) return <>{children}</>;
 
   // Must have org context
-  if (!organisation) return <Navigate to="/dashboard" replace />;
+  if (!organisation) return null;
 
   // Enforce active subscription for paid features
   if (!isSubscriptionActive(organisation)) {

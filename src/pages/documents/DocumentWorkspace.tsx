@@ -273,8 +273,8 @@ export default function DocumentWorkspace() {
     // Update URL to include ?m=
     setSearchParams({ m: targetModule.id }, { replace: true });
 
-    // Save to localStorage (safe - already verified not dedicated)
-    if (id) {
+   // Save to localStorage (skip dedicated modules like RE-06 Fire Protection)
+    if (id && targetModule?.module_key !== 'RE_06_FIRE_PROTECTION') {
       localStorage.setItem(`ezirisk:lastModule:${id}`, targetModule.id);
     }
   }, [modules, id, searchParams, selectedModuleId, navigate]);

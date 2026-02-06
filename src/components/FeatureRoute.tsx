@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isPlatformAdmin } from '../utils/entitlements';
 import {
@@ -16,21 +16,43 @@ interface FeatureRouteProps {
   redirectTo?: string;
 }
 
+function FullPageLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center text-slate-600">
+      Loading…
+    </div>
+  );
+}
+
 export default function FeatureRoute({
   feature,
   children,
   redirectTo = '/upgrade',
 }: FeatureRouteProps) {
+  const location = useLocation();
   const { user, organisation, authInitialized } = useAuth() as any;
 
-  if (!authInitialized) return null;
-  if (!user) return <Navigate to="/signin" replace />;
+  // While auth/org context is hydrating (including during logout transitions),
+  // do NOT redirect to dashboard (causes flicker/loops). Show a safe loader.
+  if (!authInitialized) return <FullPageLoading />;
+
+  // If not signed in, always go to sign-in (and preserve where they came from)
+  if (!user) {
+    return (
+      <Navigate
+        to="/signin"
+        replace
+        state={{ from: location.pathname + location.search }}
+      />
+    );
+  }
 
   // Platform admins bypass all feature gates
   if (isPlatformAdmin(user)) return <>{children}</>;
 
-  // Must have org context
-  if (!organisation) return <div className="p-6 text-slate-600">Loading…</div>;
+  // Org context can briefly be null during route changes/refetch.
+  // Don't bounce to dashboard; wait for org to hydrate.
+  if (!organisation) return <FullPageLoading />;
 
   // Enforce active subscription for paid features
   if (!isSubscriptionActive(organisation)) {

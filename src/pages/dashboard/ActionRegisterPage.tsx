@@ -79,8 +79,13 @@ export default function ActionRegisterPage() {
       getOrgActionStats(organisation.id),
     ]);
 
-    setActions(actionsData);
-    setFilteredActions(actionsData);
+    // Deduplicate actions by ID (in case view returns duplicates)
+    const uniqueActions = Array.from(
+      new Map(actionsData.map(action => [action.id, action])).values()
+    );
+
+    setActions(uniqueActions);
+    setFilteredActions(uniqueActions);
     setOrgStats(statsData);
     setIsLoading(false);
   };

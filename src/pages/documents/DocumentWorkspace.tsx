@@ -18,7 +18,10 @@ import ModuleSidebar from '../../components/modules/ModuleSidebar';
 console.log('✅ DocumentWorkspace.tsx LOADED - FileText import is present');
 
 // Modules with dedicated routes that should NOT be rendered in workspace
-const DEDICATED_MODULE_KEYS = new Set<string>([]);
+const DEDICATED_MODULE_KEYS = new Set<string>([
+  'RE_02_CONSTRUCTION',
+  'RE_06_FIRE_PROTECTION',
+]);
 
 function isDedicatedModule(moduleKey: string): boolean {
   return DEDICATED_MODULE_KEYS.has(moduleKey);
@@ -451,6 +454,14 @@ const fetchModules = async () => {
   };
 
   const selectedModule = modules.find((m) => m.id === selectedModuleId);
+
+  // Guard: Redirect if a dedicated module is selected in workspace
+  useEffect(() => {
+    if (selectedModule && isDedicatedModule(selectedModule.module_key) && id) {
+      console.log('[DocumentWorkspace] Redirecting dedicated module to its dedicated page:', selectedModule.module_key);
+      navigate(getModuleNavigationPath(id, selectedModule.module_key, selectedModule.id), { replace: true });
+    }
+  }, [selectedModule, id, navigate]);
 
   if (documentNotFound) {
     return (

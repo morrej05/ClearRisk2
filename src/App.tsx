@@ -5,6 +5,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ClientBrandingProvider } from './contexts/ClientBrandingContext';
 
 // Dashboard
+import FireSafetyDashboard from './pages/dashboard/FireSafetyDashboard';
 import ActionsDashboard from './pages/dashboard/ActionsDashboard';
 import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
 
@@ -27,7 +28,7 @@ function App() {
             {/* One shared authed shell */}
             <Route element={<AuthedLayout />}>
               {/* Dashboard */}
-              <Route path="/dashboard" element={<ActionsDashboard />} />
+              <Route path="/dashboard" element={<FireSafetyDashboard />} />
               <Route path="/dashboard/actions" element={<ActionsDashboard />} />
               <Route path="/dashboard/action-register" element={<ActionRegisterPage />} />
 

@@ -241,6 +241,14 @@ export function getModuleNavigationPath(
   moduleKey: string,
   moduleInstanceId: string
 ): string {
-  // All modules use the workspace route with module instance ID
+  // Dedicated module routes
+  if (moduleKey === 'RE_02_CONSTRUCTION') {
+    return `/documents/${documentId}/re/buildings`;
+  }
+  if (moduleKey === 'RE_06_FIRE_PROTECTION') {
+    return `/documents/${documentId}/re/fire-protection`;
+  }
+
+  // All other modules use the workspace route with module instance ID
   return `/documents/${documentId}/workspace?m=${moduleInstanceId}`;
 }

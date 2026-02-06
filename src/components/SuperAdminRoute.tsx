@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 interface PlatformAdminRouteProps {
@@ -7,9 +7,11 @@ interface PlatformAdminRouteProps {
 }
 
 export default function PlatformAdminRoute({ children }: PlatformAdminRouteProps) {
-  const { user, userRole, isPlatformAdmin, loading } = useAuth();
+  const location = useLocation();
+  const { user, userRole, isPlatformAdmin, loading, authInitialized } = useAuth();
 
-  if (loading) {
+  // Don’t redirect until auth is fully initialised
+  if (!authInitialized || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -21,7 +23,7 @@ export default function PlatformAdminRoute({ children }: PlatformAdminRouteProps
   }
 
   if (!user) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/signin" replace state={{ from: location.pathname + location.search }} />;
   }
 
   if (userRole !== 'admin' || !isPlatformAdmin) {

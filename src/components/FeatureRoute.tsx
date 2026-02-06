@@ -30,7 +30,7 @@ export default function FeatureRoute({
   if (isPlatformAdmin(user)) return <>{children}</>;
 
   // Must have org context
-  if (!organisation) return null;
+  if (!organisation) return <div className="p-6 text-slate-600">Loading…</div>;
 
   // Enforce active subscription for paid features
   if (!isSubscriptionActive(organisation)) {

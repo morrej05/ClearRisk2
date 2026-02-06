@@ -1,5 +1,10 @@
 import FireProtectionForm from "../../re/FireProtectionForm";
 
+useEffect(() => {
+  console.log('[RE-06] mount');
+  return () => console.log('[RE-06] unmount');
+}, []);
+
 interface Document {
   id: string;
   title: string;
@@ -27,9 +32,4 @@ export default function RE06FireProtectionForm({
 }: RE06FireProtectionFormProps) {
   return <FireProtectionForm documentId={document.id} onSaved={onSaved} />;
 }
-
-useEffect(() => {
-  console.log('[RE-06] mount');
-  return () => console.log('[RE-06] unmount');
-}, []);
 

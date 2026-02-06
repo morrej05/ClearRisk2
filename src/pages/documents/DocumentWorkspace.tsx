@@ -274,9 +274,10 @@ export default function DocumentWorkspace() {
     setSearchParams({ m: targetModule.id }, { replace: true });
 
    // Save to localStorage (skip dedicated modules like RE-06 Fire Protection)
-    if (id && targetModule?.module_key !== 'RE_06_FIRE_PROTECTION') {
-      localStorage.setItem(`ezirisk:lastModule:${id}`, targetModule.id);
-    }
+    if (id && !isDedicatedModule(requestedModule.module_key)) {
+  localStorage.setItem(`ezirisk:lastModule:${id}`, requestedModule.id);
+}
+
   }, [modules, id, searchParams, selectedModuleId, navigate]);
 
   const fetchDocument = async () => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileCheck, Menu, X, List } from 'lucide-react';
+import { ArrowLeft, FileCheck, Menu, X, List, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { sortModulesByOrder, getModuleKeysForDocType, getModuleNavigationPath } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';

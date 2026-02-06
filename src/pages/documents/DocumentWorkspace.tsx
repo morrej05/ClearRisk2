@@ -454,6 +454,11 @@ const fetchModules = async () => {
   };
 
   const selectedModule = modules.find((m) => m.id === selectedModuleId);
+  if (activeModule?.module_key === 'RE_06_FIRE_PROTECTION') {
+  navigate(`/documents/${id}/re/fire-protection`, { replace: true });
+  return;
+}
+
 
   // Guard: Redirect if a dedicated module is selected in workspace
   useEffect(() => {

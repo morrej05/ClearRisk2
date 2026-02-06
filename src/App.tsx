@@ -113,8 +113,23 @@ function App() {
               </AuthedLayout>
             }
           />
-          <Route path="/documents/:id/re/buildings" element={<BuildingsPage />} />
-          <Route path="/documents/:id/re/fire-protection" element={<FireProtectionPage />} />
+          <Route
+            path="/documents/:id/re/buildings"
+            element={
+              <AuthedLayout>
+                <BuildingsPage />
+              </AuthedLayout>
+            }
+          />
+          <Route
+            path="/documents/:id/re/fire-protection"
+            element={
+              <AuthedLayout>
+                <FireProtectionPage />
+              </AuthedLayout>
+            }
+          />
+
           <Route
             path="/documents/:id/preview"
             element={

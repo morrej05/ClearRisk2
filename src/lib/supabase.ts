@@ -1,3 +1,4 @@
+console.log('🔥 SUPABASE FILE LOADED');
 import { createClient } from '@supabase/supabase-js';
 import { DEV_ENV } from '../devEnv';
 

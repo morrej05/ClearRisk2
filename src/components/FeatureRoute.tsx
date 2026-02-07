@@ -30,11 +30,11 @@ export default function FeatureRoute({
   redirectTo = '/upgrade',
 }: FeatureRouteProps) {
   const location = useLocation();
-  const { user, organisation, authInitialized } = useAuth() as any;
+  const { user, organisation, authInitialized, loading } = useAuth() as any;
 
   // While auth/org context is hydrating (including during logout transitions),
   // do NOT redirect to dashboard (causes flicker/loops). Show a safe loader.
-  if (!authInitialized) return <FullPageLoading />;
+  if (!authInitialized || loading) return <FullPageLoading />;
 
   // If not signed in, always go to sign-in (and preserve where they came from)
   if (!user) {

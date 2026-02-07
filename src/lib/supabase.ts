@@ -1,6 +1,7 @@
-console.log('🔥 SUPABASE FILE LOADED');
 import { createClient } from '@supabase/supabase-js';
 import { DEV_ENV } from '../devEnv';
+
+console.log('🔥 SUPABASE FILE LOADED');
 
 const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ||
@@ -9,6 +10,12 @@ const supabaseUrl =
 const supabaseAnonKey =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   (import.meta.env.DEV ? DEV_ENV.SUPABASE_ANON_KEY : '');
+
+console.log('🔥 SUPABASE VALUES', {
+  url: supabaseUrl,
+  hasAnonKey: !!supabaseAnonKey,
+  mode: import.meta.env.MODE,
+});
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
@@ -24,7 +31,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// DEV helper for console debugging
 if (import.meta.env.DEV) {
   (window as any).supabase = supabase;
 }

@@ -1,7 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
+import { DEV_ENV } from '../devEnv';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ||
+  (import.meta.env.DEV ? DEV_ENV.SUPABASE_URL : '');
+
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  (import.meta.env.DEV ? DEV_ENV.SUPABASE_ANON_KEY : '');
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error(
+    'Supabase config missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (or DEV_ENV in Bolt).'
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -10,12 +22,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
 });
-// DEV ONLY
-;(window as any).supabase = supabase;
 
-
-// Dev helper for console debugging
+// DEV helper for console debugging
 if (import.meta.env.DEV) {
-  // @ts-ignore
-  window.supabase = supabase;
+  (window as any).supabase = supabase;
 }

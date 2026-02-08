@@ -12,8 +12,8 @@ export default function PrimaryNavigation() {
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
-      return location.pathname === path;
-    }
+  return location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/');
+}
     return location.pathname.startsWith(path);
   };
 

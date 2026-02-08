@@ -21,6 +21,7 @@ import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
 // Assessments
 import AssessmentsList from './pages/AssessmentsList';
 import ArchivedAssessments from './pages/ArchivedAssessments';
+import AssessmentEditor from './pages/AssessmentEditor';
 
 // Admin
 import AdminDashboard from './pages/AdminDashboard';

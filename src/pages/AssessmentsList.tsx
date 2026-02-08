@@ -263,12 +263,23 @@ export default function AssessmentsList() {
                           Edit
                         </button>
                         <button
-                          onClick={() => navigate(`/assessments/${assessment.id}/report`)}
-                          className="text-neutral-600 hover:text-neutral-900"
-                          title="Assessment Report"
+                          onClick={() => {
+                            const docId = (assessment as any).document_id;
+                        
+                            if (!docId) {
+                              alert('This assessment is not linked to a document yet, so modules cannot load.');
+                              return;
+                            }
+                        
+                            // 🔒 FORCE old module workspace
+                            navigate(`/documents/${docId}/workspace`);
+                          }}
+                          className="text-primary-600 hover:text-primary-900"
+                          title="Edit"
                         >
-                          <FileText className="w-4 h-4" />
+                          Edit
                         </button>
+
                         <button
                           onClick={() => navigate(`/assessments/${assessment.id}/recommendations`)}
                           className="text-neutral-600 hover:text-neutral-900"

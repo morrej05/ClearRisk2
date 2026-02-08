@@ -207,6 +207,10 @@ export default function AssessmentEditor() {
     );
   }
 
+  if (!id) {
+    return <Navigate to="/assessments" replace />;
+  }
+
   if (!user || !organisation) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">

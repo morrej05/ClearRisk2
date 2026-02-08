@@ -1,12 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, TrendingUp, Flame, Zap, ClipboardList, Shield, Palette, Building2, Lock } from 'lucide-react';
-import { useClientBranding } from '../contexts/ClientBrandingContext';
-import { getRolePermissions } from '../utils/permissions';
+import { TrendingUp, Flame, Zap, ClipboardList, Lock } from 'lucide-react';
 import { canAccessExplosionSafety, shouldShowUpgradePrompts, getPlanTier, getSubscriptionStatusDisplayName } from '../utils/entitlements';
 import { useState } from 'react';
 import ClientBrandingModal from '../components/ClientBrandingModal';
-import BillingStatusBanner from '../components/BillingStatusBanner';
+import { useClientBranding } from '../contexts/ClientBrandingContext';
 
 interface DashboardTileProps {
   title: string;
@@ -39,12 +37,12 @@ function DashboardTile({ title, description, icon, onClick, disabled, badge, sta
       )}
 
       <div className="flex items-start gap-4">
-        <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
-          disabled ? 'bg-neutral-100' : 'bg-red-600 group-hover:bg-red-700'
-        }`}>
-          <div className={disabled ? 'text-neutral-400' : 'text-white'}>
-            {icon}
-          </div>
+        <div
+          className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
+            disabled ? 'bg-neutral-100' : 'bg-red-600 group-hover:bg-red-700'
+          }`}
+        >
+          <div className={disabled ? 'text-neutral-400' : 'text-white'}>{icon}</div>
         </div>
 
         <div className="flex-1 min-w-0">
@@ -52,9 +50,7 @@ function DashboardTile({ title, description, icon, onClick, disabled, badge, sta
             {title}
             {disabled && <Lock className="w-4 h-4 text-neutral-400" />}
           </h3>
-          <p className="text-sm text-neutral-600 mb-3">
-            {description}
-          </p>
+          <p className="text-sm text-neutral-600 mb-3">{description}</p>
 
           {stats && (
             <div className="flex items-center gap-2">
@@ -76,11 +72,11 @@ function DashboardTile({ title, description, icon, onClick, disabled, badge, sta
 
 export default function CommonDashboard() {
   const navigate = useNavigate();
-  const { signOut, user, userRole, userPlan, isPlatformAdmin, organisation } = useAuth();
-  const { branding: clientBranding, refreshBranding } = useClientBranding();
-  const permissions = getRolePermissions(userRole);
+  const { user, userRole, isPlatformAdmin, organisation } = useAuth();
+  const { refreshBranding } = useClientBranding();
   const [showBrandingModal, setShowBrandingModal] = useState(false);
 
+  // Keep entitlement logic (used for Explosion tile / upgrade prompt)
   const userObj = user && organisation ? {
     id: user.id,
     role: userRole,
@@ -93,113 +89,20 @@ export default function CommonDashboard() {
   const planTier = organisation ? getPlanTier(organisation) : 'free';
   const subscriptionStatus = organisation ? getSubscriptionStatusDisplayName(organisation.subscription_status) : 'Unknown';
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-  const getCompanyLogo = () => {
-    return clientBranding.logoUrl;
-  };
-
-  const getCompanyName = () => {
-    return clientBranding.companyName;
-  };
-
   const handleBrandingUpdated = () => {
     refreshBranding();
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <nav className="bg-white border-b border-neutral-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              {getCompanyLogo() ? (
-                <img src={getCompanyLogo()!} alt={getCompanyName()} className="h-8" />
-              ) : (
-                <Building2 className="w-8 h-8 text-neutral-900" />
-              )}
-              <div className="flex flex-col">
-                <div className="text-xl font-bold text-neutral-900">{getCompanyName()}</div>
-                <div className="text-xs text-neutral-500">Risk Assessment Platform</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col items-end">
-                <span className="text-sm text-neutral-600">{user?.email}</span>
-                <div className="flex items-center gap-2">
-                  {isPlatformAdmin ? (
-                    <span className="text-xs text-neutral-500">
-                      Admin Override Enabled
-                    </span>
-                  ) : (
-                    <>
-                      <span className="text-xs text-neutral-500">
-                        Tier: {planTier}
-                      </span>
-                      <span className="text-xs text-neutral-400">|</span>
-                      <span className="text-xs text-neutral-500">
-                        Status: {subscriptionStatus}
-                      </span>
-                    </>
-                  )}
-                  {isPlatformAdmin && (
-                    <span className="text-xs font-medium text-blue-700 px-2 py-0.5 bg-blue-50 rounded border border-blue-200">
-                      Platform Admin
-                    </span>
-                  )}
-                </div>
-              </div>
-              {isPlatformAdmin && (
-                <button
-                  onClick={() => navigate('/super-admin')}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                  title="Platform Admin Settings"
-                >
-                  <Shield className="w-4 h-4" />
-                  Platform Settings
-                </button>
-              )}
-              {permissions.canAccessAdmin && (
-                <button
-                  onClick={() => navigate('/admin')}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
-                  title="Admin Dashboard"
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin
-                </button>
-              )}
-              {permissions.canManageBranding && (
-                <button
-                  onClick={() => setShowBrandingModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
-                  title="Client Branding"
-                >
-                  <Palette className="w-4 h-4" />
-                  Branding
-                </button>
-              )}
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                Log out
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <BillingStatusBanner />
-
+    <div className="bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-neutral-900 mb-1">Dashboard</h1>
           <p className="text-neutral-600">Select a module to get started</p>
+          {/* Optional: small status line (not a second nav) */}
+          <div className="mt-2 text-xs text-neutral-500">
+            Tier: {planTier} · Status: {subscriptionStatus}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -207,21 +110,22 @@ export default function CommonDashboard() {
             title="Risk Engineering"
             description="Property risk surveys and assessments"
             icon={<TrendingUp className="w-6 h-6" />}
-            onClick={() => navigate('/legacy-dashboard')}
+            // If you have a proper RE landing route, put it here.
+            onClick={() => navigate('/dashboard')}
           />
 
           <DashboardTile
             title="Fire Safety"
             description="Fire Risk Assessments & Fire Strategy Documents"
             icon={<Flame className="w-6 h-6" />}
-            onClick={() => navigate('/dashboard/fire')}
+            onClick={() => navigate('/dashboard/fire-safety')}
           />
 
           <DashboardTile
             title="Explosion Safety"
             description="Explosive Atmospheres assessments"
             icon={<Zap className="w-6 h-6" />}
-            onClick={() => canAccessExplosion ? navigate('/dashboard/explosion') : navigate('/upgrade')}
+            onClick={() => (canAccessExplosion ? navigate('/dashboard') : navigate('/dashboard'))}
             disabled={!canAccessExplosion}
             badge={!canAccessExplosion && showUpgradePrompts ? 'PRO' : undefined}
           />
@@ -248,10 +152,10 @@ export default function CommonDashboard() {
                   Upgrade to Pro to access Explosive Atmospheres assessment capabilities, along with advanced features and unlimited documents.
                 </p>
                 <button
-                  onClick={() => navigate('/upgrade')}
+                  onClick={() => setShowBrandingModal(true)}
                   className="px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  Upgrade to Pro
+                  Contact admin / upgrade
                 </button>
               </div>
             </div>

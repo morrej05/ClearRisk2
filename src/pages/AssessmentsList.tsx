@@ -250,28 +250,12 @@ export default function AssessmentsList() {
                         <button
                           onClick={() => {
                             const docId = (assessment as any).document_id;
-                            if (docId) {
-                              navigate(`/documents/${docId}`);
-                            } else {
-                              console.warn(`Assessment ${assessment.id} missing document_id, using legacy route`);
-                              navigate(`/assessments/${assessment.id}/edit`);
-                            }
-                          }}
-                          className="text-primary-600 hover:text-primary-900"
-                          title="Edit"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => {
-                            const docId = (assessment as any).document_id;
-                        
+
                             if (!docId) {
-                              alert('This assessment is not linked to a document yet, so modules cannot load.');
+                              alert('This assessment is not linked to a document yet.');
                               return;
                             }
-                        
-                            // 🔒 FORCE old module workspace
+
                             navigate(`/documents/${docId}/workspace`);
                           }}
                           className="text-primary-600 hover:text-primary-900"

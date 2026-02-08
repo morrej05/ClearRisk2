@@ -76,7 +76,7 @@ function App() {
             </Route>
 
             {/* ✅ GLOBAL FALLBACK */}
-            <Route path="*" element={fallbackElement} />
+            <Route path="*" element={<NotFoundDebug />} />
           </Routes>
         </ErrorBoundary>
       </ClientBrandingProvider>

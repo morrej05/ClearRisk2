@@ -18,14 +18,23 @@ export default function PrimaryNavigation() {
   };
 
   const navItems = [
-    { label: 'Dashboard', path: '/dashboard', show: true },
-    { label: 'Assessments', path: '/assessments', show: true },
-    { label: 'Reports', path: '/reports', show: true },
-    { label: 'Impairments', path: '/impairments', show: isFeatureEnabled('IMPAIRMENTS_ENABLED') },
-    { label: 'Library', path: '/library', show: true },
-    { label: 'Admin', path: '/admin', show: user && canAccessAdmin(user as any) },
-    { label: 'Platform', path: '/platform', show: user && canAccessPlatformSettings(user as any) },
-  ];
+  { label: 'Dashboard', path: '/dashboard', show: true },
+
+  // "Assessments" should go somewhere real. Best current target is Fire Safety area.
+  { label: 'Assessments', path: '/dashboard/fire-safety', show: true },
+
+  // If you don’t have a dedicated reports page yet, point to Library (or set show:false).
+  { label: 'Reports', path: '/library', show: true },
+
+  { label: 'Impairments', path: '/impairments', show: isFeatureEnabled('IMPAIRMENTS_ENABLED') },
+  { label: 'Library', path: '/library', show: true },
+
+  // Only show these when real routes/pages exist.
+  // For now: hide them to avoid confusion.
+  { label: 'Admin', path: '/admin', show: false },
+  { label: 'Platform', path: '/platform', show: false },
+];
+
 
   const handleSignOut = async () => {
     await signOut();

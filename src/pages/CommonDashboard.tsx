@@ -110,22 +110,21 @@ export default function CommonDashboard() {
             title="Risk Engineering"
             description="Property risk surveys and assessments"
             icon={<TrendingUp className="w-6 h-6" />}
-            // If you have a proper RE landing route, put it here.
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/assessments')}
           />
 
           <DashboardTile
             title="Fire Safety"
             description="Fire Risk Assessments & Fire Strategy Documents"
             icon={<Flame className="w-6 h-6" />}
-            onClick={() => navigate('/dashboard/fire-safety')}
+            onClick={() => navigate('/assessments')}
           />
 
           <DashboardTile
             title="Explosion Safety"
             description="Explosive Atmospheres assessments"
             icon={<Zap className="w-6 h-6" />}
-            onClick={() => (canAccessExplosion ? navigate('/dashboard') : navigate('/dashboard'))}
+            onClick={() => navigate('/assessments')}
             disabled={!canAccessExplosion}
             badge={!canAccessExplosion && showUpgradePrompts ? 'PRO' : undefined}
           />

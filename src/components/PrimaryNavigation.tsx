@@ -17,23 +17,17 @@ export default function PrimaryNavigation() {
     return location.pathname.startsWith(path);
   };
 
+  const userObj = user ? { ...user, role: (user as any).role, is_platform_admin: (user as any).is_platform_admin } : null;
+
   const navItems = [
-  { label: 'Dashboard', path: '/dashboard', show: true },
-
-  // "Assessments" should go somewhere real. Best current target is Fire Safety area.
-  { label: 'Assessments', path: '/dashboard/fire-safety', show: true },
-
-  // If you don’t have a dedicated reports page yet, point to Library (or set show:false).
-  { label: 'Reports', path: '/library', show: true },
-
-  { label: 'Impairments', path: '/impairments', show: isFeatureEnabled('IMPAIRMENTS_ENABLED') },
-  { label: 'Library', path: '/library', show: true },
-
-  // Only show these when real routes/pages exist.
-  // For now: hide them to avoid confusion.
-  { label: 'Admin', path: '/admin', show: false },
-  { label: 'Platform', path: '/platform', show: false },
-];
+    { label: 'Dashboard', path: '/dashboard', show: true },
+    { label: 'Assessments', path: '/assessments', show: true },
+    { label: 'Reports', path: '/library', show: false },
+    { label: 'Impairments', path: '/impairments', show: isFeatureEnabled('IMPAIRMENTS_ENABLED') },
+    { label: 'Library', path: '/library', show: true },
+    { label: 'Admin', path: '/admin', show: userObj ? canAccessAdmin(userObj) : false },
+    { label: 'Platform', path: '/super-admin', show: userObj ? canAccessPlatformSettings(userObj) : false },
+  ];
 
 
   const handleSignOut = async () => {

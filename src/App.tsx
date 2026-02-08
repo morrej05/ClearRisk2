@@ -9,13 +9,22 @@ import { useAuth } from './contexts/AuthContext';
 // Public
 import SignIn from './pages/SignIn';
 
-// ✅ Common dashboard (two tiles + AI summary)
+// Common dashboard
 import CommonDashboard from './pages/CommonDashboard';
 
 // Dashboards
 import FireSafetyDashboard from './pages/dashboard/FireSafetyDashboard';
 import ActionsDashboard from './pages/dashboard/ActionsDashboard';
 import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
+
+// Assessments
+import AssessmentsList from './pages/AssessmentsList';
+import ArchivedAssessments from './pages/ArchivedAssessments';
+
+// Admin
+import AdminDashboard from './pages/AdminDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import UpgradePage from './pages/UpgradePage';
 
 // EziRisk pages
 import ImpairmentsPage from './pages/ezirisk/ImpairmentsPage';
@@ -62,13 +71,19 @@ function App() {
               {/* Canonical dashboard */}
               <Route path="/dashboard" element={<CommonDashboard />} />
 
-              {/* Legacy alias */}
-              <Route path="/common-dashboard" element={<Navigate to="/dashboard" replace />} />
-
               {/* Fire Safety area */}
               <Route path="/dashboard/fire-safety" element={<FireSafetyDashboard />} />
               <Route path="/dashboard/actions" element={<ActionsDashboard />} />
               <Route path="/dashboard/action-register" element={<ActionRegisterPage />} />
+
+              {/* Assessments */}
+              <Route path="/assessments" element={<AssessmentsList />} />
+              <Route path="/assessments/archived" element={<ArchivedAssessments />} />
+
+              {/* Admin */}
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/super-admin" element={<SuperAdminDashboard />} />
+              <Route path="/upgrade" element={<UpgradePage />} />
 
               {/* EziRisk */}
               <Route path="/impairments" element={<ImpairmentsPage />} />
@@ -83,12 +98,6 @@ function App() {
               {/* Risk Engineering pages */}
               <Route path="/documents/:id/re/buildings" element={<BuildingsPage />} />
               <Route path="/documents/:id/re/fire-protection" element={<FireProtectionPage />} />
-
-              {/* TEMP: keep these only if PrimaryNavigation still points at them */}
-              <Route path="/assessments" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/platform" element={<Navigate to="/dashboard" replace />} />
             </Route>
 
             {/* Global fallback */}

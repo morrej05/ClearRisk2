@@ -9,7 +9,10 @@ import { useAuth } from './contexts/AuthContext';
 // Public
 import SignIn from './pages/SignIn';
 
-// Dashboard
+// ✅ Common dashboard (two tiles + AI summary)
+import CommonDashboard from './pages/CommonDashboard';
+
+// Dashboards
 import FireSafetyDashboard from './pages/dashboard/FireSafetyDashboard';
 import ActionsDashboard from './pages/dashboard/ActionsDashboard';
 import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
@@ -31,10 +34,7 @@ import FireProtectionPage from './pages/re/FireProtectionPage';
 function App() {
   const { user, authInitialized, loading } = useAuth();
 
-  // Single source of truth for “where should this go?”
-  // - While hydrating: show a visible loader
-  // - Authed: go to /dashboard
-  // - Unauthed: go to /signin
+  // Canonical "what should happen if we hit / or an unknown route"
   const fallbackElement =
     !authInitialized || loading ? (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -51,23 +51,22 @@ function App() {
       <ClientBrandingProvider>
         <ErrorBoundary>
           <Routes>
-            {/* ✅ PUBLIC */}
+            {/* PUBLIC */}
             <Route path="/signin" element={<SignIn />} />
 
-            {/* ✅ ROOT ENTRY */}
+            {/* Root entry */}
             <Route path="/" element={fallbackElement} />
 
-            {/* ✅ AUTHED (nested under layout) */}
+            {/* AUTHED */}
             <Route element={<AuthedLayout />}>
-              {/* Legacy / nav aliases (stop “No routes matched…”) */}
-              <Route path="/common-dashboard" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/assessments" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/platform" element={<Navigate to="/dashboard" replace />} />
+              {/* Canonical dashboard */}
+              <Route path="/dashboard" element={<CommonDashboard />} />
 
-              {/* Dashboard */}
-              <Route path="/dashboard" element={<FireSafetyDashboard />} />
+              {/* Legacy alias */}
+              <Route path="/common-dashboard" element={<Navigate to="/dashboard" replace />} />
+
+              {/* Fire Safety area */}
+              <Route path="/dashboard/fire-safety" element={<FireSafetyDashboard />} />
               <Route path="/dashboard/actions" element={<ActionsDashboard />} />
               <Route path="/dashboard/action-register" element={<ActionRegisterPage />} />
 
@@ -81,12 +80,18 @@ function App() {
               <Route path="/documents/:id/evidence" element={<DocumentEvidence />} />
               <Route path="/documents/:id/preview" element={<DocumentPreviewPage />} />
 
-              {/* Risk Engineering dedicated pages */}
+              {/* Risk Engineering pages */}
               <Route path="/documents/:id/re/buildings" element={<BuildingsPage />} />
               <Route path="/documents/:id/re/fire-protection" element={<FireProtectionPage />} />
+
+              {/* TEMP: keep these only if PrimaryNavigation still points at them */}
+              <Route path="/assessments" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/platform" element={<Navigate to="/dashboard" replace />} />
             </Route>
 
-            {/* ✅ GLOBAL FALLBACK (IMPORTANT: do NOT send authed users to /signin) */}
+            {/* Global fallback */}
             <Route path="*" element={fallbackElement} />
           </Routes>
         </ErrorBoundary>

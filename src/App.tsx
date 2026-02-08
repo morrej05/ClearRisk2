@@ -72,8 +72,6 @@ function App() {
               {/* Canonical dashboard */}
               <Route path="/dashboard" element={<CommonDashboard />} />
 
-              <Route path="/assessments/:id" element={<AssessmentEditor />} />
-
               {/* Fire Safety area */}
               <Route path="/dashboard/fire-safety" element={<FireSafetyDashboard />} />
               <Route path="/dashboard/actions" element={<ActionsDashboard />} />
@@ -82,6 +80,7 @@ function App() {
               {/* Assessments */}
               <Route path="/assessments" element={<AssessmentsList />} />
               <Route path="/assessments/archived" element={<ArchivedAssessments />} />
+              <Route path="/assessments/:id" element={<AssessmentEditor />} />
 
               {/* Admin */}
               <Route path="/admin" element={<AdminDashboard />} />

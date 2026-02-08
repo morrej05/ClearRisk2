@@ -22,6 +22,20 @@ import DocumentPreviewPage from './pages/documents/DocumentPreviewPage';
 // Risk Engineering
 import BuildingsPage from './pages/re/BuildingsPage';
 import FireProtectionPage from './pages/re/FireProtectionPage';
+import { useLocation } from 'react-router-dom';
+
+function NotFoundDebug() {
+  const loc = useLocation();
+  return (
+    <div style={{ padding: 24 }}>
+      <h2>Route not found</h2>
+      <div><b>Path:</b> {loc.pathname}</div>
+      <div><b>Search:</b> {loc.search}</div>
+      <div><b>Hash:</b> {loc.hash}</div>
+    </div>
+  );
+}
+
 
 function App() {
   const { user, authInitialized, loading } = useAuth();

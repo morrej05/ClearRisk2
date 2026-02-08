@@ -3,6 +3,23 @@ import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
+const maybeInitMonitoring = () => {
+  const mf = (window as any).mf || (window as any).MF;
+  const mfParams = import.meta.env.VITE_MF_PARAMS;
+
+  if (!mf || typeof mf.init !== 'function' || !mfParams) {
+    return;
+  }
+
+  try {
+    mf.init(mfParams);
+  } catch (error) {
+    console.warn('[MF] Monitoring init skipped:', error);
+  }
+};
+
+maybeInitMonitoring();
+
 // Register service worker for safe navigation handling
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

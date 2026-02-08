@@ -5,6 +5,7 @@ import AuthedLayout from './components/AuthedLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ClientBrandingProvider } from './contexts/ClientBrandingContext';
 import { useAuth } from './contexts/AuthContext';
+import AssessmentEditor from './pages/AssessmentEditor';
 
 // Public
 import SignIn from './pages/SignIn';
@@ -70,6 +71,8 @@ function App() {
             <Route element={<AuthedLayout />}>
               {/* Canonical dashboard */}
               <Route path="/dashboard" element={<CommonDashboard />} />
+
+              <Route path="/assessments/:id" element={<AssessmentEditor />} />
 
               {/* Fire Safety area */}
               <Route path="/dashboard/fire-safety" element={<FireSafetyDashboard />} />

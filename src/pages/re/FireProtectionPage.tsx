@@ -757,6 +757,4 @@ export default function FireProtectionPage() {
     </div>
   );
 }
-  useEffect(() => {
-    console.log('[RE06] loading state changed:', loading);
-  }, [loading]);
+ 

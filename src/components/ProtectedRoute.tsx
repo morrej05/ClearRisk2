@@ -2,28 +2,19 @@ import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-interface ProtectedRouteProps {
-  children: ReactNode;
-}
-
-function FullPageLoading() {
-  return (
-    <div className="min-h-screen flex items-center justify-center text-slate-600">
-      Loading…
-    </div>
-  );
-}
-
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { user, loading, authInitialized } = useAuth();
   const location = useLocation();
-  const { user, authInitialized, loading } = useAuth();
 
-  // Always render something while auth/profile is hydrating
+  // Do not redirect while auth is hydrating (this prevents "kicked out" on navigation)
   if (!authInitialized || loading) {
-    return <FullPageLoading />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-slate-600">Loading…</div>
+      </div>
+    );
   }
 
-  // ✅ Only gate on actual sign-in state
   if (!user) {
     return (
       <Navigate
@@ -34,6 +25,5 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // ✅ If user exists, never redirect from here
   return <>{children}</>;
 }

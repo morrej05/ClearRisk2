@@ -5,7 +5,7 @@ import AuthedLayout from './components/AuthedLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ClientBrandingProvider } from './contexts/ClientBrandingContext';
 import { useAuth } from './contexts/AuthContext';
-import AssessmentEditor from './pages/AssessmentEditor';
+import AssessmentToDocumentRedirect from './components/AssessmentToDocumentRedirect';
 
 // Public
 import SignIn from './pages/SignIn';
@@ -80,7 +80,7 @@ function App() {
               {/* Assessments */}
               <Route path="/assessments" element={<AssessmentsList />} />
               <Route path="/assessments/archived" element={<ArchivedAssessments />} />
-              <Route path="/assessments/:id" element={<AssessmentEditor />} />
+              <Route path="/assessments/:id" element={<AssessmentToDocumentRedirect />} />
 
               {/* Admin */}
               <Route path="/admin" element={<AdminDashboard />} />

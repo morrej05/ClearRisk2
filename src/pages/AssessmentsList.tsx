@@ -248,7 +248,10 @@ export default function AssessmentsList() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => navigate(`/assessments/${assessment.id}`)}
+                          onClick={() => {
+                            const docId = (assessment as any).document_id ?? assessment.id;
+                            navigate(`/documents/${docId}`);
+                          }}
                           className="text-primary-600 hover:text-primary-900"
                           title="Edit"
                         >

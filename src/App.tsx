@@ -61,6 +61,11 @@ function App() {
 
             {/* ✅ AUTHED */}
             <Route element={<AuthedLayout />}>
+              <Route path="/assessments" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/assessments" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
+
               {/* Dashboard */}
               <Route path="/dashboard" element={<FireSafetyDashboard />} />
               <Route path="/dashboard/actions" element={<ActionsDashboard />} />

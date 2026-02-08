@@ -57,6 +57,8 @@ function App() {
             {/* ✅ PUBLIC */}
             <Route path="/signin" element={<SignIn />} />
 
+            <Route path="/" element={fallbackElement} />
+
             {/* ✅ AUTHED */}
             <Route element={<AuthedLayout />}>
               {/* Dashboard */}
@@ -76,8 +78,7 @@ function App() {
             </Route>
 
             {/* ✅ GLOBAL FALLBACK */}
-            <Route path="*" element={<NotFoundDebug />} />
-          </Routes>
+                      </Routes>
         </ErrorBoundary>
       </ClientBrandingProvider>
     </BrowserRouter>

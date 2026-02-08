@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthedLayout from './components/AuthedLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ClientBrandingProvider } from './contexts/ClientBrandingContext';
+import { useAuth } from './contexts/AuthContext';
 
 // ✅ Use your existing sign-in component (adjust the path to wherever it lives)
 import SignIn from './pages/SignIn';
@@ -23,6 +24,17 @@ import BuildingsPage from './pages/re/BuildingsPage';
 import FireProtectionPage from './pages/re/FireProtectionPage';
 
 function App() {
+  const { user, authInitialized, loading } = useAuth();
+  const fallbackElement = !authInitialized || loading
+    ? (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="text-slate-600">Loading…</div>
+        </div>
+      )
+    : user
+      ? <Navigate to="/dashboard" replace />
+      : <Navigate to="/signin" replace />;
+
   return (
     <BrowserRouter>
       <ClientBrandingProvider>
@@ -50,7 +62,7 @@ function App() {
             </Route>
 
             {/* ✅ GLOBAL FALLBACK */}
-            <Route path="*" element={<Navigate to="/signin" replace />} />
+            <Route path="*" element={fallbackElement} />
           </Routes>
         </ErrorBoundary>
       </ClientBrandingProvider>

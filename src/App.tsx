@@ -67,6 +67,7 @@ function App() {
               <Route path="/dashboard/action-register" element={<ActionRegisterPage />} />
 
               {/* Documents */}
+              <Route path="/common-dashboard" element={<Navigate to="/dashboard" replace />} />
               <Route path="/documents/:id" element={<DocumentOverview />} />
               <Route path="/documents/:id/workspace" element={<DocumentWorkspace />} />
               <Route path="/documents/:id/evidence" element={<DocumentEvidence />} />

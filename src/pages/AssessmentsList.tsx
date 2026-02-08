@@ -249,8 +249,13 @@ export default function AssessmentsList() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => {
-                            const docId = (assessment as any).document_id ?? assessment.id;
-                            navigate(`/documents/${docId}`);
+                            const docId = (assessment as any).document_id;
+                            if (docId) {
+                              navigate(`/documents/${docId}`);
+                            } else {
+                              console.warn(`Assessment ${assessment.id} missing document_id, using legacy route`);
+                              navigate(`/assessments/${assessment.id}/edit`);
+                            }
                           }}
                           className="text-primary-600 hover:text-primary-900"
                           title="Edit"

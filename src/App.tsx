@@ -80,6 +80,7 @@ function App() {
               {/* Assessments */}
               <Route path="/assessments" element={<AssessmentsList />} />
               <Route path="/assessments/archived" element={<ArchivedAssessments />} />
+              <Route path="/assessments/:id/edit" element={<AssessmentEditor />} />
               <Route path="/assessments/:id" element={<AssessmentToDocumentRedirect />} />
 
               {/* Admin */}

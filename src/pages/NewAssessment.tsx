@@ -65,7 +65,7 @@ export default function NewAssessment() {
         ? `${formData.site_name} — FRA + FSD`
         : `${formData.site_name} — ${docType}`;
 
-      // Create the document
+      // 1. Create the document FIRST
       const { data: document, error: docError } = await supabase
         .from('documents')
         .insert({
@@ -73,6 +73,8 @@ export default function NewAssessment() {
           document_type: docType,
           enabled_modules: enabledModules,
           title: title,
+          status: 'draft',
+          version: 1,
           assessment_date: formData.assessment_date,
           assessor_name: formData.assessor_name,
           standards_selected: [],
@@ -82,6 +84,7 @@ export default function NewAssessment() {
         .single();
 
       if (docError) throw docError;
+      if (!document?.id) throw new Error('Document creation failed - no ID returned');
 
       // Update base_document_id to point to itself
       const { error: updateError } = await supabase
@@ -90,6 +93,22 @@ export default function NewAssessment() {
         .eq('id', document.id);
 
       if (updateError) throw updateError;
+
+      // 2. Create the assessments row with document_id link
+      const { error: assessmentError } = await supabase
+        .from('assessments')
+        .insert({
+          org_id: organisation.id,
+          type: formData.type,
+          jurisdiction: formData.jurisdiction,
+          site_name: formData.site_name,
+          client_name: formData.client_name || null,
+          status: 'draft',
+          assessment_date: formData.assessment_date,
+          document_id: document.id,
+        });
+
+      if (assessmentError) throw assessmentError;
 
       // Get module keys for all enabled module types
       const allModuleKeys: string[] = [];

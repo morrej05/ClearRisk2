@@ -22,6 +22,7 @@ import ActionRegisterPage from './pages/dashboard/ActionRegisterPage';
 import AssessmentsList from './pages/AssessmentsList';
 import ArchivedAssessments from './pages/ArchivedAssessments';
 import AssessmentEditor from './pages/AssessmentEditor';
+import NewAssessment from './pages/NewAssessment';
 
 // Admin
 import AdminDashboard from './pages/AdminDashboard';
@@ -80,6 +81,7 @@ function App() {
 
               {/* Assessments */}
               <Route path="/assessments" element={<AssessmentsList />} />
+              <Route path="/assessments/new" element={<NewAssessment />} />
               <Route path="/assessments/archived" element={<ArchivedAssessments />} />
               <Route path="/assessments/:id/edit" element={<AssessmentEditor />} />
               <Route path="/assessments/:id" element={<AssessmentToDocumentRedirect />} />

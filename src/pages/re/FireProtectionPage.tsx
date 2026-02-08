@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, AlertTriangle, Info, Droplet, Building, TrendingUp, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -33,6 +33,7 @@ import {
 } from '../../lib/re/fireProtectionModel';
 
 export default function FireProtectionPage() {
+  console.count('FireProtectionPage render');
   const { id: documentId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -47,15 +48,12 @@ export default function FireProtectionPage() {
   // Site water
   const [siteWater, setSiteWater] = useState<SiteWaterRecord | null>(null);
   const [siteWaterData, setSiteWaterData] = useState<SiteWaterData>({});
-  const [siteWaterScore, setSiteWaterScore] = useState<number>(3);
   const [siteWaterComments, setSiteWaterComments] = useState('');
 
   // Building sprinklers
   const [buildingSprinklers, setBuildingSprinklers] = useState<BuildingSprinklerRecord[]>([]);
   const [selectedSprinkler, setSelectedSprinkler] = useState<BuildingSprinklerRecord | null>(null);
   const [selectedSprinklerData, setSelectedSprinklerData] = useState<BuildingSprinklerData>({});
-  const [selectedSprinklerScore, setSelectedSprinklerScore] = useState<number>(3);
-  const [selectedFinalScore, setSelectedFinalScore] = useState<number>(3);
   const [selectedComments, setSelectedComments] = useState('');
 
   // Load data
@@ -63,6 +61,7 @@ export default function FireProtectionPage() {
     if (!documentId) return;
 
     async function loadData() {
+      console.log('[RE06] loading true');
       setLoading(true);
       try {
         // Load document
@@ -85,7 +84,6 @@ export default function FireProtectionPage() {
         }
         setSiteWater(siteWaterRec);
         setSiteWaterData(siteWaterRec.data || {});
-        setSiteWaterScore(siteWaterRec.water_score_1_5 || 3);
         setSiteWaterComments(siteWaterRec.comments || '');
 
         // Ensure sprinkler records exist for all buildings
@@ -100,14 +98,13 @@ export default function FireProtectionPage() {
           if (firstSprinkler) {
             setSelectedSprinkler(firstSprinkler);
             setSelectedSprinklerData(firstSprinkler.data || {});
-            setSelectedSprinklerScore(firstSprinkler.sprinkler_score_1_5 || 3);
-            setSelectedFinalScore(firstSprinkler.final_active_score_1_5 || 3);
             setSelectedComments(firstSprinkler.comments || '');
           }
         }
       } catch (error) {
         console.error('Failed to load fire protection data:', error);
       } finally {
+        console.log('[RE06] loading false');
         setLoading(false);
       }
     }
@@ -115,22 +112,27 @@ export default function FireProtectionPage() {
     loadData();
   }, [documentId]);
 
-  // Recalculate site water score when data changes
-  useEffect(() => {
-    const suggestedScore = calculateWaterScore(siteWaterData);
-    setSiteWaterScore(suggestedScore);
+  const siteWaterScore = useMemo(() => {
+    console.log('[RE06] siteWaterScore recalculated');
+    return calculateWaterScore(siteWaterData);
   }, [siteWaterData]);
 
-  // Recalculate sprinkler scores when data changes
+  const rawSprinklerScore = useMemo(() => {
+    if (!selectedSprinkler) return null;
+    console.log('[RE06] sprinklerScore recalculated');
+    return calculateSprinklerScore(selectedSprinklerData);
+  }, [selectedSprinkler, selectedSprinklerData]);
+
+  const selectedSprinklerScore = rawSprinklerScore ?? 3;
+
+  const selectedFinalScore = useMemo(() => {
+    console.log('[RE06] finalActiveScore recalculated');
+    return calculateFinalActiveScore(rawSprinklerScore, siteWaterScore);
+  }, [rawSprinklerScore, siteWaterScore]);
+
   useEffect(() => {
-    if (!selectedSprinkler) return;
-
-    const sprinklerScore = calculateSprinklerScore(selectedSprinklerData);
-    const finalScore = calculateFinalActiveScore(sprinklerScore, siteWaterScore);
-
-    setSelectedSprinklerScore(sprinklerScore || 3);
-    setSelectedFinalScore(finalScore);
-  }, [selectedSprinklerData, siteWaterScore, selectedSprinkler]);
+    console.log('[RE06] loading state changed:', loading);
+  }, [loading]);
 
   // Save site water
   const saveSiteWater = useCallback(async () => {
@@ -208,8 +210,6 @@ export default function FireProtectionPage() {
     if (sprinkler) {
       setSelectedSprinkler(sprinkler);
       setSelectedSprinklerData(sprinkler.data || {});
-      setSelectedSprinklerScore(sprinkler.sprinkler_score_1_5 || 3);
-      setSelectedFinalScore(sprinkler.final_active_score_1_5 || 3);
       setSelectedComments(sprinkler.comments || '');
     }
   };
@@ -222,7 +222,7 @@ export default function FireProtectionPage() {
 
   // Generate auto-flags for selected building
   const autoFlags = selectedSprinkler
-    ? generateAutoFlags(selectedSprinklerData, selectedSprinklerScore, siteWaterScore)
+    ? generateAutoFlags(selectedSprinklerData, rawSprinklerScore, siteWaterScore)
     : [];
 
   if (loading) {
@@ -757,3 +757,6 @@ export default function FireProtectionPage() {
     </div>
   );
 }
+  useEffect(() => {
+    console.log('[RE06] loading state changed:', loading);
+  }, [loading]);

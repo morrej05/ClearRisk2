@@ -6,6 +6,8 @@ export type PowerResilience = 'Good' | 'Mixed' | 'Poor' | 'Unknown';
 export type TestingRegime = 'Documented' | 'Some evidence' | 'None' | 'Unknown';
 export type MaintenanceStatus = 'Good' | 'Mixed' | 'Poor' | 'Unknown';
 export type SprinklerAdequacy = 'Adequate' | 'Inadequate' | 'Unknown';
+export type SprinklerSystemType = 'wet' | 'dry' | 'esfr' | 'other' | 'unknown';
+export type WaterSupplyType = 'mains' | 'tank' | 'dual' | 'unknown';
 
 export interface SiteWaterData {
   water_reliability?: WaterReliability;
@@ -15,6 +17,10 @@ export interface SiteWaterData {
   power_resilience?: PowerResilience;
   testing_regime?: TestingRegime;
   key_weaknesses?: string;
+  // Phase 1: Derived scores placeholder (no computation yet)
+  derived?: {
+    site_fire_protection_score?: 1 | 2 | 3 | 4 | 5;
+  };
 }
 
 export interface SiteWaterRecord {
@@ -35,6 +41,15 @@ export interface BuildingSprinklerData {
   maintenance_status?: MaintenanceStatus;
   sprinkler_adequacy?: SprinklerAdequacy;
   justification_if_required_lt_100?: string;
+  // Phase 1: New optional technical fields
+  design_standard?: string;
+  hazard_density?: string;
+  system_type?: SprinklerSystemType;
+  water_supply_type?: WaterSupplyType;
+  // Phase 1: Derived scores placeholder (no computation yet)
+  derived?: {
+    building_fire_protection_score?: 1 | 2 | 3 | 4 | 5;
+  };
 }
 
 export interface BuildingSprinklerRecord {

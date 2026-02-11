@@ -24,6 +24,8 @@ type WaterSupplyReliability = 'reliable' | 'unreliable' | 'unknown';
 type CoverageAdequacy = 'poor' | 'adequate' | 'good' | 'unknown';
 type MonitoringType = 'none' | 'keyholder' | 'arc' | 'unknown';
 type LocalisedProtectionLevel = 'yes' | 'partial' | 'no' | 'unknown';
+type SprinklerSystemType = 'wet' | 'dry' | 'esfr' | 'other' | 'unknown';
+type WaterSupplyType = 'mains' | 'tank' | 'dual' | 'unknown';
 
 interface SprinklersData {
   provided_pct?: number | null;
@@ -31,13 +33,17 @@ interface SprinklersData {
   notes: string;
   rating: 1 | 2 | 3 | 4 | 5;
   system_standard?: string;
-  system_type?: string;
+  system_type?: string | SprinklerSystemType; // Legacy string support + new typed values
   hazard_class?: string;
   last_service_date?: string | null;
   has_impairments?: string;
   impairments_notes?: string;
   valve_supervision?: string;
   heating_adequate?: string;
+  // Phase 1: New optional technical fields
+  design_standard?: string;
+  hazard_density?: string;
+  water_supply_type?: WaterSupplyType;
 }
 
 interface WaterMistData {
@@ -45,6 +51,11 @@ interface WaterMistData {
   required_pct?: number | null;
   notes: string;
   rating: 1 | 2 | 3 | 4 | 5;
+  // Phase 1: New optional technical fields
+  design_standard?: string;
+  hazard_density?: string;
+  system_type?: SprinklerSystemType;
+  water_supply_type?: WaterSupplyType;
 }
 
 interface LocalisedProtectionSystem {
@@ -77,6 +88,10 @@ interface BuildingFireProtection {
   nle_reduction_applicable?: boolean | null;
   nle_reduction_notes?: string;
   notes: string;
+  // Phase 1: Derived scores placeholder (no computation yet)
+  derived?: {
+    building_fire_protection_score?: 1 | 2 | 3 | 4 | 5;
+  };
 }
 
 interface OperationalReadiness {
@@ -90,6 +105,10 @@ interface SiteData {
   water_supply_reliability: WaterSupplyReliability;
   water_supply_notes: string;
   operational_readiness: OperationalReadiness;
+  // Phase 1: Derived scores placeholder (no computation yet)
+  derived?: {
+    site_fire_protection_score?: 1 | 2 | 3 | 4 | 5;
+  };
 }
 
 interface FireProtectionModule {

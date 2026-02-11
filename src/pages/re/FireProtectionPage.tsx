@@ -527,15 +527,15 @@ export default function FireProtectionPage() {
             </p>
           </div>
 
-          {/* Site-level Recommendations */}
-          <div className="mt-6 pt-6 border-t border-slate-200">
-            <FireProtectionRecommendations
-              recommendations={getSiteRecommendations(derivedRecommendations)}
-              title="Site Water Supply Recommendations"
-            />
-          </div>
-        </div>
-
+        {/* Site-level Recommendations */}
+<div className="mt-6 pt-6 border-t border-slate-200">
+  <FireProtectionRecommendations
+    title="Site recommendations"
+    recommendations={derivedRecommendations}
+    context="site"
+  />
+</div>
+  
         {/* Buildings & Sprinklers Section */}
         <div className="grid grid-cols-3 gap-6">
           {/* Building List */}

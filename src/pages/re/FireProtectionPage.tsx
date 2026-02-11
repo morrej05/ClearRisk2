@@ -31,6 +31,10 @@ import {
   calculateSiteRollup,
   createDefaultSiteWater,
 } from '../../lib/re/fireProtectionModel';
+import {
+  computeBuildingFireProtectionScore,
+  computeSiteFireProtectionScore,
+} from '../../lib/modules/re04FireProtectionScoring';
 
 export default function FireProtectionPage() {
   console.count('FireProtectionPage render');
@@ -134,16 +138,59 @@ export default function FireProtectionPage() {
     console.log('[RE06] loading state changed:', loading);
   }, [loading]);
 
+  // Compute derived site score (Phase 2)
+  const derivedSiteScore = useMemo(() => {
+    // Map database structure to scoring function format
+    const buildingsForScoring: Record<string, any> = {};
+
+    buildingSprinklers.forEach(sprinkler => {
+      buildingsForScoring[sprinkler.building_id] = {
+        suppression: {
+          sprinklers: {
+            rating: sprinkler.sprinkler_score_1_5 || 3,
+          },
+        },
+        // Note: detection data not in current database schema, would need separate table
+        // For now, suppression-only scoring
+      };
+    });
+
+    const siteDataForScoring = {
+      water_supply_reliability:
+        siteWaterData.water_reliability?.toLowerCase() as any || 'unknown',
+    };
+
+    const buildingsMeta = buildings.map(b => ({
+      id: b.id!,
+      floor_area_sqm: b.floor_area_sqm,
+      footprint_m2: b.footprint_m2,
+    }));
+
+    return computeSiteFireProtectionScore(
+      buildingsForScoring,
+      siteDataForScoring,
+      buildingsMeta
+    );
+  }, [buildingSprinklers, siteWaterData.water_reliability, buildings]);
+
   // Save site water
   const saveSiteWater = useCallback(async () => {
     if (!siteWater || !documentId) return;
 
     setSaving(true);
     try {
+      // Add derived score to data
+      const updatedData = {
+        ...siteWaterData,
+        derived: {
+          site_fire_protection_score: derivedSiteScore,
+        },
+      };
+
       await upsertSiteWater({
         id: siteWater.id,
         document_id: documentId,
-        data: siteWaterData,
+        data: updatedData,
         water_score_1_5: siteWaterScore,
         comments: siteWaterComments,
       });
@@ -152,7 +199,7 @@ export default function FireProtectionPage() {
     } finally {
       setSaving(false);
     }
-  }, [siteWater, documentId, siteWaterData, siteWaterScore, siteWaterComments]);
+  }, [siteWater, documentId, siteWaterData, siteWaterScore, siteWaterComments, derivedSiteScore]);
 
   // Debounced save for site water
   useEffect(() => {
@@ -165,17 +212,43 @@ export default function FireProtectionPage() {
     return () => clearTimeout(timer);
   }, [siteWaterData, siteWaterScore, siteWaterComments, saveSiteWater]);
 
+  // Compute derived building score (Phase 2)
+  const derivedBuildingScore = useMemo(() => {
+    if (!selectedSprinkler) return null;
+
+    // Map database structure to scoring function format
+    const buildingData = {
+      suppression: {
+        sprinklers: {
+          rating: selectedSprinklerScore || 3,
+        },
+      },
+      // Note: detection data not in current database schema
+      // For now, suppression-only scoring
+    };
+
+    return computeBuildingFireProtectionScore(buildingData);
+  }, [selectedSprinkler, selectedSprinklerScore]);
+
   // Save building sprinkler
   const saveBuildingSprinkler = useCallback(async () => {
     if (!selectedSprinkler || !documentId) return;
 
     setSaving(true);
     try {
+      // Add derived score to data
+      const updatedData = {
+        ...selectedSprinklerData,
+        derived: {
+          building_fire_protection_score: derivedBuildingScore,
+        },
+      };
+
       const updated = await upsertBuildingSprinkler({
         id: selectedSprinkler.id,
         document_id: documentId,
         building_id: selectedSprinkler.building_id,
-        data: selectedSprinklerData,
+        data: updatedData,
         sprinkler_score_1_5: selectedSprinklerScore,
         final_active_score_1_5: selectedFinalScore,
         comments: selectedComments,
@@ -190,7 +263,7 @@ export default function FireProtectionPage() {
     } finally {
       setSaving(false);
     }
-  }, [selectedSprinkler, documentId, selectedSprinklerData, selectedSprinklerScore, selectedFinalScore, selectedComments]);
+  }, [selectedSprinkler, documentId, selectedSprinklerData, selectedSprinklerScore, selectedFinalScore, selectedComments, derivedBuildingScore]);
 
   // Debounced save for building sprinkler
   useEffect(() => {

@@ -183,12 +183,12 @@ export default function FireProtectionPage() {
 
     setSaving(true);
     try {
-      // Add derived score and recommendations to data (Phase 2 + Phase 3)
+      // Add derived score to data (Phase 2)
+      // NOTE: Recommendations (Phase 3) are computed in-memory only, not persisted
       const updatedData = {
         ...siteWaterData,
         derived: {
           site_fire_protection_score: derivedSiteScore,
-          recommendations: derivedRecommendations,
         },
       };
 
@@ -204,7 +204,7 @@ export default function FireProtectionPage() {
     } finally {
       setSaving(false);
     }
-  }, [siteWater, documentId, siteWaterData, siteWaterScore, siteWaterComments, derivedSiteScore, derivedRecommendations]);
+  }, [siteWater, documentId, siteWaterData, siteWaterScore, siteWaterComments, derivedSiteScore]);
 
   // Debounced save for site water
   useEffect(() => {
@@ -235,7 +235,7 @@ export default function FireProtectionPage() {
     return computeBuildingFireProtectionScore(buildingData);
   }, [selectedSprinkler, selectedSprinklerScore]);
 
-  // Generate recommendations (Phase 3)
+  // Generate recommendations (Phase 3 - in-memory only, not persisted)
   const derivedRecommendations = useMemo(() => {
     // Build complete fire protection module structure from database records
     const buildingsForRecs: Record<string, any> = {};
@@ -244,9 +244,9 @@ export default function FireProtectionPage() {
       buildingsForRecs[sprinkler.building_id] = {
         suppression: {
           sprinklers: {
-            rating: sprinkler.sprinkler_score_1_5 || 3,
-            coverage_percent: sprinkler.data?.coverage_percent,
-            adequacy: sprinkler.data?.sprinkler_adequacy,
+            rating: sprinkler.sprinkler_score_1_5, // Only if exists (no default)
+            provided_pct: sprinkler.data?.provided_pct,
+            required_pct: sprinkler.data?.required_pct,
           },
         },
         // Note: detection data not in current database schema
@@ -257,7 +257,7 @@ export default function FireProtectionPage() {
     const fpModule = {
       buildings: buildingsForRecs,
       site: {
-        water_supply_reliability: siteWaterData.water_reliability?.toLowerCase() as any || 'unknown',
+        water_supply_reliability: siteWaterData.water_reliability?.toLowerCase() as any,
       },
     };
 

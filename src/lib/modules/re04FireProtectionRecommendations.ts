@@ -1,7 +1,8 @@
 /**
- * RE-04 Fire Protection - Recommendation Generator (Phase 3)
+ * RE-04 Fire Protection - Recommendation Generator (Phase 3 - MINIMAL SPEC)
  *
  * Pure, deterministic recommendation generation based on fire protection data.
+ * Only generates recommendations from real data triggers (no missing data triggers).
  * No side effects, null-safe, backward compatible.
  */
 
@@ -21,19 +22,18 @@ type Rating = 1 | 2 | 3 | 4 | 5;
 interface BuildingSuppressionData {
   sprinklers?: {
     rating?: Rating;
-    coverage_percent?: number;
-    adequacy?: 'full' | 'partial' | 'inadequate' | 'none';
+    provided_pct?: number;
+    required_pct?: number;
   };
   water_mist?: {
     rating?: Rating;
-    coverage_percent?: number;
+    provided_pct?: number;
+    required_pct?: number;
   };
 }
 
 interface BuildingDetectionData {
   rating?: Rating;
-  coverage_percent?: number;
-  monitoring?: string;
 }
 
 interface BuildingFireProtectionData {
@@ -65,31 +65,8 @@ function generateRecommendationId(
 }
 
 /**
- * Determine priority based on rating and other factors
- */
-function determinePriority(
-  rating: Rating | undefined | null,
-  coverage?: number
-): 'high' | 'medium' | 'low' {
-  if (!rating) return 'high';
-
-  // Low ratings (1-2) are high priority
-  if (rating <= 2) return 'high';
-
-  // Rating 3 is medium priority
-  if (rating === 3) return 'medium';
-
-  // Rating 4+ with low coverage is medium priority
-  if (rating >= 4 && coverage !== undefined && coverage < 80) {
-    return 'medium';
-  }
-
-  // Rating 4+ with good coverage is low priority
-  return 'low';
-}
-
-/**
  * Generate building-level suppression recommendations
+ * Only triggers on real data (no missing/undefined triggers)
  */
 function generateBuildingSuppressionRecommendations(
   buildingId: string,
@@ -101,67 +78,89 @@ function generateBuildingSuppressionRecommendations(
   const sprinklers = suppression.sprinklers;
   const waterMist = suppression.water_mist;
 
-  // Primary suppression system (sprinklers or water mist)
-  const primaryRating = sprinklers?.rating || waterMist?.rating;
-  const primaryCoverage = sprinklers?.coverage_percent || waterMist?.coverage_percent;
-  const primaryType = sprinklers?.rating ? 'sprinklers' : 'water_mist';
+  // Track which codes have been generated to avoid duplicates
+  const generatedCodes = new Set<string>();
 
-  // Check for inadequate or missing suppression
-  if (!primaryRating || primaryRating <= 2) {
+  // Check sprinkler rating (only if rating exists and is <= 2)
+  if (sprinklers?.rating !== undefined && sprinklers.rating <= 2) {
+    const code = 'SPRINKLER_INADEQUATE';
+    generatedCodes.add(code);
     recommendations.push({
-      id: generateRecommendationId('building', 'SUPPRESSION_INADEQUATE', buildingId),
+      id: generateRecommendationId('building', code, buildingId),
       scope: 'building',
       buildingId,
       category: 'suppression',
-      priority: 'high',
-      code: 'SUPPRESSION_INADEQUATE',
-      trigger: `${primaryType}_rating=${primaryRating ?? 'missing'}`,
-      text: primaryRating
-        ? `Upgrade ${primaryType} system to improve protection rating from ${primaryRating} to at least 3.`
-        : `Install adequate suppression system (sprinklers or water mist) for this building.`,
+      priority: sprinklers.rating === 1 ? 'high' : 'medium',
+      code,
+      trigger: `sprinklers_rating=${sprinklers.rating}`,
+      text: `Upgrade sprinkler system to achieve adequate protection (currently rated ${sprinklers.rating}).`,
     });
   }
 
-  // Check for coverage gaps
-  if (primaryRating && primaryRating >= 3 && primaryCoverage !== undefined && primaryCoverage < 80) {
-    recommendations.push({
-      id: generateRecommendationId('building', 'COVERAGE_GAP', buildingId),
-      scope: 'building',
-      buildingId,
-      category: 'suppression',
-      priority: 'medium',
-      code: 'COVERAGE_GAP',
-      trigger: `${primaryType}_coverage=${primaryCoverage}%`,
-      text: `Extend ${primaryType} coverage from ${primaryCoverage}% to at least 80% of the building.`,
-    });
+  // Check sprinkler coverage gap (only if both provided_pct and required_pct exist)
+  if (
+    sprinklers?.provided_pct !== undefined &&
+    sprinklers?.required_pct !== undefined &&
+    sprinklers.provided_pct < sprinklers.required_pct
+  ) {
+    const code = 'COVERAGE_GAP';
+    if (!generatedCodes.has(code)) {
+      generatedCodes.add(code);
+      const gap = sprinklers.required_pct - sprinklers.provided_pct;
+      const priority = gap >= 30 ? 'high' : 'medium';
+      recommendations.push({
+        id: generateRecommendationId('building', code, buildingId),
+        scope: 'building',
+        buildingId,
+        category: 'suppression',
+        priority,
+        code,
+        trigger: `sprinklers_provided=${sprinklers.provided_pct}%_required=${sprinklers.required_pct}%`,
+        text: `Extend sprinkler coverage from ${sprinklers.provided_pct}% to ${sprinklers.required_pct}% to meet requirements (${gap}% gap).`,
+      });
+    }
   }
 
-  // Check for partial adequacy
-  if (sprinklers?.adequacy === 'partial') {
-    recommendations.push({
-      id: generateRecommendationId('building', 'SPRINKLER_PARTIAL', buildingId),
-      scope: 'building',
-      buildingId,
-      category: 'suppression',
-      priority: 'medium',
-      code: 'SPRINKLER_PARTIAL',
-      trigger: `sprinkler_adequacy=partial`,
-      text: `Review sprinkler system adequacy and upgrade to meet full occupancy risk requirements.`,
-    });
+  // Check water mist rating (only if rating exists and is <= 2, and no sprinkler inadequate already)
+  if (waterMist?.rating !== undefined && waterMist.rating <= 2) {
+    const code = 'WATER_MIST_INADEQUATE';
+    if (!generatedCodes.has('SPRINKLER_INADEQUATE')) {
+      generatedCodes.add(code);
+      recommendations.push({
+        id: generateRecommendationId('building', code, buildingId),
+        scope: 'building',
+        buildingId,
+        category: 'suppression',
+        priority: waterMist.rating === 1 ? 'high' : 'medium',
+        code,
+        trigger: `water_mist_rating=${waterMist.rating}`,
+        text: `Upgrade water mist system to achieve adequate protection (currently rated ${waterMist.rating}).`,
+      });
+    }
   }
 
-  // Check for inadequate adequacy
-  if (sprinklers?.adequacy === 'inadequate') {
-    recommendations.push({
-      id: generateRecommendationId('building', 'SPRINKLER_INADEQUATE_DESIGN', buildingId),
-      scope: 'building',
-      buildingId,
-      category: 'suppression',
-      priority: 'high',
-      code: 'SPRINKLER_INADEQUATE_DESIGN',
-      trigger: `sprinkler_adequacy=inadequate`,
-      text: `Sprinkler system design is inadequate for the occupancy. Upgrade to appropriate design standard (NFPA 13, BS EN 12845, or equivalent).`,
-    });
+  // Check water mist coverage gap (only if both provided_pct and required_pct exist, and no sprinkler coverage gap)
+  if (
+    waterMist?.provided_pct !== undefined &&
+    waterMist?.required_pct !== undefined &&
+    waterMist.provided_pct < waterMist.required_pct
+  ) {
+    const code = 'COVERAGE_GAP';
+    if (!generatedCodes.has(code)) {
+      generatedCodes.add(code);
+      const gap = waterMist.required_pct - waterMist.provided_pct;
+      const priority = gap >= 30 ? 'high' : 'medium';
+      recommendations.push({
+        id: generateRecommendationId('building', code, buildingId),
+        scope: 'building',
+        buildingId,
+        category: 'suppression',
+        priority,
+        code,
+        trigger: `water_mist_provided=${waterMist.provided_pct}%_required=${waterMist.required_pct}%`,
+        text: `Extend water mist coverage from ${waterMist.provided_pct}% to ${waterMist.required_pct}% to meet requirements (${gap}% gap).`,
+      });
+    }
   }
 
   return recommendations;
@@ -169,6 +168,7 @@ function generateBuildingSuppressionRecommendations(
 
 /**
  * Generate building-level detection recommendations
+ * Only triggers on real data (no missing/undefined triggers)
  */
 function generateBuildingDetectionRecommendations(
   buildingId: string,
@@ -178,50 +178,18 @@ function generateBuildingDetectionRecommendations(
 
   const recommendations: FireProtectionRecommendation[] = [];
   const rating = detection.rating;
-  const coverage = detection.coverage_percent;
-  const monitoring = detection.monitoring;
 
-  // Check for inadequate or missing detection
-  if (!rating || rating <= 2) {
+  // Check for inadequate detection (only if rating exists and is <= 2)
+  if (rating !== undefined && rating <= 2) {
     recommendations.push({
       id: generateRecommendationId('building', 'DETECTION_INADEQUATE', buildingId),
       scope: 'building',
       buildingId,
       category: 'detection',
-      priority: 'high',
+      priority: rating === 1 ? 'high' : 'medium',
       code: 'DETECTION_INADEQUATE',
-      trigger: `detection_rating=${rating ?? 'missing'}`,
-      text: rating
-        ? `Upgrade fire detection and alarm system to improve rating from ${rating} to at least 3.`
-        : `Install adequate fire detection and alarm system for this building.`,
-    });
-  }
-
-  // Check for coverage gaps
-  if (rating && rating >= 3 && coverage !== undefined && coverage < 80) {
-    recommendations.push({
-      id: generateRecommendationId('building', 'DETECTION_COVERAGE_GAP', buildingId),
-      scope: 'building',
-      buildingId,
-      category: 'detection',
-      priority: 'medium',
-      code: 'DETECTION_COVERAGE_GAP',
-      trigger: `detection_coverage=${coverage}%`,
-      text: `Extend fire detection coverage from ${coverage}% to at least 80% of the building.`,
-    });
-  }
-
-  // Check for monitoring improvements
-  if (rating && rating >= 3 && monitoring === 'local_only') {
-    recommendations.push({
-      id: generateRecommendationId('building', 'DETECTION_MONITORING_UPGRADE', buildingId),
-      scope: 'building',
-      buildingId,
-      category: 'detection',
-      priority: 'low',
-      code: 'DETECTION_MONITORING_UPGRADE',
-      trigger: `monitoring=local_only`,
-      text: `Consider upgrading fire alarm monitoring from local-only to remote monitoring or ARC connection.`,
+      trigger: `detection_rating=${rating}`,
+      text: `Upgrade fire detection and alarm system to achieve adequate protection (currently rated ${rating}).`,
     });
   }
 
@@ -230,6 +198,7 @@ function generateBuildingDetectionRecommendations(
 
 /**
  * Generate site-level water supply recommendations
+ * Only triggers on real data (no missing/undefined triggers)
  */
 function generateSiteWaterRecommendations(
   site: SiteData | undefined
@@ -237,7 +206,7 @@ function generateSiteWaterRecommendations(
   if (!site) return [];
 
   const recommendations: FireProtectionRecommendation[] = [];
-  const reliability = site.water_supply_reliability ?? 'unknown';
+  const reliability = site.water_supply_reliability;
 
   // Unreliable water supply is high priority
   if (reliability === 'unreliable') {
@@ -252,13 +221,13 @@ function generateSiteWaterRecommendations(
     });
   }
 
-  // Unknown water supply is medium priority
+  // Unknown water supply is low priority
   if (reliability === 'unknown') {
     recommendations.push({
       id: generateRecommendationId('site', 'WATER_UNKNOWN'),
       scope: 'site',
       category: 'water_supply',
-      priority: 'medium',
+      priority: 'low',
       code: 'WATER_UNKNOWN',
       trigger: `water_reliability=unknown`,
       text: `Conduct water supply assessment to determine adequacy and reliability for fire protection systems.`,
@@ -272,6 +241,7 @@ function generateSiteWaterRecommendations(
  * Generate all fire protection recommendations for a module
  *
  * Pure function - no side effects, deterministic output, null-safe.
+ * Only generates recommendations from real data (no missing/undefined triggers).
  *
  * @param fpModule - Complete RE-04 fire protection module data
  * @returns Array of structured recommendations

@@ -36,12 +36,9 @@ import {
   computeSiteFireProtectionScore,
 } from '../../lib/modules/re04FireProtectionScoring';
 import {
-  generateFireProtectionRecommendations,
+  deriveFireProtectionRecommendations,
   type FireProtectionRecommendation,
-  getSiteRecommendations,
-  getBuildingRecommendations,
 } from '../../lib/modules/re04FireProtectionRecommendations';
-import FireProtectionRecommendations from '../../components/re/FireProtectionRecommendations';
 
 export default function FireProtectionPage() {
   console.count('FireProtectionPage render');

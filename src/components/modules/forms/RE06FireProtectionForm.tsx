@@ -1,27 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Flame, Shield, Bell, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
-import RatingButtons from '../../re/RatingButtons';
-import SectionGrade from '../../SectionGrade';
-import FloatingSaveBar from './FloatingSaveBar';
-
-async function updateSectionGrade(documentId: string, sectionKey: string, value: number) {
-  const { data: doc, error: fetchError } = await supabase
-    .from('documents')
-    .select('section_grades')
-    .eq('id', documentId)
-    .maybeSingle();
-
-  if (fetchError) return { error: fetchError };
-
-  const existingGrades = doc?.section_grades || {};
-  const updatedGrades = { ...existingGrades, [sectionKey]: value };
-
-  return await supabase
-    .from('documents')
-    .update({ section_grades: updatedGrades })
-    .eq('id', documentId);
-}
+import BuildingsGrid from "../../re/BuildingsGrid";
 
 interface Document {
   id: string;
@@ -119,6 +96,7 @@ interface BuildingFireProtection {
 
 interface OperationalReadiness {
   testing_rating: 1 | 2 | 3 | 4 | 5;
+  impairment_management_rating: 1 | 2 | 3 | 4 | 5;
   emergency_response_rating: 1 | 2 | 3 | 4 | 5;
   notes: string;
 }
@@ -254,6 +232,7 @@ function createDefaultSiteData(): SiteData {
     water_supply_notes: '',
     operational_readiness: {
       testing_rating: 3,
+      impairment_management_rating: 3,
       emergency_response_rating: 3,
       notes: ''
     }
@@ -290,6 +269,7 @@ export default function RE06FireProtectionForm({
   document,
   onSaved
 }: RE06FireProtectionFormProps) {
+  return <BuildingsGrid documentId={document.id} mode="fire_protection" onAfterSave={onSaved} />;
   const [isSaving, setIsSaving] = useState(false);
   const [constructionBuildings, setConstructionBuildings] = useState<ConstructionBuilding[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
@@ -1396,6 +1376,12 @@ useEffect(() => {
                     value={formData.fire_protection.site.operational_readiness.testing_rating}
                     onChange={(v) => updateSiteField(['operational_readiness', 'testing_rating'], v)}
                     label="Testing & Inspection Adequacy"
+                  />
+
+                  <RatingSelector
+                    value={formData.fire_protection.site.operational_readiness.impairment_management_rating}
+                    onChange={(v) => updateSiteField(['operational_readiness', 'impairment_management_rating'], v)}
+                    label="Impairment Management Effectiveness"
                   />
 
                   <RatingSelector

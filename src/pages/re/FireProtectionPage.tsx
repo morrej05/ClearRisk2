@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, Info, Droplet, Building, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Save, AlertTriangle, Info, Droplet, Building, TrendingUp, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { listBuildings } from '../../lib/re/buildingsRepo';
 import type { BuildingInput } from '../../lib/re/buildingsModel';
 import {
   getSiteWater,
   upsertSiteWater,
+  getBuildingSprinklers,
   upsertBuildingSprinkler,
   ensureBuildingSprinklersForAllBuildings,
 } from '../../lib/re/fireProtectionRepo';
@@ -34,11 +35,16 @@ import {
   computeBuildingFireProtectionScore,
   computeSiteFireProtectionScore,
 } from '../../lib/modules/re04FireProtectionScoring';
-
+import {
+  generateFireProtectionRecommendations,
+  type FireProtectionRecommendation,
+  getSiteRecommendations,
+  getBuildingRecommendations,
+} from '../../lib/modules/re04FireProtectionRecommendations';
 import FireProtectionRecommendations from '../../components/re/FireProtectionRecommendations';
-import { deriveFireProtectionRecommendations } from '../../lib/modules/re04FireProtectionRecommendations';
 
 export default function FireProtectionPage() {
+  console.count('FireProtectionPage render');
   const { id: documentId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -66,8 +72,10 @@ export default function FireProtectionPage() {
     if (!documentId) return;
 
     async function loadData() {
+      console.log('[RE06] loading true');
       setLoading(true);
       try {
+        // Load document
         const { data: doc } = await supabase
           .from('documents')
           .select('*')
@@ -75,9 +83,11 @@ export default function FireProtectionPage() {
           .maybeSingle();
         setDocument(doc);
 
+        // Load buildings
         const buildingsData = await listBuildings(documentId);
         setBuildings(buildingsData);
 
+        // Load or create site water
         let siteWaterRec = await getSiteWater(documentId);
         if (!siteWaterRec) {
           const defaultRec = createDefaultSiteWater(documentId);
@@ -87,14 +97,15 @@ export default function FireProtectionPage() {
         setSiteWaterData(siteWaterRec.data || {});
         setSiteWaterComments(siteWaterRec.comments || '');
 
-        const buildingIds = buildingsData.map(b => b.id!).filter(Boolean);
+        // Ensure sprinkler records exist for all buildings
+        const buildingIds = buildingsData.map(b => b.id!);
         const sprinklersData = await ensureBuildingSprinklersForAllBuildings(documentId, buildingIds);
         setBuildingSprinklers(sprinklersData);
 
+        // Auto-select first building
         if (buildingsData.length > 0 && sprinklersData.length > 0) {
-          const firstId = buildingsData[0].id!;
-          setSelectedBuildingId(firstId);
-          const firstSprinkler = sprinklersData.find(s => s.building_id === firstId);
+          setSelectedBuildingId(buildingsData[0].id!);
+          const firstSprinkler = sprinklersData.find(s => s.building_id === buildingsData[0].id);
           if (firstSprinkler) {
             setSelectedSprinkler(firstSprinkler);
             setSelectedSprinklerData(firstSprinkler.data || {});
@@ -104,6 +115,7 @@ export default function FireProtectionPage() {
       } catch (error) {
         console.error('Failed to load fire protection data:', error);
       } finally {
+        console.log('[RE06] loading false');
         setLoading(false);
       }
     }
@@ -111,48 +123,71 @@ export default function FireProtectionPage() {
     loadData();
   }, [documentId]);
 
-  const siteWaterScore = useMemo(() => calculateWaterScore(siteWaterData), [siteWaterData]);
+  const siteWaterScore = useMemo(() => {
+    console.log('[RE06] siteWaterScore recalculated');
+    return calculateWaterScore(siteWaterData);
+  }, [siteWaterData]);
 
   const rawSprinklerScore = useMemo(() => {
     if (!selectedSprinkler) return null;
+    console.log('[RE06] sprinklerScore recalculated');
     return calculateSprinklerScore(selectedSprinklerData);
   }, [selectedSprinkler, selectedSprinklerData]);
 
   const selectedSprinklerScore = rawSprinklerScore ?? 3;
 
   const selectedFinalScore = useMemo(() => {
+    console.log('[RE06] finalActiveScore recalculated');
     return calculateFinalActiveScore(rawSprinklerScore, siteWaterScore);
   }, [rawSprinklerScore, siteWaterScore]);
 
-  // Derived site score (Phase 2)
+  useEffect(() => {
+    console.log('[RE06] loading state changed:', loading);
+  }, [loading]);
+
+  // Compute derived site score (Phase 2)
   const derivedSiteScore = useMemo(() => {
+    // Map database structure to scoring function format
     const buildingsForScoring: Record<string, any> = {};
-    buildingSprinklers.forEach(spr => {
-      buildingsForScoring[spr.building_id] = {
-        suppression: { sprinklers: { rating: spr.sprinkler_score_1_5 ?? null } },
+
+    buildingSprinklers.forEach(sprinkler => {
+      buildingsForScoring[sprinkler.building_id] = {
+        suppression: {
+          sprinklers: {
+            rating: sprinkler.sprinkler_score_1_5 || 3,
+          },
+        },
+        // Note: detection data not in current database schema, would need separate table
+        // For now, suppression-only scoring
       };
     });
 
     const siteDataForScoring = {
-      water_supply_reliability: (siteWaterData.water_reliability?.toLowerCase?.() as any) ?? undefined,
+      water_supply_reliability:
+        siteWaterData.water_reliability?.toLowerCase() as any || 'unknown',
     };
 
-    const buildingsMeta = buildings
-      .filter(b => Boolean(b.id))
-      .map(b => ({
-        id: b.id!,
-        floor_area_sqm: (b as any).floor_area_sqm,
-        footprint_m2: (b as any).footprint_m2,
-      }));
+    const buildingsMeta = buildings.map(b => ({
+      id: b.id!,
+      floor_area_sqm: b.floor_area_sqm,
+      footprint_m2: b.footprint_m2,
+    }));
 
-    return computeSiteFireProtectionScore(buildingsForScoring, siteDataForScoring, buildingsMeta);
+    return computeSiteFireProtectionScore(
+      buildingsForScoring,
+      siteDataForScoring,
+      buildingsMeta
+    );
   }, [buildingSprinklers, siteWaterData.water_reliability, buildings]);
 
-  // Save site water (persist score only; recs are in-memory)
+  // Save site water
   const saveSiteWater = useCallback(async () => {
     if (!siteWater || !documentId) return;
+
     setSaving(true);
     try {
+      // Add derived score to data (Phase 2)
+      // NOTE: Recommendations (Phase 3) are computed in-memory only, not persisted
       const updatedData = {
         ...siteWaterData,
         derived: {
@@ -160,15 +195,13 @@ export default function FireProtectionPage() {
         },
       };
 
-      const updated = await upsertSiteWater({
+      await upsertSiteWater({
         id: siteWater.id,
         document_id: documentId,
         data: updatedData,
         water_score_1_5: siteWaterScore,
         comments: siteWaterComments,
       });
-
-      setSiteWater(updated);
     } catch (error) {
       console.error('Failed to save site water:', error);
     } finally {
@@ -179,45 +212,68 @@ export default function FireProtectionPage() {
   // Debounced save for site water
   useEffect(() => {
     if (!siteWater) return;
+
     const timer = setTimeout(() => {
       saveSiteWater();
     }, 1000);
-    return () => clearTimeout(timer);
-  }, [siteWater, siteWaterData, siteWaterScore, siteWaterComments, saveSiteWater]);
 
-  // Derived building score (Phase 2)
+    return () => clearTimeout(timer);
+  }, [siteWaterData, siteWaterScore, siteWaterComments, saveSiteWater]);
+
+  // Compute derived building score (Phase 2)
   const derivedBuildingScore = useMemo(() => {
     if (!selectedSprinkler) return null;
-    const buildingData = { suppression: { sprinklers: { rating: selectedSprinklerScore ?? null } } };
+
+    // Map database structure to scoring function format
+    const buildingData = {
+      suppression: {
+        sprinklers: {
+          rating: selectedSprinklerScore || 3,
+        },
+      },
+      // Note: detection data not in current database schema
+      // For now, suppression-only scoring
+    };
+
     return computeBuildingFireProtectionScore(buildingData);
   }, [selectedSprinkler, selectedSprinklerScore]);
 
-  // Recommendations (Phase 3) — in-memory only
+  // Generate recommendations (Phase 3 - in-memory only, not persisted)
   const derivedRecommendations = useMemo(() => {
-    // Map to what the rec engine expects: required_pct/provided_pct
-    const mappedSprinklers = buildingSprinklers.map(s => ({
-      ...s,
-      data: {
-        ...(s.data || {}),
-        // Your UI fields are sprinkler_coverage_required_pct / sprinkler_coverage_installed_pct
-        required_pct: (s.data as any)?.sprinkler_coverage_required_pct,
-        provided_pct: (s.data as any)?.sprinkler_coverage_installed_pct,
-      },
-    }));
+    // Build complete fire protection module structure from database records
+    const buildingsForRecs: Record<string, any> = {};
 
-    return deriveFireProtectionRecommendations({
-      siteWater,
-      buildingSprinklers: mappedSprinklers as any,
-      buildings,
-      selectedBuildingId,
+    buildingSprinklers.forEach(sprinkler => {
+      buildingsForRecs[sprinkler.building_id] = {
+        suppression: {
+          sprinklers: {
+            rating: sprinkler.sprinkler_score_1_5, // Only if exists (no default)
+            provided_pct: sprinkler.data?.provided_pct,
+            required_pct: sprinkler.data?.required_pct,
+          },
+        },
+        // Note: detection data not in current database schema
+        // Future: add detection_alarm data from separate table
+      };
     });
-  }, [siteWater, buildingSprinklers, buildings, selectedBuildingId]);
+
+    const fpModule = {
+      buildings: buildingsForRecs,
+      site: {
+        water_supply_reliability: siteWaterData.water_reliability?.toLowerCase() as any,
+      },
+    };
+
+    return generateFireProtectionRecommendations(fpModule);
+  }, [buildingSprinklers, siteWaterData.water_reliability]);
 
   // Save building sprinkler
   const saveBuildingSprinkler = useCallback(async () => {
     if (!selectedSprinkler || !documentId) return;
+
     setSaving(true);
     try {
+      // Add derived score to data
       const updatedData = {
         ...selectedSprinklerData,
         derived: {
@@ -235,31 +291,29 @@ export default function FireProtectionPage() {
         comments: selectedComments,
       });
 
-      setBuildingSprinklers(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+      // Update in state
+      setBuildingSprinklers(prev =>
+        prev.map(s => (s.id === updated.id ? updated : s))
+      );
     } catch (error) {
       console.error('Failed to save building sprinkler:', error);
     } finally {
       setSaving(false);
     }
-  }, [
-    selectedSprinkler,
-    documentId,
-    selectedSprinklerData,
-    selectedSprinklerScore,
-    selectedFinalScore,
-    selectedComments,
-    derivedBuildingScore,
-  ]);
+  }, [selectedSprinkler, documentId, selectedSprinklerData, selectedSprinklerScore, selectedFinalScore, selectedComments, derivedBuildingScore]);
 
   // Debounced save for building sprinkler
   useEffect(() => {
     if (!selectedSprinkler) return;
+
     const timer = setTimeout(() => {
       saveBuildingSprinkler();
     }, 1000);
-    return () => clearTimeout(timer);
-  }, [selectedSprinkler, selectedSprinklerData, selectedSprinklerScore, selectedFinalScore, selectedComments, saveBuildingSprinkler]);
 
+    return () => clearTimeout(timer);
+  }, [selectedSprinklerData, selectedSprinklerScore, selectedFinalScore, selectedComments, saveBuildingSprinkler]);
+
+  // Handle building selection
   const handleBuildingSelect = (buildingId: string) => {
     setSelectedBuildingId(buildingId);
     const sprinkler = buildingSprinklers.find(s => s.building_id === buildingId);
@@ -270,17 +324,16 @@ export default function FireProtectionPage() {
     }
   };
 
+  // Get selected building details
   const selectedBuilding = buildings.find(b => b.id === selectedBuildingId);
 
+  // Calculate site rollup
+  const siteRollup = calculateSiteRollup(buildingSprinklers, buildings);
+
+  // Generate auto-flags for selected building
   const autoFlags = selectedSprinkler
     ? generateAutoFlags(selectedSprinklerData, rawSprinklerScore, siteWaterScore)
     : [];
-
-  const rollupBuildings = useMemo(
-    () => buildings.filter((b): b is BuildingInput & { id: string } => Boolean(b.id)),
-    [buildings]
-  );
-  const siteRollup = calculateSiteRollup(buildingSprinklers, rollupBuildings);
 
   if (loading) {
     return (
@@ -333,7 +386,12 @@ export default function FireProtectionPage() {
               <span className="text-sm text-slate-600">Water Score:</span>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className={`w-6 h-6 rounded ${i <= siteWaterScore ? 'bg-blue-600' : 'bg-slate-200'}`} />
+                  <div
+                    key={i}
+                    className={`w-6 h-6 rounded ${
+                      i <= siteWaterScore ? 'bg-blue-600' : 'bg-slate-200'
+                    }`}
+                  />
                 ))}
               </div>
               <span className="text-sm font-medium text-slate-900">{siteWaterScore}/5</span>
@@ -342,10 +400,14 @@ export default function FireProtectionPage() {
 
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Water Reliability</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Water Reliability
+              </label>
               <select
                 value={siteWaterData.water_reliability || 'Unknown'}
-                onChange={e => setSiteWaterData({ ...siteWaterData, water_reliability: e.target.value as WaterReliability })}
+                onChange={e =>
+                  setSiteWaterData({ ...siteWaterData, water_reliability: e.target.value as WaterReliability })
+                }
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Unknown">Unknown</option>
@@ -355,21 +417,27 @@ export default function FireProtectionPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Supply Type</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Supply Type
+              </label>
               <input
                 type="text"
-                value={(siteWaterData as any).supply_type || ''}
-                onChange={e => setSiteWaterData({ ...siteWaterData, supply_type: e.target.value } as any)}
+                value={siteWaterData.supply_type || ''}
+                onChange={e => setSiteWaterData({ ...siteWaterData, supply_type: e.target.value })}
                 placeholder="e.g., town main / tank / reservoir"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Pumps Present</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Pumps Present
+              </label>
               <select
-                value={(siteWaterData as any).pumps_present ? 'true' : 'false'}
-                onChange={e => setSiteWaterData({ ...siteWaterData, pumps_present: e.target.value === 'true' } as any)}
+                value={siteWaterData.pumps_present ? 'true' : 'false'}
+                onChange={e =>
+                  setSiteWaterData({ ...siteWaterData, pumps_present: e.target.value === 'true' })
+                }
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="false">No</option>
@@ -378,10 +446,14 @@ export default function FireProtectionPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Pump Arrangement</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Pump Arrangement
+              </label>
               <select
-                value={(siteWaterData as any).pump_arrangement || 'Unknown'}
-                onChange={e => setSiteWaterData({ ...siteWaterData, pump_arrangement: e.target.value as PumpArrangement } as any)}
+                value={siteWaterData.pump_arrangement || 'Unknown'}
+                onChange={e =>
+                  setSiteWaterData({ ...siteWaterData, pump_arrangement: e.target.value as PumpArrangement })
+                }
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Unknown">Unknown</option>
@@ -392,10 +464,14 @@ export default function FireProtectionPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Power Resilience</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Power Resilience
+              </label>
               <select
-                value={(siteWaterData as any).power_resilience || 'Unknown'}
-                onChange={e => setSiteWaterData({ ...siteWaterData, power_resilience: e.target.value as PowerResilience } as any)}
+                value={siteWaterData.power_resilience || 'Unknown'}
+                onChange={e =>
+                  setSiteWaterData({ ...siteWaterData, power_resilience: e.target.value as PowerResilience })
+                }
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Unknown">Unknown</option>
@@ -406,10 +482,14 @@ export default function FireProtectionPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Testing Regime</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Testing Regime
+              </label>
               <select
-                value={(siteWaterData as any).testing_regime || 'Unknown'}
-                onChange={e => setSiteWaterData({ ...siteWaterData, testing_regime: e.target.value as TestingRegime } as any)}
+                value={siteWaterData.testing_regime || 'Unknown'}
+                onChange={e =>
+                  setSiteWaterData({ ...siteWaterData, testing_regime: e.target.value as TestingRegime })
+                }
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Unknown">Unknown</option>
@@ -420,10 +500,12 @@ export default function FireProtectionPage() {
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Key Weaknesses</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Key Weaknesses
+              </label>
               <textarea
-                value={(siteWaterData as any).key_weaknesses || ''}
-                onChange={e => setSiteWaterData({ ...siteWaterData, key_weaknesses: e.target.value } as any)}
+                value={siteWaterData.key_weaknesses || ''}
+                onChange={e => setSiteWaterData({ ...siteWaterData, key_weaknesses: e.target.value })}
                 placeholder="Describe any key vulnerabilities or concerns..."
                 rows={2}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -431,7 +513,9 @@ export default function FireProtectionPage() {
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Comments</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Comments
+              </label>
               <textarea
                 value={siteWaterComments}
                 onChange={e => setSiteWaterComments(e.target.value)}
@@ -452,12 +536,11 @@ export default function FireProtectionPage() {
           {/* Site-level Recommendations */}
           <div className="mt-6 pt-6 border-t border-slate-200">
             <FireProtectionRecommendations
-              title="Site recommendations"
-              recommendations={derivedRecommendations}
-              context="site"
+              recommendations={getSiteRecommendations(derivedRecommendations)}
+              title="Site Water Supply Recommendations"
             />
           </div>
-        </div> {/* ✅ CLOSE Site Water card */}
+        </div>
 
         {/* Buildings & Sprinklers Section */}
         <div className="grid grid-cols-3 gap-6">
@@ -490,18 +573,24 @@ export default function FireProtectionPage() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-slate-900 truncate">{building.ref || 'Building'}</div>
-                        {building.description && <div className="text-xs text-slate-600 truncate">{building.description}</div>}
-                        {(building as any).footprint_m2 && (
+                        <div className="font-medium text-slate-900 truncate">
+                          {building.ref || 'Building'}
+                        </div>
+                        {building.description && (
+                          <div className="text-xs text-slate-600 truncate">{building.description}</div>
+                        )}
+                        {building.footprint_m2 && (
                           <div className="text-xs text-slate-500 mt-1">
-                            {(building as any).footprint_m2.toLocaleString()} m²
+                            {building.footprint_m2.toLocaleString()} m²
                           </div>
                         )}
                       </div>
                       {sprinkler?.final_active_score_1_5 && (
                         <div className="ml-2">
                           <div className="text-xs text-slate-600">Final</div>
-                          <div className="text-sm font-bold text-slate-900">{sprinkler.final_active_score_1_5}/5</div>
+                          <div className="text-sm font-bold text-slate-900">
+                            {sprinkler.final_active_score_1_5}/5
+                          </div>
                         </div>
                       )}
                     </div>
@@ -527,9 +616,9 @@ export default function FireProtectionPage() {
                     {selectedBuilding.description && (
                       <p className="text-sm text-slate-600">{selectedBuilding.description}</p>
                     )}
-                    {(selectedBuilding as any).footprint_m2 && (
+                    {selectedBuilding.footprint_m2 && (
                       <p className="text-xs text-slate-500 mt-1">
-                        Area: {(selectedBuilding as any).footprint_m2.toLocaleString()} m²
+                        Area: {selectedBuilding.footprint_m2.toLocaleString()} m²
                       </p>
                     )}
                   </div>
@@ -559,7 +648,11 @@ export default function FireProtectionPage() {
                         ) : (
                           <Info className="w-4 h-4 text-blue-600 mt-0.5" />
                         )}
-                        <p className={`text-sm ${flag.severity === 'warning' ? 'text-amber-900' : 'text-blue-900'}`}>
+                        <p
+                          className={`text-sm ${
+                            flag.severity === 'warning' ? 'text-amber-900' : 'text-blue-900'
+                          }`}
+                        >
                           {flag.message}
                         </p>
                       </div>
@@ -567,12 +660,148 @@ export default function FireProtectionPage() {
                   </div>
                 )}
 
-                {/* Keep your existing sprinkler fields below (unchanged) */}
                 <div className="space-y-4">
-                  {/* ... your existing inputs ... */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Coverage Required (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={selectedSprinklerData.sprinkler_coverage_required_pct || 0}
+                        onChange={e =>
+                          setSelectedSprinklerData({
+                            ...selectedSprinklerData,
+                            sprinkler_coverage_required_pct: Number(e.target.value),
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Coverage Installed (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={selectedSprinklerData.sprinkler_coverage_installed_pct || 0}
+                        onChange={e =>
+                          setSelectedSprinklerData({
+                            ...selectedSprinklerData,
+                            sprinkler_coverage_installed_pct: Number(e.target.value),
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Sprinkler Standard
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedSprinklerData.sprinkler_standard || ''}
+                        onChange={e =>
+                          setSelectedSprinklerData({ ...selectedSprinklerData, sprinkler_standard: e.target.value })
+                        }
+                        placeholder="e.g., BS EN 12845, NFPA 13"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Hazard Class
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedSprinklerData.hazard_class || ''}
+                        onChange={e =>
+                          setSelectedSprinklerData({ ...selectedSprinklerData, hazard_class: e.target.value })
+                        }
+                        placeholder="e.g., OH1, OH2, OH3"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Maintenance Status
+                      </label>
+                      <select
+                        value={selectedSprinklerData.maintenance_status || 'Unknown'}
+                        onChange={e =>
+                          setSelectedSprinklerData({
+                            ...selectedSprinklerData,
+                            maintenance_status: e.target.value as MaintenanceStatus,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Unknown">Unknown</option>
+                        <option value="Good">Good</option>
+                        <option value="Mixed">Mixed</option>
+                        <option value="Poor">Poor</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Sprinkler Adequacy
+                      </label>
+                      <select
+                        value={selectedSprinklerData.sprinkler_adequacy || 'Unknown'}
+                        onChange={e =>
+                          setSelectedSprinklerData({
+                            ...selectedSprinklerData,
+                            sprinkler_adequacy: e.target.value as SprinklerAdequacy,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Unknown">Unknown</option>
+                        <option value="Adequate">Adequate</option>
+                        <option value="Inadequate">Inadequate</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {selectedSprinklerData.sprinkler_coverage_required_pct !== undefined &&
+                    selectedSprinklerData.sprinkler_coverage_required_pct < 100 &&
+                    selectedSprinklerData.sprinkler_coverage_required_pct > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Justification for {'<'}100% Required Coverage
+                        </label>
+                        <textarea
+                          value={selectedSprinklerData.justification_if_required_lt_100 || ''}
+                          onChange={e =>
+                            setSelectedSprinklerData({
+                              ...selectedSprinklerData,
+                              justification_if_required_lt_100: e.target.value,
+                            })
+                          }
+                          placeholder="Explain why full coverage is not required..."
+                          rows={2}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        />
+                      </div>
+                    )}
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Comments</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Comments
+                    </label>
                     <textarea
                       value={selectedComments}
                       onChange={e => setSelectedComments(e.target.value)}
@@ -583,12 +812,20 @@ export default function FireProtectionPage() {
                   </div>
 
                   {/* Building-specific Recommendations */}
-                  <div className="pt-6 border-t border-slate-200">
-                    <FireProtectionRecommendations
-                      title="Building recommendations"
-                      recommendations={derivedRecommendations}
-                      context="building"
-                    />
+                  {selectedBuilding && (
+                    <div className="pt-6 border-t border-slate-200">
+                      <FireProtectionRecommendations
+                        recommendations={getBuildingRecommendations(derivedRecommendations, selectedBuilding.id!)}
+                        title="Building Fire Protection Recommendations"
+                      />
+                    </div>
+                  )}
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="text-sm text-slate-700">
+                      <strong>Note:</strong> Final grade reflects water supply reliability (min of sprinkler score and
+                      water score). Buildings where sprinklers are not required (0%) are excluded from site roll-up.
+                    </p>
                   </div>
                 </div>
               </>
@@ -604,7 +841,9 @@ export default function FireProtectionPage() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-slate-900">Site Fire Protection Roll-up</h3>
-              <p className="text-sm text-slate-600">Area-weighted average across buildings where sprinklers are required</p>
+              <p className="text-sm text-slate-600">
+                Area-weighted average across buildings where sprinklers are required
+              </p>
             </div>
           </div>
 
@@ -623,7 +862,9 @@ export default function FireProtectionPage() {
 
             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
               <div className="text-sm text-slate-600 mb-1">Total Area</div>
-              <div className="text-3xl font-bold text-slate-900">{siteRollup.totalArea.toLocaleString()}</div>
+              <div className="text-3xl font-bold text-slate-900">
+                {siteRollup.totalArea.toLocaleString()}
+              </div>
               <div className="text-xs text-slate-500 mt-1">Square meters</div>
             </div>
           </div>
@@ -633,7 +874,8 @@ export default function FireProtectionPage() {
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
                 <p className="text-sm text-amber-900">
-                  No buildings with required sprinklers found. Mark buildings with required_pct {'>'} 0 to include in roll-up.
+                  No buildings with required sprinklers found. Mark buildings with required_pct {'>'} 0 to include in
+                  roll-up.
                 </p>
               </div>
             </div>
@@ -643,3 +885,4 @@ export default function FireProtectionPage() {
     </div>
   );
 }
+ 

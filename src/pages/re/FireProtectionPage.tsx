@@ -38,7 +38,10 @@ import {
 import {
   generateFireProtectionRecommendations,
   type FireProtectionRecommendation,
+  getSiteRecommendations,
+  getBuildingRecommendations,
 } from '../../lib/modules/re04FireProtectionRecommendations';
+import FireProtectionRecommendations from '../../components/re/FireProtectionRecommendations';
 
 export default function FireProtectionPage() {
   console.count('FireProtectionPage render');
@@ -529,6 +532,14 @@ export default function FireProtectionPage() {
               explicitly acceptable when evidence is limited.
             </p>
           </div>
+
+          {/* Site-level Recommendations */}
+          <div className="mt-6 pt-6 border-t border-slate-200">
+            <FireProtectionRecommendations
+              recommendations={getSiteRecommendations(derivedRecommendations)}
+              title="Site Water Supply Recommendations"
+            />
+          </div>
         </div>
 
         {/* Buildings & Sprinklers Section */}
@@ -799,6 +810,16 @@ export default function FireProtectionPage() {
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                   </div>
+
+                  {/* Building-specific Recommendations */}
+                  {selectedBuilding && (
+                    <div className="pt-6 border-t border-slate-200">
+                      <FireProtectionRecommendations
+                        recommendations={getBuildingRecommendations(derivedRecommendations, selectedBuilding.id!)}
+                        title="Building Fire Protection Recommendations"
+                      />
+                    </div>
+                  )}
 
                   <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                     <p className="text-sm text-slate-700">

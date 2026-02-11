@@ -327,10 +327,7 @@ export default function FireProtectionPage() {
   // Get selected building details
   const selectedBuilding = buildings.find(b => b.id === selectedBuildingId);
 
-  // Calculate site rollup
-  const siteRollup = calculateSiteRollup(buildingSprinklers, buildings);
-
-  // Generate auto-flags for selected building
+    // Generate auto-flags for selected building
   const autoFlags = selectedSprinkler
     ? generateAutoFlags(selectedSprinklerData, rawSprinklerScore, siteWaterScore)
     : [];

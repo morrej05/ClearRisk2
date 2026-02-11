@@ -805,15 +805,17 @@ export default function FireProtectionPage() {
                     />
                   </div>
 
-                  {/* Building-specific Recommendations */}
-                  {selectedBuilding && (
-                    <div className="pt-6 border-t border-slate-200">
-                      <FireProtectionRecommendations
-                        recommendations={getBuildingRecommendations(derivedRecommendations, selectedBuilding.id!)}
-                        title="Building Fire Protection Recommendations"
-                      />
-                    </div>
-                  )}
+                 {/* Building-specific Recommendations */}
+{selectedBuilding && (
+  <div className="pt-6 border-t border-slate-200">
+    <FireProtectionRecommendations
+      title="Building recommendations"
+      recommendations={derivedRecommendations}
+      context="building"
+    />
+  </div>
+)}
+
 
                   <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                     <p className="text-sm text-slate-700">

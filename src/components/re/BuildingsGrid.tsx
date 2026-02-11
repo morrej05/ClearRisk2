@@ -552,9 +552,11 @@ async function saveMezz() {
 
       <div className="flex items-center justify-between mb-3">
         <div className="font-semibold">Buildings</div>
-        <button className="px-3 py-2 border rounded" onClick={addBuilding}>
-          + Add Building
-        </button>
+        {mode !== 'fire_protection' && (
+          <button className="px-3 py-2 border rounded" onClick={addBuilding}>
+            + Add Building
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto border rounded">
@@ -810,25 +812,29 @@ async function saveMezz() {
 
                 <td className="p-2">
                   <div className="flex gap-2">
-                    <button
-                      className="p-2 border rounded"
-                      onClick={() => saveRow(idx)}
-                      disabled={savingId === (b.id ?? `new-${idx}`)}
-                      aria-label="Save building"
-                      title="Save"
-                    >
-                      <Save className="w-4 h-4" />
-                    </button>
-                
-                    <button
-                      className="p-2 border rounded"
-                      onClick={() => removeRow(idx)}
-                      disabled={savingId === (b.id ?? `new-${idx}`)}
-                      aria-label="Delete building"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {mode !== 'fire_protection' && (
+                      <button
+                        className="p-2 border rounded"
+                        onClick={() => saveRow(idx)}
+                        disabled={savingId === (b.id ?? `new-${idx}`)}
+                        aria-label="Save building"
+                        title="Save"
+                      >
+                        <Save className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {mode !== 'fire_protection' && (
+                      <button
+                        className="p-2 border rounded"
+                        onClick={() => removeRow(idx)}
+                        disabled={savingId === (b.id ?? `new-${idx}`)}
+                        aria-label="Delete building"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

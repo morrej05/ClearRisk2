@@ -1,4 +1,12 @@
-import BuildingsGrid from "../../re/BuildingsGrid";
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { AlertTriangle, Info, Droplet, Building as BuildingIcon, TrendingUp } from 'lucide-react';
+import { supabase } from '../../../lib/supabase';
+import {
+  generateFireProtectionRecommendations,
+  getSiteRecommendations,
+  getBuildingRecommendations,
+} from '../../../lib/modules/re04FireProtectionRecommendations';
+import FireProtectionRecommendations from '../../re/FireProtectionRecommendations';
 
 interface Document {
   id: string;
@@ -20,525 +28,456 @@ interface RE06FireProtectionFormProps {
   onSaved: () => void;
 }
 
-type WaterSupplyReliability = 'reliable' | 'unreliable' | 'unknown';
-type CoverageAdequacy = 'poor' | 'adequate' | 'good' | 'unknown';
-type MonitoringType = 'none' | 'keyholder' | 'arc' | 'unknown';
-type LocalisedProtectionLevel = 'yes' | 'partial' | 'no' | 'unknown';
-type SprinklerSystemType = 'wet' | 'dry' | 'esfr' | 'other' | 'unknown';
-type WaterSupplyType = 'mains' | 'tank' | 'dual' | 'unknown';
+type WaterReliability = 'Reliable' | 'Unreliable' | 'Unknown';
+type PumpArrangement = 'None' | 'Single' | 'Duty+Standby' | 'Unknown';
+type PowerResilience = 'Good' | 'Mixed' | 'Poor' | 'Unknown';
+type TestingRegime = 'Documented' | 'Some evidence' | 'None' | 'Unknown';
+type MaintenanceStatus = 'Good' | 'Mixed' | 'Poor' | 'Unknown';
+type SprinklerAdequacy = 'Adequate' | 'Inadequate' | 'Unknown';
 
-interface SprinklersData {
-  provided_pct?: number | null;
-  required_pct?: number | null;
-  notes: string;
-  rating: 1 | 2 | 3 | 4 | 5;
-  system_standard?: string;
-  system_type?: string | SprinklerSystemType; // Legacy string support + new typed values
+interface SiteWaterData {
+  water_reliability?: WaterReliability;
+  supply_type?: string;
+  pumps_present?: boolean;
+  pump_arrangement?: PumpArrangement;
+  power_resilience?: PowerResilience;
+  testing_regime?: TestingRegime;
+  key_weaknesses?: string;
+}
+
+interface BuildingSprinklerData {
+  sprinkler_coverage_installed_pct?: number;
+  sprinkler_coverage_required_pct?: number;
+  sprinkler_standard?: string;
   hazard_class?: string;
-  last_service_date?: string | null;
-  has_impairments?: string;
-  impairments_notes?: string;
-  valve_supervision?: string;
-  heating_adequate?: string;
-  // Phase 1: New optional technical fields
-  design_standard?: string;
-  hazard_density?: string;
-  water_supply_type?: WaterSupplyType;
+  maintenance_status?: MaintenanceStatus;
+  sprinkler_adequacy?: SprinklerAdequacy;
+  justification_if_required_lt_100?: string;
+  sprinkler_score_1_5?: number;
+  final_active_score_1_5?: number;
 }
 
-interface WaterMistData {
-  provided_pct?: number | null;
-  required_pct?: number | null;
-  notes: string;
-  rating: 1 | 2 | 3 | 4 | 5;
-  // Phase 1: New optional technical fields
-  design_standard?: string;
-  hazard_density?: string;
-  system_type?: SprinklerSystemType;
-  water_supply_type?: WaterSupplyType;
-}
-
-interface LocalisedProtectionSystem {
-  protected: LocalisedProtectionLevel;
-  notes: string;
-}
-
-interface BuildingSuppressionData {
-  sprinklers?: SprinklersData;
-  water_mist?: WaterMistData;
-}
-
-interface BuildingLocalisedProtection {
-  foam?: LocalisedProtectionSystem;
-  gaseous?: LocalisedProtectionSystem;
-}
-
-interface BuildingDetectionData {
-  system_type?: string;
-  coverage?: CoverageAdequacy;
-  monitoring?: MonitoringType;
-  notes: string;
-  rating: 1 | 2 | 3 | 4 | 5;
+interface Building {
+  id: string;
+  ref?: string;
+  description?: string;
+  footprint_m2?: number;
+  floor_area_sqm?: number;
 }
 
 interface BuildingFireProtection {
-  suppression: BuildingSuppressionData;
-  localised_protection: BuildingLocalisedProtection;
-  detection_alarm: BuildingDetectionData;
-  nle_reduction_applicable?: boolean | null;
-  nle_reduction_notes?: string;
-  notes: string;
-  // Phase 1: Derived scores placeholder (no computation yet)
-  derived?: {
-    building_fire_protection_score?: 1 | 2 | 3 | 4 | 5;
-  };
+  sprinklerData?: BuildingSprinklerData;
+  comments?: string;
 }
 
-interface OperationalReadiness {
-  testing_rating: 1 | 2 | 3 | 4 | 5;
-  impairment_management_rating: 1 | 2 | 3 | 4 | 5;
-  emergency_response_rating: 1 | 2 | 3 | 4 | 5;
-  notes: string;
-}
-
-interface SiteData {
-  water_supply_reliability: WaterSupplyReliability;
-  water_supply_notes: string;
-  operational_readiness: OperationalReadiness;
-  // Phase 1: Derived scores placeholder (no computation yet)
-  derived?: {
-    site_fire_protection_score?: 1 | 2 | 3 | 4 | 5;
-  };
-}
-
-interface FireProtectionModule {
+interface FireProtectionModuleData {
   buildings: Record<string, BuildingFireProtection>;
-  site: SiteData;
-}
-
-interface ConstructionBuilding {
-  id: string;
-  building_name: string;
-}
-
-const RATING_LABELS = {
-  1: 'Poor',
-  2: 'Below Avg',
-  3: 'Average',
-  4: 'Good',
-  5: 'Excellent',
-};
-
-const RATING_HELP_DETAIL = {
-  1: 'Inadequate - materially below industry expectation',
-  3: 'Generally adequate - meets normal industry expectation',
-  5: 'Robust / best practice - strong, resilient, well maintained'
-};
-
-function getMonitoringButtonStyles(type: MonitoringType, isSelected: boolean): string {
-  if (!isSelected) {
-    return 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent';
-  }
-
-  switch (type) {
-    case 'none':
-      return 'bg-red-50 text-red-900 border-2 border-red-600 font-semibold';
-    case 'keyholder':
-      return 'bg-amber-50 text-amber-900 border-2 border-amber-600 font-semibold';
-    case 'arc':
-      return 'bg-green-50 text-green-900 border-2 border-green-600 font-semibold';
-    case 'unknown':
-      return 'bg-slate-50 text-slate-900 border-2 border-slate-600 font-semibold';
-    default:
-      return 'bg-blue-50 text-blue-900 border-2 border-blue-600 font-semibold';
-  }
-}
-
-function getCoverageButtonStyles(level: CoverageAdequacy, isSelected: boolean): string {
-  if (!isSelected) {
-    return 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent';
-  }
-
-  switch (level) {
-    case 'poor':
-      return 'bg-red-50 text-red-900 border-2 border-red-600 font-semibold';
-    case 'adequate':
-      return 'bg-amber-50 text-amber-900 border-2 border-amber-600 font-semibold';
-    case 'good':
-      return 'bg-green-50 text-green-900 border-2 border-green-600 font-semibold';
-    case 'unknown':
-      return 'bg-slate-50 text-slate-900 border-2 border-slate-600 font-semibold';
-    default:
-      return 'bg-blue-50 text-blue-900 border-2 border-blue-600 font-semibold';
-  }
-}
-
-function getProtectionButtonStyles(level: LocalisedProtectionLevel, isSelected: boolean): string {
-  if (!isSelected) {
-    return 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent';
-  }
-
-  switch (level) {
-    case 'no':
-      return 'bg-red-50 text-red-900 border-2 border-red-600 font-semibold';
-    case 'partial':
-      return 'bg-amber-50 text-amber-900 border-2 border-amber-600 font-semibold';
-    case 'yes':
-      return 'bg-green-50 text-green-900 border-2 border-green-600 font-semibold';
-    case 'unknown':
-      return 'bg-slate-50 text-slate-900 border-2 border-slate-600 font-semibold';
-    default:
-      return 'bg-blue-50 text-blue-900 border-2 border-blue-600 font-semibold';
-  }
-}
-
-function getWaterSupplyButtonStyles(level: WaterSupplyReliability, isSelected: boolean): string {
-  if (!isSelected) {
-    return 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent';
-  }
-
-  switch (level) {
-    case 'unreliable':
-      return 'bg-red-50 text-red-900 border-2 border-red-600 font-semibold';
-    case 'reliable':
-      return 'bg-green-50 text-green-900 border-2 border-green-600 font-semibold';
-    case 'unknown':
-      return 'bg-slate-50 text-slate-900 border-2 border-slate-600 font-semibold';
-    default:
-      return 'bg-blue-50 text-blue-900 border-2 border-blue-600 font-semibold';
-  }
-}
-
-function createDefaultBuildingProtection(): BuildingFireProtection {
-  return {
-    suppression: {},
-    localised_protection: {},
-    detection_alarm: {
-      system_type: '',
-      coverage: 'unknown',
-      monitoring: 'unknown',
-      notes: '',
-      rating: 3
-    },
-    nle_reduction_applicable: null,
-    nle_reduction_notes: '',
-    notes: ''
+  site: {
+    water: SiteWaterData;
+    water_score_1_5?: number;
+    comments?: string;
   };
 }
 
-function createDefaultSiteData(): SiteData {
-  return {
-    water_supply_reliability: 'unknown',
-    water_supply_notes: '',
-    operational_readiness: {
-      testing_rating: 3,
-      impairment_management_rating: 3,
-      emergency_response_rating: 3,
-      notes: ''
+function calculateWaterScore(data: SiteWaterData): number {
+  const { water_reliability, pump_arrangement, power_resilience, testing_regime } = data;
+
+  if (water_reliability === 'Reliable') {
+    if (testing_regime === 'Documented' && power_resilience === 'Good') {
+      return 5;
     }
+    if (testing_regime === 'Documented' || power_resilience === 'Good') {
+      return 4;
+    }
+    return 4;
+  }
+
+  if (water_reliability === 'Unreliable') {
+    return 1;
+  }
+
+  if (water_reliability === 'Unknown') {
+    if (power_resilience === 'Poor' || testing_regime === 'None') {
+      return 2;
+    }
+    if (pump_arrangement === 'Duty+Standby' && testing_regime !== 'None') {
+      return 3;
+    }
+    return 3;
+  }
+
+  return 3;
+}
+
+function calculateSprinklerScore(data: BuildingSprinklerData): number | null {
+  const {
+    sprinkler_coverage_installed_pct = 0,
+    sprinkler_coverage_required_pct = 0,
+    sprinkler_adequacy,
+    maintenance_status,
+  } = data;
+
+  if (sprinkler_coverage_required_pct === 0) {
+    return null;
+  }
+
+  const coverageRatio =
+    sprinkler_coverage_required_pct > 0
+      ? Math.min(1.0, sprinkler_coverage_installed_pct / sprinkler_coverage_required_pct)
+      : 0;
+
+  if (sprinkler_adequacy === 'Inadequate') {
+    return coverageRatio < 0.3 ? 1 : 2;
+  }
+
+  if (sprinkler_adequacy === 'Adequate') {
+    if (coverageRatio >= 0.95 && maintenance_status === 'Good') {
+      return 5;
+    }
+    if (coverageRatio >= 0.95) {
+      return 4;
+    }
+    if (coverageRatio >= 0.8) {
+      return 4;
+    }
+    return 3;
+  }
+
+  if (coverageRatio >= 0.95) {
+    return maintenance_status === 'Good' ? 4 : 3;
+  }
+  if (coverageRatio >= 0.8) {
+    return 3;
+  }
+  if (coverageRatio >= 0.6) {
+    return 3;
+  }
+  if (coverageRatio >= 0.3) {
+    return 2;
+  }
+  return 1;
+}
+
+function calculateFinalActiveScore(sprinklerScore: number | null, waterScore: number): number {
+  if (sprinklerScore === null) {
+    return 5;
+  }
+  return Math.min(sprinklerScore, waterScore);
+}
+
+function generateAutoFlags(
+  sprinklerData: BuildingSprinklerData,
+  sprinklerScore: number | null,
+  waterScore: number
+): Array<{ severity: 'warning' | 'info'; message: string }> {
+  const flags: Array<{ severity: 'warning' | 'info'; message: string }> = [];
+  const {
+    sprinkler_coverage_installed_pct = 0,
+    sprinkler_coverage_required_pct = 0,
+  } = sprinklerData;
+
+  if (sprinkler_coverage_required_pct > sprinkler_coverage_installed_pct) {
+    flags.push({
+      severity: 'warning',
+      message: `Coverage gap: ${sprinkler_coverage_required_pct}% required but only ${sprinkler_coverage_installed_pct}% installed`,
+    });
+  }
+
+  if (sprinklerScore !== null && sprinklerScore >= 4 && waterScore <= 2) {
+    flags.push({
+      severity: 'warning',
+      message: `Sprinkler system rated highly (${sprinklerScore}/5) but water supply is unreliable (${waterScore}/5)`,
+    });
+  }
+
+  if (sprinkler_coverage_required_pct === 0 && sprinkler_coverage_installed_pct > 0) {
+    flags.push({
+      severity: 'info',
+      message: 'Sprinklers installed but marked as not required - verify rationale',
+    });
+  }
+
+  return flags;
+}
+
+function calculateSiteRollup(
+  fireProtectionData: FireProtectionModuleData,
+  buildings: Building[]
+): { averageScore: number; buildingsAssessed: number; totalArea: number } {
+  let totalWeightedScore = 0;
+  let totalArea = 0;
+  let buildingsAssessed = 0;
+
+  for (const building of buildings) {
+    const buildingFP = fireProtectionData.buildings[building.id];
+    if (!buildingFP?.sprinklerData) continue;
+
+    const requiredPct = buildingFP.sprinklerData.sprinkler_coverage_required_pct || 0;
+    if (requiredPct === 0) continue;
+
+    const area = building.footprint_m2 || 0;
+    const finalScore = buildingFP.sprinklerData.final_active_score_1_5;
+
+    if (area > 0 && finalScore) {
+      totalWeightedScore += finalScore * area;
+      totalArea += area;
+      buildingsAssessed++;
+    }
+  }
+
+  const averageScore = totalArea > 0 ? totalWeightedScore / totalArea : 0;
+
+  return {
+    averageScore: Math.round(averageScore * 10) / 10,
+    buildingsAssessed,
+    totalArea,
   };
 }
 
-function migrateMonitoringValues(fireProtection: FireProtectionModule): FireProtectionModule {
-  const migratedBuildings = { ...fireProtection.buildings };
-
-  Object.keys(migratedBuildings).forEach((buildingId) => {
-    const building = migratedBuildings[buildingId];
-    if (building.detection_alarm) {
-      const currentMonitoring = building.detection_alarm.monitoring as any;
-      if (currentMonitoring === 'inherit' || !currentMonitoring) {
-        migratedBuildings[buildingId] = {
-          ...building,
-          detection_alarm: {
-            ...building.detection_alarm,
-            monitoring: 'unknown'
-          }
-        };
-      }
-    }
-  });
-
+function createDefaultSiteWater(): SiteWaterData {
   return {
-    ...fireProtection,
-    buildings: migratedBuildings
+    water_reliability: 'Unknown',
+    supply_type: '',
+    pumps_present: false,
+    pump_arrangement: 'Unknown',
+    power_resilience: 'Unknown',
+    testing_regime: 'Unknown',
+    key_weaknesses: '',
+  };
+}
+
+function createDefaultBuildingSprinkler(): BuildingSprinklerData {
+  return {
+    sprinkler_coverage_installed_pct: 0,
+    sprinkler_coverage_required_pct: 0,
+    sprinkler_standard: '',
+    hazard_class: '',
+    maintenance_status: 'Unknown',
+    sprinkler_adequacy: 'Unknown',
+    justification_if_required_lt_100: '',
+    sprinkler_score_1_5: 3,
+    final_active_score_1_5: 3,
   };
 }
 
 export default function RE06FireProtectionForm({
   moduleInstance,
   document,
-  onSaved
+  onSaved,
 }: RE06FireProtectionFormProps) {
-  return <BuildingsGrid documentId={document.id} mode="fire_protection" onAfterSave={onSaved} />;
-  const [isSaving, setIsSaving] = useState(false);
-  const [constructionBuildings, setConstructionBuildings] = useState<ConstructionBuilding[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
-  const [siteExpanded, setSiteExpanded] = useState(true);
-  const [sectionGrade, setSectionGrade] = useState<number>(3);
-  const hasLoadedConstructionRef = useRef(false);
 
-  const d = moduleInstance.data || {};
-  const rawFireProtection: FireProtectionModule = {
-    buildings: d.fire_protection?.buildings || {},
-    site: d.fire_protection?.site || createDefaultSiteData()
+  const initialData: FireProtectionModuleData = moduleInstance.data?.fire_protection || {
+    buildings: {},
+    site: {
+      water: createDefaultSiteWater(),
+      water_score_1_5: 3,
+      comments: '',
+    },
   };
 
-  const safeFireProtection = migrateMonitoringValues(rawFireProtection);
+  const [fireProtectionData, setFireProtectionData] = useState<FireProtectionModuleData>(initialData);
 
-  const [formData, setFormData] = useState<{ fire_protection: FireProtectionModule }>({
-    fire_protection: safeFireProtection
-  });
+  const siteWaterData = fireProtectionData.site.water;
+  const siteWaterComments = fireProtectionData.site.comments || '';
 
-  // ✅ hard reset the guard when switching documents
-useEffect(() => {
-  hasLoadedConstructionRef.current = false;
-}, [document.id]);
+  const selectedSprinklerData = selectedBuildingId
+    ? fireProtectionData.buildings[selectedBuildingId]?.sprinklerData || createDefaultBuildingSprinkler()
+    : createDefaultBuildingSprinkler();
+  const selectedComments = selectedBuildingId
+    ? fireProtectionData.buildings[selectedBuildingId]?.comments || ''
+    : '';
 
-useEffect(() => {
-  let cancelled = false;
+  const siteWaterScore = useMemo(() => {
+    return calculateWaterScore(siteWaterData);
+  }, [siteWaterData]);
 
-  async function loadConstructionBuildings() {
-    try {
-      const res = await supabase
-        .from('module_instances')
-        .select('id, updated_at, data')
-        .eq('document_id', document.id)
-        .eq('module_key', 'RE_02_CONSTRUCTION')
-        .order('updated_at', { ascending: false })
-        .limit(1);
+  const rawSprinklerScore = useMemo(() => {
+    return calculateSprinklerScore(selectedSprinklerData);
+  }, [selectedSprinklerData]);
 
-      const rows = (res.data as any[]) || [];
-      if (res.error) throw res.error;
+  const selectedSprinklerScore = rawSprinklerScore ?? 3;
 
-      const constructionInstance = rows.length > 0 ? rows[0] : null;
+  const selectedFinalScore = useMemo(() => {
+    return calculateFinalActiveScore(rawSprinklerScore, siteWaterScore);
+  }, [rawSprinklerScore, siteWaterScore]);
 
-      const canonical = constructionInstance?.data?.construction?.buildings;
-      const legacy = constructionInstance?.data?.buildings;
+  const autoFlags = generateAutoFlags(selectedSprinklerData, rawSprinklerScore, siteWaterScore);
+  const siteRollup = calculateSiteRollup(fireProtectionData, buildings);
 
-      const buildings = Array.isArray(canonical)
-        ? canonical
-        : Array.isArray(legacy)
-        ? legacy
-        : [];
+  const derivedRecommendations = useMemo(() => {
+    const buildingsForRecs: Record<string, any> = {};
 
-      // ---- Normalize building IDs (legacy compatibility) ----
-      const normalizedBuildings = (buildings ?? []).map((b: any) => {
-        const legacyId = b?.building_id ?? b?.buildingId ?? b?._id;
-        if (!b?.id && legacyId) return { ...b, id: legacyId };
-        return b;
-      });
-      // --------------------------------------------------------
-
-      if (cancelled) return;
-
-      setConstructionBuildings(normalizedBuildings);
-
-      setSelectedBuildingId((prev) => {
-        if (prev && normalizedBuildings.some((b: any) => b?.id === prev)) return prev;
-        return normalizedBuildings[0]?.id ?? null;
-      });
-
-      setFormData((prev) => {
-        const updatedBuildings = { ...prev.fire_protection.buildings };
-
-        for (const b of normalizedBuildings) {
-          if (b?.id && !updatedBuildings[b.id]) {
-            updatedBuildings[b.id] = createDefaultBuildingProtection();
-          }
-        }
-
-        return {
-          ...prev,
-          fire_protection: {
-            ...prev.fire_protection,
-            buildings: updatedBuildings,
+    Object.entries(fireProtectionData.buildings).forEach(([buildingId, buildingFP]) => {
+      if (!buildingFP.sprinklerData) return;
+      buildingsForRecs[buildingId] = {
+        suppression: {
+          sprinklers: {
+            rating: buildingFP.sprinklerData.sprinkler_score_1_5,
+            provided_pct: buildingFP.sprinklerData.sprinkler_coverage_installed_pct,
+            required_pct: buildingFP.sprinklerData.sprinkler_coverage_required_pct,
           },
-        };
-      });
-    } catch (err) {
-      console.error('[RE06] loadConstructionBuildings failed:', err);
-      if (!cancelled) setConstructionBuildings([]);
-    }
-  }
+        },
+      };
+    });
 
-  // Optional: prevents reloading multiple times if you have guards elsewhere
-  if (!hasLoadedConstructionRef.current) {
-    hasLoadedConstructionRef.current = true;
-    loadConstructionBuildings();
-  } else {
-    loadConstructionBuildings();
-  }
+    const fpModule = {
+      buildings: buildingsForRecs,
+      site: {
+        water_supply_reliability: siteWaterData.water_reliability?.toLowerCase() as any,
+      },
+    };
 
-  return () => {
-    cancelled = true;
-  };
-}, [document.id]);
+    return generateFireProtectionRecommendations(fpModule);
+  }, [fireProtectionData.buildings, siteWaterData.water_reliability]);
 
-  // Load section grade from document
   useEffect(() => {
-    async function loadSectionGrade() {
+    async function loadBuildings() {
       try {
-        const { data: doc, error } = await supabase
-          .from('documents')
-          .select('section_grades')
-          .eq('id', document.id)
-          .maybeSingle();
+        const { data: buildingsData, error } = await supabase
+          .from('re_buildings')
+          .select('*')
+          .eq('document_id', document.id)
+          .order('created_at', { ascending: true });
 
-        if (error) {
-          console.error('[RE06] Error loading section grade:', error);
-          return;
+        if (error) throw error;
+
+        const loadedBuildings = (buildingsData || []) as Building[];
+        setBuildings(loadedBuildings);
+
+        if (loadedBuildings.length > 0 && !selectedBuildingId) {
+          setSelectedBuildingId(loadedBuildings[0].id);
         }
 
-        const grade = doc?.section_grades?.fire_protection;
-        if (grade !== undefined) {
-          setSectionGrade(grade);
-        }
+        setFireProtectionData((prev) => {
+          const updatedBuildings = { ...prev.buildings };
+          for (const building of loadedBuildings) {
+            if (!updatedBuildings[building.id]) {
+              updatedBuildings[building.id] = {
+                sprinklerData: createDefaultBuildingSprinkler(),
+                comments: '',
+              };
+            }
+          }
+          return { ...prev, buildings: updatedBuildings };
+        });
       } catch (error) {
-        console.error('[RE06] Exception loading section grade:', error);
+        console.error('Failed to load buildings:', error);
       }
     }
 
-    loadSectionGrade();
+    loadBuildings();
   }, [document.id]);
 
-  const handleSectionGradeChange = async (value: number) => {
-    setSectionGrade(value);
-    // Persist to canonical documents.section_grades
-    const { error } = await updateSectionGrade(document.id, 'fire_protection', value);
-    if (error) {
-      console.error('[RE06] Failed to update section grade:', error);
-    }
-  };
+  const saveData = useCallback(async () => {
+    if (saving) return;
 
-  const handleSave = async () => {
-    console.log('[RE06] save click', { isSaving });
-    if (isSaving) return;
-    setIsSaving(true);
-
+    setSaving(true);
     try {
-      const { data: saved, error } = await supabase
+      await supabase
         .from('module_instances')
         .update({
-          data: formData
+          data: { fire_protection: fireProtectionData },
         })
-        .eq('id', moduleInstance.id)
-        .select('id, updated_at, data')
-        .single();
-
-      if (error) throw error;
-
-      console.log('[RE06] ✅ Saved successfully');
-      console.log('[RE06] Updated at:', saved.updated_at);
-      console.log('[RE06] Buildings count:', Object.keys(saved.data?.fire_protection?.buildings || {}).length);
-      console.log('[RE06] Saved keys:', Object.keys(saved.data || {}));
+        .eq('id', moduleInstance.id);
 
       onSaved();
     } catch (error) {
-      console.error('[RE06] ❌ Save failed:', error);
-      alert('Failed to save module. Please try again.');
+      console.error('Failed to save fire protection data:', error);
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
+  }, [saving, fireProtectionData, moduleInstance.id, onSaved]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveData();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [siteWaterData, siteWaterScore, siteWaterComments, selectedSprinklerData, selectedSprinklerScore, selectedFinalScore, selectedComments]);
+
+  const updateSiteWater = (field: keyof SiteWaterData, value: any) => {
+    setFireProtectionData((prev) => ({
+      ...prev,
+      site: {
+        ...prev.site,
+        water: {
+          ...prev.site.water,
+          [field]: value,
+        },
+        water_score_1_5: field === 'water_reliability' ? calculateWaterScore({ ...prev.site.water, [field]: value }) : prev.site.water_score_1_5,
+      },
+    }));
   };
 
-  const updateBuildingField = (buildingId: string, path: string[], value: any) => {
-    setFormData((prev) => {
-      const building = { ...prev.fire_protection.buildings[buildingId] };
-      let current: any = building;
+  const updateSiteComments = (comments: string) => {
+    setFireProtectionData((prev) => ({
+      ...prev,
+      site: {
+        ...prev.site,
+        comments,
+      },
+    }));
+  };
 
-      for (let i = 0; i < path.length - 1; i++) {
-        if (!current[path[i]]) {
-          current[path[i]] = {};
-        }
-        current[path[i]] = { ...current[path[i]] };
-        current = current[path[i]];
-      }
+  const updateBuildingSprinkler = (field: keyof BuildingSprinklerData, value: any) => {
+    if (!selectedBuildingId) return;
 
-      current[path[path.length - 1]] = value;
+    setFireProtectionData((prev) => {
+      const building = prev.buildings[selectedBuildingId] || {
+        sprinklerData: createDefaultBuildingSprinkler(),
+        comments: '',
+      };
+
+      const updatedData = {
+        ...building.sprinklerData,
+        [field]: value,
+      };
+
+      const sprinklerScore = calculateSprinklerScore(updatedData);
+      updatedData.sprinkler_score_1_5 = sprinklerScore !== null ? sprinklerScore : 3;
+      updatedData.final_active_score_1_5 = calculateFinalActiveScore(sprinklerScore, siteWaterScore);
 
       return {
         ...prev,
-        fire_protection: {
-          ...prev.fire_protection,
-          buildings: {
-            ...prev.fire_protection.buildings,
-            [buildingId]: building
-          }
-        }
+        buildings: {
+          ...prev.buildings,
+          [selectedBuildingId]: {
+            ...building,
+            sprinklerData: updatedData,
+          },
+        },
       };
     });
   };
 
-  const updateSiteField = (path: string[], value: any) => {
-    setFormData((prev) => {
-      const site = { ...prev.fire_protection.site };
-      let current: any = site;
+  const updateBuildingComments = (comments: string) => {
+    if (!selectedBuildingId) return;
 
-      for (let i = 0; i < path.length - 1; i++) {
-        if (!current[path[i]]) {
-          current[path[i]] = {};
-        }
-        current[path[i]] = { ...current[path[i]] };
-        current = current[path[i]];
-      }
-
-      current[path[path.length - 1]] = value;
-
-      return {
-        ...prev,
-        fire_protection: {
-          ...prev.fire_protection,
-          site
-        }
-      };
-    });
+    setFireProtectionData((prev) => ({
+      ...prev,
+      buildings: {
+        ...prev.buildings,
+        [selectedBuildingId]: {
+          ...(prev.buildings[selectedBuildingId] || {}),
+          comments,
+        },
+      },
+    }));
   };
 
-  const selectedBuilding = selectedBuildingId
-    ? constructionBuildings.find(b => b.id === selectedBuildingId)
-    : null;
+  const handleBuildingSelect = (buildingId: string) => {
+    setSelectedBuildingId(buildingId);
+  };
 
-  const selectedBuildingData = selectedBuildingId
-    ? formData.fire_protection.buildings[selectedBuildingId] || createDefaultBuildingProtection()
-    : null;
+  const selectedBuilding = buildings.find((b) => b.id === selectedBuildingId);
 
-  const waterSupplyUnreliable = formData.fire_protection.site.water_supply_reliability === 'unreliable';
-  const hasSprinklersOrMist = selectedBuildingData &&
-    (selectedBuildingData.suppression.sprinklers || selectedBuildingData.suppression.water_mist);
-
-  const RatingSelector = ({
-    value,
-    onChange,
-    label
-  }: {
-    value: number;
-    onChange: (v: number) => void;
-    label: string;
-  }) => (
-    <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-      <label className="block text-sm font-semibold text-slate-900 mb-3">{label}</label>
-      <RatingButtons
-        value={value}
-        onChange={onChange}
-        labels={RATING_LABELS}
-        size="md"
-        className="mb-3"
-      />
-      <div className="text-xs text-slate-600 space-y-1 bg-white rounded p-3">
-        <div><strong>1:</strong> {RATING_HELP_DETAIL[1]}</div>
-        <div><strong>3:</strong> {RATING_HELP_DETAIL[3]}</div>
-        <div><strong>5:</strong> {RATING_HELP_DETAIL[5]}</div>
-      </div>
-    </div>
-  );
-
-  if (constructionBuildings.length === 0) {
+  if (buildings.length === 0) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-04 - Fire Protection</h2>
-          <p className="text-slate-600">Active fire protection effectiveness assessment</p>
-        </div>
+      <div className="p-8">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div>
@@ -553,873 +492,452 @@ useEffect(() => {
   }
 
   return (
-    <>
-      <div className="p-4 md:p-6 max-w-5xl mx-auto pb-24">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-04 - Fire Protection</h2>
-          <p className="text-slate-600">Active fire protection effectiveness assessment</p>
+    <div className="pb-24">
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <Droplet className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-slate-900">Site Water & Fire Pumps</h2>
+            <p className="text-sm text-slate-600">Site-level water supply reliability assessment</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-600">Water Score:</span>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className={`w-6 h-6 rounded ${i <= siteWaterScore ? 'bg-blue-600' : 'bg-slate-200'}`}
+                />
+              ))}
+            </div>
+            <span className="text-sm font-medium text-slate-900">{siteWaterScore}/5</span>
+          </div>
         </div>
 
-        {/* No Buildings Message */}
-        {constructionBuildings.length === 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-amber-900 mb-1">No Buildings Configured</h4>
-                <p className="text-sm text-amber-800 mb-2">
-                  Please complete the RE-02 Construction module first to define your buildings before assessing fire protection.
-                </p>
-              </div>
-            </div>
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Water Reliability</label>
+            <select
+              value={siteWaterData.water_reliability || 'Unknown'}
+              onChange={(e) => updateSiteWater('water_reliability', e.target.value as WaterReliability)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Unknown">Unknown</option>
+              <option value="Reliable">Reliable</option>
+              <option value="Unreliable">Unreliable</option>
+            </select>
           </div>
-        )}
 
-        {/* Horizontal Building Tabs (Mobile-First) */}
-        {constructionBuildings.length > 0 && (
-          <div className="mb-6 -mx-4 md:mx-0">
-            <div className="overflow-x-auto px-4 md:px-0">
-              <div className="flex gap-2 pb-2 min-w-max md:min-w-0">
-                {constructionBuildings.map((building) => (
-                  <button
-                    key={building.id}
-                    onClick={() => setSelectedBuildingId(building.id)}
-                    className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
-                      selectedBuildingId === building.id
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {building.building_name || 'Unnamed Building'}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Supply Type</label>
+            <input
+              type="text"
+              value={siteWaterData.supply_type || ''}
+              onChange={(e) => updateSiteWater('supply_type', e.target.value)}
+              placeholder="e.g., town main / tank / reservoir"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-        )}
 
-        {/* Per-Building Content */}
-        {selectedBuilding && selectedBuildingData && (
-          <div className="space-y-6">
-            {/* Water Supply Warning */}
-            {waterSupplyUnreliable && hasSprinklersOrMist && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-amber-900 mb-1">Water Supply Concern</h4>
-                  <p className="text-sm text-amber-800">
-                    Site water supply is marked as unreliable, which may affect water-based suppression effectiveness.
-                  </p>
-                </div>
-              </div>
-            )}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Pumps Present</label>
+            <select
+              value={siteWaterData.pumps_present ? 'true' : 'false'}
+              onChange={(e) => updateSiteWater('pumps_present', e.target.value === 'true')}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
 
-            {/* Suppression - Whole-building / Area Protection */}
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <Flame className="w-5 h-5 text-orange-500" />
-                Suppression - Whole-building / Area Protection
-              </h3>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Pump Arrangement</label>
+            <select
+              value={siteWaterData.pump_arrangement || 'Unknown'}
+              onChange={(e) => updateSiteWater('pump_arrangement', e.target.value as PumpArrangement)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Unknown">Unknown</option>
+              <option value="None">None</option>
+              <option value="Single">Single</option>
+              <option value="Duty+Standby">Duty + Standby</option>
+            </select>
+          </div>
 
-              {/* Sprinklers */}
-              <div className="mb-6 pb-6 border-b border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-slate-900">Sprinklers</h4>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedBuildingData.suppression.sprinklers) {
-                        updateBuildingField(selectedBuildingId, ['suppression', 'sprinklers'], undefined);
-                      } else {
-                        updateBuildingField(selectedBuildingId, ['suppression', 'sprinklers'], {
-                          provided_pct: null,
-                          required_pct: null,
-                          notes: '',
-                          rating: 3,
-                          system_standard: '',
-                          system_type: '',
-                          hazard_class: '',
-                          last_service_date: null,
-                          has_impairments: '',
-                          impairments_notes: '',
-                          valve_supervision: '',
-                          heating_adequate: ''
-                        });
-                      }
-                    }}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                      selectedBuildingData.suppression.sprinklers
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {selectedBuildingData.suppression.sprinklers ? 'Enabled' : 'Enable'}
-                  </button>
-                </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Power Resilience</label>
+            <select
+              value={siteWaterData.power_resilience || 'Unknown'}
+              onChange={(e) => updateSiteWater('power_resilience', e.target.value as PowerResilience)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Unknown">Unknown</option>
+              <option value="Good">Good</option>
+              <option value="Mixed">Mixed</option>
+              <option value="Poor">Poor</option>
+            </select>
+          </div>
 
-                {selectedBuildingData.suppression.sprinklers && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          % Floor Area Protected
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={selectedBuildingData.suppression.sprinklers.provided_pct ?? ''}
-                          onChange={(e) => updateBuildingField(
-                            selectedBuildingId,
-                            ['suppression', 'sprinklers', 'provided_pct'],
-                            e.target.value ? parseFloat(e.target.value) : null
-                          )}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          placeholder="0-100"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          % Floor Area Required
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={selectedBuildingData.suppression.sprinklers.required_pct ?? ''}
-                          onChange={(e) => updateBuildingField(
-                            selectedBuildingId,
-                            ['suppression', 'sprinklers', 'required_pct'],
-                            e.target.value ? parseFloat(e.target.value) : null
-                          )}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          placeholder="0-100"
-                        />
-                      </div>
-                    </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Testing Regime</label>
+            <select
+              value={siteWaterData.testing_regime || 'Unknown'}
+              onChange={(e) => updateSiteWater('testing_regime', e.target.value as TestingRegime)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Unknown">Unknown</option>
+              <option value="Documented">Documented</option>
+              <option value="Some evidence">Some evidence</option>
+              <option value="None">None</option>
+            </select>
+          </div>
 
-                    {selectedBuildingData.suppression.sprinklers.provided_pct != null &&
-                     selectedBuildingData.suppression.sprinklers.required_pct != null &&
-                     selectedBuildingData.suppression.sprinklers.provided_pct < selectedBuildingData.suppression.sprinklers.required_pct && (
-                      <div className="bg-amber-50 border border-amber-200 rounded p-3 flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-amber-800">
-                          Coverage gap: {selectedBuildingData.suppression.sprinklers.required_pct - selectedBuildingData.suppression.sprinklers.provided_pct}% shortfall
-                        </p>
-                      </div>
-                    )}
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">Key Weaknesses</label>
+            <textarea
+              value={siteWaterData.key_weaknesses || ''}
+              onChange={(e) => updateSiteWater('key_weaknesses', e.target.value)}
+              placeholder="Describe any key vulnerabilities or concerns..."
+              rows={2}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Notes
-                        <span className="text-xs text-slate-500 ml-2 font-normal">
-                          (design basis, condition, defects, maintenance, constraints)
-                        </span>
-                      </label>
-                      <textarea
-                        value={selectedBuildingData.suppression.sprinklers.notes}
-                        onChange={(e) => updateBuildingField(
-                          selectedBuildingId,
-                          ['suppression', 'sprinklers', 'notes'],
-                          e.target.value
-                        )}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="Design basis, system condition, known defects, maintenance regime..."
-                      />
-                    </div>
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">Comments</label>
+            <textarea
+              value={siteWaterComments}
+              onChange={(e) => updateSiteComments(e.target.value)}
+              placeholder="Additional notes on water supply and pumps..."
+              rows={2}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
+        </div>
 
-                    <RatingSelector
-                      value={selectedBuildingData.suppression.sprinklers.rating}
-                      onChange={(v) => updateBuildingField(selectedBuildingId, ['suppression', 'sprinklers', 'rating'], v)}
-                      label="Sprinkler System Rating (1-5)"
-                    />
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-900">
+            <strong>Guidance:</strong> This structures your judgement; it doesn't replace it. A score of 3 is
+            explicitly acceptable when evidence is limited.
+          </p>
+        </div>
 
-                    {/* Sprinkler System Details */}
-                    <div className="border-t border-slate-200 pt-6 mt-6">
-                      <h5 className="text-sm font-semibold text-slate-900 mb-4">Sprinkler System Details</h5>
-                      <p className="text-xs text-slate-600 mb-4">
-                        These details support professional judgment of coverage, reliability, and rating effectiveness.
-                      </p>
+        <div className="mt-6 pt-6 border-t border-slate-200">
+          <FireProtectionRecommendations
+            recommendations={getSiteRecommendations(derivedRecommendations)}
+            title="Site Water Supply Recommendations"
+          />
+        </div>
+      </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        {/* System Standard */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            System Standard <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={selectedBuildingData.suppression.sprinklers.system_standard || ''}
-                            onChange={(e) => updateBuildingField(
-                              selectedBuildingId,
-                              ['suppression', 'sprinklers', 'system_standard'],
-                              e.target.value
-                            )}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          >
-                            <option value="">Select...</option>
-                            <option value="EN12845">EN 12845</option>
-                            <option value="NFPA13">NFPA 13</option>
-                            <option value="FM">FM</option>
-                            <option value="LPC">LPC</option>
-                            <option value="Other">Other</option>
-                            <option value="Unknown">Unknown</option>
-                          </select>
-                        </div>
+      <div className="grid grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <BuildingIcon className="w-5 h-5 text-slate-600" />
+            <h3 className="font-semibold text-slate-900">Buildings</h3>
+          </div>
 
-                        {/* System Type */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            System Type <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={selectedBuildingData.suppression.sprinklers.system_type || ''}
-                            onChange={(e) => updateBuildingField(
-                              selectedBuildingId,
-                              ['suppression', 'sprinklers', 'system_type'],
-                              e.target.value
-                            )}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          >
-                            <option value="">Select...</option>
-                            <option value="Wet">Wet</option>
-                            <option value="Dry">Dry</option>
-                            <option value="Pre-action">Pre-action</option>
-                            <option value="Deluge">Deluge</option>
-                            <option value="Unknown">Unknown</option>
-                          </select>
-                        </div>
+          <div className="space-y-2">
+            {buildings.map((building) => {
+              const buildingFP = fireProtectionData.buildings[building.id];
+              const isSelected = selectedBuildingId === building.id;
 
-                        {/* Hazard Class */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Hazard Class (as designed) <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={selectedBuildingData.suppression.sprinklers.hazard_class || ''}
-                            onChange={(e) => updateBuildingField(
-                              selectedBuildingId,
-                              ['suppression', 'sprinklers', 'hazard_class'],
-                              e.target.value
-                            )}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                            placeholder="e.g., OH2, LH, HHP"
-                          />
-                        </div>
-
-                        {/* Last Service Date */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Last Full Service/Inspection <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="date"
-                            value={selectedBuildingData.suppression.sprinklers.last_service_date || ''}
-                            onChange={(e) => updateBuildingField(
-                              selectedBuildingId,
-                              ['suppression', 'sprinklers', 'last_service_date'],
-                              e.target.value || null
-                            )}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          />
-                        </div>
-
-                        {/* Known Impairments */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Known Impairments or Defects <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={selectedBuildingData.suppression.sprinklers.has_impairments || ''}
-                            onChange={(e) => updateBuildingField(
-                              selectedBuildingId,
-                              ['suppression', 'sprinklers', 'has_impairments'],
-                              e.target.value
-                            )}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          >
-                            <option value="">Select...</option>
-                            <option value="Yes">Yes</option>
-                            <option value="No">No</option>
-                            <option value="Unknown">Unknown</option>
-                          </select>
-                        </div>
-
-                        {/* Valve Supervision */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Valve Supervision
-                          </label>
-                          <select
-                            value={selectedBuildingData.suppression.sprinklers.valve_supervision || ''}
-                            onChange={(e) => updateBuildingField(
-                              selectedBuildingId,
-                              ['suppression', 'sprinklers', 'valve_supervision'],
-                              e.target.value
-                            )}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          >
-                            <option value="">Select...</option>
-                            <option value="Yes">Yes</option>
-                            <option value="Partial">Partial</option>
-                            <option value="No">No</option>
-                            <option value="Unknown">Unknown</option>
-                          </select>
-                        </div>
-
-                        {/* Heating Adequate (only for Wet systems) */}
-                        {selectedBuildingData.suppression.sprinklers.system_type === 'Wet' && (
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                              Heating Adequate (if wet)
-                            </label>
-                            <select
-                              value={selectedBuildingData.suppression.sprinklers.heating_adequate || ''}
-                              onChange={(e) => updateBuildingField(
-                                selectedBuildingId,
-                                ['suppression', 'sprinklers', 'heating_adequate'],
-                                e.target.value
-                              )}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                            >
-                              <option value="">Select...</option>
-                              <option value="Yes">Yes</option>
-                              <option value="No">No</option>
-                              <option value="Unknown">Unknown</option>
-                            </select>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Impairments Notes (conditional) */}
-                      {selectedBuildingData.suppression.sprinklers.has_impairments === 'Yes' && (
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Impairments/Defects Details
-                          </label>
-                          <textarea
-                            value={selectedBuildingData.suppression.sprinklers.impairments_notes || ''}
-                            onChange={(e) => updateBuildingField(
-                              selectedBuildingId,
-                              ['suppression', 'sprinklers', 'impairments_notes'],
-                              e.target.value
-                            )}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                            placeholder="Describe known impairments, defects, or concerns..."
-                          />
+              return (
+                <button
+                  key={building.id}
+                  onClick={() => handleBuildingSelect(building.id)}
+                  className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    isSelected
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-slate-900 truncate">{building.ref || 'Building'}</div>
+                      {building.description && (
+                        <div className="text-xs text-slate-600 truncate">{building.description}</div>
+                      )}
+                      {building.footprint_m2 && (
+                        <div className="text-xs text-slate-500 mt-1">
+                          {building.footprint_m2.toLocaleString()} m²
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Water Mist */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-slate-900">Water Mist</h4>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedBuildingData.suppression.water_mist) {
-                        updateBuildingField(selectedBuildingId, ['suppression', 'water_mist'], undefined);
-                      } else {
-                        updateBuildingField(selectedBuildingId, ['suppression', 'water_mist'], {
-                          provided_pct: null,
-                          required_pct: null,
-                          notes: '',
-                          rating: 3
-                        });
-                      }
-                    }}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                      selectedBuildingData.suppression.water_mist
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {selectedBuildingData.suppression.water_mist ? 'Enabled' : 'Enable'}
-                  </button>
-                </div>
-
-                {selectedBuildingData.suppression.water_mist && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          % Floor Area Protected
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={selectedBuildingData.suppression.water_mist.provided_pct ?? ''}
-                          onChange={(e) => updateBuildingField(
-                            selectedBuildingId,
-                            ['suppression', 'water_mist', 'provided_pct'],
-                            e.target.value ? parseFloat(e.target.value) : null
-                          )}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          placeholder="0-100"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          % Floor Area Required
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={selectedBuildingData.suppression.water_mist.required_pct ?? ''}
-                          onChange={(e) => updateBuildingField(
-                            selectedBuildingId,
-                            ['suppression', 'water_mist', 'required_pct'],
-                            e.target.value ? parseFloat(e.target.value) : null
-                          )}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                          placeholder="0-100"
-                        />
-                      </div>
-                    </div>
-
-                    {selectedBuildingData.suppression.water_mist.provided_pct != null &&
-                     selectedBuildingData.suppression.water_mist.required_pct != null &&
-                     selectedBuildingData.suppression.water_mist.provided_pct < selectedBuildingData.suppression.water_mist.required_pct && (
-                      <div className="bg-amber-50 border border-amber-200 rounded p-3 flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-amber-800">
-                          Coverage gap: {selectedBuildingData.suppression.water_mist.required_pct - selectedBuildingData.suppression.water_mist.provided_pct}% shortfall
-                        </p>
+                    {buildingFP?.sprinklerData?.final_active_score_1_5 && (
+                      <div className="ml-2">
+                        <div className="text-xs text-slate-600">Final</div>
+                        <div className="text-sm font-bold text-slate-900">
+                          {buildingFP.sprinklerData.final_active_score_1_5}/5
+                        </div>
                       </div>
                     )}
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Notes
-                      </label>
-                      <textarea
-                        value={selectedBuildingData.suppression.water_mist.notes}
-                        onChange={(e) => updateBuildingField(
-                          selectedBuildingId,
-                          ['suppression', 'water_mist', 'notes'],
-                          e.target.value
-                        )}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="System details, design basis, condition..."
-                      />
-                    </div>
-
-                    <RatingSelector
-                      value={selectedBuildingData.suppression.water_mist.rating}
-                      onChange={(v) => updateBuildingField(selectedBuildingId, ['suppression', 'water_mist', 'rating'], v)}
-                      label="Water Mist System Rating (1-5)"
-                    />
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Localised Fire Protection / Special Hazards */}
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-purple-500" />
-                Localised Fire Protection / Special Hazards
-              </h3>
-
-              {/* Foam */}
-              <div className="mb-6 pb-6 border-b border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-slate-900">Foam</h4>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedBuildingData.localised_protection.foam) {
-                        updateBuildingField(selectedBuildingId, ['localised_protection', 'foam'], undefined);
-                      } else {
-                        updateBuildingField(selectedBuildingId, ['localised_protection', 'foam'], {
-                          protected: 'unknown',
-                          notes: ''
-                        });
-                      }
-                    }}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                      selectedBuildingData.localised_protection.foam
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {selectedBuildingData.localised_protection.foam ? 'Enabled' : 'Enable'}
-                  </button>
-                </div>
-
-                {selectedBuildingData.localised_protection.foam && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Hazard Protected?
-                      </label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {(['yes', 'partial', 'no', 'unknown'] as LocalisedProtectionLevel[]).map((level) => {
-                          const isSelected = selectedBuildingData.localised_protection.foam?.protected === level;
-                          return (
-                            <button
-                              key={level}
-                              type="button"
-                              onClick={() => updateBuildingField(selectedBuildingId, ['localised_protection', 'foam', 'protected'], level)}
-                              className={`px-3 py-2 rounded-lg text-sm transition-colors capitalize ${
-                                getProtectionButtonStyles(level, isSelected)
-                              }`}
-                            >
-                              {level}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Notes
-                        <span className="text-xs text-slate-500 ml-2 font-normal">
-                          (what is protected, release logic, maintenance, constraints)
-                        </span>
-                      </label>
-                      <textarea
-                        value={selectedBuildingData.localised_protection.foam.notes}
-                        onChange={(e) => updateBuildingField(selectedBuildingId, ['localised_protection', 'foam', 'notes'], e.target.value)}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="Describe hazards protected, release logic, maintenance regime..."
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Gaseous */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-slate-900">Gaseous</h4>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedBuildingData.localised_protection.gaseous) {
-                        updateBuildingField(selectedBuildingId, ['localised_protection', 'gaseous'], undefined);
-                      } else {
-                        updateBuildingField(selectedBuildingId, ['localised_protection', 'gaseous'], {
-                          protected: 'unknown',
-                          notes: ''
-                        });
-                      }
-                    }}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                      selectedBuildingData.localised_protection.gaseous
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {selectedBuildingData.localised_protection.gaseous ? 'Enabled' : 'Enable'}
-                  </button>
-                </div>
-
-                {selectedBuildingData.localised_protection.gaseous && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Hazard Protected?
-                      </label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {(['yes', 'partial', 'no', 'unknown'] as LocalisedProtectionLevel[]).map((level) => {
-                          const isSelected = selectedBuildingData.localised_protection.gaseous?.protected === level;
-                          return (
-                            <button
-                              key={level}
-                              type="button"
-                              onClick={() => updateBuildingField(selectedBuildingId, ['localised_protection', 'gaseous', 'protected'], level)}
-                              className={`px-3 py-2 rounded-lg text-sm transition-colors capitalize ${
-                                getProtectionButtonStyles(level, isSelected)
-                              }`}
-                            >
-                              {level}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Notes
-                      </label>
-                      <textarea
-                        value={selectedBuildingData.localised_protection.gaseous.notes}
-                        onChange={(e) => updateBuildingField(selectedBuildingId, ['localised_protection', 'gaseous', 'notes'], e.target.value)}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                        placeholder="Describe hazards protected, agent type, release logic..."
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Detection & Alarm */}
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-blue-500" />
-                Detection & Alarm
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    System Type
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedBuildingData.detection_alarm.system_type || ''}
-                    onChange={(e) => updateBuildingField(selectedBuildingId, ['detection_alarm', 'system_type'], e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="e.g., Addressable, Conventional, Analogue..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Coverage Adequacy
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['poor', 'adequate', 'good', 'unknown'] as CoverageAdequacy[]).map((level) => {
-                      const isSelected = selectedBuildingData.detection_alarm.coverage === level;
-                      return (
-                        <button
-                          key={level}
-                          type="button"
-                          onClick={() => updateBuildingField(selectedBuildingId, ['detection_alarm', 'coverage'], level)}
-                          className={`px-3 py-2 rounded-lg text-sm transition-colors capitalize ${
-                            getCoverageButtonStyles(level, isSelected)
-                          }`}
-                        >
-                          {level}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Monitoring
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['none', 'keyholder', 'arc', 'unknown'] as MonitoringType[]).map((type) => {
-                      const currentMonitoring = selectedBuildingData.detection_alarm.monitoring as any;
-                      const normalizedMonitoring = (currentMonitoring === 'inherit' || !currentMonitoring) ? 'unknown' : currentMonitoring;
-                      const isSelected = normalizedMonitoring === type;
-
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => updateBuildingField(selectedBuildingId, ['detection_alarm', 'monitoring'], type)}
-                          className={`px-3 py-2 rounded-lg text-sm transition-colors capitalize ${
-                            getMonitoringButtonStyles(type, isSelected)
-                          }`}
-                        >
-                          {type === 'arc' ? 'ARC' : type}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Notes
-                  </label>
-                  <textarea
-                    value={selectedBuildingData.detection_alarm.notes}
-                    onChange={(e) => updateBuildingField(selectedBuildingId, ['detection_alarm', 'notes'], e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="Coverage details, zones, testing regime..."
-                  />
-                </div>
-
-                <RatingSelector
-                  value={selectedBuildingData.detection_alarm.rating}
-                  onChange={(v) => updateBuildingField(selectedBuildingId, ['detection_alarm', 'rating'], v)}
-                  label="Detection & Alarm Rating (1-5)"
-                />
-              </div>
-            </div>
-
-            {/* Building Summary - NLE Influence */}
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                Building Summary - NLE Influence
-              </h3>
-
-              <div className="space-y-4">
-                <label className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedBuildingData.nle_reduction_applicable === true}
-                    onChange={(e) => updateBuildingField(
-                      selectedBuildingId,
-                      ['nle_reduction_applicable'],
-                      e.target.checked ? true : null
-                    )}
-                    className="mt-1"
-                  />
-                  <span className="text-sm text-slate-700">
-                    <strong>Installed protection materially reduces site-wide NLE for this building</strong>
-                  </span>
-                </label>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Rationale (optional)
-                  </label>
-                  <textarea
-                    value={selectedBuildingData.nle_reduction_notes || ''}
-                    onChange={(e) => updateBuildingField(selectedBuildingId, ['nle_reduction_notes'], e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="Brief rationale for NLE reduction..."
-                  />
-                </div>
-              </div>
-            </div>
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
 
-        {/* Site-Wide Content (Collapsible) */}
-        <div className="mt-8 bg-white rounded-lg border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setSiteExpanded(!siteExpanded)}
-            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Site-Wide Fire Protection</h3>
-            {siteExpanded ? (
-              <ChevronUp className="w-5 h-5 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-slate-400" />
-            )}
-          </button>
-
-          {siteExpanded && (
-            <div className="px-6 pb-6 space-y-6">
-              {/* Water Supply Reliability */}
-              <div className="pt-4 border-t border-slate-200">
-                <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-500" />
-                  Water Supply Reliability
-                </h4>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Assessment
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['reliable', 'unreliable', 'unknown'] as WaterSupplyReliability[]).map((level) => {
-                        const isSelected = formData.fire_protection.site.water_supply_reliability === level;
-                        return (
-                          <button
-                            key={level}
-                            type="button"
-                            onClick={() => updateSiteField(['water_supply_reliability'], level)}
-                            className={`px-4 py-2 rounded-lg transition-colors capitalize ${
-                              getWaterSupplyButtonStyles(level, isSelected)
-                            }`}
-                          >
-                            {level}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Notes / Rationale
-                      <span className="text-xs text-slate-500 ml-2 font-normal">
-                        (source, constraints, testing, resilience)
-                      </span>
-                    </label>
-                    <textarea
-                      value={formData.fire_protection.site.water_supply_notes}
-                      onChange={(e) => updateSiteField(['water_supply_notes'], e.target.value)}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                      placeholder="Describe sources, capacity, constraints, testing history, resilience..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Operational Readiness */}
-              <div className="pt-4 border-t border-slate-200">
-                <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  Operational Readiness (Site-Wide)
-                </h4>
-
-                <div className="space-y-6">
-                  <RatingSelector
-                    value={formData.fire_protection.site.operational_readiness.testing_rating}
-                    onChange={(v) => updateSiteField(['operational_readiness', 'testing_rating'], v)}
-                    label="Testing & Inspection Adequacy"
-                  />
-
-                  <RatingSelector
-                    value={formData.fire_protection.site.operational_readiness.impairment_management_rating}
-                    onChange={(v) => updateSiteField(['operational_readiness', 'impairment_management_rating'], v)}
-                    label="Impairment Management Effectiveness"
-                  />
-
-                  <RatingSelector
-                    value={formData.fire_protection.site.operational_readiness.emergency_response_rating}
-                    onChange={(v) => updateSiteField(['operational_readiness', 'emergency_response_rating'], v)}
-                    label="Emergency Response / Fire Brigade Interface Readiness"
-                  />
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Notes
-                    </label>
-                    <textarea
-                      value={formData.fire_protection.site.operational_readiness.notes}
-                      onChange={(e) => updateSiteField(['operational_readiness', 'notes'], e.target.value)}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                      placeholder="Overall operational readiness observations..."
-                    />
-                  </div>
-                </div>
-              </div>
+        <div className="col-span-2 bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+          {!selectedBuilding ? (
+            <div className="flex items-center justify-center h-full text-slate-600">
+              Select a building to view sprinkler details
             </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {selectedBuilding.ref || 'Building'} - Sprinklers
+                  </h3>
+                  {selectedBuilding.description && (
+                    <p className="text-sm text-slate-600">{selectedBuilding.description}</p>
+                  )}
+                  {selectedBuilding.footprint_m2 && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Area: {selectedBuilding.footprint_m2.toLocaleString()} m²
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-slate-600">Final Active Score</div>
+                  <div className="text-3xl font-bold text-slate-900">{selectedFinalScore}/5</div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Sprinkler: {selectedSprinklerScore}/5 • Water: {siteWaterScore}/5
+                  </div>
+                </div>
+              </div>
+
+              {autoFlags.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {autoFlags.map((flag, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-start gap-2 p-3 rounded-lg ${
+                        flag.severity === 'warning'
+                          ? 'bg-amber-50 border border-amber-200'
+                          : 'bg-blue-50 border border-blue-200'
+                      }`}
+                    >
+                      {flag.severity === 'warning' ? (
+                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                      ) : (
+                        <Info className="w-4 h-4 text-blue-600 mt-0.5" />
+                      )}
+                      <p
+                        className={`text-sm ${
+                          flag.severity === 'warning' ? 'text-amber-900' : 'text-blue-900'
+                        }`}
+                      >
+                        {flag.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Coverage Required (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={selectedSprinklerData.sprinkler_coverage_required_pct || 0}
+                      onChange={(e) =>
+                        updateBuildingSprinkler('sprinkler_coverage_required_pct', Number(e.target.value))
+                      }
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Coverage Installed (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={selectedSprinklerData.sprinkler_coverage_installed_pct || 0}
+                      onChange={(e) =>
+                        updateBuildingSprinkler('sprinkler_coverage_installed_pct', Number(e.target.value))
+                      }
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Sprinkler Standard</label>
+                    <input
+                      type="text"
+                      value={selectedSprinklerData.sprinkler_standard || ''}
+                      onChange={(e) => updateBuildingSprinkler('sprinkler_standard', e.target.value)}
+                      placeholder="e.g., BS EN 12845, NFPA 13"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Hazard Class</label>
+                    <input
+                      type="text"
+                      value={selectedSprinklerData.hazard_class || ''}
+                      onChange={(e) => updateBuildingSprinkler('hazard_class', e.target.value)}
+                      placeholder="e.g., OH1, OH2, OH3"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Maintenance Status</label>
+                    <select
+                      value={selectedSprinklerData.maintenance_status || 'Unknown'}
+                      onChange={(e) =>
+                        updateBuildingSprinkler('maintenance_status', e.target.value as MaintenanceStatus)
+                      }
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="Unknown">Unknown</option>
+                      <option value="Good">Good</option>
+                      <option value="Mixed">Mixed</option>
+                      <option value="Poor">Poor</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Sprinkler Adequacy</label>
+                    <select
+                      value={selectedSprinklerData.sprinkler_adequacy || 'Unknown'}
+                      onChange={(e) =>
+                        updateBuildingSprinkler('sprinkler_adequacy', e.target.value as SprinklerAdequacy)
+                      }
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="Unknown">Unknown</option>
+                      <option value="Adequate">Adequate</option>
+                      <option value="Inadequate">Inadequate</option>
+                    </select>
+                  </div>
+                </div>
+
+                {selectedSprinklerData.sprinkler_coverage_required_pct !== undefined &&
+                  selectedSprinklerData.sprinkler_coverage_required_pct < 100 &&
+                  selectedSprinklerData.sprinkler_coverage_required_pct > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Justification for {'<'}100% Required Coverage
+                      </label>
+                      <textarea
+                        value={selectedSprinklerData.justification_if_required_lt_100 || ''}
+                        onChange={(e) =>
+                          updateBuildingSprinkler('justification_if_required_lt_100', e.target.value)
+                        }
+                        placeholder="Explain why full coverage is not required..."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      />
+                    </div>
+                  )}
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Comments</label>
+                  <textarea
+                    value={selectedComments}
+                    onChange={(e) => updateBuildingComments(e.target.value)}
+                    placeholder="Additional notes on sprinkler system..."
+                    rows={2}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+
+                {selectedBuilding && (
+                  <div className="pt-6 border-t border-slate-200">
+                    <FireProtectionRecommendations
+                      recommendations={getBuildingRecommendations(derivedRecommendations, selectedBuilding.id)}
+                      title="Building Fire Protection Recommendations"
+                    />
+                  </div>
+                )}
+
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-sm text-slate-700">
+                    <strong>Note:</strong> Final grade reflects water supply reliability (min of sprinkler score
+                    and water score). Buildings where sprinklers are not required (0%) are excluded from site
+                    roll-up.
+                  </p>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Section Grade */}
-      <div className="max-w-5xl mx-auto px-6 pb-6">
-        <SectionGrade
-          sectionKey="fire_protection"
-          sectionTitle="Fire Protection"
-          value={sectionGrade}
-          onChange={handleSectionGradeChange}
-        />
+      <div className="mt-6 bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+            <TrendingUp className="w-5 h-5 text-green-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-slate-900">Site Fire Protection Roll-up</h3>
+            <p className="text-sm text-slate-600">
+              Area-weighted average across buildings where sprinklers are required
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-6">
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="text-sm text-slate-600 mb-1">Average Score</div>
+            <div className="text-3xl font-bold text-slate-900">{siteRollup.averageScore.toFixed(1)}</div>
+            <div className="text-xs text-slate-500 mt-1">Out of 5.0</div>
+          </div>
+
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="text-sm text-slate-600 mb-1">Buildings Assessed</div>
+            <div className="text-3xl font-bold text-slate-900">{siteRollup.buildingsAssessed}</div>
+            <div className="text-xs text-slate-500 mt-1">With required sprinklers</div>
+          </div>
+
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="text-sm text-slate-600 mb-1">Total Area</div>
+            <div className="text-3xl font-bold text-slate-900">{siteRollup.totalArea.toLocaleString()}</div>
+            <div className="text-xs text-slate-500 mt-1">Square meters</div>
+          </div>
+        </div>
+
+        {siteRollup.buildingsAssessed === 0 && (
+          <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+              <p className="text-sm text-amber-900">
+                No buildings with required sprinklers found. Mark buildings with required_pct {'>'} 0 to include
+                in roll-up.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />
-    </>
+      {saving && (
+        <div className="fixed bottom-4 right-4 bg-white shadow-lg rounded-lg p-4 border border-slate-200">
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+            Saving...
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

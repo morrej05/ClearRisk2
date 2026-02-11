@@ -576,8 +576,10 @@ async function saveMezz() {
               {mode !== 'fire_protection' && (
                 <th className="text-left p-2 border-b">Walls (%)</th>
               )}
-          
-              <th className="text-left p-2 border-b">Storeys</th>
+
+              {mode !== 'fire_protection' && (
+                <th className="text-left p-2 border-b">Storeys</th>
+              )}
 
               {mode !== 'fire_protection' && (
   <th className="text-left p-2 border-b">Basements</th>
@@ -711,14 +713,16 @@ async function saveMezz() {
                   </td>
                 )}
 
-                <td className="p-2">
-                  <input
-                    type="number"
-                    className="w-24 border rounded p-2"
-                    value={b.storeys ?? ''}
-                    onChange={e => updateRow(idx, { storeys: e.target.value === '' ? null : Number(e.target.value) })}
-                  />
-                </td>
+                {mode !== 'fire_protection' && (
+                  <td className="p-2">
+                    <input
+                      type="number"
+                      className="w-24 border rounded p-2"
+                      value={b.storeys ?? ''}
+                      onChange={e => updateRow(idx, { storeys: e.target.value === '' ? null : Number(e.target.value) })}
+                    />
+                  </td>
+                )}
 
                 {mode !== 'fire_protection' && (
                   <td className="p-2">

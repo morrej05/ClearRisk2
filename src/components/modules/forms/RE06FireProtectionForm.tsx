@@ -71,6 +71,10 @@ type SprinklersInstalled = 'Yes' | 'No' | 'Partial' | 'Unknown';
 type SystemType = 'Wet pipe' | 'Dry pipe' | 'Pre-action' | 'Deluge' | 'Combination / Mixed' | 'Unknown';
 type SprinklerStandard = 'EN 12845' | 'NFPA 13' | 'FM' | 'LPC Rules' | 'VdS' | 'AS 2118' | 'NZS 4541' | 'SANS 10287' | 'Other…';
 type LocalisedPresent = 'No' | 'Yes' | 'Partial' | 'Unknown';
+type DetectionInstalled = 'Yes' | 'No' | 'Partial' | 'Unknown';
+type AlarmMonitoring = 'Local only' | 'ARC' | 'Fire brigade connection' | 'Unknown';
+type DetectionTestingRegime = 'Documented' | 'Not documented' | 'Unknown';
+type DetectionMaintenanceStatus = 'Good' | 'Concerns' | 'Unknown';
 
 interface BuildingSprinklerData {
   // New fields
@@ -84,8 +88,8 @@ interface BuildingSprinklerData {
   localised_comments?: string;
 
   // Existing fields
-  sprinkler_coverage_installed_pct?: number;
-  sprinkler_coverage_required_pct?: number;
+  sprinkler_coverage_installed_pct?: number | null;
+  sprinkler_coverage_required_pct?: number | null;
   sprinkler_standard?: string; // Legacy field - will migrate to 'standard'
   hazard_class?: string;
   maintenance_status?: MaintenanceStatus;
@@ -93,6 +97,16 @@ interface BuildingSprinklerData {
   justification_if_required_lt_100?: string;
   sprinkler_score_1_5?: number | null;
   final_active_score_1_5?: number | null;
+
+  // Fire Detection & Alarm fields
+  detection_installed?: DetectionInstalled;
+  detection_types?: string[]; // Multi-select: 'Automatic point detection (smoke/heat)', 'Manual call points', 'Aspirating (VESDA)', 'Beam', 'Flame', 'Linear heat', 'Other'
+  detection_type_other?: string;
+  alarm_monitoring?: AlarmMonitoring;
+  detection_testing_regime?: DetectionTestingRegime;
+  detection_maintenance_status?: DetectionMaintenanceStatus;
+  detection_comments?: string;
+  detection_score_1_5?: number | null;
 }
 
 interface Building {
@@ -212,21 +226,26 @@ function calculateSprinklerScore(data: BuildingSprinklerData): number | null {
 function calculateFinalActiveScore(
   sprinklerScore: number | null,
   waterScore: number | null,
-  suggestedWaterScore: number
+  suggestedWaterScore: number,
+  detectionScore: number | null = null
 ): number | null {
-  // If sprinkler score is null (not rated), final score is also null
-  if (sprinklerScore === null) {
-    return null;
+  // Calculate sprinkler final score (min of sprinkler and water)
+  let sprinklerFinalScore: number | null = null;
+  if (sprinklerScore !== null && waterScore !== null) {
+    const effectiveWaterScore = waterScore ?? suggestedWaterScore;
+    sprinklerFinalScore = Math.min(sprinklerScore, effectiveWaterScore);
   }
 
-  // If water score is null, we can't compute a final score
-  if (waterScore === null) {
-    return null;
+  // Combine with detection using 80/20 weighting
+  if (sprinklerFinalScore !== null && detectionScore !== null) {
+    return Math.round((0.8 * sprinklerFinalScore + 0.2 * detectionScore) * 10) / 10;
+  } else if (sprinklerFinalScore !== null) {
+    return sprinklerFinalScore;
+  } else if (detectionScore !== null) {
+    return detectionScore;
   }
 
-  // Use assessor-set score if available, otherwise use suggested score for calculation
-  const effectiveWaterScore = waterScore ?? suggestedWaterScore;
-  return Math.min(sprinklerScore, effectiveWaterScore);
+  return null;
 }
 
 function generateAutoFlags(
@@ -273,6 +292,7 @@ function calculateSiteRollup(
   buildings: Building[]
 ): { averageScore: number; buildingsAssessed: number; totalArea: number } {
   let totalWeightedScore = 0;
+  let totalWeight = 0;
   let totalArea = 0;
   let buildingsAssessed = 0;
 
@@ -280,26 +300,28 @@ function calculateSiteRollup(
     const buildingFP = fireProtectionData.buildings[building.id];
     if (!buildingFP?.sprinklerData) continue;
 
-    // Exclude buildings with no sprinklers installed
+    // Include if sprinklers_installed != "No" AND coverage_required_pct > 0
     if (buildingFP.sprinklerData.sprinklers_installed === 'No') continue;
 
-    const requiredPct = buildingFP.sprinklerData.sprinkler_coverage_required_pct || 0;
-    if (requiredPct === 0) continue;
+    const requiredPct = buildingFP.sprinklerData.sprinkler_coverage_required_pct ?? 0;
+    if (requiredPct <= 0) continue;
+
+    const finalScore = buildingFP.sprinklerData.final_active_score_1_5;
+    if (finalScore === null || finalScore === undefined) continue;
 
     const area = building.footprint_m2 || 0;
-    const finalScore = buildingFP.sprinklerData.final_active_score_1_5;
+    const weight = area > 0 ? area : 1; // Fallback weight = 1 for missing area
 
-    if (area > 0 && finalScore !== null && finalScore !== undefined) {
-      totalWeightedScore += finalScore * area;
-      totalArea += area;
-      buildingsAssessed++;
-    }
+    totalWeightedScore += finalScore * weight;
+    totalWeight += weight;
+    if (area > 0) totalArea += area;
+    buildingsAssessed++;
   }
 
-  const averageScore = totalArea > 0 ? totalWeightedScore / totalArea : 0;
+  const averageScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
 
   return {
-    averageScore: Math.round(averageScore * 10) / 10,
+    averageScore: buildingsAssessed > 0 ? Math.round(averageScore * 10) / 10 : 0,
     buildingsAssessed,
     totalArea,
   };
@@ -334,8 +356,8 @@ function createDefaultBuildingSprinkler(): BuildingSprinklerData {
     localised_type: '',
     localised_protected_asset: '',
     localised_comments: '',
-    sprinkler_coverage_installed_pct: undefined,
-    sprinkler_coverage_required_pct: undefined,
+    sprinkler_coverage_installed_pct: null,
+    sprinkler_coverage_required_pct: null,
     sprinkler_standard: '',
     hazard_class: '',
     maintenance_status: 'Unknown',
@@ -343,6 +365,15 @@ function createDefaultBuildingSprinkler(): BuildingSprinklerData {
     justification_if_required_lt_100: '',
     sprinkler_score_1_5: null,
     final_active_score_1_5: null,
+    // Detection defaults
+    detection_installed: 'Unknown',
+    detection_types: [],
+    detection_type_other: '',
+    alarm_monitoring: 'Unknown',
+    detection_testing_regime: 'Unknown',
+    detection_maintenance_status: 'Unknown',
+    detection_comments: '',
+    detection_score_1_5: null,
   };
 }
 
@@ -396,10 +427,11 @@ export default function RE06FireProtectionForm({
   }, [selectedSprinklerData]);
 
   const selectedSprinklerScore = rawSprinklerScore; // Can be null
+  const selectedDetectionScore = selectedSprinklerData.detection_score_1_5 ?? null;
 
   const selectedFinalScore = useMemo(() => {
-    return calculateFinalActiveScore(rawSprinklerScore, assessorWaterScore, suggestedWaterScore);
-  }, [rawSprinklerScore, assessorWaterScore, suggestedWaterScore]);
+    return calculateFinalActiveScore(rawSprinklerScore, assessorWaterScore, suggestedWaterScore, selectedDetectionScore);
+  }, [rawSprinklerScore, assessorWaterScore, suggestedWaterScore, selectedDetectionScore]);
 
   // Use assessor score if set, otherwise suggested for flags/rollup
   const effectiveWaterScore = assessorWaterScore ?? suggestedWaterScore;
@@ -557,9 +589,10 @@ export default function RE06FireProtectionForm({
       const sprinklerScore = calculateSprinklerScore(updatedData);
       const waterScore = prev.site.water_score_1_5;
       const suggestedWater = calculateWaterScore(prev.site.water);
+      const detectionScore = updatedData.detection_score_1_5 ?? null;
 
       updatedData.sprinkler_score_1_5 = sprinklerScore; // Can be null
-      updatedData.final_active_score_1_5 = calculateFinalActiveScore(sprinklerScore, waterScore, suggestedWater);
+      updatedData.final_active_score_1_5 = calculateFinalActiveScore(sprinklerScore, waterScore, suggestedWater, detectionScore);
 
       return {
         ...prev,
@@ -997,7 +1030,8 @@ export default function RE06FireProtectionForm({
                     {selectedFinalScore !== null && selectedFinalScore !== undefined ? `${selectedFinalScore}/5` : 'Not rated'}
                   </div>
                   <div className="text-xs text-slate-500 mt-1">
-                    Sprinkler: {selectedSprinklerScore !== null && selectedSprinklerScore !== undefined ? `${selectedSprinklerScore}/5` : 'Not rated'} • Water:{' '}
+                    Sprinklers: {selectedSprinklerScore !== null && selectedSprinklerScore !== undefined ? `${selectedSprinklerScore}/5` : 'Not rated'} • Detection:{' '}
+                    {selectedDetectionScore !== null && selectedDetectionScore !== undefined ? `${selectedDetectionScore}/5` : 'Not rated'} • Water:{' '}
                     {assessorWaterScore !== null && assessorWaterScore !== undefined ? (
                       `${assessorWaterScore}/5`
                     ) : (
@@ -1117,12 +1151,18 @@ export default function RE06FireProtectionForm({
                         <label className="block text-sm font-medium text-slate-700 mb-2">Gap (%)</label>
                         <input
                           type="text"
-                          value={Math.max(
-                            0,
-                            (selectedSprinklerData.sprinkler_coverage_required_pct || 0) -
-                              (selectedSprinklerData.sprinkler_coverage_installed_pct || 0)
-                          )}
+                          value={
+                            selectedSprinklerData.sprinkler_coverage_required_pct != null &&
+                            selectedSprinklerData.sprinkler_coverage_installed_pct != null
+                              ? Math.max(
+                                  0,
+                                  selectedSprinklerData.sprinkler_coverage_required_pct -
+                                    selectedSprinklerData.sprinkler_coverage_installed_pct
+                                )
+                              : ''
+                          }
                           readOnly
+                          placeholder="—"
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600"
                         />
                       </div>
@@ -1303,6 +1343,175 @@ export default function RE06FireProtectionForm({
                   </div>
                 </div>
 
+                {/* Fire Detection & Alarm - Always visible regardless of sprinklers */}
+                <div className="pt-4 border-t border-slate-200">
+                  <h4 className="font-semibold text-slate-900 mb-3">Fire Detection & Alarm</h4>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Fire detection installed?
+                      </label>
+                      <select
+                        value={selectedSprinklerData.detection_installed || 'Unknown'}
+                        onChange={(e) =>
+                          updateBuildingSprinkler('detection_installed', e.target.value as DetectionInstalled)
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Unknown">Unknown</option>
+                        <option value="No">No</option>
+                        <option value="Yes">Yes</option>
+                        <option value="Partial">Partial</option>
+                      </select>
+                    </div>
+
+                    {(selectedSprinklerData.detection_installed === 'Yes' ||
+                      selectedSprinklerData.detection_installed === 'Partial') && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Detection types (check all that apply)
+                          </label>
+                          <div className="space-y-2">
+                            {[
+                              'Automatic point detection (smoke/heat)',
+                              'Manual call points',
+                              'Aspirating (VESDA)',
+                              'Beam',
+                              'Flame',
+                              'Linear heat',
+                              'Other',
+                            ].map((type) => (
+                              <label key={type} className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={(selectedSprinklerData.detection_types || []).includes(type)}
+                                  onChange={(e) => {
+                                    const current = selectedSprinklerData.detection_types || [];
+                                    const updated = e.target.checked
+                                      ? [...current, type]
+                                      : current.filter((t) => t !== type);
+                                    updateBuildingSprinkler('detection_types', updated);
+                                  }}
+                                  className="rounded border-slate-300"
+                                />
+                                <span className="text-sm text-slate-700">{type}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {(selectedSprinklerData.detection_types || []).includes('Other') && (
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Other detection type
+                            </label>
+                            <input
+                              type="text"
+                              value={selectedSprinklerData.detection_type_other || ''}
+                              onChange={(e) => updateBuildingSprinkler('detection_type_other', e.target.value)}
+                              placeholder="Specify other detection type..."
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Alarm monitoring</label>
+                          <select
+                            value={selectedSprinklerData.alarm_monitoring || 'Unknown'}
+                            onChange={(e) =>
+                              updateBuildingSprinkler('alarm_monitoring', e.target.value as AlarmMonitoring)
+                            }
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="Unknown">Unknown</option>
+                            <option value="Local only">Local only</option>
+                            <option value="ARC">ARC</option>
+                            <option value="Fire brigade connection">Fire brigade connection</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Testing regime</label>
+                          <select
+                            value={selectedSprinklerData.detection_testing_regime || 'Unknown'}
+                            onChange={(e) =>
+                              updateBuildingSprinkler(
+                                'detection_testing_regime',
+                                e.target.value as DetectionTestingRegime
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="Unknown">Unknown</option>
+                            <option value="Documented">Documented</option>
+                            <option value="Not documented">Not documented</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Maintenance status
+                          </label>
+                          <select
+                            value={selectedSprinklerData.detection_maintenance_status || 'Unknown'}
+                            onChange={(e) =>
+                              updateBuildingSprinkler(
+                                'detection_maintenance_status',
+                                e.target.value as DetectionMaintenanceStatus
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="Unknown">Unknown</option>
+                            <option value="Good">Good</option>
+                            <option value="Concerns">Concerns</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Comments</label>
+                          <textarea
+                            value={selectedSprinklerData.detection_comments || ''}
+                            onChange={(e) => updateBuildingSprinkler('detection_comments', e.target.value)}
+                            placeholder="Additional details on fire detection system..."
+                            rows={2}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Detection Score (Assessor judgement)
+                      </label>
+                      <select
+                        value={
+                          selectedSprinklerData.detection_score_1_5 === null ||
+                          selectedSprinklerData.detection_score_1_5 === undefined
+                            ? 'null'
+                            : selectedSprinklerData.detection_score_1_5.toString()
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value === 'null' ? null : Number(e.target.value);
+                          updateBuildingSprinkler('detection_score_1_5', val);
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="null">Not rated</option>
+                        <option value="1">1 - Very Poor</option>
+                        <option value="2">2 - Poor</option>
+                        <option value="3">3 - Fair</option>
+                        <option value="4">4 - Good</option>
+                        <option value="5">5 - Excellent</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 {selectedSprinklerData.sprinkler_coverage_required_pct !== undefined &&
                   selectedSprinklerData.sprinkler_coverage_required_pct < 100 &&
                   selectedSprinklerData.sprinkler_coverage_required_pct > 0 && (
@@ -1344,9 +1553,9 @@ export default function RE06FireProtectionForm({
 
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <p className="text-sm text-slate-700">
-                    <strong>Note:</strong> Final grade reflects water supply reliability (min of sprinkler score
-                    and water score). Buildings where sprinklers are not installed or not required (0%) are excluded from site
-                    roll-up.
+                    <strong>Note:</strong> Final Active Score combines sprinklers (80%) and detection (20%) when both are rated.
+                    Sprinkler score is capped by water supply reliability. Buildings where sprinklers are not installed or not
+                    required (0%) are excluded from site roll-up.
                   </p>
                 </div>
               </div>
@@ -1371,7 +1580,9 @@ export default function RE06FireProtectionForm({
         <div className="grid grid-cols-3 gap-6">
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
             <div className="text-sm text-slate-600 mb-1">Average Score</div>
-            <div className="text-3xl font-bold text-slate-900">{siteRollup.averageScore.toFixed(1)}</div>
+            <div className="text-3xl font-bold text-slate-900">
+              {siteRollup.buildingsAssessed > 0 ? siteRollup.averageScore.toFixed(1) : 'Not rated'}
+            </div>
             <div className="text-xs text-slate-500 mt-1">Out of 5.0</div>
           </div>
 
@@ -1383,7 +1594,9 @@ export default function RE06FireProtectionForm({
 
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
             <div className="text-sm text-slate-600 mb-1">Total Area</div>
-            <div className="text-3xl font-bold text-slate-900">{siteRollup.totalArea.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-slate-900">
+              {siteRollup.totalArea > 0 ? siteRollup.totalArea.toLocaleString() : '—'}
+            </div>
             <div className="text-xs text-slate-500 mt-1">Square meters</div>
           </div>
         </div>

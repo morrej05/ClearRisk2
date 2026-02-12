@@ -67,16 +67,32 @@ interface SiteWaterData {
   flow_test_date?: string;
 }
 
+type SprinklersInstalled = 'Yes' | 'No' | 'Partial' | 'Unknown';
+type SystemType = 'Wet pipe' | 'Dry pipe' | 'Pre-action' | 'Deluge' | 'Combination / Mixed' | 'Unknown';
+type SprinklerStandard = 'EN 12845' | 'NFPA 13' | 'FM' | 'LPC Rules' | 'VdS' | 'AS 2118' | 'NZS 4541' | 'SANS 10287' | 'Other…';
+type LocalisedPresent = 'No' | 'Yes' | 'Partial' | 'Unknown';
+
 interface BuildingSprinklerData {
+  // New fields
+  sprinklers_installed?: SprinklersInstalled;
+  system_type?: SystemType;
+  standard?: SprinklerStandard;
+  standard_other?: string;
+  localised_present?: LocalisedPresent;
+  localised_type?: string; // Predominant type for now (Gas suppression, Water mist, Foam, Other)
+  localised_protected_asset?: string;
+  localised_comments?: string;
+
+  // Existing fields
   sprinkler_coverage_installed_pct?: number;
   sprinkler_coverage_required_pct?: number;
-  sprinkler_standard?: string;
+  sprinkler_standard?: string; // Legacy field - will migrate to 'standard'
   hazard_class?: string;
   maintenance_status?: MaintenanceStatus;
   sprinkler_adequacy?: SprinklerAdequacy;
   justification_if_required_lt_100?: string;
-  sprinkler_score_1_5?: number;
-  final_active_score_1_5?: number;
+  sprinkler_score_1_5?: number | null;
+  final_active_score_1_5?: number | null;
 }
 
 interface Building {
@@ -133,13 +149,25 @@ function calculateWaterScore(data: SiteWaterData): number {
 
 function calculateSprinklerScore(data: BuildingSprinklerData): number | null {
   const {
+    sprinklers_installed,
     sprinkler_coverage_installed_pct = 0,
     sprinkler_coverage_required_pct = 0,
     sprinkler_adequacy,
     maintenance_status,
   } = data;
 
+  // If sprinklers not installed or unknown, return null (not rated)
+  if (sprinklers_installed === 'No' || sprinklers_installed === 'Unknown') {
+    return null;
+  }
+
+  // If required coverage is 0, sprinklers not required - return null
   if (sprinkler_coverage_required_pct === 0) {
+    return null;
+  }
+
+  // If adequacy is unknown, return null (not enough data to rate)
+  if (sprinkler_adequacy === 'Unknown') {
     return null;
   }
 
@@ -165,6 +193,7 @@ function calculateSprinklerScore(data: BuildingSprinklerData): number | null {
     return 3;
   }
 
+  // Default for partial data
   if (coverageRatio >= 0.95) {
     return maintenance_status === 'Good' ? 4 : 3;
   }
@@ -184,10 +213,17 @@ function calculateFinalActiveScore(
   sprinklerScore: number | null,
   waterScore: number | null,
   suggestedWaterScore: number
-): number {
+): number | null {
+  // If sprinkler score is null (not rated), final score is also null
   if (sprinklerScore === null) {
-    return 5;
+    return null;
   }
+
+  // If water score is null, we can't compute a final score
+  if (waterScore === null) {
+    return null;
+  }
+
   // Use assessor-set score if available, otherwise use suggested score for calculation
   const effectiveWaterScore = waterScore ?? suggestedWaterScore;
   return Math.min(sprinklerScore, effectiveWaterScore);
@@ -200,28 +236,32 @@ function generateAutoFlags(
 ): Array<{ severity: 'warning' | 'info'; message: string }> {
   const flags: Array<{ severity: 'warning' | 'info'; message: string }> = [];
   const {
+    sprinklers_installed,
     sprinkler_coverage_installed_pct = 0,
     sprinkler_coverage_required_pct = 0,
   } = sprinklerData;
 
-  if (sprinkler_coverage_required_pct > sprinkler_coverage_installed_pct) {
-    flags.push({
-      severity: 'warning',
-      message: `Coverage gap: ${sprinkler_coverage_required_pct}% required but only ${sprinkler_coverage_installed_pct}% installed`,
-    });
+  // Skip coverage flags if sprinklers not installed
+  if (sprinklers_installed !== 'No' && sprinklers_installed !== 'Unknown') {
+    if (sprinkler_coverage_required_pct > sprinkler_coverage_installed_pct) {
+      flags.push({
+        severity: 'warning',
+        message: `Coverage gap: ${sprinkler_coverage_required_pct}% required but only ${sprinkler_coverage_installed_pct}% installed`,
+      });
+    }
+
+    if (sprinkler_coverage_required_pct === 0 && sprinkler_coverage_installed_pct > 0) {
+      flags.push({
+        severity: 'info',
+        message: 'Sprinklers installed but marked as not required - verify rationale',
+      });
+    }
   }
 
   if (sprinklerScore !== null && sprinklerScore >= 4 && waterScore <= 2) {
     flags.push({
       severity: 'warning',
       message: `Sprinkler system rated highly (${sprinklerScore}/5) but water supply is unreliable (${waterScore}/5)`,
-    });
-  }
-
-  if (sprinkler_coverage_required_pct === 0 && sprinkler_coverage_installed_pct > 0) {
-    flags.push({
-      severity: 'info',
-      message: 'Sprinklers installed but marked as not required - verify rationale',
     });
   }
 
@@ -240,13 +280,16 @@ function calculateSiteRollup(
     const buildingFP = fireProtectionData.buildings[building.id];
     if (!buildingFP?.sprinklerData) continue;
 
+    // Exclude buildings with no sprinklers installed
+    if (buildingFP.sprinklerData.sprinklers_installed === 'No') continue;
+
     const requiredPct = buildingFP.sprinklerData.sprinkler_coverage_required_pct || 0;
     if (requiredPct === 0) continue;
 
     const area = building.footprint_m2 || 0;
     const finalScore = buildingFP.sprinklerData.final_active_score_1_5;
 
-    if (area > 0 && finalScore) {
+    if (area > 0 && finalScore !== null && finalScore !== undefined) {
       totalWeightedScore += finalScore * area;
       totalArea += area;
       buildingsAssessed++;
@@ -283,6 +326,14 @@ function createDefaultSiteWater(): SiteWaterData {
 
 function createDefaultBuildingSprinkler(): BuildingSprinklerData {
   return {
+    sprinklers_installed: 'Unknown',
+    system_type: 'Unknown',
+    standard: undefined,
+    standard_other: '',
+    localised_present: 'No',
+    localised_type: '',
+    localised_protected_asset: '',
+    localised_comments: '',
     sprinkler_coverage_installed_pct: 0,
     sprinkler_coverage_required_pct: 0,
     sprinkler_standard: '',
@@ -290,8 +341,8 @@ function createDefaultBuildingSprinkler(): BuildingSprinklerData {
     maintenance_status: 'Unknown',
     sprinkler_adequacy: 'Unknown',
     justification_if_required_lt_100: '',
-    sprinkler_score_1_5: 3,
-    final_active_score_1_5: 3,
+    sprinkler_score_1_5: null,
+    final_active_score_1_5: null,
   };
 }
 
@@ -342,7 +393,7 @@ export default function RE06FireProtectionForm({
     return calculateSprinklerScore(selectedSprinklerData);
   }, [selectedSprinklerData]);
 
-  const selectedSprinklerScore = rawSprinklerScore ?? 3;
+  const selectedSprinklerScore = rawSprinklerScore; // Can be null
 
   const selectedFinalScore = useMemo(() => {
     return calculateFinalActiveScore(rawSprinklerScore, assessorWaterScore, suggestedWaterScore);
@@ -499,8 +550,11 @@ export default function RE06FireProtectionForm({
       };
 
       const sprinklerScore = calculateSprinklerScore(updatedData);
-      updatedData.sprinkler_score_1_5 = sprinklerScore !== null ? sprinklerScore : 3;
-      updatedData.final_active_score_1_5 = calculateFinalActiveScore(sprinklerScore, siteWaterScore);
+      const waterScore = prev.site.water_score_1_5;
+      const suggestedWater = calculateWaterScore(prev.site.water);
+
+      updatedData.sprinkler_score_1_5 = sprinklerScore; // Can be null
+      updatedData.final_active_score_1_5 = calculateFinalActiveScore(sprinklerScore, waterScore, suggestedWater);
 
       return {
         ...prev,
@@ -866,11 +920,14 @@ export default function RE06FireProtectionForm({
                         </div>
                       )}
                     </div>
-                    {buildingFP?.sprinklerData?.final_active_score_1_5 && (
+                    {buildingFP?.sprinklerData && (
                       <div className="ml-2">
                         <div className="text-xs text-slate-600">Final</div>
                         <div className="text-sm font-bold text-slate-900">
-                          {buildingFP.sprinklerData.final_active_score_1_5}/5
+                          {buildingFP.sprinklerData.final_active_score_1_5 !== null &&
+                          buildingFP.sprinklerData.final_active_score_1_5 !== undefined
+                            ? `${buildingFP.sprinklerData.final_active_score_1_5}/5`
+                            : '—'}
                         </div>
                       </div>
                     )}
@@ -909,9 +966,11 @@ export default function RE06FireProtectionForm({
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">provisional</span>
                     )}
                   </div>
-                  <div className="text-3xl font-bold text-slate-900">{selectedFinalScore}/5</div>
+                  <div className="text-3xl font-bold text-slate-900">
+                    {selectedFinalScore !== null && selectedFinalScore !== undefined ? `${selectedFinalScore}/5` : 'Not rated'}
+                  </div>
                   <div className="text-xs text-slate-500 mt-1">
-                    Sprinkler: {selectedSprinklerScore}/5 • Water:{' '}
+                    Sprinkler: {selectedSprinklerScore !== null && selectedSprinklerScore !== undefined ? `${selectedSprinklerScore}/5` : 'Not rated'} • Water:{' '}
                     {assessorWaterScore !== null && assessorWaterScore !== undefined ? (
                       `${assessorWaterScore}/5`
                     ) : (
@@ -950,96 +1009,254 @@ export default function RE06FireProtectionForm({
               )}
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Coverage Required (%)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={selectedSprinklerData.sprinkler_coverage_required_pct || 0}
-                      onChange={(e) =>
-                        updateBuildingSprinkler('sprinkler_coverage_required_pct', Number(e.target.value))
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Coverage Installed (%)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={selectedSprinklerData.sprinkler_coverage_installed_pct || 0}
-                      onChange={(e) =>
-                        updateBuildingSprinkler('sprinkler_coverage_installed_pct', Number(e.target.value))
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                {/* Sprinklers Installed? - Primary gate */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Sprinklers installed?</label>
+                  <select
+                    value={selectedSprinklerData.sprinklers_installed || 'Unknown'}
+                    onChange={(e) =>
+                      updateBuildingSprinkler('sprinklers_installed', e.target.value as SprinklersInstalled)
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Unknown">Unknown</option>
+                    <option value="Yes">Yes</option>
+                    <option value="Partial">Partial</option>
+                    <option value="No">No</option>
+                  </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Sprinkler Standard</label>
-                    <input
-                      type="text"
-                      value={selectedSprinklerData.sprinkler_standard || ''}
-                      onChange={(e) => updateBuildingSprinkler('sprinkler_standard', e.target.value)}
-                      placeholder="e.g., BS EN 12845, NFPA 13"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                {selectedSprinklerData.sprinklers_installed === 'No' ? (
+                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="text-sm text-slate-700">
+                      <strong>No sprinklers installed.</strong> This building is excluded from sprinkler roll-up.
+                    </p>
                   </div>
+                ) : (
+                  <>
+                    {/* Coverage fields - Installed FIRST, Required SECOND, Gap auto */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Coverage Installed (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={selectedSprinklerData.sprinkler_coverage_installed_pct || 0}
+                          onChange={(e) =>
+                            updateBuildingSprinkler('sprinkler_coverage_installed_pct', Number(e.target.value))
+                          }
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Hazard Class</label>
-                    <input
-                      type="text"
-                      value={selectedSprinklerData.hazard_class || ''}
-                      onChange={(e) => updateBuildingSprinkler('hazard_class', e.target.value)}
-                      placeholder="e.g., OH1, OH2, OH3"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Coverage Required (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={selectedSprinklerData.sprinkler_coverage_required_pct || 0}
+                          onChange={(e) =>
+                            updateBuildingSprinkler('sprinkler_coverage_required_pct', Number(e.target.value))
+                          }
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Maintenance Status</label>
-                    <select
-                      value={selectedSprinklerData.maintenance_status || 'Unknown'}
-                      onChange={(e) =>
-                        updateBuildingSprinkler('maintenance_status', e.target.value as MaintenanceStatus)
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Unknown">Unknown</option>
-                      <option value="Good">Good</option>
-                      <option value="Mixed">Mixed</option>
-                      <option value="Poor">Poor</option>
-                    </select>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Gap (%)</label>
+                        <input
+                          type="text"
+                          value={Math.max(
+                            0,
+                            (selectedSprinklerData.sprinkler_coverage_required_pct || 0) -
+                              (selectedSprinklerData.sprinkler_coverage_installed_pct || 0)
+                          )}
+                          readOnly
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600"
+                        />
+                      </div>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Sprinkler Adequacy</label>
-                    <select
-                      value={selectedSprinklerData.sprinkler_adequacy || 'Unknown'}
-                      onChange={(e) =>
-                        updateBuildingSprinkler('sprinkler_adequacy', e.target.value as SprinklerAdequacy)
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Unknown">Unknown</option>
-                      <option value="Adequate">Adequate</option>
-                      <option value="Inadequate">Inadequate</option>
-                    </select>
-                  </div>
-                </div>
+                    {/* System Type */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        System type (predominant)
+                      </label>
+                      <select
+                        value={selectedSprinklerData.system_type || 'Unknown'}
+                        onChange={(e) => updateBuildingSprinkler('system_type', e.target.value as SystemType)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Unknown">Unknown</option>
+                        <option value="Wet pipe">Wet pipe</option>
+                        <option value="Dry pipe">Dry pipe</option>
+                        <option value="Pre-action">Pre-action</option>
+                        <option value="Deluge">Deluge</option>
+                        <option value="Combination / Mixed">Combination / Mixed</option>
+                      </select>
+                    </div>
+
+                    {/* Sprinkler Standard (dropdown) and Hazard Class (free text) */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Sprinkler Standard</label>
+                        <select
+                          value={selectedSprinklerData.standard || ''}
+                          onChange={(e) => updateBuildingSprinkler('standard', e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select...</option>
+                          <option value="EN 12845">EN 12845</option>
+                          <option value="NFPA 13">NFPA 13</option>
+                          <option value="FM">FM</option>
+                          <option value="LPC Rules">LPC Rules</option>
+                          <option value="VdS">VdS</option>
+                          <option value="AS 2118">AS 2118</option>
+                          <option value="NZS 4541">NZS 4541</option>
+                          <option value="SANS 10287">SANS 10287</option>
+                          <option value="Other…">Other…</option>
+                        </select>
+                      </div>
+
+                      {selectedSprinklerData.standard === 'Other…' && (
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Standard (Other)
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedSprinklerData.standard_other || ''}
+                            onChange={(e) => updateBuildingSprinkler('standard_other', e.target.value)}
+                            placeholder="Specify standard..."
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      )}
+
+                      <div className={selectedSprinklerData.standard === 'Other…' ? 'col-span-2' : ''}>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Hazard Class</label>
+                        <input
+                          type="text"
+                          value={selectedSprinklerData.hazard_class || ''}
+                          onChange={(e) => updateBuildingSprinkler('hazard_class', e.target.value)}
+                          placeholder="e.g., OH1, OH2, OH3, LH, HHP"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Maintenance Status and Sprinkler Adequacy */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Maintenance Status</label>
+                        <select
+                          value={selectedSprinklerData.maintenance_status || 'Unknown'}
+                          onChange={(e) =>
+                            updateBuildingSprinkler('maintenance_status', e.target.value as MaintenanceStatus)
+                          }
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="Unknown">Unknown</option>
+                          <option value="Good">Good</option>
+                          <option value="Mixed">Mixed</option>
+                          <option value="Poor">Poor</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Sprinkler Adequacy</label>
+                        <select
+                          value={selectedSprinklerData.sprinkler_adequacy || 'Unknown'}
+                          onChange={(e) =>
+                            updateBuildingSprinkler('sprinkler_adequacy', e.target.value as SprinklerAdequacy)
+                          }
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="Unknown">Unknown</option>
+                          <option value="Adequate">Adequate</option>
+                          <option value="Inadequate">Inadequate</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Localised / Special Fire Protection */}
+                    <div className="pt-4 border-t border-slate-200">
+                      <h4 className="font-semibold text-slate-900 mb-3">Localised / Special fire protection</h4>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Localised protection installed?
+                          </label>
+                          <select
+                            value={selectedSprinklerData.localised_present || 'No'}
+                            onChange={(e) =>
+                              updateBuildingSprinkler('localised_present', e.target.value as LocalisedPresent)
+                            }
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                            <option value="Partial">Partial</option>
+                            <option value="Unknown">Unknown</option>
+                          </select>
+                        </div>
+
+                        {(selectedSprinklerData.localised_present === 'Yes' ||
+                          selectedSprinklerData.localised_present === 'Partial') && (
+                          <>
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Protection type (predominant)
+                              </label>
+                              <select
+                                value={selectedSprinklerData.localised_type || ''}
+                                onChange={(e) => updateBuildingSprinkler('localised_type', e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select...</option>
+                                <option value="Gas suppression">Gas suppression</option>
+                                <option value="Water mist">Water mist</option>
+                                <option value="Foam">Foam</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Protected asset / area
+                              </label>
+                              <input
+                                type="text"
+                                value={selectedSprinklerData.localised_protected_asset || ''}
+                                onChange={(e) => updateBuildingSprinkler('localised_protected_asset', e.target.value)}
+                                placeholder="e.g., Server room, Paint store, Battery room"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">Comments</label>
+                              <textarea
+                                value={selectedSprinklerData.localised_comments || ''}
+                                onChange={(e) => updateBuildingSprinkler('localised_comments', e.target.value)}
+                                placeholder="Additional details on localised protection..."
+                                rows={2}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {selectedSprinklerData.sprinkler_coverage_required_pct !== undefined &&
                   selectedSprinklerData.sprinkler_coverage_required_pct < 100 &&
@@ -1083,7 +1300,7 @@ export default function RE06FireProtectionForm({
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <p className="text-sm text-slate-700">
                     <strong>Note:</strong> Final grade reflects water supply reliability (min of sprinkler score
-                    and water score). Buildings where sprinklers are not required (0%) are excluded from site
+                    and water score). Buildings where sprinklers are not installed or not required (0%) are excluded from site
                     roll-up.
                   </p>
                 </div>

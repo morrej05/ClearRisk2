@@ -154,74 +154,104 @@ export function calculateWaterScore(data: SiteWaterData): number {
  * Returns 1-5 score, or null if N/A (required = 0)
  */
 export function calculateSprinklerScore(data: BuildingSprinklerData): number | null {
-  const { sprinkler_coverage_installed_pct = 0, sprinkler_coverage_required_pct = 0, sprinkler_adequacy, maintenance_status } = data;
+  console.log('[fireProtectionModel] calculateSprinklerScore called');
+  const {
+    sprinklers_installed,
+    sprinkler_coverage_installed_pct,
+    sprinkler_coverage_required_pct,
+    sprinkler_adequacy,
+    maintenance_status,
+  } = data;
 
-  // If no sprinklers required, return null (N/A)
-  if (sprinkler_coverage_required_pct === 0) {
+  // If sprinklers not installed or unknown, return null (not rated)
+  if (sprinklers_installed === 'No' || sprinklers_installed === 'Unknown') {
     return null;
   }
 
-  // Calculate coverage ratio C = installed / required (capped at 1.0)
-  const coverageRatio = sprinkler_coverage_required_pct > 0
-    ? Math.min(1.0, sprinkler_coverage_installed_pct / sprinkler_coverage_required_pct)
-    : 0;
+  // If required coverage is not set or 0, sprinklers not required - return null
+  if (!sprinkler_coverage_required_pct || sprinkler_coverage_required_pct === 0) {
+    return null;
+  }
 
-  // Explicit inadequacy
+  // If adequacy is unknown, return null (not enough data to rate)
+  if (sprinkler_adequacy === 'Unknown') {
+    return null;
+  }
+
+  const coverageRatio =
+    sprinkler_coverage_required_pct > 0
+      ? Math.min(1.0, (sprinkler_coverage_installed_pct ?? 0) / sprinkler_coverage_required_pct)
+      : 0;
+
   if (sprinkler_adequacy === 'Inadequate') {
     return coverageRatio < 0.3 ? 1 : 2;
   }
 
-  // Explicit adequacy
   if (sprinkler_adequacy === 'Adequate') {
     if (coverageRatio >= 0.95 && maintenance_status === 'Good') {
-      return 5; // Adequate with good coverage and maintenance
+      return 5;
     }
     if (coverageRatio >= 0.95) {
-      return 4; // Adequate with good coverage
+      return 4;
     }
-    if (coverageRatio >= 0.80) {
-      return 4; // Largely adequate
+    if (coverageRatio >= 0.8) {
+      return 4;
     }
-    return 3; // Adequate but coverage gaps
+    return 3;
   }
 
-  // Unknown adequacy - rely on coverage ratio
+  // Default for partial data
   if (coverageRatio >= 0.95) {
     return maintenance_status === 'Good' ? 4 : 3;
   }
-  if (coverageRatio >= 0.80) {
+  if (coverageRatio >= 0.8) {
     return 3;
   }
-  if (coverageRatio >= 0.60) {
+  if (coverageRatio >= 0.6) {
     return 3;
   }
-  if (coverageRatio >= 0.30) {
+  if (coverageRatio >= 0.3) {
     return 2;
   }
-  return 1; // < 30% coverage
+  return 1;
 }
 
 /**
- * Calculate final active score as min(sprinkler_score, water_score)
- * Returns 5 if sprinklers not required (N/A)
+ * Calculate final active score combining sprinkler, water, and detection scores
+ * - Sprinkler score is capped by water score (min) when both exist
+ * - Detection score is combined with 80/20 weighting when present
+ * - Returns null if no scores are available
  */
 export function calculateFinalActiveScore(
   sprinklerScore: number | null,
-  waterScore: number
-): number {
-  // If sprinklers not required, return 5 (N/A - excluded from roll-up)
-  if (sprinklerScore === null) {
-    return 5;
+  waterScore: number | null,
+  suggestedWaterScore: number,
+  detectionScore: number | null = null
+): number | null {
+  console.log('[fireProtectionModel] calculateFinalActiveScore called');
+  // Calculate sprinkler final score
+  let sprinklerFinalScore: number | null = null;
+
+  if (sprinklerScore !== null) {
+    // If both sprinkler and water exist, cap sprinkler by water (min)
+    if (waterScore !== null) {
+      sprinklerFinalScore = Math.min(sprinklerScore, waterScore);
+    } else {
+      // If only sprinkler exists, use it as-is
+      sprinklerFinalScore = sprinklerScore;
+    }
   }
 
-  // Final score is the minimum of sprinkler and water
-  return Math.min(sprinklerScore, waterScore);
-}
+  // Combine with detection using 80/20 weighting
+  if (sprinklerFinalScore !== null && detectionScore !== null) {
+    return Math.round((0.8 * sprinklerFinalScore + 0.2 * detectionScore) * 10) / 10;
+  } else if (sprinklerFinalScore !== null) {
+    return sprinklerFinalScore;
+  } else if (detectionScore !== null) {
+    return detectionScore;
+  }
 
-export interface AutoFlag {
-  type: 'coverage_gap' | 'inconsistency' | 'rationale_check';
-  severity: 'warning' | 'info';
-  message: string;
+  return null;
 }
 
 /**
@@ -231,34 +261,38 @@ export function generateAutoFlags(
   sprinklerData: BuildingSprinklerData,
   sprinklerScore: number | null,
   waterScore: number
-): AutoFlag[] {
-  const flags: AutoFlag[] = [];
-  const { sprinkler_coverage_installed_pct = 0, sprinkler_coverage_required_pct = 0 } = sprinklerData;
+): Array<{ severity: 'warning' | 'info'; message: string }> {
+  const flags: Array<{ severity: 'warning' | 'info'; message: string }> = [];
+  const {
+    sprinklers_installed,
+    sprinkler_coverage_installed_pct,
+    sprinkler_coverage_required_pct,
+  } = sprinklerData;
 
-  // Flag 1: Coverage gap
-  if (sprinkler_coverage_required_pct > sprinkler_coverage_installed_pct) {
-    flags.push({
-      type: 'coverage_gap',
-      severity: 'warning',
-      message: `Coverage gap: ${sprinkler_coverage_required_pct}% required but only ${sprinkler_coverage_installed_pct}% installed`,
-    });
+  // Skip coverage flags if sprinklers not installed
+  if (sprinklers_installed !== 'No' && sprinklers_installed !== 'Unknown') {
+    const installedPct = sprinkler_coverage_installed_pct ?? 0;
+    const requiredPct = sprinkler_coverage_required_pct ?? 0;
+
+    if (requiredPct > installedPct) {
+      flags.push({
+        severity: 'warning',
+        message: `Coverage gap: ${requiredPct}% required but only ${installedPct}% installed`,
+      });
+    }
+
+    if (requiredPct === 0 && installedPct > 0) {
+      flags.push({
+        severity: 'info',
+        message: 'Sprinklers installed but marked as not required - verify rationale',
+      });
+    }
   }
 
-  // Flag 2: Inconsistency (high sprinkler score but low water score)
   if (sprinklerScore !== null && sprinklerScore >= 4 && waterScore <= 2) {
     flags.push({
-      type: 'inconsistency',
       severity: 'warning',
       message: `Sprinkler system rated highly (${sprinklerScore}/5) but water supply is unreliable (${waterScore}/5)`,
-    });
-  }
-
-  // Flag 3: Check rationale if required = 0 (optional, info only)
-  if (sprinkler_coverage_required_pct === 0 && sprinkler_coverage_installed_pct > 0) {
-    flags.push({
-      type: 'rationale_check',
-      severity: 'info',
-      message: 'Sprinklers installed but marked as not required - verify rationale',
     });
   }
 

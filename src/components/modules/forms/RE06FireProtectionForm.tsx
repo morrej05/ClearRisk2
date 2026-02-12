@@ -7,6 +7,12 @@ import {
   getSiteRecommendations,
   getBuildingRecommendations,
 } from '../../../lib/modules/re04FireProtectionRecommendations';
+import {
+  calculateSprinklerScore,
+  calculateFinalActiveScore,
+  generateAutoFlags,
+  calculateWaterScore,
+} from '../../../lib/re/fireProtectionModel';
 import FireProtectionRecommendations from '../../re/FireProtectionRecommendations';
 
 interface Document {
@@ -130,162 +136,6 @@ interface FireProtectionModuleData {
     water_score_1_5?: number | null; // null = not rated
     comments?: string;
   };
-}
-
-function calculateWaterScore(data: SiteWaterData): number {
-  const { water_reliability, pump_arrangement, power_resilience, testing_regime } = data;
-
-  if (water_reliability === 'Reliable') {
-    if (testing_regime === 'Documented' && power_resilience === 'Good') {
-      return 5;
-    }
-    if (testing_regime === 'Documented' || power_resilience === 'Good') {
-      return 4;
-    }
-    return 4;
-  }
-
-  if (water_reliability === 'Unreliable') {
-    return 1;
-  }
-
-  if (water_reliability === 'Unknown') {
-    if (power_resilience === 'Poor' || testing_regime === 'None') {
-      return 2;
-    }
-    if (pump_arrangement === 'Duty+Standby' && testing_regime !== 'None') {
-      return 3;
-    }
-    return 3;
-  }
-
-  return 3;
-}
-
-function calculateSprinklerScore(data: BuildingSprinklerData): number | null {
-  const {
-    sprinklers_installed,
-    sprinkler_coverage_installed_pct = 0,
-    sprinkler_coverage_required_pct = 0,
-    sprinkler_adequacy,
-    maintenance_status,
-  } = data;
-
-  // If sprinklers not installed or unknown, return null (not rated)
-  if (sprinklers_installed === 'No' || sprinklers_installed === 'Unknown') {
-    return null;
-  }
-
-  // If required coverage is 0, sprinklers not required - return null
-  if (sprinkler_coverage_required_pct === 0) {
-    return null;
-  }
-
-  // If adequacy is unknown, return null (not enough data to rate)
-  if (sprinkler_adequacy === 'Unknown') {
-    return null;
-  }
-
-  const coverageRatio =
-    sprinkler_coverage_required_pct > 0
-      ? Math.min(1.0, sprinkler_coverage_installed_pct / sprinkler_coverage_required_pct)
-      : 0;
-
-  if (sprinkler_adequacy === 'Inadequate') {
-    return coverageRatio < 0.3 ? 1 : 2;
-  }
-
-  if (sprinkler_adequacy === 'Adequate') {
-    if (coverageRatio >= 0.95 && maintenance_status === 'Good') {
-      return 5;
-    }
-    if (coverageRatio >= 0.95) {
-      return 4;
-    }
-    if (coverageRatio >= 0.8) {
-      return 4;
-    }
-    return 3;
-  }
-
-  // Default for partial data
-  if (coverageRatio >= 0.95) {
-    return maintenance_status === 'Good' ? 4 : 3;
-  }
-  if (coverageRatio >= 0.8) {
-    return 3;
-  }
-  if (coverageRatio >= 0.6) {
-    return 3;
-  }
-  if (coverageRatio >= 0.3) {
-    return 2;
-  }
-  return 1;
-}
-
-function calculateFinalActiveScore(
-  sprinklerScore: number | null,
-  waterScore: number | null,
-  suggestedWaterScore: number,
-  detectionScore: number | null = null
-): number | null {
-  // Calculate sprinkler final score (min of sprinkler and water)
-  let sprinklerFinalScore: number | null = null;
-  if (sprinklerScore !== null && waterScore !== null) {
-    const effectiveWaterScore = waterScore ?? suggestedWaterScore;
-    sprinklerFinalScore = Math.min(sprinklerScore, effectiveWaterScore);
-  }
-
-  // Combine with detection using 80/20 weighting
-  if (sprinklerFinalScore !== null && detectionScore !== null) {
-    return Math.round((0.8 * sprinklerFinalScore + 0.2 * detectionScore) * 10) / 10;
-  } else if (sprinklerFinalScore !== null) {
-    return sprinklerFinalScore;
-  } else if (detectionScore !== null) {
-    return detectionScore;
-  }
-
-  return null;
-}
-
-function generateAutoFlags(
-  sprinklerData: BuildingSprinklerData,
-  sprinklerScore: number | null,
-  waterScore: number
-): Array<{ severity: 'warning' | 'info'; message: string }> {
-  const flags: Array<{ severity: 'warning' | 'info'; message: string }> = [];
-  const {
-    sprinklers_installed,
-    sprinkler_coverage_installed_pct = 0,
-    sprinkler_coverage_required_pct = 0,
-  } = sprinklerData;
-
-  // Skip coverage flags if sprinklers not installed
-  if (sprinklers_installed !== 'No' && sprinklers_installed !== 'Unknown') {
-    if (sprinkler_coverage_required_pct > sprinkler_coverage_installed_pct) {
-      flags.push({
-        severity: 'warning',
-        message: `Coverage gap: ${sprinkler_coverage_required_pct}% required but only ${sprinkler_coverage_installed_pct}% installed`,
-      });
-    }
-
-    if (sprinkler_coverage_required_pct === 0 && sprinkler_coverage_installed_pct > 0) {
-      flags.push({
-        severity: 'info',
-        message: 'Sprinklers installed but marked as not required - verify rationale',
-      });
-    }
-  }
-
-  if (sprinklerScore !== null && sprinklerScore >= 4 && waterScore <= 2) {
-    flags.push({
-      severity: 'warning',
-      message: `Sprinkler system rated highly (${sprinklerScore}/5) but water supply is unreliable (${waterScore}/5)`,
-    });
-  }
-
-  return flags;
 }
 
 function parseAreaValue(value: any): number {

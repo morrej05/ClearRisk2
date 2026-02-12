@@ -138,7 +138,7 @@ export default function FireProtectionPage() {
 
   const selectedFinalScore = useMemo(() => {
     console.log('[RE06] finalActiveScore recalculated');
-    return calculateFinalActiveScore(rawSprinklerScore, siteWaterScore);
+    return calculateFinalActiveScore(rawSprinklerScore, siteWaterScore, siteWaterScore, null);
   }, [rawSprinklerScore, siteWaterScore]);
 
   useEffect(() => {

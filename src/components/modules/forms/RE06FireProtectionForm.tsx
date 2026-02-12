@@ -96,7 +96,7 @@ interface FireProtectionModuleData {
   buildings: Record<string, BuildingFireProtection>;
   site: {
     water: SiteWaterData;
-    water_score_1_5?: number;
+    water_score_1_5?: number | null; // null = not rated
     comments?: string;
   };
 }
@@ -180,11 +180,17 @@ function calculateSprinklerScore(data: BuildingSprinklerData): number | null {
   return 1;
 }
 
-function calculateFinalActiveScore(sprinklerScore: number | null, waterScore: number): number {
+function calculateFinalActiveScore(
+  sprinklerScore: number | null,
+  waterScore: number | null,
+  suggestedWaterScore: number
+): number {
   if (sprinklerScore === null) {
     return 5;
   }
-  return Math.min(sprinklerScore, waterScore);
+  // Use assessor-set score if available, otherwise use suggested score for calculation
+  const effectiveWaterScore = waterScore ?? suggestedWaterScore;
+  return Math.min(sprinklerScore, effectiveWaterScore);
 }
 
 function generateAutoFlags(
@@ -302,10 +308,15 @@ export default function RE06FireProtectionForm({
     buildings: {},
     site: {
       water: createDefaultSiteWater(),
-      water_score_1_5: 3,
+      water_score_1_5: null, // Start as "Not rated"
       comments: '',
     },
   };
+
+  // Data migration: Map sentinel value 0 or undefined to null for "Not rated"
+  if (initialData.site.water_score_1_5 === 0 || initialData.site.water_score_1_5 === undefined) {
+    initialData.site.water_score_1_5 = null;
+  }
 
   const [fireProtectionData, setFireProtectionData] = useState<FireProtectionModuleData>(initialData);
 
@@ -319,9 +330,13 @@ export default function RE06FireProtectionForm({
     ? fireProtectionData.buildings[selectedBuildingId]?.comments || ''
     : '';
 
-  const siteWaterScore = useMemo(() => {
+  // Suggested score from inputs (always calculated, never null)
+  const suggestedWaterScore = useMemo(() => {
     return calculateWaterScore(siteWaterData);
   }, [siteWaterData]);
+
+  // Assessor-set score (can be null = "Not rated")
+  const assessorWaterScore = fireProtectionData.site.water_score_1_5;
 
   const rawSprinklerScore = useMemo(() => {
     return calculateSprinklerScore(selectedSprinklerData);
@@ -330,10 +345,12 @@ export default function RE06FireProtectionForm({
   const selectedSprinklerScore = rawSprinklerScore ?? 3;
 
   const selectedFinalScore = useMemo(() => {
-    return calculateFinalActiveScore(rawSprinklerScore, siteWaterScore);
-  }, [rawSprinklerScore, siteWaterScore]);
+    return calculateFinalActiveScore(rawSprinklerScore, assessorWaterScore, suggestedWaterScore);
+  }, [rawSprinklerScore, assessorWaterScore, suggestedWaterScore]);
 
-  const autoFlags = generateAutoFlags(selectedSprinklerData, rawSprinklerScore, siteWaterScore);
+  // Use assessor score if set, otherwise suggested for flags/rollup
+  const effectiveWaterScore = assessorWaterScore ?? suggestedWaterScore;
+  const autoFlags = generateAutoFlags(selectedSprinklerData, rawSprinklerScore, effectiveWaterScore);
   const siteRollup = calculateSiteRollup(fireProtectionData, buildings);
 
   const derivedRecommendations = useMemo(() => {
@@ -427,7 +444,7 @@ export default function RE06FireProtectionForm({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [siteWaterData, siteWaterScore, siteWaterComments, selectedSprinklerData, selectedSprinklerScore, selectedFinalScore, selectedComments]);
+  }, [siteWaterData, assessorWaterScore, siteWaterComments, selectedSprinklerData, selectedSprinklerScore, selectedFinalScore, selectedComments]);
 
   const updateSiteWater = (field: keyof SiteWaterData, value: any) => {
     setFireProtectionData((prev) => ({
@@ -438,9 +455,23 @@ export default function RE06FireProtectionForm({
           ...prev.site.water,
           [field]: value,
         },
-        water_score_1_5: field === 'water_reliability' ? calculateWaterScore({ ...prev.site.water, [field]: value }) : prev.site.water_score_1_5,
+        // Don't auto-calculate score anymore - assessor must explicitly set it
       },
     }));
+  };
+
+  const setAssessorWaterScore = (score: number | null) => {
+    setFireProtectionData((prev) => ({
+      ...prev,
+      site: {
+        ...prev.site,
+        water_score_1_5: score,
+      },
+    }));
+  };
+
+  const applySuggestedScore = () => {
+    setAssessorWaterScore(suggestedWaterScore);
   };
 
   const updateSiteComments = (comments: string) => {
@@ -534,15 +565,21 @@ export default function RE06FireProtectionForm({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-600">Water Score:</span>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className={`w-6 h-6 rounded ${i <= siteWaterScore ? 'bg-blue-600' : 'bg-slate-200'}`}
-                />
-              ))}
-            </div>
-            <span className="text-sm font-medium text-slate-900">{siteWaterScore}/5</span>
+            {assessorWaterScore !== null && assessorWaterScore !== undefined ? (
+              <>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className={`w-6 h-6 rounded ${i <= assessorWaterScore ? 'bg-blue-600' : 'bg-slate-200'}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm font-medium text-slate-900">{assessorWaterScore}/5</span>
+              </>
+            ) : (
+              <span className="text-sm font-medium text-slate-500">Not rated</span>
+            )}
           </div>
         </div>
 
@@ -748,27 +785,42 @@ export default function RE06FireProtectionForm({
             />
           </div>
 
-          {/* Overall reliability rating - Moved to bottom */}
+          {/* Site water score - Assessor judgment */}
           <div className="col-span-2 pt-4 border-t border-slate-200">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Overall reliability rating (assessor judgement)
-            </label>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Site Water Score (assessor judgement)
+                </label>
+                <p className="text-xs text-slate-500">
+                  Based on the inputs above, the suggested score is <strong>{suggestedWaterScore}/5</strong>
+                </p>
+              </div>
+              <button
+                onClick={applySuggestedScore}
+                className="ml-3 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+              >
+                Apply suggested score
+              </button>
+            </div>
             <select
-              value={siteWaterData.water_reliability || 'Unknown'}
-              onChange={(e) => updateSiteWater('water_reliability', e.target.value as WaterReliability)}
+              value={assessorWaterScore === null || assessorWaterScore === undefined ? '' : assessorWaterScore}
+              onChange={(e) => setAssessorWaterScore(e.target.value === '' ? null : Number(e.target.value))}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="Unknown">Unknown</option>
-              <option value="Reliable">Reliable</option>
-              <option value="Unreliable">Unreliable</option>
+              <option value="">Not rated</option>
+              <option value="1">1 - Very Poor</option>
+              <option value="2">2 - Poor</option>
+              <option value="3">3 - Fair</option>
+              <option value="4">4 - Good</option>
+              <option value="5">5 - Excellent</option>
             </select>
           </div>
         </div>
 
         <div className="mt-4 p-3 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-900">
-            <strong>Guidance:</strong> This structures your judgement; it doesn't replace it. A score of 3 is
-            explicitly acceptable when evidence is limited.
+            <strong>Guidance:</strong> A rating of 3 may be acceptable when evidence is limited, but please select a rating explicitly. The suggested score is calculated from your inputs above.
           </p>
         </div>
 
@@ -851,10 +903,20 @@ export default function RE06FireProtectionForm({
                   )}
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-slate-600">Final Active Score</div>
+                  <div className="text-sm text-slate-600 flex items-center gap-1 justify-end">
+                    Final Active Score
+                    {(assessorWaterScore === null || assessorWaterScore === undefined) && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">provisional</span>
+                    )}
+                  </div>
                   <div className="text-3xl font-bold text-slate-900">{selectedFinalScore}/5</div>
                   <div className="text-xs text-slate-500 mt-1">
-                    Sprinkler: {selectedSprinklerScore}/5 • Water: {siteWaterScore}/5
+                    Sprinkler: {selectedSprinklerScore}/5 • Water:{' '}
+                    {assessorWaterScore !== null && assessorWaterScore !== undefined ? (
+                      `${assessorWaterScore}/5`
+                    ) : (
+                      <span className="text-amber-600">~{suggestedWaterScore}/5</span>
+                    )}
                   </div>
                 </div>
               </div>

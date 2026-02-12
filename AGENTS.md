@@ -67,17 +67,5 @@ When addressing “flashing”:
 Primary file:
 - src/components/modules/forms/RE06FireProtectionForm.tsx
 
-When modifying RE06:
-
-- Do NOT introduce effects that write to form state based on derived table rows without strict guards.
-- Table rows must have stable persisted IDs (never index-based keys).
-- Column definitions must be memoized if passed to a table component.
-- Any hydration from Supabase must run once (or be explicitly diff-checked).
-- Avoid calling `watch()` or `getValues()` inline in render paths that feed state-setting effects.
-- Do not create a "derive → setValue → derive again" loop.
-- If flashing occurs, instrument render/effect counters before modifying logic.
-
-If a fix touches RE06:
-- Identify exact loop trigger (file + function + line).
-- Provide minimal diff.
-- Confirm no route-level remounting is introduced.
+- RE06 fixes must be applied in src/components/modules/forms/RE06FireProtectionForm.tsx.
+- Do not edit src/components/re/FireProtectionForm.tsx unless RE06 imports it (show the chain).

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle, Info, Droplet, Building as BuildingIcon, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Info, Droplet, Building as BuildingIcon, TrendingUp, FileText, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import {
   generateFireProtectionRecommendations,
@@ -437,11 +438,13 @@ export default function RE06FireProtectionForm({
   document,
   onSaved,
 }: RE06FireProtectionFormProps) {
+  const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
+  const [re09ModuleInstanceId, setRe09ModuleInstanceId] = useState<string | null>(null);
 
   const initialData: FireProtectionModuleData = moduleInstance.data?.fire_protection || {
     buildings: {},
@@ -555,6 +558,30 @@ export default function RE06FireProtectionForm({
     }
 
     loadBuildings();
+  }, [document.id]);
+
+  // Fetch RE-09 (Recommendations) module instance for deep-linking
+  useEffect(() => {
+    async function fetchRe09ModuleInstance() {
+      try {
+        const { data, error } = await supabase
+          .from('module_instances')
+          .select('id')
+          .eq('document_id', document.id)
+          .eq('module_key', 'RE_13_RECOMMENDATIONS')
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setRe09ModuleInstanceId(data.id);
+        }
+      } catch (error) {
+        console.error('Failed to fetch RE-09 module instance:', error);
+      }
+    }
+
+    fetchRe09ModuleInstance();
   }, [document.id]);
 
   const saveData = useCallback(async () => {
@@ -682,6 +709,23 @@ export default function RE06FireProtectionForm({
   };
 
   const selectedBuilding = buildings.find((b) => b.id === selectedBuildingId);
+
+  const handleNavigateToRecommendations = () => {
+    if (!re09ModuleInstanceId) {
+      alert('RE-09 module not found for this document.');
+      return;
+    }
+
+    // Build URL with module instance and optional context
+    const url = `/documents/${document.id}/workspace?m=${re09ModuleInstanceId}&from=fire-protection`;
+
+    // Add building context if a building is selected
+    if (selectedBuildingId) {
+      navigate(`${url}&buildingId=${selectedBuildingId}`);
+    } else {
+      navigate(url);
+    }
+  };
 
   if (buildings.length === 0) {
     return (
@@ -1713,6 +1757,45 @@ export default function RE06FireProtectionForm({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Recommendations Footer */}
+      <div className="mt-6 bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Recommendations</h3>
+              <p className="text-sm text-slate-600">
+                Add or manage recommendations from fire protection findings
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleNavigateToRecommendations}
+              disabled={!re09ModuleInstanceId}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Add recommendation</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNavigateToRecommendations}
+              disabled={!re09ModuleInstanceId}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span>Open RE-09</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {saving && (

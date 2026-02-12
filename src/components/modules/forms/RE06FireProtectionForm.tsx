@@ -34,15 +34,37 @@ type PowerResilience = 'Good' | 'Mixed' | 'Poor' | 'Unknown';
 type TestingRegime = 'Documented' | 'Some evidence' | 'None' | 'Unknown';
 type MaintenanceStatus = 'Good' | 'Mixed' | 'Poor' | 'Unknown';
 type SprinklerAdequacy = 'Adequate' | 'Inadequate' | 'Unknown';
+type SupplyType =
+  | 'Town mains'
+  | 'Single tank (on-site)'
+  | 'Dual tank (on-site)'
+  | 'Break tank + mains'
+  | 'Open water (reservoir)'
+  | 'River / canal / open source'
+  | 'Private main / estate main'
+  | 'Other';
+type WaterSupports = 'Sprinklers' | 'Hydrants / fire main / hose reels' | 'Both' | 'Unknown';
+type CoverageQuality = 'Good' | 'Partial' | 'Poor' | 'Unknown';
+type ConditionQuality = 'Good' | 'Concerns' | 'Unknown';
+type YesNoUnknown = 'Yes' | 'No' | 'Unknown';
+type TestEvidence = 'Documented' | 'Not documented' | 'Unknown';
 
 interface SiteWaterData {
   water_reliability?: WaterReliability;
-  supply_type?: string;
+  supply_type?: string; // Now stores SupplyType value or legacy string
+  supply_type_other?: string;
+  supports?: WaterSupports;
   pumps_present?: boolean;
   pump_arrangement?: PumpArrangement;
   power_resilience?: PowerResilience;
   testing_regime?: TestingRegime;
   key_weaknesses?: string;
+  // New hydrant/hose fields (PASS 1 additive)
+  hydrant_coverage?: CoverageQuality;
+  fire_main_condition?: ConditionQuality;
+  hose_reels_present?: YesNoUnknown;
+  flow_test_evidence?: TestEvidence;
+  flow_test_date?: string;
 }
 
 interface BuildingSprinklerData {
@@ -238,11 +260,18 @@ function createDefaultSiteWater(): SiteWaterData {
   return {
     water_reliability: 'Unknown',
     supply_type: '',
+    supply_type_other: '',
+    supports: 'Unknown',
     pumps_present: false,
     pump_arrangement: 'Unknown',
     power_resilience: 'Unknown',
     testing_regime: 'Unknown',
     key_weaknesses: '',
+    hydrant_coverage: 'Unknown',
+    fire_main_condition: 'Unknown',
+    hose_reels_present: 'Unknown',
+    flow_test_evidence: 'Unknown',
+    flow_test_date: '',
   };
 }
 
@@ -518,29 +547,130 @@ export default function RE06FireProtectionForm({
         </div>
 
         <div className="grid grid-cols-2 gap-6">
+          {/* Water supply supports - New field at top */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Water Reliability</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Water supply supports</label>
             <select
-              value={siteWaterData.water_reliability || 'Unknown'}
-              onChange={(e) => updateSiteWater('water_reliability', e.target.value as WaterReliability)}
+              value={siteWaterData.supports || 'Unknown'}
+              onChange={(e) => updateSiteWater('supports', e.target.value as WaterSupports)}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="Unknown">Unknown</option>
-              <option value="Reliable">Reliable</option>
-              <option value="Unreliable">Unreliable</option>
+              <option value="Sprinklers">Sprinklers</option>
+              <option value="Hydrants / fire main / hose reels">Hydrants / fire main / hose reels</option>
+              <option value="Both">Both</option>
             </select>
           </div>
 
+          {/* Supply Type - Now dropdown with Other option */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Supply Type</label>
-            <input
-              type="text"
+            <select
               value={siteWaterData.supply_type || ''}
               onChange={(e) => updateSiteWater('supply_type', e.target.value)}
-              placeholder="e.g., town main / tank / reservoir"
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            >
+              <option value="">Select...</option>
+              <option value="Town mains">Town mains</option>
+              <option value="Single tank (on-site)">Single tank (on-site)</option>
+              <option value="Dual tank (on-site)">Dual tank (on-site)</option>
+              <option value="Break tank + mains">Break tank + mains</option>
+              <option value="Open water (reservoir)">Open water (reservoir)</option>
+              <option value="River / canal / open source">River / canal / open source</option>
+              <option value="Private main / estate main">Private main / estate main</option>
+              <option value="Other">Other...</option>
+            </select>
           </div>
+
+          {/* Supply Type Other - Conditional */}
+          {siteWaterData.supply_type === 'Other' && (
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Supply Type Details (Other)
+              </label>
+              <input
+                type="text"
+                value={siteWaterData.supply_type_other || ''}
+                onChange={(e) => updateSiteWater('supply_type_other', e.target.value)}
+                placeholder="Describe the supply type..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+
+          {/* Conditional hydrant/hose fields */}
+          {(siteWaterData.supports === 'Hydrants / fire main / hose reels' || siteWaterData.supports === 'Both') && (
+            <>
+              <div className="col-span-2 pt-4 border-t border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-4">Hydrant / fire main / hose reels</h4>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">External hydrant coverage</label>
+                <select
+                  value={siteWaterData.hydrant_coverage || 'Unknown'}
+                  onChange={(e) => updateSiteWater('hydrant_coverage', e.target.value as CoverageQuality)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Unknown">Unknown</option>
+                  <option value="Good">Good</option>
+                  <option value="Partial">Partial</option>
+                  <option value="Poor">Poor</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Fire main / ring main condition</label>
+                <select
+                  value={siteWaterData.fire_main_condition || 'Unknown'}
+                  onChange={(e) => updateSiteWater('fire_main_condition', e.target.value as ConditionQuality)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Unknown">Unknown</option>
+                  <option value="Good">Good</option>
+                  <option value="Concerns">Concerns</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Hose reels present</label>
+                <select
+                  value={siteWaterData.hose_reels_present || 'Unknown'}
+                  onChange={(e) => updateSiteWater('hose_reels_present', e.target.value as YesNoUnknown)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Unknown">Unknown</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Flow/pressure test evidence</label>
+                <select
+                  value={siteWaterData.flow_test_evidence || 'Unknown'}
+                  onChange={(e) => updateSiteWater('flow_test_evidence', e.target.value as TestEvidence)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Unknown">Unknown</option>
+                  <option value="Documented">Documented</option>
+                  <option value="Not documented">Not documented</option>
+                </select>
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Last test date (optional)</label>
+                <input
+                  type="date"
+                  value={siteWaterData.flow_test_date || ''}
+                  onChange={(e) => updateSiteWater('flow_test_date', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="col-span-2 border-t border-slate-200 pt-4"></div>
+            </>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Pumps Present</label>
@@ -616,6 +746,22 @@ export default function RE06FireProtectionForm({
               rows={2}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
+          </div>
+
+          {/* Overall reliability rating - Moved to bottom */}
+          <div className="col-span-2 pt-4 border-t border-slate-200">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Overall reliability rating (assessor judgement)
+            </label>
+            <select
+              value={siteWaterData.water_reliability || 'Unknown'}
+              onChange={(e) => updateSiteWater('water_reliability', e.target.value as WaterReliability)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Unknown">Unknown</option>
+              <option value="Reliable">Reliable</option>
+              <option value="Unreliable">Unreliable</option>
+            </select>
           </div>
         </div>
 

@@ -6,7 +6,7 @@ import FloatingSaveBar from './FloatingSaveBar';
 import ReRatingPanel from '../../re/ReRatingPanel';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
-import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
+import { ensureAutoRecommendation, syncAutoRecToRegister } from '../../../lib/re/recommendations/autoRecommendations';
 import { getSuggestedEquipment, STANDARD_EQUIPMENT_OPTIONS, isHeavyOccupancy } from '../../../lib/re/reference/occupancyCriticalEquipment';
 import { Plus, X, Trash2 } from 'lucide-react';
 
@@ -186,6 +186,14 @@ export default function RE08UtilitiesForm({
           .update({ data: sanitized.data })
           .eq('id', moduleInstance.id);
       }
+
+      await syncAutoRecToRegister({
+        documentId: moduleInstance.document_id,
+        moduleKey: 'RE_08_UTILITIES',
+        factorKey: canonicalKey,
+        rating: newRating,
+        industryKey,
+      });
     } catch (err) {
       console.error('Error updating rating:', err);
       alert('Failed to update rating');

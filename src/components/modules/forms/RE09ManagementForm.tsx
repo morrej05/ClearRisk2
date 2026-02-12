@@ -5,7 +5,7 @@ import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
-import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
+import { ensureAutoRecommendation, syncAutoRecToRegister } from '../../../lib/re/recommendations/autoRecommendations';
 import RatingButtons from '../../re/RatingButtons';
 
 interface Document {
@@ -152,6 +152,14 @@ export default function RE09ManagementForm({
       if (error) throw error;
 
       setRiskEngData(updatedRiskEngData);
+
+      await syncAutoRecToRegister({
+        documentId: moduleInstance.document_id,
+        moduleKey: 'RE_09_MANAGEMENT',
+        factorKey: CANONICAL_KEY,
+        rating: overallRating,
+        industryKey,
+      });
 
       // DO NOT call setFormData here - this would overwrite the user's rating selection
       // Auto-recommendations are applied separately using functional setState

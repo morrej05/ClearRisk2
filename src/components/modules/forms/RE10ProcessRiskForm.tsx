@@ -7,7 +7,7 @@ import FloatingSaveBar from './FloatingSaveBar';
 import ReRatingPanel from '../../re/ReRatingPanel';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { getRating, setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
-import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
+import { ensureAutoRecommendation, syncAutoRecToRegister } from '../../../lib/re/recommendations/autoRecommendations';
 
 interface Document {
   id: string;
@@ -104,6 +104,14 @@ export default function RE10ProcessRiskForm({
           .update({ data: sanitized.data })
           .eq('id', moduleInstance.id);
       }
+
+      await syncAutoRecToRegister({
+        documentId: moduleInstance.document_id,
+        moduleKey: 'RE_10_PROCESS_RISK',
+        factorKey: canonicalKey,
+        rating: newRating,
+        industryKey,
+      });
     } catch (err) {
       console.error('Error updating rating:', err);
       alert('Failed to update rating');

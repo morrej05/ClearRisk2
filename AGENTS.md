@@ -61,3 +61,23 @@ When addressing “flashing”:
 - Un-guarded `useEffect` that calls `setValue(...)` or `setState(...)` based on derived arrays/objects.
 - Table column/row definitions recreated every render causing internal recalculation and cascading state writes.
 - Unstable row keys causing rapid remounting and repeated hydration effects.
+
+## High-risk module: RE06 Fire Protection
+
+Primary file:
+- src/components/modules/forms/RE06FireProtectionForm.tsx
+
+When modifying RE06:
+
+- Do NOT introduce effects that write to form state based on derived table rows without strict guards.
+- Table rows must have stable persisted IDs (never index-based keys).
+- Column definitions must be memoized if passed to a table component.
+- Any hydration from Supabase must run once (or be explicitly diff-checked).
+- Avoid calling `watch()` or `getValues()` inline in render paths that feed state-setting effects.
+- Do not create a "derive → setValue → derive again" loop.
+- If flashing occurs, instrument render/effect counters before modifying logic.
+
+If a fix touches RE06:
+- Identify exact loop trigger (file + function + line).
+- Provide minimal diff.
+- Confirm no route-level remounting is introduced.

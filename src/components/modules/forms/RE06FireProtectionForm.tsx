@@ -302,11 +302,21 @@ function parseAreaValue(value: any): number {
 function calculateSiteRollup(
   fireProtectionData: FireProtectionModuleData,
   buildings: Building[]
-): { averageScore: number; buildingsAssessed: number; totalArea: number } {
+): {
+  averageScore: number;
+  buildingsAssessed: number;
+  requiredSprinklerArea: number;
+  installedSprinklerArea: number;
+  shortfallArea: number;
+  compliancePct: number;
+  someAreaMissing: boolean;
+} {
   let totalWeightedScore = 0;
   let totalWeight = 0;
-  let totalArea = 0;
+  let requiredSprinklerArea = 0;
+  let installedSprinklerArea = 0;
   let buildingsAssessed = 0;
+  let someAreaMissing = false;
 
   for (const building of buildings) {
     const buildingFP = fireProtectionData.buildings[building.id];
@@ -323,20 +333,37 @@ function calculateSiteRollup(
 
     // Parse area robustly (handles strings like "1,200", nulls, etc.)
     const area = parseAreaValue(building.footprint_m2);
-    const weight = area > 0 ? area : 1; // Fallback weight = 1 for missing area
 
-    totalWeightedScore += finalScore * weight;
-    totalWeight += weight;
-    if (area > 0) totalArea += area;
+    if (area > 0) {
+      const installedPct = buildingFP.sprinklerData.sprinkler_coverage_installed_pct ?? 0;
+      requiredSprinklerArea += (area * requiredPct) / 100;
+      installedSprinklerArea += (area * installedPct) / 100;
+
+      // Use area for weighted scoring
+      totalWeightedScore += finalScore * area;
+      totalWeight += area;
+    } else {
+      // Building has no area - still count for scoring with weight=1, but mark as missing
+      totalWeightedScore += finalScore * 1;
+      totalWeight += 1;
+      someAreaMissing = true;
+    }
+
     buildingsAssessed++;
   }
 
   const averageScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
+  const shortfallArea = Math.max(0, requiredSprinklerArea - installedSprinklerArea);
+  const compliancePct = requiredSprinklerArea > 0 ? (installedSprinklerArea / requiredSprinklerArea) * 100 : 0;
 
   return {
     averageScore: buildingsAssessed > 0 ? Math.round(averageScore * 10) / 10 : 0,
     buildingsAssessed,
-    totalArea,
+    requiredSprinklerArea: Math.round(requiredSprinklerArea),
+    installedSprinklerArea: Math.round(installedSprinklerArea),
+    shortfallArea: Math.round(shortfallArea),
+    compliancePct: Math.round(compliancePct * 10) / 10,
+    someAreaMissing,
   };
 }
 
@@ -1161,7 +1188,7 @@ export default function RE06FireProtectionForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Gap (%)</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Shortfall (%)</label>
                         <input
                           type="text"
                           value={
@@ -1171,26 +1198,6 @@ export default function RE06FireProtectionForm({
                                   0,
                                   selectedSprinklerData.sprinkler_coverage_required_pct -
                                     selectedSprinklerData.sprinkler_coverage_installed_pct
-                                )
-                              : ''
-                          }
-                          readOnly
-                          placeholder="—"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Over-coverage (%)</label>
-                        <input
-                          type="text"
-                          value={
-                            selectedSprinklerData.sprinkler_coverage_required_pct != null &&
-                            selectedSprinklerData.sprinkler_coverage_installed_pct != null
-                              ? Math.max(
-                                  0,
-                                  selectedSprinklerData.sprinkler_coverage_installed_pct -
-                                    selectedSprinklerData.sprinkler_coverage_required_pct
                                 )
                               : ''
                           }
@@ -1626,13 +1633,40 @@ export default function RE06FireProtectionForm({
           </div>
 
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-            <div className="text-sm text-slate-600 mb-1">Total Area</div>
+            <div className="text-sm text-slate-600 mb-1">Required sprinkler area</div>
             <div className="text-3xl font-bold text-slate-900">
-              {siteRollup.totalArea > 0 ? siteRollup.totalArea.toLocaleString() : '—'}
+              {siteRollup.requiredSprinklerArea > 0 ? siteRollup.requiredSprinklerArea.toLocaleString() : '—'}
             </div>
-            <div className="text-xs text-slate-500 mt-1">Square meters</div>
+            <div className="text-xs text-slate-500 mt-1">m²</div>
+            {siteRollup.requiredSprinklerArea > 0 && (
+              <div className="mt-3 space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Installed:</span>
+                  <span className="font-medium text-slate-900">{siteRollup.installedSprinklerArea.toLocaleString()} m²</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Shortfall:</span>
+                  <span className="font-medium text-slate-900">{siteRollup.shortfallArea.toLocaleString()} m²</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Compliance:</span>
+                  <span className="font-medium text-slate-900">{siteRollup.compliancePct.toFixed(1)}%</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {siteRollup.someAreaMissing && siteRollup.buildingsAssessed > 0 && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5" />
+              <p className="text-sm text-blue-900">
+                Some buildings missing area; area totals partial.
+              </p>
+            </div>
+          </div>
+        )}
 
         {siteRollup.buildingsAssessed === 0 && (
           <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">

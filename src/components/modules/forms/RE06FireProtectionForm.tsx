@@ -287,6 +287,18 @@ function generateAutoFlags(
   return flags;
 }
 
+function parseAreaValue(value: any): number {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    // Remove commas and parse
+    const cleaned = value.replace(/,/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
 function calculateSiteRollup(
   fireProtectionData: FireProtectionModuleData,
   buildings: Building[]
@@ -309,7 +321,8 @@ function calculateSiteRollup(
     const finalScore = buildingFP.sprinklerData.final_active_score_1_5;
     if (finalScore === null || finalScore === undefined) continue;
 
-    const area = building.footprint_m2 || 0;
+    // Parse area robustly (handles strings like "1,200", nulls, etc.)
+    const area = parseAreaValue(building.footprint_m2);
     const weight = area > 0 ? area : 1; // Fallback weight = 1 for missing area
 
     totalWeightedScore += finalScore * weight;
@@ -1158,6 +1171,26 @@ export default function RE06FireProtectionForm({
                                   0,
                                   selectedSprinklerData.sprinkler_coverage_required_pct -
                                     selectedSprinklerData.sprinkler_coverage_installed_pct
+                                )
+                              : ''
+                          }
+                          readOnly
+                          placeholder="—"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Over-coverage (%)</label>
+                        <input
+                          type="text"
+                          value={
+                            selectedSprinklerData.sprinkler_coverage_required_pct != null &&
+                            selectedSprinklerData.sprinkler_coverage_installed_pct != null
+                              ? Math.max(
+                                  0,
+                                  selectedSprinklerData.sprinkler_coverage_installed_pct -
+                                    selectedSprinklerData.sprinkler_coverage_required_pct
                                 )
                               : ''
                           }

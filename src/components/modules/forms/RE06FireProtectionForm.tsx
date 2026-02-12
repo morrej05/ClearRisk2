@@ -8,7 +8,6 @@ import {
   getBuildingRecommendations,
 } from '../../../lib/modules/re04FireProtectionRecommendations';
 import FireProtectionRecommendations from '../../re/FireProtectionRecommendations';
-import RecommendationShortcut from '../../re/RecommendationShortcut';
 
 interface Document {
   id: string;
@@ -1117,13 +1116,6 @@ export default function RE06FireProtectionForm({
                       <span className="text-xs text-red-600">{saveError}</span>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <RecommendationShortcut
-                    documentId={document.id}
-                    sourceModuleKey="RE_06_FIRE_PROTECTION"
-                    sourceModuleLabel="RE-04 Fire Protection"
-                  />
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-slate-600 flex items-center gap-1 justify-end">

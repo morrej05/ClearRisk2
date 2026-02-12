@@ -334,8 +334,8 @@ function createDefaultBuildingSprinkler(): BuildingSprinklerData {
     localised_type: '',
     localised_protected_asset: '',
     localised_comments: '',
-    sprinkler_coverage_installed_pct: 0,
-    sprinkler_coverage_required_pct: 0,
+    sprinkler_coverage_installed_pct: undefined,
+    sprinkler_coverage_required_pct: undefined,
     sprinkler_standard: '',
     hazard_class: '',
     maintenance_status: 'Unknown',
@@ -352,6 +352,8 @@ export default function RE06FireProtectionForm({
   onSaved,
 }: RE06FireProtectionFormProps) {
   const [saving, setSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
 
@@ -472,6 +474,7 @@ export default function RE06FireProtectionForm({
     if (saving) return;
 
     setSaving(true);
+    setSaveError(null);
     try {
       await supabase
         .from('module_instances')
@@ -480,10 +483,12 @@ export default function RE06FireProtectionForm({
         })
         .eq('id', moduleInstance.id);
 
+      setLastSavedAt(new Date());
       // Autosave only - do not trigger parent refresh (onSaved)
       // Parent will be notified only on explicit manual save or module navigation
     } catch (error) {
       console.error('Failed to save fire protection data:', error);
+      setSaveError('Save failed');
     } finally {
       setSaving(false);
     }
@@ -946,18 +951,40 @@ export default function RE06FireProtectionForm({
           ) : (
             <>
               <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {selectedBuilding.ref || 'Building'} - Sprinklers
-                  </h3>
-                  {selectedBuilding.description && (
-                    <p className="text-sm text-slate-600">{selectedBuilding.description}</p>
-                  )}
-                  {selectedBuilding.footprint_m2 && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      Area: {selectedBuilding.footprint_m2.toLocaleString()} m²
-                    </p>
-                  )}
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">
+                        {selectedBuilding.ref || 'Building'} - Sprinklers
+                      </h3>
+                      {selectedBuilding.description && (
+                        <p className="text-sm text-slate-600">{selectedBuilding.description}</p>
+                      )}
+                      {selectedBuilding.footprint_m2 && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Area: {selectedBuilding.footprint_m2.toLocaleString()} m²
+                        </p>
+                      )}
+                    </div>
+                    {/* Save status indicator */}
+                    {saving && (
+                      <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <div className="w-3 h-3 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                        Saving…
+                      </span>
+                    )}
+                    {!saving && lastSavedAt && (
+                      <span className="text-xs text-green-600 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Saved {lastSavedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                    {saveError && (
+                      <span className="text-xs text-red-600">{saveError}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-slate-600 flex items-center gap-1 justify-end">
@@ -1044,10 +1071,19 @@ export default function RE06FireProtectionForm({
                           type="number"
                           min="0"
                           max="100"
-                          value={selectedSprinklerData.sprinkler_coverage_installed_pct || 0}
-                          onChange={(e) =>
-                            updateBuildingSprinkler('sprinkler_coverage_installed_pct', Number(e.target.value))
-                          }
+                          value={selectedSprinklerData.sprinkler_coverage_installed_pct ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateBuildingSprinkler(
+                              'sprinkler_coverage_installed_pct',
+                              val === '' ? undefined : Number(val)
+                            );
+                          }}
+                          onFocus={(e) => {
+                            if (e.target.value === '0') {
+                              e.target.select();
+                            }
+                          }}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -1060,10 +1096,19 @@ export default function RE06FireProtectionForm({
                           type="number"
                           min="0"
                           max="100"
-                          value={selectedSprinklerData.sprinkler_coverage_required_pct || 0}
-                          onChange={(e) =>
-                            updateBuildingSprinkler('sprinkler_coverage_required_pct', Number(e.target.value))
-                          }
+                          value={selectedSprinklerData.sprinkler_coverage_required_pct ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateBuildingSprinkler(
+                              'sprinkler_coverage_required_pct',
+                              val === '' ? undefined : Number(val)
+                            );
+                          }}
+                          onFocus={(e) => {
+                            if (e.target.value === '0') {
+                              e.target.select();
+                            }
+                          }}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -1184,79 +1229,79 @@ export default function RE06FireProtectionForm({
                         </select>
                       </div>
                     </div>
+                  </>
+                )}
 
-                    {/* Localised / Special Fire Protection */}
-                    <div className="pt-4 border-t border-slate-200">
-                      <h4 className="font-semibold text-slate-900 mb-3">Localised / Special fire protection</h4>
+                {/* Localised / Special Fire Protection - Always visible regardless of sprinklers */}
+                <div className="pt-4 border-t border-slate-200">
+                  <h4 className="font-semibold text-slate-900 mb-3">Localised / Special fire protection</h4>
 
-                      <div className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Localised protection installed?
+                      </label>
+                      <select
+                        value={selectedSprinklerData.localised_present || 'No'}
+                        onChange={(e) =>
+                          updateBuildingSprinkler('localised_present', e.target.value as LocalisedPresent)
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="No">No</option>
+                        <option value="Yes">Yes</option>
+                        <option value="Partial">Partial</option>
+                        <option value="Unknown">Unknown</option>
+                      </select>
+                    </div>
+
+                    {(selectedSprinklerData.localised_present === 'Yes' ||
+                      selectedSprinklerData.localised_present === 'Partial') && (
+                      <>
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Localised protection installed?
+                            Protection type (predominant)
                           </label>
                           <select
-                            value={selectedSprinklerData.localised_present || 'No'}
-                            onChange={(e) =>
-                              updateBuildingSprinkler('localised_present', e.target.value as LocalisedPresent)
-                            }
+                            value={selectedSprinklerData.localised_type || ''}
+                            onChange={(e) => updateBuildingSprinkler('localised_type', e.target.value)}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            <option value="No">No</option>
-                            <option value="Yes">Yes</option>
-                            <option value="Partial">Partial</option>
-                            <option value="Unknown">Unknown</option>
+                            <option value="">Select...</option>
+                            <option value="Gas suppression">Gas suppression</option>
+                            <option value="Water mist">Water mist</option>
+                            <option value="Foam">Foam</option>
+                            <option value="Other">Other</option>
                           </select>
                         </div>
 
-                        {(selectedSprinklerData.localised_present === 'Yes' ||
-                          selectedSprinklerData.localised_present === 'Partial') && (
-                          <>
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Protection type (predominant)
-                              </label>
-                              <select
-                                value={selectedSprinklerData.localised_type || ''}
-                                onChange={(e) => updateBuildingSprinkler('localised_type', e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Gas suppression">Gas suppression</option>
-                                <option value="Water mist">Water mist</option>
-                                <option value="Foam">Foam</option>
-                                <option value="Other">Other</option>
-                              </select>
-                            </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Protected asset / area
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedSprinklerData.localised_protected_asset || ''}
+                            onChange={(e) => updateBuildingSprinkler('localised_protected_asset', e.target.value)}
+                            placeholder="e.g., Server room, Paint store, Battery room"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
 
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Protected asset / area
-                              </label>
-                              <input
-                                type="text"
-                                value={selectedSprinklerData.localised_protected_asset || ''}
-                                onChange={(e) => updateBuildingSprinkler('localised_protected_asset', e.target.value)}
-                                placeholder="e.g., Server room, Paint store, Battery room"
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-2">Comments</label>
-                              <textarea
-                                value={selectedSprinklerData.localised_comments || ''}
-                                onChange={(e) => updateBuildingSprinkler('localised_comments', e.target.value)}
-                                placeholder="Additional details on localised protection..."
-                                rows={2}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                              />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Comments</label>
+                          <textarea
+                            value={selectedSprinklerData.localised_comments || ''}
+                            onChange={(e) => updateBuildingSprinkler('localised_comments', e.target.value)}
+                            placeholder="Additional details on localised protection..."
+                            rows={2}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
 
                 {selectedSprinklerData.sprinkler_coverage_required_pct !== undefined &&
                   selectedSprinklerData.sprinkler_coverage_required_pct < 100 &&

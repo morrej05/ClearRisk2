@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertTriangle, Info, Droplet, Building as BuildingIcon, TrendingUp } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import {
@@ -265,9 +265,6 @@ export default function RE06FireProtectionForm({
   document,
   onSaved,
 }: RE06FireProtectionFormProps) {
-  const hydratedAtRef = useRef<number>(Date.now());
-  const saveNotifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const [saving, setSaving] = useState(false);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
@@ -374,15 +371,6 @@ export default function RE06FireProtectionForm({
     loadBuildings();
   }, [document.id]);
 
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (saveNotifyTimerRef.current) {
-        clearTimeout(saveNotifyTimerRef.current);
-      }
-    };
-  }, []);
-
   const saveData = useCallback(async () => {
     if (saving) return;
 
@@ -395,24 +383,14 @@ export default function RE06FireProtectionForm({
         })
         .eq('id', moduleInstance.id);
 
-      // Ignore initial autosave write-backs caused by hydration
-      if (Date.now() - hydratedAtRef.current < 1500) return;
-
-      // Batch rapid autosave notifications into one parent refresh
-      if (saveNotifyTimerRef.current) {
-        clearTimeout(saveNotifyTimerRef.current);
-      }
-
-      saveNotifyTimerRef.current = setTimeout(() => {
-        onSaved();
-        saveNotifyTimerRef.current = null;
-      }, 400);
+      // Autosave only - do not trigger parent refresh (onSaved)
+      // Parent will be notified only on explicit manual save or module navigation
     } catch (error) {
       console.error('Failed to save fire protection data:', error);
     } finally {
       setSaving(false);
     }
-  }, [saving, fireProtectionData, moduleInstance.id, onSaved]);
+  }, [saving, fireProtectionData, moduleInstance.id]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

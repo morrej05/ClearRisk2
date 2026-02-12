@@ -809,11 +809,11 @@ export default function RE06FireProtectionForm({
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Not rated</option>
-              <option value="1">1 - Very Poor</option>
-              <option value="2">2 - Poor</option>
-              <option value="3">3 - Fair</option>
-              <option value="4">4 - Good</option>
-              <option value="5">5 - Excellent</option>
+              <option value="1">1 – Very Poor (Highly unreliable)</option>
+              <option value="2">2 – Poor (Unreliable)</option>
+              <option value="3">3 – Fair (Limited reliability)</option>
+              <option value="4">4 – Good (Generally reliable)</option>
+              <option value="5">5 – Excellent (Highly reliable)</option>
             </select>
           </div>
         </div>

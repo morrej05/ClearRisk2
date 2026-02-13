@@ -84,6 +84,7 @@ export async function ensureRecommendationFromRating(
     .eq('source_type', 'auto')
     .eq('source_module_key', sourceModuleKey)
     .eq('source_factor_key', sourceFactorKey || null)
+    .eq('is_suppressed', false)
     .maybeSingle();
 
   if (existing) {

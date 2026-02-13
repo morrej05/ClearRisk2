@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import ModuleActions from '../ModuleActions';
@@ -28,15 +28,6 @@ interface RE07ExposuresFormProps {
   onSaved: () => void;
 }
 
-interface PerilRating {
-  rating: number;
-  notes: string;
-}
-
-interface OtherPeril extends PerilRating {
-  label: string;
-}
-
 const PERIL_RATING_GUIDANCE = `Rate the residual risk to the site from this peril after considering hazard severity and mitigation. Permanent, engineered measures should carry the greatest weight. Well-developed emergency plans and response arrangements may be reflected where appropriate, but will not usually offset severe inherent hazard on their own.`;
 
 const HUMAN_EXPOSURE_GUIDANCE = `Assess the site's exposure to deliberate or opportunistic loss based on location, access, visibility, and surrounding activity. This is not an audit of security systems; controls may be noted as context only.`;
@@ -49,114 +40,105 @@ const RATING_LABELS: Record<number, string> = {
   5: 'Excellent',
 };
 
-export default function RE07ExposuresForm({
-  moduleInstance,
-  document,
-  onSaved,
-}: RE07ExposuresFormProps) {
+function slugifyKey(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+export default function RE07ExposuresForm({ moduleInstance, document, onSaved }: RE07ExposuresFormProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const d = moduleInstance.data?.exposures || {};
 
-  const envPerils = d.environmental?.perils || {};
-  const [floodRating, setFloodRating] = useState<number>(envPerils.flood?.rating || 3);
-  const [floodNotes, setFloodNotes] = useState<string>(envPerils.flood?.notes || '');
+  // Local draft state (single source of truth for UI)
+  const [floodRating, setFloodRating] = useState<number>(3);
+  const [floodNotes, setFloodNotes] = useState<string>('');
 
-  const [windRating, setWindRating] = useState<number>(envPerils.wind?.rating || 3);
-  const [windNotes, setWindNotes] = useState<string>(envPerils.wind?.notes || '');
+  const [windRating, setWindRating] = useState<number>(3);
+  const [windNotes, setWindNotes] = useState<string>('');
 
-  const [earthquakeRating, setEarthquakeRating] = useState<number>(envPerils.earthquake?.rating || 3);
-  const [earthquakeNotes, setEarthquakeNotes] = useState<string>(envPerils.earthquake?.notes || '');
+  const [earthquakeRating, setEarthquakeRating] = useState<number>(3);
+  const [earthquakeNotes, setEarthquakeNotes] = useState<string>('');
 
-  const [wildfireRating, setWildfireRating] = useState<number>(envPerils.wildfire?.rating || 3);
-  const [wildfireNotes, setWildfireNotes] = useState<string>(envPerils.wildfire?.notes || '');
+  const [wildfireRating, setWildfireRating] = useState<number>(3);
+  const [wildfireNotes, setWildfireNotes] = useState<string>('');
 
-  const [hasOtherPeril, setHasOtherPeril] = useState<boolean>(!!envPerils.other);
-  const [otherLabel, setOtherLabel] = useState<string>(envPerils.other?.label || '');
-  const [otherRating, setOtherRating] = useState<number>(envPerils.other?.rating || 3);
-  const [otherNotes, setOtherNotes] = useState<string>(envPerils.other?.notes || '');
+  const [hasOtherPeril, setHasOtherPeril] = useState<boolean>(false);
+  const [otherLabel, setOtherLabel] = useState<string>('');
+  const [otherRating, setOtherRating] = useState<number>(3);
+  const [otherNotes, setOtherNotes] = useState<string>('');
 
-  const [humanExposureRating, setHumanExposureRating] = useState<number>(
-  d.human_exposure?.rating || 3
-);
-const [humanExposureNotes, setHumanExposureNotes] = useState<string>(
-  d.human_exposure?.notes || ''
-);
+  const [humanExposureRating, setHumanExposureRating] = useState<number>(3);
+  const [humanExposureNotes, setHumanExposureNotes] = useState<string>('');
 
-// Computed ratings state (required for JSX rendering)
-const [derivedEnvironmentalRating, setDerivedEnvironmentalRating] = useState<number>(3);
-const [overallExposureRating, setOverallExposureRating] = useState<number>(3);
-
-// Sync local state when fresh data comes back from DB (prevents "revert to 3")
-useEffect(() => {
-  const ex = moduleInstance.data?.exposures;
-  if (!ex) return;
-
-  const p = ex.environmental?.perils || {};
-
-  if ((p.flood?.rating ?? 3) !== floodRating) setFloodRating(p.flood?.rating ?? 3);
-  if ((p.flood?.notes ?? '') !== floodNotes) setFloodNotes(p.flood?.notes ?? '');
-
-  if ((p.wind?.rating ?? 3) !== windRating) setWindRating(p.wind?.rating ?? 3);
-  if ((p.wind?.notes ?? '') !== windNotes) setWindNotes(p.wind?.notes ?? '');
-
-  if ((p.earthquake?.rating ?? 3) !== earthquakeRating) setEarthquakeRating(p.earthquake?.rating ?? 3);
-  if ((p.earthquake?.notes ?? '') !== earthquakeNotes) setEarthquakeNotes(p.earthquake?.notes ?? '');
-
-  if ((p.wildfire?.rating ?? 3) !== wildfireRating) setWildfireRating(p.wildfire?.rating ?? 3);
-  if ((p.wildfire?.notes ?? '') !== wildfireNotes) setWildfireNotes(p.wildfire?.notes ?? '');
-
-  if (p.other) {
-    if (!hasOtherPeril) setHasOtherPeril(true);
-    if ((p.other.label ?? '') !== otherLabel) setOtherLabel(p.other.label ?? '');
-    if ((p.other.rating ?? 3) !== otherRating) setOtherRating(p.other.rating ?? 3);
-    if ((p.other.notes ?? '') !== otherNotes) setOtherNotes(p.other.notes ?? '');
-  } else {
-    if (hasOtherPeril) setHasOtherPeril(false);
-  }
-
-  if ((ex.human_exposure?.rating ?? 3) !== humanExposureRating) {
-    setHumanExposureRating(ex.human_exposure?.rating ?? 3);
-  }
-  if ((ex.human_exposure?.notes ?? '') !== humanExposureNotes) {
-    setHumanExposureNotes(ex.human_exposure?.notes ?? '');
-  }
-}, [moduleInstance.data?.exposures]);
-
-  // Compute derived ratings whenever individual ratings change
+  // Seed once per module instance (prevents reversion/flicker)
   useEffect(() => {
-    const perilRatings = [floodRating, windRating, earthquakeRating, wildfireRating];
-    if (hasOtherPeril) {
-      perilRatings.push(otherRating);
-    }
-    const worstPeril = Math.min(...perilRatings);
-    setDerivedEnvironmentalRating(worstPeril);
+    const ex = moduleInstance.data?.exposures ?? {};
+    const p = ex.environmental?.perils ?? {};
 
-    const overall = Math.min(worstPeril, humanExposureRating);
-    setOverallExposureRating(overall);
-  }, [floodRating, windRating, earthquakeRating, wildfireRating, otherRating, hasOtherPeril, humanExposureRating]);
+    setFloodRating(p.flood?.rating ?? 3);
+    setFloodNotes(p.flood?.notes ?? '');
+
+    setWindRating(p.wind?.rating ?? 3);
+    setWindNotes(p.wind?.notes ?? '');
+
+    setEarthquakeRating(p.earthquake?.rating ?? 3);
+    setEarthquakeNotes(p.earthquake?.notes ?? '');
+
+    setWildfireRating(p.wildfire?.rating ?? 3);
+    setWildfireNotes(p.wildfire?.notes ?? '');
+
+    setHasOtherPeril(!!p.other);
+    setOtherLabel(p.other?.label ?? '');
+    setOtherRating(p.other?.rating ?? 3);
+    setOtherNotes(p.other?.notes ?? '');
+
+    setHumanExposureRating(ex.human_exposure?.rating ?? 3);
+    setHumanExposureNotes(ex.human_exposure?.notes ?? '');
+  }, [moduleInstance.id]);
+
+  const otherLabelTrim = useMemo(() => otherLabel.trim(), [otherLabel]);
+  const includeOther = hasOtherPeril && otherLabelTrim.length > 0;
+
+  // Derived ratings (computed, not stored)
+  const derivedEnvironmentalRating = useMemo(() => {
+    const perilRatings: number[] = [floodRating, windRating, earthquakeRating, wildfireRating];
+    if (includeOther) perilRatings.push(otherRating);
+    return Math.min(...perilRatings);
+  }, [floodRating, windRating, earthquakeRating, wildfireRating, includeOther, otherRating]);
+
+  const overallExposureRating = useMemo(() => {
+    return Math.min(derivedEnvironmentalRating, humanExposureRating);
+  }, [derivedEnvironmentalRating, humanExposureRating]);
+
+  const getDerivedRatingColor = (rating: number): string => {
+    if (rating >= 4) return 'text-green-700 bg-green-50 border-green-300';
+    if (rating === 3) return 'text-amber-700 bg-amber-50 border-amber-300';
+    if (rating === 2) return 'text-orange-700 bg-orange-50 border-orange-300';
+    return 'text-red-700 bg-red-50 border-red-300';
+  };
 
   const syncExposureAutosToRegister = async () => {
     const documentId = moduleInstance.document_id;
 
-    // Canonical keys for exposures (used by pipeline fallback + future library mapping)
     const items: Array<{ canonicalKey: string; rating: number }> = [
       { canonicalKey: 'exposures_flood', rating: floodRating },
       { canonicalKey: 'exposures_wind_storm', rating: windRating },
       { canonicalKey: 'exposures_earthquake', rating: earthquakeRating },
       { canonicalKey: 'exposures_wildfire', rating: wildfireRating },
-      ...(hasOtherPeril && otherLabel
-        ? [{
-            canonicalKey: `exposures_other_${otherLabel
-              .toLowerCase()
-              .trim()
-              .replace(/[^a-z0-9]+/g, '_')
-              .replace(/^_+|_+$/g, '')}`,
-            rating: otherRating,
-          }]
+      ...(includeOther
+        ? [
+            {
+              canonicalKey: `exposures_other_${slugifyKey(otherLabelTrim)}`,
+              rating: otherRating,
+            },
+          ]
         : []),
       { canonicalKey: 'exposures_human_malicious', rating: humanExposureRating },
     ];
 
+    // Rating 1 & 2 only
     for (const item of items) {
       if (item.rating <= 2) {
         await syncAutoRecToRegister({
@@ -180,9 +162,11 @@ useEffect(() => {
             wind: { rating: windRating, notes: windNotes },
             earthquake: { rating: earthquakeRating, notes: earthquakeNotes },
             wildfire: { rating: wildfireRating, notes: wildfireNotes },
-            ...(hasOtherPeril && otherLabel ? {
-              other: { label: otherLabel, rating: otherRating, notes: otherNotes }
-            } : {}),
+            ...(includeOther
+              ? {
+                  other: { label: otherLabelTrim, rating: otherRating, notes: otherNotes },
+                }
+              : {}),
           },
           derived_rating: derivedEnvironmentalRating,
         },
@@ -207,158 +191,28 @@ useEffect(() => {
 
       if (error) throw error;
 
-      // Update section grade (should not block save)
+      // Non-blocking: section grade update
       try {
         await updateSectionGrade(document.id, 'exposure', overallExposureRating);
       } catch (e) {
         console.error('[RE07Exposures] updateSectionGrade failed:', e);
       }
-      
-      // Auto-rec sync (must not block save)
+
+      // Non-blocking: auto-recs sync (rating 1/2 only)
       try {
         await syncExposureAutosToRegister();
       } catch (e) {
         console.error('[RE07Exposures] auto-rec sync failed:', e);
       }
-      
-      // Only now report success
-      onSaved();
 
-    } catch (error) {
-      console.error('Error saving module:', error);
+      onSaved();
+    } catch (err) {
+      console.error('[RE07Exposures] Error saving module:', err);
       alert('Failed to save module. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
-
-  const getDerivedRatingColor = (rating: number): string => {
-    if (rating >= 4) return 'text-green-700 bg-green-50 border-green-300';
-    if (rating === 3) return 'text-amber-700 bg-amber-50 border-amber-300';
-    if (rating === 2) return 'text-orange-700 bg-orange-50 border-orange-300';
-    return 'text-red-700 bg-red-50 border-red-300';
-  };
-
-  const saveDraftExposures = async (overrides: Partial<{
-  floodRating: number; floodNotes: string;
-  windRating: number; windNotes: string;
-  earthquakeRating: number; earthquakeNotes: string;
-  wildfireRating: number; wildfireNotes: string;
-  hasOtherPeril: boolean;
-  otherLabel: string; otherRating: number; otherNotes: string;
-  humanExposureRating: number; humanExposureNotes: string;
-}>) => {
-  const nextFloodRating = overrides.floodRating ?? floodRating;
-  const nextFloodNotes = overrides.floodNotes ?? floodNotes;
-
-  const nextWindRating = overrides.windRating ?? windRating;
-  const nextWindNotes = overrides.windNotes ?? windNotes;
-
-  const nextEarthquakeRating = overrides.earthquakeRating ?? earthquakeRating;
-  const nextEarthquakeNotes = overrides.earthquakeNotes ?? earthquakeNotes;
-
-  const nextWildfireRating = overrides.wildfireRating ?? wildfireRating;
-  const nextWildfireNotes = overrides.wildfireNotes ?? wildfireNotes;
-
-  const nextHasOther = overrides.hasOtherPeril ?? hasOtherPeril;
-  const nextOtherLabel = overrides.otherLabel ?? otherLabel;
-  const nextOtherRating = overrides.otherRating ?? otherRating;
-  const nextOtherNotes = overrides.otherNotes ?? otherNotes;
-
-  const nextHumanRating = overrides.humanExposureRating ?? humanExposureRating;
-  const nextHumanNotes = overrides.humanExposureNotes ?? humanExposureNotes;
-
-  const perilRatings = [nextFloodRating, nextWindRating, nextEarthquakeRating, nextWildfireRating];
-  if (nextHasOther && nextOtherLabel) perilRatings.push(nextOtherRating);
-  const worstPeril = Math.min(...perilRatings);
-  const overall = Math.min(worstPeril, nextHumanRating);
-
-  const exposuresData = {
-    environmental: {
-      perils: {
-        flood: { rating: nextFloodRating, notes: nextFloodNotes },
-        wind: { rating: nextWindRating, notes: nextWindNotes },
-        earthquake: { rating: nextEarthquakeRating, notes: nextEarthquakeNotes },
-        wildfire: { rating: nextWildfireRating, notes: nextWildfireNotes },
-        ...(nextHasOther && nextOtherLabel
-          ? { other: { label: nextOtherLabel, rating: nextOtherRating, notes: nextOtherNotes } }
-          : {}),
-      },
-      derived_rating: worstPeril,
-    },
-    human_exposure: { rating: nextHumanRating, notes: nextHumanNotes },
-    overall_exposure_rating: overall,
-  };
-
-  const sanitized = sanitizeModuleInstancePayload({ data: { exposures: exposuresData } });
-
-  const { error } = await supabase
-    .from('module_instances')
-    .update({ data: sanitized.data }) // draft save only
-    .eq('id', moduleInstance.id);
-
-  if (error) {
-    console.error('[RE07Exposures] draft save failed:', error);
-    throw error;
-  }
-
-  // keep section grade roughly aligned (non-blocking)
-  try {
-    await updateSectionGrade(document.id, 'exposure', overall);
-  } catch (e) {
-    console.error('[RE07Exposures] updateSectionGrade failed:', e);
-  }
-};
-
-const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
-  if (rating > 2) return;
-  try {
-    await syncAutoRecToRegister({
-      documentId: moduleInstance.document_id,
-      moduleKey: 'RE_07_NATURAL_HAZARDS',
-      canonicalKey,
-      rating_1_5: rating,
-      industryKey: null,
-    });
-  } catch (e) {
-    console.error('[RE07Exposures] auto-rec sync failed:', e);
-  }
-};
-
-const handleExposureRatingChange = async (
-  canonicalKey: string,
-  newRating: number,
-  setState: (value: number) => void,
-  overrideKey: 'floodRating' | 'windRating' | 'earthquakeRating' | 'wildfireRating' | 'otherRating' | 'humanExposureRating'
-) => {
-  setState(newRating);
-
-  try {
-    await saveDraftExposures({ [overrideKey]: newRating });
-    await syncExposureAutoRec(canonicalKey, newRating);
-  } catch (e) {
-    console.error(`[RE07Exposures] Failed to persist ${canonicalKey}:`, e);
-  }
-};
-
-const handleOtherPerilRatingChange = async (newRating: number) => {
-  setOtherRating(newRating);
-
-  if (!otherLabel) return;
-
-  const canonicalKey = `exposures_other_${otherLabel
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')}`;
-
-  try {
-    await saveDraftExposures({ otherRating: newRating });
-    await syncExposureAutoRec(canonicalKey, newRating);
-  } catch (e) {
-    console.error(`[RE07Exposures] Failed to persist other peril:`, e);
-  }
-};
 
   const renderPerilRow = (
     icon: React.ReactNode,
@@ -374,12 +228,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
         <h4 className="font-semibold text-slate-900">{label}</h4>
       </div>
 
-      <RatingButtons
-        value={rating}
-        onChange={onRatingChange}
-        labels={RATING_LABELS}
-        size="sm"
-      />
+      <RatingButtons value={rating} onChange={onRatingChange} labels={RATING_LABELS} size="sm" />
 
       <textarea
         value={notes}
@@ -396,9 +245,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
       <div className="p-6 max-w-5xl mx-auto pb-24 space-y-6">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">RE-5 - Exposures</h2>
-          <p className="text-slate-600">
-            Environmental and human exposure assessment (COPE-aligned, Global Pillar)
-          </p>
+          <p className="text-slate-600">Environmental and human exposure assessment (COPE-aligned, Global Pillar)</p>
         </div>
 
         {/* Environmental Risk Section */}
@@ -417,7 +264,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
               'Flood',
               floodRating,
               floodNotes,
-              (v) => handleExposureRatingChange('exposures_flood', v, setFloodRating, 'floodRating'),
+              setFloodRating,
               setFloodNotes
             )}
 
@@ -426,7 +273,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
               'Wind / Storm',
               windRating,
               windNotes,
-              (v) => handleExposureRatingChange('exposures_wind_storm', v, setWindRating, 'windRating'),
+              setWindRating,
               setWindNotes
             )}
 
@@ -435,7 +282,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
               'Earthquake',
               earthquakeRating,
               earthquakeNotes,
-              (v) => handleExposureRatingChange('exposures_earthquake', v, setEarthquakeRating, 'earthquakeRating'),
+              setEarthquakeRating,
               setEarthquakeNotes
             )}
 
@@ -444,7 +291,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
               'Wildfire',
               wildfireRating,
               wildfireNotes,
-              (v) => handleExposureRatingChange('exposures_wildfire', v, setWildfireRating, 'wildfireRating'),
+              setWildfireRating,
               setWildfireNotes
             )}
 
@@ -461,19 +308,19 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
                     className="flex-1 px-3 py-1.5 border border-slate-300 rounded-md"
                   />
                   <button
-                    onClick={() => setHasOtherPeril(false)}
+                    onClick={() => {
+                      setHasOtherPeril(false);
+                      setOtherLabel('');
+                      setOtherNotes('');
+                      setOtherRating(3);
+                    }}
                     className="text-red-600 hover:text-red-700 text-sm font-medium"
                   >
                     Remove
                   </button>
                 </div>
 
-                <RatingButtons
-                  value={otherRating}
-                  onChange={handleOtherPerilRatingChange}
-                  labels={RATING_LABELS}
-                  size="sm"
-                />
+                <RatingButtons value={otherRating} onChange={setOtherRating} labels={RATING_LABELS} size="sm" />
 
                 <textarea
                   value={otherNotes}
@@ -498,9 +345,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Environmental Risk Rating (Auto-Derived)</p>
-                <p className="text-xs opacity-75 mt-1">
-                  Derived from the highest-risk environmental peril
-                </p>
+                <p className="text-xs opacity-75 mt-1">Derived from the highest-risk environmental peril</p>
               </div>
               <div className="text-2xl font-bold">{derivedEnvironmentalRating}</div>
             </div>
@@ -512,9 +357,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
           <div className="flex items-start gap-3 mb-4">
             <Shield className="w-6 h-6 text-slate-600 flex-shrink-0 mt-1" />
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                Human / Malicious Exposure
-              </h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Human / Malicious Exposure</h3>
               <p className="text-sm text-slate-600 mb-3">{HUMAN_EXPOSURE_GUIDANCE}</p>
             </div>
           </div>
@@ -523,7 +366,7 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
             <label className="block text-sm font-medium text-slate-700 mb-3">Exposure Rating (1-5):</label>
             <RatingButtons
               value={humanExposureRating}
-              onChange={(v) => handleExposureRatingChange('exposures_human_malicious', v, setHumanExposureRating, 'humanExposureRating')}
+              onChange={setHumanExposureRating}
               labels={RATING_LABELS}
               size="sm"
             />
@@ -548,28 +391,18 @@ const handleOtherPerilRatingChange = async (newRating: number) => {
         <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg border-2 border-slate-300 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-1">
-                Overall Exposure Rating
-              </h3>
-              <p className="text-sm text-slate-600">
-                Auto-derived from worst of Environmental Risk and Human Exposure
-              </p>
-              <p className="text-xs text-slate-500 mt-2">
-                This rating feeds into the Risk Ratings Summary as a global pillar
-              </p>
+              <h3 className="text-lg font-semibold text-slate-900 mb-1">Overall Exposure Rating</h3>
+              <p className="text-sm text-slate-600">Auto-derived from worst of Environmental Risk and Human Exposure</p>
+              <p className="text-xs text-slate-500 mt-2">This rating feeds into the Risk Ratings Summary as a global pillar</p>
             </div>
             <div className={`px-6 py-4 rounded-lg border-2 ${getDerivedRatingColor(overallExposureRating)}`}>
               <div className="text-3xl font-bold text-center">{overallExposureRating}</div>
-              <div className="text-xs text-center mt-1 opacity-75">
-                {RATING_LABELS[overallExposureRating]}
-              </div>
+              <div className="text-xs text-center mt-1 opacity-75">{RATING_LABELS[overallExposureRating]}</div>
             </div>
           </div>
         </div>
 
-        {document?.id && moduleInstance?.id && (
-          <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />
-        )}
+        {document?.id && moduleInstance?.id && <ModuleActions documentId={document.id} moduleInstanceId={moduleInstance.id} />}
       </div>
 
       <FloatingSaveBar onSave={handleSave} isSaving={isSaving} />

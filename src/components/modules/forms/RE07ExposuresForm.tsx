@@ -203,6 +203,93 @@ export default function RE07ExposuresForm({
     return 'text-red-700 bg-red-50 border-red-300';
   };
 
+  const saveDraftExposures = async (overrides: Partial<{
+  floodRating: number; floodNotes: string;
+  windRating: number; windNotes: string;
+  earthquakeRating: number; earthquakeNotes: string;
+  wildfireRating: number; wildfireNotes: string;
+  hasOtherPeril: boolean;
+  otherLabel: string; otherRating: number; otherNotes: string;
+  humanExposureRating: number; humanExposureNotes: string;
+}>) => {
+  const nextFloodRating = overrides.floodRating ?? floodRating;
+  const nextFloodNotes = overrides.floodNotes ?? floodNotes;
+
+  const nextWindRating = overrides.windRating ?? windRating;
+  const nextWindNotes = overrides.windNotes ?? windNotes;
+
+  const nextEarthquakeRating = overrides.earthquakeRating ?? earthquakeRating;
+  const nextEarthquakeNotes = overrides.earthquakeNotes ?? earthquakeNotes;
+
+  const nextWildfireRating = overrides.wildfireRating ?? wildfireRating;
+  const nextWildfireNotes = overrides.wildfireNotes ?? wildfireNotes;
+
+  const nextHasOther = overrides.hasOtherPeril ?? hasOtherPeril;
+  const nextOtherLabel = overrides.otherLabel ?? otherLabel;
+  const nextOtherRating = overrides.otherRating ?? otherRating;
+  const nextOtherNotes = overrides.otherNotes ?? otherNotes;
+
+  const nextHumanRating = overrides.humanExposureRating ?? humanExposureRating;
+  const nextHumanNotes = overrides.humanExposureNotes ?? humanExposureNotes;
+
+  const perilRatings = [nextFloodRating, nextWindRating, nextEarthquakeRating, nextWildfireRating];
+  if (nextHasOther && nextOtherLabel) perilRatings.push(nextOtherRating);
+  const worstPeril = Math.min(...perilRatings);
+  const overall = Math.min(worstPeril, nextHumanRating);
+
+  const exposuresData = {
+    environmental: {
+      perils: {
+        flood: { rating: nextFloodRating, notes: nextFloodNotes },
+        wind: { rating: nextWindRating, notes: nextWindNotes },
+        earthquake: { rating: nextEarthquakeRating, notes: nextEarthquakeNotes },
+        wildfire: { rating: nextWildfireRating, notes: nextWildfireNotes },
+        ...(nextHasOther && nextOtherLabel
+          ? { other: { label: nextOtherLabel, rating: nextOtherRating, notes: nextOtherNotes } }
+          : {}),
+      },
+      derived_rating: worstPeril,
+    },
+    human_exposure: { rating: nextHumanRating, notes: nextHumanNotes },
+    overall_exposure_rating: overall,
+  };
+
+  const sanitized = sanitizeModuleInstancePayload({ data: { exposures: exposuresData } });
+
+  const { error } = await supabase
+    .from('module_instances')
+    .update({ data: sanitized.data }) // draft save only
+    .eq('id', moduleInstance.id);
+
+  if (error) {
+    console.error('[RE07Exposures] draft save failed:', error);
+    throw error;
+  }
+
+  // keep section grade roughly aligned (non-blocking)
+  try {
+    await updateSectionGrade(document.id, 'exposure', overall);
+  } catch (e) {
+    console.error('[RE07Exposures] updateSectionGrade failed:', e);
+  }
+};
+
+const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
+  if (rating > 2) return;
+  try {
+    const { syncAutoRecToRegister } = await import('../../../lib/re/recommendations/recommendationPipeline');
+    await syncAutoRecToRegister({
+      documentId: moduleInstance.document_id,
+      moduleKey: 'RE_07_NATURAL_HAZARDS',
+      canonicalKey,
+      rating_1_5: rating,
+      industryKey: null,
+    });
+  } catch (e) {
+    console.error('[RE07Exposures] auto-rec sync failed:', e);
+  }
+};
+
   const renderPerilRow = (
     icon: React.ReactNode,
     label: string,

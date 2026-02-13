@@ -82,37 +82,41 @@ export default function RE07ExposuresForm({
     d.human_exposure?.notes || ''
   );
 
-  // Computed ratings
-  const [derivedEnvironmentalRating, setDerivedEnvironmentalRating] = useState<number>(3);
-  const [overallExposureRating, setOverallExposureRating] = useState<number>(3);
+  // all your useState declarations...
+
+const [humanExposureRating, setHumanExposureRating] = ...
+const [humanExposureNotes, setHumanExposureNotes] = ...
+
+// ⬇ REPLACE THE OLD SYNC EFFECT WITH THIS ⬇
 useEffect(() => {
-  const d = moduleInstance.data?.exposures || {};
+  const d = moduleInstance.data?.exposures;
+  if (!d) return;
+
   const p = d.environmental?.perils || {};
 
-  setFloodRating(p.flood?.rating ?? 3);
-  setFloodNotes(p.flood?.notes ?? '');
-
-  setWindRating(p.wind?.rating ?? 3);
-  setWindNotes(p.wind?.notes ?? '');
-
-  setEarthquakeRating(p.earthquake?.rating ?? 3);
-  setEarthquakeNotes(p.earthquake?.notes ?? '');
-
-  setWildfireRating(p.wildfire?.rating ?? 3);
-  setWildfireNotes(p.wildfire?.notes ?? '');
-
-  if (p.other) {
-    setHasOtherPeril(true);
-    setOtherLabel(p.other.label ?? '');
-    setOtherRating(p.other.rating ?? 3);
-    setOtherNotes(p.other.notes ?? '');
-  } else {
-    setHasOtherPeril(false);
+  if (p.flood?.rating !== floodRating) {
+    setFloodRating(p.flood?.rating ?? 3);
   }
 
-  setHumanExposureRating(d.human_exposure?.rating ?? 3);
-  setHumanExposureNotes(d.human_exposure?.notes ?? '');
-}, [moduleInstance.data]);
+  if (p.wind?.rating !== windRating) {
+    setWindRating(p.wind?.rating ?? 3);
+  }
+
+  if (p.earthquake?.rating !== earthquakeRating) {
+    setEarthquakeRating(p.earthquake?.rating ?? 3);
+  }
+
+  if (p.wildfire?.rating !== wildfireRating) {
+    setWildfireRating(p.wildfire?.rating ?? 3);
+  }
+
+  if (d.human_exposure?.rating !== humanExposureRating) {
+    setHumanExposureRating(d.human_exposure?.rating ?? 3);
+  }
+
+}, [moduleInstance.data?.exposures]);
+
+// then BELOW this remains your existing derived ratings useEffect
 
   // Compute derived ratings whenever individual ratings change
   useEffect(() => {

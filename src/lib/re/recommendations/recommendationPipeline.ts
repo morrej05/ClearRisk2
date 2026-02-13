@@ -308,12 +308,13 @@ export async function syncAutoRecToRegister(params: {
   industryKey: string | null;
 }): Promise<void> {
   const { documentId, moduleKey, canonicalKey, rating_1_5, industryKey } = params;
-  void moduleKey;
 
   await ensureRecommendationFromRating({
     documentId,
-    sourceModuleKey: canonicalKey,
+    sourceModuleKey: moduleKey,          // ✅ correct
+    sourceFactorKey: canonicalKey,       // ✅ correct
     rating_1_5,
     industryKey,
   });
 }
+

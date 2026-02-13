@@ -82,6 +82,10 @@ const [humanExposureNotes, setHumanExposureNotes] = useState<string>(
   d.human_exposure?.notes || ''
 );
 
+// Computed ratings state (required for JSX rendering)
+const [derivedEnvironmentalRating, setDerivedEnvironmentalRating] = useState<number>(3);
+const [overallExposureRating, setOverallExposureRating] = useState<number>(3);
+
 // Sync local state when fresh data comes back from DB (prevents "revert to 3")
 useEffect(() => {
   const ex = moduleInstance.data?.exposures;

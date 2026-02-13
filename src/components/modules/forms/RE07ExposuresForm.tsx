@@ -277,7 +277,6 @@ export default function RE07ExposuresForm({
 const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
   if (rating > 2) return;
   try {
-    const { syncAutoRecToRegister } = await import('../../../lib/re/recommendations/recommendationPipeline');
     await syncAutoRecToRegister({
       documentId: moduleInstance.document_id,
       moduleKey: 'RE_07_NATURAL_HAZARDS',
@@ -287,6 +286,41 @@ const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
     });
   } catch (e) {
     console.error('[RE07Exposures] auto-rec sync failed:', e);
+  }
+};
+
+const handleExposureRatingChange = async (
+  canonicalKey: string,
+  newRating: number,
+  setState: (value: number) => void,
+  overrideKey: 'floodRating' | 'windRating' | 'earthquakeRating' | 'wildfireRating' | 'otherRating' | 'humanExposureRating'
+) => {
+  setState(newRating);
+
+  try {
+    await saveDraftExposures({ [overrideKey]: newRating });
+    await syncExposureAutoRec(canonicalKey, newRating);
+  } catch (e) {
+    console.error(`[RE07Exposures] Failed to persist ${canonicalKey}:`, e);
+  }
+};
+
+const handleOtherPerilRatingChange = async (newRating: number) => {
+  setOtherRating(newRating);
+
+  if (!otherLabel) return;
+
+  const canonicalKey = `exposures_other_${otherLabel
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')}`;
+
+  try {
+    await saveDraftExposures({ otherRating: newRating });
+    await syncExposureAutoRec(canonicalKey, newRating);
+  } catch (e) {
+    console.error(`[RE07Exposures] Failed to persist other peril:`, e);
   }
 };
 
@@ -347,7 +381,7 @@ const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
               'Flood',
               floodRating,
               floodNotes,
-              setFloodRating,
+              (v) => handleExposureRatingChange('exposures_flood', v, setFloodRating, 'floodRating'),
               setFloodNotes
             )}
 
@@ -356,7 +390,7 @@ const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
               'Wind / Storm',
               windRating,
               windNotes,
-              setWindRating,
+              (v) => handleExposureRatingChange('exposures_wind_storm', v, setWindRating, 'windRating'),
               setWindNotes
             )}
 
@@ -365,7 +399,7 @@ const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
               'Earthquake',
               earthquakeRating,
               earthquakeNotes,
-              setEarthquakeRating,
+              (v) => handleExposureRatingChange('exposures_earthquake', v, setEarthquakeRating, 'earthquakeRating'),
               setEarthquakeNotes
             )}
 
@@ -374,7 +408,7 @@ const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
               'Wildfire',
               wildfireRating,
               wildfireNotes,
-              setWildfireRating,
+              (v) => handleExposureRatingChange('exposures_wildfire', v, setWildfireRating, 'wildfireRating'),
               setWildfireNotes
             )}
 
@@ -400,7 +434,7 @@ const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
 
                 <RatingButtons
                   value={otherRating}
-                  onChange={setOtherRating}
+                  onChange={handleOtherPerilRatingChange}
                   labels={RATING_LABELS}
                   size="sm"
                 />
@@ -453,7 +487,7 @@ const syncExposureAutoRec = async (canonicalKey: string, rating: number) => {
             <label className="block text-sm font-medium text-slate-700 mb-3">Exposure Rating (1-5):</label>
             <RatingButtons
               value={humanExposureRating}
-              onChange={setHumanExposureRating}
+              onChange={(v) => handleExposureRatingChange('exposures_human_malicious', v, setHumanExposureRating, 'humanExposureRating')}
               labels={RATING_LABELS}
               size="sm"
             />

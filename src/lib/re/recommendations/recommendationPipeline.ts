@@ -8,6 +8,62 @@ interface RecommendationFromRatingParams {
   industryKey: string | null;
 }
 
+interface RatingAutoTemplate {
+  title: string;
+  observation_text: string;
+  action_required_text: string;
+  hazard_text: string;
+}
+
+/**
+ * Humanize a canonical key into a readable phrase
+ */
+function humanizeFactorKey(canonicalKey: string): string {
+  return canonicalKey
+    .split('_')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+/**
+ * Generate TWO auto-recommendation templates for a given factor and rating
+ * Returns [Action-focused rec, Assurance-focused rec]
+ */
+function generateDualRatingTemplates(
+  canonicalKey: string,
+  rating_1_5: number
+): [RatingAutoTemplate, RatingAutoTemplate] {
+  const factorLabel = humanizeFactorKey(canonicalKey);
+  const isCritical = rating_1_5 === 1;
+  const severity = isCritical ? 'critical' : 'below standard';
+  const severityCapital = isCritical ? 'Critical' : 'Below Standard';
+
+  // Generic hazard text based on severity
+  const hazardTextCritical = `Current conditions indicate a critical control gap. A fire or equipment failure may escalate rapidly, increasing the likelihood of major loss and prolonged shutdown. Immediate corrective action is required to reduce exposure.`;
+
+  const hazardTextBelowStandard = `Controls are below standard. A foreseeable event could develop faster than planned defenses, increasing damage extent and recovery time. Improvements should be implemented to strengthen resilience.`;
+
+  const hazardText = isCritical ? hazardTextCritical : hazardTextBelowStandard;
+
+  // Template A: Action-focused (direct improvement)
+  const templateA: RatingAutoTemplate = {
+    title: `Improve ${factorLabel}`,
+    observation_text: `${factorLabel} is currently rated as ${severityCapital} (rating ${rating_1_5}/5). This indicates a ${severity} control gap that requires attention.`,
+    action_required_text: `Review and implement improvements to bring ${factorLabel} up to acceptable standards. Address identified deficiencies through documented corrective actions.`,
+    hazard_text: hazardText,
+  };
+
+  // Template B: Assurance-focused (verification/monitoring)
+  const templateB: RatingAutoTemplate = {
+    title: `Strengthen assurance for ${factorLabel}`,
+    observation_text: `The rating of ${rating_1_5}/5 for ${factorLabel} reflects insufficient verification or monitoring of control effectiveness.`,
+    action_required_text: `Establish ongoing assurance mechanisms for ${factorLabel}. Implement regular reviews, testing schedules, or monitoring protocols to maintain control integrity.`,
+    hazard_text: hazardText,
+  };
+
+  return [templateA, templateB];
+}
+
 interface LibraryRecommendation {
   id: string;
   title: string;
@@ -25,8 +81,8 @@ interface LibraryRecommendation {
 }
 
 /**
- * Ensures a recommendation is created in re_recommendations table based on a rating.
- * This is the single source of truth for auto-generated recommendations.
+ * Ensures TWO auto recommendations are created in re_recommendations table based on a rating.
+ * Creates one action-focused and one assurance-focused recommendation.
  *
  * @param params - Parameters for creating/ensuring the recommendation
  * @returns The created or existing recommendation ID, or null if no recommendation needed
@@ -35,71 +91,76 @@ export async function ensureRecommendationFromRating(
   params: RecommendationFromRatingParams
 ): Promise<string | null> {
   const { documentId, sourceModuleKey, sourceFactorKey, rating_1_5, industryKey } = params;
+  void industryKey; // Not used in current implementation
 
   // Only create recommendations for ratings <= 2
   if (rating_1_5 > 2) {
-    // Check if there's an existing auto recommendation for this factor
-    // If rating improved, we don't delete it (engineer decision), but we can mark it as no longer auto-triggered
-    await supabase
+    // Leave existing recommendations as-is (engineer may have customized them)
+    return null;
+  }
+
+  const priority = rating_1_5 === 1 ? 'High' : 'Medium';
+  const baseFactorKey = sourceFactorKey || sourceModuleKey;
+
+  // Generate two templates: Action-focused and Assurance-focused
+  const [templateA, templateB] = generateDualRatingTemplates(baseFactorKey, rating_1_5);
+
+  // Create/ensure both recommendations with suffixed factor keys
+  const suffixes = ['__A', '__B'] as const;
+  const templates = [templateA, templateB];
+
+  let lastCreatedId: string | null = null;
+
+  for (let i = 0; i < 2; i++) {
+    const suffix = suffixes[i];
+    const template = templates[i];
+    const suffixedFactorKey = `${baseFactorKey}${suffix}`;
+
+    // Check if this specific suffixed recommendation already exists
+    const { data: existing } = await supabase
       .from('re_recommendations')
       .select('id')
       .eq('document_id', documentId)
       .eq('source_type', 'auto')
       .eq('source_module_key', sourceModuleKey)
-      .eq('source_factor_key', sourceFactorKey || null)
+      .eq('source_factor_key', suffixedFactorKey)
       .maybeSingle();
 
-    // For now, we leave existing recommendations (as per requirements)
-    // Future: could add a flag to indicate rating has improved
-    return null;
+    if (existing) {
+      // Already exists, skip creation (idempotent)
+      lastCreatedId = existing.id;
+      continue;
+    }
+
+    // Create new auto recommendation
+    const { data: created, error } = await supabase
+      .from('re_recommendations')
+      .insert({
+        document_id: documentId,
+        source_type: 'auto',
+        library_id: null,
+        source_module_key: sourceModuleKey,
+        source_factor_key: suffixedFactorKey,
+        title: template.title,
+        observation_text: template.observation_text,
+        action_required_text: template.action_required_text,
+        hazard_text: template.hazard_text,
+        priority: priority,
+        status: 'Open',
+        photos: [],
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error(`Error creating auto recommendation ${suffix}:`, error);
+      continue;
+    }
+
+    lastCreatedId = created.id;
   }
 
-  // Check if auto recommendation already exists for this factor
-  const { data: existing, error: existingError } = await supabase
-    .from('re_recommendations')
-    .select('id, library_id')
-    .eq('document_id', documentId)
-    .eq('source_type', 'auto')
-    .eq('source_module_key', sourceModuleKey)
-    .eq('source_factor_key', sourceFactorKey || null)
-    .maybeSingle();
-
-  if (existingError && existingError.code !== 'PGRST116') {
-    console.error('Error checking existing recommendations:', existingError);
-    return null;
-  }
-
-  // If recommendation already exists, return its ID (idempotent)
-  if (existing) {
-    return existing.id;
-  }
-
-  // Look up matching library recommendation
-  const libraryTemplate = await findMatchingLibraryRecommendation({
-    sourceModuleKey,
-    sourceFactorKey,
-    rating_1_5,
-    industryKey,
-  });
-
-  if (!libraryTemplate) {
-    // Create a basic recommendation from factor key
-    return await createBasicRecommendation({
-      documentId,
-      sourceModuleKey,
-      sourceFactorKey,
-      rating_1_5,
-    });
-  }
-
-  // Create recommendation from library template
-  return await createRecommendationFromLibrary({
-    documentId,
-    sourceModuleKey,
-    sourceFactorKey,
-    rating_1_5,
-    libraryTemplate,
-  });
+  return lastCreatedId;
 }
 
 /**

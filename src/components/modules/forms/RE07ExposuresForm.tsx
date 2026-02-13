@@ -82,12 +82,7 @@ export default function RE07ExposuresForm({
     d.human_exposure?.notes || ''
   );
 
-  // all your useState declarations...
-
-const [humanExposureRating, setHumanExposureRating] = ...
-const [humanExposureNotes, setHumanExposureNotes] = ...
-
-// ⬇ REPLACE THE OLD SYNC EFFECT WITH THIS ⬇
+ // ⬇ REPLACE THE OLD SYNC EFFECT WITH THIS ⬇
 useEffect(() => {
   const d = moduleInstance.data?.exposures;
   if (!d) return;

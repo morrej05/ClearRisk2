@@ -8,7 +8,7 @@ interface RecommendationFromRatingParams {
   industryKey: string | null;
 }
 
-interface RatingAutoTemplate {
+interface FallbackContent {
   title: string;
   observation_text: string;
   action_required_text: string;
@@ -26,42 +26,18 @@ function humanizeFactorKey(canonicalKey: string): string {
 }
 
 /**
- * Generate TWO auto-recommendation templates for a given factor and rating
- * Returns [Action-focused rec, Assurance-focused rec]
+ * Build fallback content for auto-recommendations when library doesn't provide it.
+ * Uses SAME wording for rating 1 and 2 (only priority differs).
  */
-function generateDualRatingTemplates(
-  canonicalKey: string,
-  rating_1_5: number
-): [RatingAutoTemplate, RatingAutoTemplate] {
-  const factorLabel = humanizeFactorKey(canonicalKey);
-  const isCritical = rating_1_5 === 1;
-  const severity = isCritical ? 'critical' : 'below standard';
-  const severityCapital = isCritical ? 'Critical' : 'Below Standard';
+function buildFallbackContent(factorKey: string): FallbackContent {
+  const factorLabel = humanizeFactorKey(factorKey);
 
-  // Generic hazard text based on severity
-  const hazardTextCritical = `Current conditions indicate a critical control gap. A fire or equipment failure may escalate rapidly, increasing the likelihood of major loss and prolonged shutdown. Immediate corrective action is required to reduce exposure.`;
-
-  const hazardTextBelowStandard = `Controls are below standard. A foreseeable event could develop faster than planned defenses, increasing damage extent and recovery time. Improvements should be implemented to strengthen resilience.`;
-
-  const hazardText = isCritical ? hazardTextCritical : hazardTextBelowStandard;
-
-  // Template A: Action-focused (direct improvement)
-  const templateA: RatingAutoTemplate = {
+  return {
     title: `Improve ${factorLabel}`,
-    observation_text: `${factorLabel} is currently rated as ${severityCapital} (rating ${rating_1_5}/5). This indicates a ${severity} control gap that requires attention.`,
-    action_required_text: `Review and implement improvements to bring ${factorLabel} up to acceptable standards. Address identified deficiencies through documented corrective actions.`,
-    hazard_text: hazardText,
+    observation_text: `${factorLabel} has been identified as requiring attention based on current site conditions. Control effectiveness is below acceptable standards and requires corrective action.`,
+    action_required_text: `Review and implement improvements to bring ${factorLabel} up to acceptable standards. Address identified deficiencies through documented corrective actions with clear ownership and target dates.`,
+    hazard_text: `Inadequate controls increase the likelihood of loss events escalating beyond planned defenses. A foreseeable incident could develop faster than current safeguards allow, increasing damage extent and recovery time. Strengthening this control reduces overall facility risk profile.`,
   };
-
-  // Template B: Assurance-focused (verification/monitoring)
-  const templateB: RatingAutoTemplate = {
-    title: `Strengthen assurance for ${factorLabel}`,
-    observation_text: `The rating of ${rating_1_5}/5 for ${factorLabel} reflects insufficient verification or monitoring of control effectiveness.`,
-    action_required_text: `Establish ongoing assurance mechanisms for ${factorLabel}. Implement regular reviews, testing schedules, or monitoring protocols to maintain control integrity.`,
-    hazard_text: hazardText,
-  };
-
-  return [templateA, templateB];
 }
 
 interface LibraryRecommendation {
@@ -81,8 +57,8 @@ interface LibraryRecommendation {
 }
 
 /**
- * Ensures TWO auto recommendations are created in re_recommendations table based on a rating.
- * Creates one action-focused and one assurance-focused recommendation.
+ * Ensures ONE auto recommendation is created in re_recommendations table based on a rating.
+ * Uses same wording for rating 1 and 2 (only priority differs).
  *
  * @param params - Parameters for creating/ensuring the recommendation
  * @returns The created or existing recommendation ID, or null if no recommendation needed
@@ -91,7 +67,6 @@ export async function ensureRecommendationFromRating(
   params: RecommendationFromRatingParams
 ): Promise<string | null> {
   const { documentId, sourceModuleKey, sourceFactorKey, rating_1_5, industryKey } = params;
-  void industryKey; // Not used in current implementation
 
   // Only create recommendations for ratings <= 2
   if (rating_1_5 > 2) {
@@ -100,67 +75,48 @@ export async function ensureRecommendationFromRating(
   }
 
   const priority = rating_1_5 === 1 ? 'High' : 'Medium';
-  const baseFactorKey = sourceFactorKey || sourceModuleKey;
 
-  // Generate two templates: Action-focused and Assurance-focused
-  const [templateA, templateB] = generateDualRatingTemplates(baseFactorKey, rating_1_5);
+  // Check if auto recommendation already exists for this factor (idempotent)
+  const { data: existing } = await supabase
+    .from('re_recommendations')
+    .select('id')
+    .eq('document_id', documentId)
+    .eq('source_type', 'auto')
+    .eq('source_module_key', sourceModuleKey)
+    .eq('source_factor_key', sourceFactorKey || null)
+    .maybeSingle();
 
-  // Create/ensure both recommendations with suffixed factor keys
-  const suffixes = ['__A', '__B'] as const;
-  const templates = [templateA, templateB];
-
-  let lastCreatedId: string | null = null;
-
-  for (let i = 0; i < 2; i++) {
-    const suffix = suffixes[i];
-    const template = templates[i];
-    const suffixedFactorKey = `${baseFactorKey}${suffix}`;
-
-    // Check if this specific suffixed recommendation already exists
-    const { data: existing } = await supabase
-      .from('re_recommendations')
-      .select('id')
-      .eq('document_id', documentId)
-      .eq('source_type', 'auto')
-      .eq('source_module_key', sourceModuleKey)
-      .eq('source_factor_key', suffixedFactorKey)
-      .maybeSingle();
-
-    if (existing) {
-      // Already exists, skip creation (idempotent)
-      lastCreatedId = existing.id;
-      continue;
-    }
-
-    // Create new auto recommendation
-    const { data: created, error } = await supabase
-      .from('re_recommendations')
-      .insert({
-        document_id: documentId,
-        source_type: 'auto',
-        library_id: null,
-        source_module_key: sourceModuleKey,
-        source_factor_key: suffixedFactorKey,
-        title: template.title,
-        observation_text: template.observation_text,
-        action_required_text: template.action_required_text,
-        hazard_text: template.hazard_text,
-        priority: priority,
-        status: 'Open',
-        photos: [],
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      console.error(`Error creating auto recommendation ${suffix}:`, error);
-      continue;
-    }
-
-    lastCreatedId = created.id;
+  if (existing) {
+    // Already exists, return its ID (idempotent)
+    return existing.id;
   }
 
-  return lastCreatedId;
+  // Try to find matching library recommendation
+  const libraryTemplate = await findMatchingLibraryRecommendation({
+    sourceModuleKey,
+    sourceFactorKey,
+    rating_1_5,
+    industryKey,
+  });
+
+  if (libraryTemplate) {
+    // Create from library template (with fallback hazard if needed)
+    return await createRecommendationFromLibrary({
+      documentId,
+      sourceModuleKey,
+      sourceFactorKey,
+      rating_1_5,
+      libraryTemplate,
+    });
+  }
+
+  // No library template, create with fallback content
+  return await createBasicRecommendation({
+    documentId,
+    sourceModuleKey,
+    sourceFactorKey,
+    rating_1_5,
+  });
 }
 
 /**
@@ -246,8 +202,10 @@ async function createRecommendationFromLibrary(params: {
 }): Promise<string | null> {
   const { documentId, sourceModuleKey, sourceFactorKey, rating_1_5, libraryTemplate } = params;
 
-  const priority = rating_1_5 === 1 ? 'High' : rating_1_5 === 2 ? 'Medium' : 'Low';
+  const priority = rating_1_5 === 1 ? 'High' : 'Medium';
+  const fallback = buildFallbackContent(sourceFactorKey || sourceModuleKey);
 
+  // Use library content, but fallback for any blank fields
   const { data, error } = await supabase
     .from('re_recommendations')
     .insert({
@@ -256,10 +214,10 @@ async function createRecommendationFromLibrary(params: {
       library_id: libraryTemplate.id,
       source_module_key: sourceModuleKey,
       source_factor_key: sourceFactorKey || null,
-      title: libraryTemplate.title,
-      observation_text: libraryTemplate.observation_text,
-      action_required_text: libraryTemplate.action_required_text,
-      hazard_text: libraryTemplate.hazard_text,
+      title: libraryTemplate.title || fallback.title,
+      observation_text: libraryTemplate.observation_text || fallback.observation_text,
+      action_required_text: libraryTemplate.action_required_text || fallback.action_required_text,
+      hazard_text: libraryTemplate.hazard_text || fallback.hazard_text,
       priority: priority,
       status: 'Open',
       photos: [],
@@ -287,23 +245,20 @@ async function createBasicRecommendation(params: {
   const { documentId, sourceModuleKey, sourceFactorKey, rating_1_5 } = params;
 
   const priority = rating_1_5 === 1 ? 'High' : 'Medium';
-  const factorLabel = sourceFactorKey
-    ? sourceFactorKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-    : 'Factor';
-
-  const severity = rating_1_5 === 1 ? 'Critical' : 'Below Standard';
+  const content = buildFallbackContent(sourceFactorKey || sourceModuleKey);
 
   const { data, error } = await supabase
     .from('re_recommendations')
     .insert({
       document_id: documentId,
       source_type: 'auto',
+      library_id: null,
       source_module_key: sourceModuleKey,
       source_factor_key: sourceFactorKey || null,
-      title: `${factorLabel} Improvement Required`,
-      observation_text: `${factorLabel} is currently rated as ${severity} (rating ${rating_1_5}/5).`,
-      action_required_text: `Review and implement improvements to bring ${factorLabel} up to acceptable standards.`,
-      hazard_text: `Inadequate ${factorLabel} increases facility risk profile.`,
+      title: content.title,
+      observation_text: content.observation_text,
+      action_required_text: content.action_required_text,
+      hazard_text: content.hazard_text,
       priority: priority,
       status: 'Open',
       photos: [],

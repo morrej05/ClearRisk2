@@ -143,6 +143,7 @@ export default function RE09RecommendationsForm({
         .from('re_recommendations')
         .select('*')
         .eq('document_id', document.id)
+        .eq('is_suppressed', false)
         .order('rec_number', { ascending: true });
 
       if (error) throw error;
@@ -398,6 +399,18 @@ export default function RE09RecommendationsForm({
     return true;
   });
 
+  // Generate display numbers (contiguous, UI-only, after filtering)
+  const getDisplayNumber = (rec: Recommendation): string => {
+    const index = filteredRecommendations.findIndex(r => r.id === rec.id);
+    if (index === -1) return rec.rec_number || 'New';
+
+    const year = document.assessment_date
+      ? new Date(document.assessment_date).getFullYear()
+      : new Date().getFullYear();
+    const displayNum = String(index + 1).padStart(2, '0');
+    return `${year}-${displayNum}`;
+  };
+
   // Sort for report view
   const sortedForReport = [...filteredRecommendations].sort((a, b) => {
     // Active: High → Medium → Low, then target_date
@@ -568,7 +581,7 @@ export default function RE09RecommendationsForm({
                   <div className="flex items-center gap-3">
                     <div>
                       <h3 className="font-semibold text-slate-900">
-                        {rec.rec_number || 'New'}
+                        {getDisplayNumber(rec)}
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         <span
@@ -884,7 +897,7 @@ export default function RE09RecommendationsForm({
                         .filter((r) => r.status !== 'Completed')
                         .map((rec) => (
                           <tr key={rec.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-mono text-xs">{rec.rec_number}</td>
+                            <td className="px-4 py-3 font-mono text-xs">{getDisplayNumber(rec)}</td>
                             <td className="px-4 py-3">{rec.title}</td>
                             <td className="px-4 py-3">
                               <span
@@ -952,7 +965,7 @@ export default function RE09RecommendationsForm({
                         .filter((r) => r.status === 'Completed')
                         .map((rec) => (
                           <tr key={rec.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-mono text-xs">{rec.rec_number}</td>
+                            <td className="px-4 py-3 font-mono text-xs">{getDisplayNumber(rec)}</td>
                             <td className="px-4 py-3">{rec.title}</td>
                             <td className="px-4 py-3">
                               <span

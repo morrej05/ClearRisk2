@@ -6,6 +6,7 @@ import FloatingSaveBar from './FloatingSaveBar';
 import { updateSectionGrade } from '../../../utils/sectionGrades';
 import { AlertTriangle, Shield, Cloud, Flame, Wind, Mountain } from 'lucide-react';
 import RatingButtons from '../../re/RatingButtons';
+import { syncAutoRecToRegister } from '../../../lib/re/recommendations/recommendationPipeline';
 
 interface Document {
   id: string;
@@ -98,6 +99,41 @@ export default function RE07ExposuresForm({
     setOverallExposureRating(overall);
   }, [floodRating, windRating, earthquakeRating, wildfireRating, otherRating, hasOtherPeril, humanExposureRating]);
 
+  const syncExposureAutosToRegister = async () => {
+    const documentId = moduleInstance.document_id;
+
+    // Canonical keys for exposures (used by pipeline fallback + future library mapping)
+    const items: Array<{ canonicalKey: string; rating: number }> = [
+      { canonicalKey: 'exposures_flood', rating: floodRating },
+      { canonicalKey: 'exposures_wind_storm', rating: windRating },
+      { canonicalKey: 'exposures_earthquake', rating: earthquakeRating },
+      { canonicalKey: 'exposures_wildfire', rating: wildfireRating },
+      ...(hasOtherPeril && otherLabel
+        ? [{
+            canonicalKey: `exposures_other_${otherLabel
+              .toLowerCase()
+              .trim()
+              .replace(/[^a-z0-9]+/g, '_')
+              .replace(/^_+|_+$/g, '')}`,
+            rating: otherRating,
+          }]
+        : []),
+      { canonicalKey: 'exposures_human_malicious', rating: humanExposureRating },
+    ];
+
+    for (const item of items) {
+      if (item.rating <= 2) {
+        await syncAutoRecToRegister({
+          documentId,
+          moduleKey: 'RE_07_NATURAL_HAZARDS',
+          canonicalKey: item.canonicalKey,
+          rating_1_5: item.rating,
+          industryKey: null,
+        });
+      }
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -134,6 +170,9 @@ export default function RE07ExposuresForm({
         .eq('id', moduleInstance.id);
 
       if (error) throw error;
+
+      // Sync exposure auto recommendations to register
+      await syncExposureAutosToRegister();
 
       // Update section_grades with overall exposure rating
       await updateSectionGrade(document.id, 'exposure', overallExposureRating);

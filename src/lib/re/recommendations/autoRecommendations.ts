@@ -1,6 +1,4 @@
 import { humanizeCanonicalKey } from '../reference/hrgMasterMap';
-import { ensureRecommendationFromRating } from './recommendationPipeline';
-import { supabase } from '../../supabase';
 
 export interface Recommendation {
   id: string;
@@ -133,36 +131,4 @@ export function ensureAutoRecommendation(
   }
 
   return data;
-}
-
-export async function syncAutoRecToRegister(args: {
-  documentId: string;
-  moduleKey: string;
-  factorKey: string;
-  rating: any;
-  industryKey?: string | null;
-}) {
-  try {
-    const { data: doc, error: docError } = await supabase
-      .from('documents')
-      .select('organisation_id')
-      .eq('id', args.documentId)
-      .maybeSingle();
-
-    if (docError || !doc) {
-      console.error('[syncAutoRecToRegister] Failed to fetch document:', docError);
-      return;
-    }
-
-    await ensureRecommendationFromRating({
-      documentId: args.documentId,
-      organisationId: doc.organisation_id,
-      sourceModuleKey: args.moduleKey,
-      sourceFactorKey: args.factorKey,
-      rating_1_5: args.rating,
-      industryKey: args.industryKey ?? null,
-    });
-  } catch (err) {
-    console.error('[syncAutoRecToRegister] Error:', err);
-  }
 }

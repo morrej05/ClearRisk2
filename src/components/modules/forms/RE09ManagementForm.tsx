@@ -5,7 +5,8 @@ import ModuleActions from '../ModuleActions';
 import FloatingSaveBar from './FloatingSaveBar';
 import { getHrgConfig } from '../../../lib/re/reference/hrgMasterMap';
 import { setRating } from '../../../lib/re/scoring/riskEngineeringHelpers';
-import { ensureAutoRecommendation, syncAutoRecToRegister } from '../../../lib/re/recommendations/autoRecommendations';
+import { ensureAutoRecommendation } from '../../../lib/re/recommendations/autoRecommendations';
+import { syncAutoRecToRegister } from '../../../lib/re/recommendations/recommendationPipeline';
 import RatingButtons from '../../re/RatingButtons';
 
 interface Document {
@@ -153,14 +154,6 @@ export default function RE09ManagementForm({
 
       setRiskEngData(updatedRiskEngData);
 
-      await syncAutoRecToRegister({
-        documentId: moduleInstance.document_id,
-        moduleKey: 'RE_09_MANAGEMENT',
-        factorKey: CANONICAL_KEY,
-        rating: overallRating,
-        industryKey,
-      });
-
       // DO NOT call setFormData here - this would overwrite the user's rating selection
       // Auto-recommendations are applied separately using functional setState
     } catch (err) {
@@ -195,6 +188,14 @@ export default function RE09ManagementForm({
 
           // Apply auto-recommendation based on the NEW overall rating
           if (overallRating !== null) {
+            void syncAutoRecToRegister({
+              documentId: moduleInstance.document_id,
+              moduleKey: 'RE_09_MANAGEMENT',
+              canonicalKey: CANONICAL_KEY,
+              rating_1_5: overallRating,
+              industryKey,
+            });
+
             const withAutoRec = ensureAutoRecommendation(prev, CANONICAL_KEY, overallRating, industryKey);
             if (withAutoRec !== prev) {
               return withAutoRec;

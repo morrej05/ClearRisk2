@@ -2,7 +2,6 @@ import { supabase } from '../../supabase';
 
 interface RecommendationFromRatingParams {
   documentId: string;
-  organisationId: string;
   sourceModuleKey: string;
   sourceFactorKey?: string;
   rating_1_5: number;
@@ -35,19 +34,19 @@ interface LibraryRecommendation {
 export async function ensureRecommendationFromRating(
   params: RecommendationFromRatingParams
 ): Promise<string | null> {
-  const { documentId, organisationId, sourceModuleKey, sourceFactorKey, rating_1_5, industryKey } = params;
+  const { documentId, sourceModuleKey, sourceFactorKey, rating_1_5, industryKey } = params;
 
   // Only create recommendations for ratings <= 2
   if (rating_1_5 > 2) {
     // Check if there's an existing auto recommendation for this factor
     // If rating improved, we don't delete it (engineer decision), but we can mark it as no longer auto-triggered
-    const { data: existingRecs } = await supabase
+    await supabase
       .from('re_recommendations')
       .select('id')
       .eq('document_id', documentId)
       .eq('source_type', 'auto')
       .eq('source_module_key', sourceModuleKey)
-      .eq('source_factor_key', sourceFactorKey || '')
+      .eq('source_factor_key', sourceFactorKey || null)
       .maybeSingle();
 
     // For now, we leave existing recommendations (as per requirements)
@@ -62,7 +61,7 @@ export async function ensureRecommendationFromRating(
     .eq('document_id', documentId)
     .eq('source_type', 'auto')
     .eq('source_module_key', sourceModuleKey)
-    .eq('source_factor_key', sourceFactorKey || '')
+    .eq('source_factor_key', sourceFactorKey || null)
     .maybeSingle();
 
   if (existingError && existingError.code !== 'PGRST116') {
@@ -87,7 +86,6 @@ export async function ensureRecommendationFromRating(
     // Create a basic recommendation from factor key
     return await createBasicRecommendation({
       documentId,
-      organisationId,
       sourceModuleKey,
       sourceFactorKey,
       rating_1_5,
@@ -97,7 +95,6 @@ export async function ensureRecommendationFromRating(
   // Create recommendation from library template
   return await createRecommendationFromLibrary({
     documentId,
-    organisationId,
     sourceModuleKey,
     sourceFactorKey,
     rating_1_5,
@@ -119,7 +116,7 @@ async function findMatchingLibraryRecommendation(params: {
   try {
     // Query library recommendations with relevance to this module/factor
     const { data: templates, error } = await supabase
-      .from('recommendation_library')
+      .from('re_recommendation_library')
       .select('*')
       .eq('is_active', true)
       .order('priority', { ascending: false });
@@ -181,13 +178,12 @@ async function findMatchingLibraryRecommendation(params: {
  */
 async function createRecommendationFromLibrary(params: {
   documentId: string;
-  organisationId: string;
   sourceModuleKey: string;
   sourceFactorKey?: string;
   rating_1_5: number;
   libraryTemplate: LibraryRecommendation;
 }): Promise<string | null> {
-  const { documentId, organisationId, sourceModuleKey, sourceFactorKey, rating_1_5, libraryTemplate } = params;
+  const { documentId, sourceModuleKey, sourceFactorKey, rating_1_5, libraryTemplate } = params;
 
   const priority = rating_1_5 === 1 ? 'High' : rating_1_5 === 2 ? 'Medium' : 'Low';
 
@@ -195,11 +191,10 @@ async function createRecommendationFromLibrary(params: {
     .from('re_recommendations')
     .insert({
       document_id: documentId,
-      organisation_id: organisationId,
       source_type: 'auto',
       library_id: libraryTemplate.id,
       source_module_key: sourceModuleKey,
-      source_factor_key: sourceFactorKey || '',
+      source_factor_key: sourceFactorKey || null,
       title: libraryTemplate.title,
       observation_text: libraryTemplate.observation_text,
       action_required_text: libraryTemplate.action_required_text,
@@ -224,12 +219,11 @@ async function createRecommendationFromLibrary(params: {
  */
 async function createBasicRecommendation(params: {
   documentId: string;
-  organisationId: string;
   sourceModuleKey: string;
   sourceFactorKey?: string;
   rating_1_5: number;
 }): Promise<string | null> {
-  const { documentId, organisationId, sourceModuleKey, sourceFactorKey, rating_1_5 } = params;
+  const { documentId, sourceModuleKey, sourceFactorKey, rating_1_5 } = params;
 
   const priority = rating_1_5 === 1 ? 'High' : 'Medium';
   const factorLabel = sourceFactorKey
@@ -242,10 +236,9 @@ async function createBasicRecommendation(params: {
     .from('re_recommendations')
     .insert({
       document_id: documentId,
-      organisation_id: organisationId,
       source_type: 'auto',
       source_module_key: sourceModuleKey,
-      source_factor_key: sourceFactorKey || '',
+      source_factor_key: sourceFactorKey || null,
       title: `${factorLabel} Improvement Required`,
       observation_text: `${factorLabel} is currently rated as ${severity} (rating ${rating_1_5}/5).`,
       action_required_text: `Review and implement improvements to bring ${factorLabel} up to acceptable standards.`,
@@ -279,7 +272,7 @@ export async function hasAutoRecommendation(
     .eq('document_id', documentId)
     .eq('source_type', 'auto')
     .eq('source_module_key', sourceModuleKey)
-    .eq('source_factor_key', sourceFactorKey || '')
+    .eq('source_factor_key', sourceFactorKey || null)
     .maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
@@ -288,4 +281,23 @@ export async function hasAutoRecommendation(
   }
 
   return !!data;
+}
+
+
+export async function syncAutoRecToRegister(params: {
+  documentId: string;
+  moduleKey: string;
+  canonicalKey: string;
+  rating_1_5: number;
+  industryKey: string | null;
+}): Promise<void> {
+  const { documentId, moduleKey, canonicalKey, rating_1_5, industryKey } = params;
+  void moduleKey;
+
+  await ensureRecommendationFromRating({
+    documentId,
+    sourceModuleKey: canonicalKey,
+    rating_1_5,
+    industryKey,
+  });
 }

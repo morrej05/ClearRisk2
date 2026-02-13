@@ -171,13 +171,23 @@ export default function RE07ExposuresForm({
 
       if (error) throw error;
 
-      // Sync exposure auto recommendations to register
-      await syncExposureAutosToRegister();
-
-      // Update section_grades with overall exposure rating
-      await updateSectionGrade(document.id, 'exposure', overallExposureRating);
-
+      // Update section grade (should not block save)
+      try {
+        await updateSectionGrade(document.id, 'exposure', overallExposureRating);
+      } catch (e) {
+        console.error('[RE07Exposures] updateSectionGrade failed:', e);
+      }
+      
+      // Auto-rec sync (must not block save)
+      try {
+        await syncExposureAutosToRegister();
+      } catch (e) {
+        console.error('[RE07Exposures] auto-rec sync failed:', e);
+      }
+      
+      // Only now report success
       onSaved();
+
     } catch (error) {
       console.error('Error saving module:', error);
       alert('Failed to save module. Please try again.');

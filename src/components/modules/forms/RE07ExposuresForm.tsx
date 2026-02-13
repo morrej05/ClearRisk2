@@ -76,42 +76,47 @@ export default function RE07ExposuresForm({
   const [otherNotes, setOtherNotes] = useState<string>(envPerils.other?.notes || '');
 
   const [humanExposureRating, setHumanExposureRating] = useState<number>(
-    d.human_exposure?.rating || 3
-  );
-  const [humanExposureNotes, setHumanExposureNotes] = useState<string>(
-    d.human_exposure?.notes || ''
-  );
+  d.human_exposure?.rating || 3
+);
+const [humanExposureNotes, setHumanExposureNotes] = useState<string>(
+  d.human_exposure?.notes || ''
+);
 
- // ⬇ REPLACE THE OLD SYNC EFFECT WITH THIS ⬇
+// Sync local state when fresh data comes back from DB (prevents "revert to 3")
 useEffect(() => {
-  const d = moduleInstance.data?.exposures;
-  if (!d) return;
+  const ex = moduleInstance.data?.exposures;
+  if (!ex) return;
 
-  const p = d.environmental?.perils || {};
+  const p = ex.environmental?.perils || {};
 
-  if (p.flood?.rating !== floodRating) {
-    setFloodRating(p.flood?.rating ?? 3);
+  if ((p.flood?.rating ?? 3) !== floodRating) setFloodRating(p.flood?.rating ?? 3);
+  if ((p.flood?.notes ?? '') !== floodNotes) setFloodNotes(p.flood?.notes ?? '');
+
+  if ((p.wind?.rating ?? 3) !== windRating) setWindRating(p.wind?.rating ?? 3);
+  if ((p.wind?.notes ?? '') !== windNotes) setWindNotes(p.wind?.notes ?? '');
+
+  if ((p.earthquake?.rating ?? 3) !== earthquakeRating) setEarthquakeRating(p.earthquake?.rating ?? 3);
+  if ((p.earthquake?.notes ?? '') !== earthquakeNotes) setEarthquakeNotes(p.earthquake?.notes ?? '');
+
+  if ((p.wildfire?.rating ?? 3) !== wildfireRating) setWildfireRating(p.wildfire?.rating ?? 3);
+  if ((p.wildfire?.notes ?? '') !== wildfireNotes) setWildfireNotes(p.wildfire?.notes ?? '');
+
+  if (p.other) {
+    if (!hasOtherPeril) setHasOtherPeril(true);
+    if ((p.other.label ?? '') !== otherLabel) setOtherLabel(p.other.label ?? '');
+    if ((p.other.rating ?? 3) !== otherRating) setOtherRating(p.other.rating ?? 3);
+    if ((p.other.notes ?? '') !== otherNotes) setOtherNotes(p.other.notes ?? '');
+  } else {
+    if (hasOtherPeril) setHasOtherPeril(false);
   }
 
-  if (p.wind?.rating !== windRating) {
-    setWindRating(p.wind?.rating ?? 3);
+  if ((ex.human_exposure?.rating ?? 3) !== humanExposureRating) {
+    setHumanExposureRating(ex.human_exposure?.rating ?? 3);
   }
-
-  if (p.earthquake?.rating !== earthquakeRating) {
-    setEarthquakeRating(p.earthquake?.rating ?? 3);
+  if ((ex.human_exposure?.notes ?? '') !== humanExposureNotes) {
+    setHumanExposureNotes(ex.human_exposure?.notes ?? '');
   }
-
-  if (p.wildfire?.rating !== wildfireRating) {
-    setWildfireRating(p.wildfire?.rating ?? 3);
-  }
-
-  if (d.human_exposure?.rating !== humanExposureRating) {
-    setHumanExposureRating(d.human_exposure?.rating ?? 3);
-  }
-
 }, [moduleInstance.data?.exposures]);
-
-// then BELOW this remains your existing derived ratings useEffect
 
   // Compute derived ratings whenever individual ratings change
   useEffect(() => {

@@ -85,6 +85,34 @@ export default function RE07ExposuresForm({
   // Computed ratings
   const [derivedEnvironmentalRating, setDerivedEnvironmentalRating] = useState<number>(3);
   const [overallExposureRating, setOverallExposureRating] = useState<number>(3);
+useEffect(() => {
+  const d = moduleInstance.data?.exposures || {};
+  const p = d.environmental?.perils || {};
+
+  setFloodRating(p.flood?.rating ?? 3);
+  setFloodNotes(p.flood?.notes ?? '');
+
+  setWindRating(p.wind?.rating ?? 3);
+  setWindNotes(p.wind?.notes ?? '');
+
+  setEarthquakeRating(p.earthquake?.rating ?? 3);
+  setEarthquakeNotes(p.earthquake?.notes ?? '');
+
+  setWildfireRating(p.wildfire?.rating ?? 3);
+  setWildfireNotes(p.wildfire?.notes ?? '');
+
+  if (p.other) {
+    setHasOtherPeril(true);
+    setOtherLabel(p.other.label ?? '');
+    setOtherRating(p.other.rating ?? 3);
+    setOtherNotes(p.other.notes ?? '');
+  } else {
+    setHasOtherPeril(false);
+  }
+
+  setHumanExposureRating(d.human_exposure?.rating ?? 3);
+  setHumanExposureNotes(d.human_exposure?.notes ?? '');
+}, [moduleInstance.data]);
 
   // Compute derived ratings whenever individual ratings change
   useEffect(() => {

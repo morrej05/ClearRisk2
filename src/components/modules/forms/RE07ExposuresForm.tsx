@@ -178,7 +178,7 @@ export default function RE07ExposuresForm({ moduleInstance, document, onSaved }:
       };
 
       const sanitized = sanitizeModuleInstancePayload({
-        data: { exposures: exposuresData },
+        data: { ...moduleInstance.data, exposures: exposuresData },
       });
 
       const { error } = await supabase
@@ -191,21 +191,15 @@ export default function RE07ExposuresForm({ moduleInstance, document, onSaved }:
 
       if (error) throw error;
 
-      // Non-blocking: section grade update
-      try {
-        await updateSectionGrade(document.id, 'exposure', overallExposureRating);
-      } catch (e) {
-        console.error('[RE07Exposures] updateSectionGrade failed:', e);
-      }
-
-      // Non-blocking: auto-recs sync (rating 1/2 only)
-      try {
-        await syncExposureAutosToRegister();
-      } catch (e) {
-        console.error('[RE07Exposures] auto-rec sync failed:', e);
-      }
-
       onSaved();
+
+      // Non-blocking: section grade update + auto-recs (rating 1/2 only)
+      Promise.allSettled([
+        updateSectionGrade(document.id, 'exposure', overallExposureRating),
+        syncExposureAutosToRegister(),
+      ]).catch((e) => {
+        console.error('[RE07Exposures] post-save tasks failed:', e);
+      });
     } catch (err) {
       console.error('[RE07Exposures] Error saving module:', err);
       alert('Failed to save module. Please try again.');

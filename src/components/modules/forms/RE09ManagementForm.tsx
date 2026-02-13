@@ -94,6 +94,31 @@ export default function RE09ManagementForm({
   const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
   const [industryKey, setIndustryKey] = useState<string | null>(null);
 
+  // Seed local state ONLY when module instance ID changes (prevents reversion)
+  useEffect(() => {
+    const d = moduleInstance.data || {};
+    const seedCategories = (d.categories || [
+      { key: 'housekeeping', rating_1_5: null, notes: '' },
+      { key: 'hot_work', rating_1_5: null, notes: '' },
+      { key: 'impairment_management', rating_1_5: null, notes: '' },
+      { key: 'contractor_control', rating_1_5: null, notes: '' },
+      { key: 'maintenance', rating_1_5: null, notes: '' },
+      { key: 'emergency_planning', rating_1_5: null, notes: '' },
+      { key: 'change_management', rating_1_5: null, notes: '' },
+    ]).map((cat: any) => {
+      const uiRating = invertRatingForUI(cat.rating_1_5);
+      return {
+        ...cat,
+        rating_1_5: uiRating !== null ? Number(uiRating) : null,
+      };
+    });
+
+    setFormData({
+      categories: seedCategories,
+      recommendations: d.recommendations || [],
+    });
+  }, [moduleInstance.id]);
+
   useEffect(() => {
     async function loadRiskEngModule() {
       try {
@@ -165,7 +190,7 @@ export default function RE09ManagementForm({
     // Ensure numeric values are stored as numbers
     const normalizedValue = field === 'rating_1_5' && value !== null ? Number(value) : value;
 
-    // First, update formData with the new category value
+    // Update ONLY local state (no async side effects during editing)
     setFormData((prev) => {
       const nextCategories = (prev.categories ?? []).map((c: any) =>
         c.key === key ? { ...c, [field]: normalizedValue } : c
@@ -173,46 +198,13 @@ export default function RE09ManagementForm({
 
       return { ...prev, categories: nextCategories };
     });
-
-    // Then, trigger side effects OUTSIDE the setter (no async calls inside setState)
-    if (field === 'rating_1_5') {
-      // Use setTimeout to ensure side effects run after state update completes
-      setTimeout(() => {
-        // Get the latest formData for side effects
-        setFormData((prev) => {
-          const nextCategories = prev.categories ?? [];
-          const overallRating = calculateOverallRating(nextCategories);
-
-          // Update RISK_ENGINEERING module asynchronously
-          updateOverallRating(nextCategories);
-
-          // Apply auto-recommendation based on the NEW overall rating
-          if (overallRating !== null) {
-            void syncAutoRecToRegister({
-              documentId: moduleInstance.document_id,
-              moduleKey: 'RE_09_MANAGEMENT',
-              canonicalKey: CANONICAL_KEY,
-              rating_1_5: overallRating,
-              industryKey,
-            });
-
-            const withAutoRec = ensureAutoRecommendation(prev, CANONICAL_KEY, overallRating, industryKey);
-            if (withAutoRec !== prev) {
-              return withAutoRec;
-            }
-          }
-
-          return prev;
-        });
-      }, 0);
-    }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       // Invert ratings back to storage format before saving
-      const dataToSave = {
+      const managementPayload = {
         ...formData,
         categories: formData.categories.map((cat: any) => {
           const uiRating = cat.rating_1_5 !== null ? Number(cat.rating_1_5) : null;
@@ -224,6 +216,8 @@ export default function RE09ManagementForm({
         }),
       };
 
+      // Preserve other moduleInstance.data keys
+      const dataToSave = { ...moduleInstance.data, ...managementPayload };
       const sanitized = sanitizeModuleInstancePayload({ data: dataToSave });
 
       const { error } = await supabase
@@ -234,7 +228,27 @@ export default function RE09ManagementForm({
         .eq('id', moduleInstance.id);
 
       if (error) throw error;
+
       onSaved();
+
+      // Non-blocking: update RISK_ENGINEERING overall rating + auto-recs (rating 1/2 only)
+      const overallRating = calculateOverallRating(managementPayload.categories);
+      if (overallRating !== null) {
+        Promise.allSettled([
+          updateOverallRating(managementPayload.categories),
+          overallRating >= 4 // Only sync auto-recs for poor ratings (stored 1-2 = UI 4-5)
+            ? Promise.resolve()
+            : syncAutoRecToRegister({
+                documentId: moduleInstance.document_id,
+                moduleKey: 'RE_09_MANAGEMENT',
+                canonicalKey: CANONICAL_KEY,
+                rating_1_5: overallRating,
+                industryKey,
+              }),
+        ]).catch((e) => {
+          console.error('[RE09Management] post-save tasks failed:', e);
+        });
+      }
     } catch (error) {
       console.error('Error saving module:', error);
       alert('Failed to save module. Please try again.');

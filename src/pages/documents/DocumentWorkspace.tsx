@@ -743,6 +743,7 @@ return (
 
             {selectedModule ? (
               <ModuleRenderer
+                key={selectedModule.id}
                 moduleInstance={selectedModule}
                 document={document}
                 onSaved={handleModuleSaved}

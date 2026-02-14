@@ -28,6 +28,41 @@ export default function PromoteRecommendationsToTemplates() {
     fetchRecommendations();
   }, []);
 
+  // Generate action required if missing
+  const generateActionRequired = (title: string, observation: string): string => {
+    const lowerTitle = title.toLowerCase();
+    const lowerObs = observation.toLowerCase();
+
+    if (lowerTitle.includes("improve") || lowerObs.includes("inadequate") || lowerObs.includes("insufficient")) {
+      return "Improve the identified condition to meet required standards.";
+    }
+    if (lowerTitle.includes("install") || lowerObs.includes("missing") || lowerObs.includes("absent")) {
+      return "Install appropriate controls to address the identified gap.";
+    }
+    if (lowerTitle.includes("upgrade") || lowerObs.includes("outdated") || lowerObs.includes("aged")) {
+      return "Upgrade the system to current standards and best practice.";
+    }
+    if (lowerTitle.includes("maintain") || lowerObs.includes("maintenance")) {
+      return "Implement regular maintenance program to sustain system reliability.";
+    }
+    if (lowerTitle.includes("train") || lowerObs.includes("training")) {
+      return "Provide comprehensive training to relevant personnel.";
+    }
+    if (lowerTitle.includes("document") || lowerObs.includes("procedure")) {
+      return "Develop and implement appropriate documentation and procedures.";
+    }
+
+    return "Address the identified condition to reduce risk exposure.";
+  };
+
+  // Generate preview of hazard text
+  const generateHazardPreview = (observation: string, actionRequired: string): string => {
+    if (!observation && !actionRequired) {
+      return "Inadequate controls increase the likelihood of loss events...";
+    }
+    return "Inadequate controls increase likelihood of loss escalation...";
+  };
+
   const fetchRecommendations = async () => {
     setIsLoading(true);
     setError(null);
@@ -260,6 +295,12 @@ export default function PromoteRecommendationsToTemplates() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Observation
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Action Required
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Hazard/Risk
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -299,6 +340,26 @@ export default function PromoteRecommendationsToTemplates() {
                         {rec.observation_text || 'No observation'}
                       </div>
                     </td>
+                    <td className="px-4 py-3 max-w-md">
+                      <div className="text-sm text-gray-600 truncate">
+                        {rec.action_required_text || (
+                          <span className="text-gray-400 italic">
+                            {generateActionRequired(rec.title, rec.observation_text || '')}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 max-w-md">
+                      <div className="text-sm text-gray-600 truncate">
+                        {rec.hazard_text ? (
+                          rec.hazard_text.substring(0, 80) + '...'
+                        ) : (
+                          <span className="text-gray-400 italic">
+                            {generateHazardPreview(rec.observation_text || '', rec.action_required_text || generateActionRequired(rec.title, rec.observation_text || ''))}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -310,11 +371,12 @@ export default function PromoteRecommendationsToTemplates() {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-sm font-medium text-blue-900 mb-2">How it works</h3>
         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-          <li>Selected recommendations will be converted to reusable templates</li>
-          <li>Templates are tagged as 'derived' and scoped as 'derived'</li>
-          <li>Duplicates are automatically detected and skipped (based on title + observation)</li>
-          <li>Category is inferred from the source module key</li>
-          <li>All promoted templates are set to active by default</li>
+          <li>Preview shows what will be created - missing fields are auto-generated (shown in italic)</li>
+          <li>Action Required is generated from title/observation if blank</li>
+          <li>Hazard/Risk description is auto-generated using smart rules if missing</li>
+          <li>Module keys are normalized to canonical form (e.g., RE_03_OCCUPANCY → RE03)</li>
+          <li>Strong deduplication based on title + observation + action (prevents duplicates like "Improve Exposures Flood")</li>
+          <li>Templates are tagged as 'derived', scoped as 'derived', and set to active</li>
         </ul>
       </div>
     </div>

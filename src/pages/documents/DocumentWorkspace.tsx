@@ -169,6 +169,7 @@ export default function DocumentWorkspace() {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedStable, setSelectedStable] = useState<ModuleInstance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModulesLoading, setIsModulesLoading] = useState(false);
   const [documentNotFound, setDocumentNotFound] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [isIssuing, setIsIssuing] = useState(false);
@@ -285,7 +286,7 @@ const fetchModules = async () => {
     selectedModuleId,
   });
 
-  setIsLoading(true);
+  setIsModulesLoading(true);
   try {
     // Need the document first so we know enabled_modules
     const { data: doc, error: docErr } = await supabase
@@ -369,7 +370,7 @@ const fetchModules = async () => {
     console.error('Error fetching modules:', error);
   } finally {
     console.log('[DocumentWorkspace] fetchModules COMPLETE');
-    setIsLoading(false);
+    setIsModulesLoading(false);
   }
 };
 
@@ -694,9 +695,17 @@ const fetchModules = async () => {
         `}>
           <div className="p-4 border-b border-neutral-200 bg-neutral-50 md:p-2 lg:p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wide md:hidden lg:block">
-                Modules
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wide md:hidden lg:block">
+                  Modules
+                </h2>
+                {isModulesLoading && (
+                  <div className="flex items-center gap-1 md:hidden lg:flex">
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-neutral-300 border-t-neutral-600"></div>
+                    <span className="text-xs text-neutral-500">Refreshing...</span>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="md:hidden p-1 hover:bg-neutral-200 rounded transition-colors"

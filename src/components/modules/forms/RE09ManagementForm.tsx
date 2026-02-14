@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import ModuleActions from '../ModuleActions';
@@ -60,16 +60,9 @@ const invertRatingForStorage = (ui: number | null): number | null => {
   return 6 - ui;
 };
 
-export default function RE09ManagementForm({
-  moduleInstance,
-  document,
-  onSaved,
-}: RE09ManagementFormProps) {
-  const [isSaving, setIsSaving] = useState(false);
-  const d = moduleInstance.data || {};
-
-  // Initialize categories with UI-inverted ratings
-  const initialCategories = (d.categories || [
+// Helper to build initial form data from module data
+const buildInitialFormData = (data: Record<string, any>) => {
+  const categories = (data.categories || [
     { key: 'housekeeping', rating_1_5: null, notes: '' },
     { key: 'hot_work', rating_1_5: null, notes: '' },
     { key: 'impairment_management', rating_1_5: null, notes: '' },
@@ -85,39 +78,62 @@ export default function RE09ManagementForm({
     };
   });
 
-  const [formData, setFormData] = useState({
-    categories: initialCategories,
-    recommendations: d.recommendations || [],
-  });
+  return {
+    categories,
+    recommendations: data.recommendations || [],
+  };
+};
+
+export default function RE09ManagementForm({
+  moduleInstance,
+  document,
+  onSaved,
+}: RE09ManagementFormProps) {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [formData, setFormData] = useState(() => buildInitialFormData(moduleInstance.data || {}));
 
   const [riskEngData, setRiskEngData] = useState<any>({});
   const [riskEngInstanceId, setRiskEngInstanceId] = useState<string | null>(null);
   const [industryKey, setIndustryKey] = useState<string | null>(null);
 
-  // Seed local state ONLY when module instance ID changes (prevents reversion)
+  // Refs to track hydration state
+  const lastIdRef = useRef<string | null>(null);
+  const seenPopulatedForCurrentIdRef = useRef(false);
+
+  // Hydrate/reset form state when:
+  // 1. moduleInstance.id changes (always reset)
+  // 2. Data transitions from empty → populated for the same ID (initial load case)
   useEffect(() => {
     const d = moduleInstance.data || {};
-    const seedCategories = (d.categories || [
-      { key: 'housekeeping', rating_1_5: null, notes: '' },
-      { key: 'hot_work', rating_1_5: null, notes: '' },
-      { key: 'impairment_management', rating_1_5: null, notes: '' },
-      { key: 'contractor_control', rating_1_5: null, notes: '' },
-      { key: 'maintenance', rating_1_5: null, notes: '' },
-      { key: 'emergency_planning', rating_1_5: null, notes: '' },
-      { key: 'change_management', rating_1_5: null, notes: '' },
-    ]).map((cat: any) => {
-      const uiRating = invertRatingForUI(cat.rating_1_5);
-      return {
-        ...cat,
-        rating_1_5: uiRating !== null ? Number(uiRating) : null,
-      };
-    });
 
-    setFormData({
-      categories: seedCategories,
-      recommendations: d.recommendations || [],
-    });
-  }, [moduleInstance.id]);
+    // Check if data is populated (has actual category ratings or recommendations)
+    const hasPopulatedData = !!(
+      (d.categories && d.categories.length > 0 && d.categories.some((c: any) => c.rating_1_5 !== null)) ||
+      (d.recommendations && d.recommendations.length > 0) ||
+      Object.keys(d).length > 0
+    );
+
+    const idChanged = lastIdRef.current !== moduleInstance.id;
+    const transitionedToPopulated = hasPopulatedData && !seenPopulatedForCurrentIdRef.current;
+
+    // Reset if ID changed OR if this is first time seeing populated data for this ID
+    if (idChanged || transitionedToPopulated) {
+      if (import.meta.env.DEV) {
+        console.debug('[RE09ManagementForm] hydrating form state', {
+          moduleInstanceId: moduleInstance.id,
+          reason: idChanged ? 'id-changed' : 'empty-to-populated',
+          hasPopulatedData,
+        });
+      }
+
+      setFormData(buildInitialFormData(d));
+
+      // Update tracking refs
+      lastIdRef.current = moduleInstance.id;
+      seenPopulatedForCurrentIdRef.current = hasPopulatedData;
+    }
+  }, [moduleInstance.id, moduleInstance.data]);
 
   useEffect(() => {
     async function loadRiskEngModule() {

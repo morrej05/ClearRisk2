@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import ModuleActions from '../ModuleActions';
@@ -72,31 +72,62 @@ export default function RE07ExposuresForm({ moduleInstance, document, onSaved }:
   const [humanExposureRating, setHumanExposureRating] = useState<number>(3);
   const [humanExposureNotes, setHumanExposureNotes] = useState<string>('');
 
-  // Seed once per module instance (prevents reversion/flicker)
+  // Refs to track hydration state
+  const lastIdRef = useRef<string | null>(null);
+  const seenPopulatedForCurrentIdRef = useRef(false);
+
+  // Hydrate/reset form state when:
+  // 1. moduleInstance.id changes (always reset)
+  // 2. Data transitions from empty → populated for the same ID (initial load case)
   useEffect(() => {
     const ex = moduleInstance.data?.exposures ?? {};
     const p = ex.environmental?.perils ?? {};
 
-    setFloodRating(p.flood?.rating ?? 3);
-    setFloodNotes(p.flood?.notes ?? '');
+    // Check if data is populated (not just default/empty)
+    const hasPopulatedData = !!(
+      ex.environmental ||
+      ex.human_exposure ||
+      Object.keys(ex).length > 0
+    );
 
-    setWindRating(p.wind?.rating ?? 3);
-    setWindNotes(p.wind?.notes ?? '');
+    const idChanged = lastIdRef.current !== moduleInstance.id;
+    const transitionedToPopulated = hasPopulatedData && !seenPopulatedForCurrentIdRef.current;
 
-    setEarthquakeRating(p.earthquake?.rating ?? 3);
-    setEarthquakeNotes(p.earthquake?.notes ?? '');
+    // Reset if ID changed OR if this is first time seeing populated data for this ID
+    if (idChanged || transitionedToPopulated) {
+      if (import.meta.env.DEV) {
+        console.debug('[RE07ExposuresForm] hydrating form state', {
+          moduleInstanceId: moduleInstance.id,
+          reason: idChanged ? 'id-changed' : 'empty-to-populated',
+          hasPopulatedData,
+        });
+      }
 
-    setWildfireRating(p.wildfire?.rating ?? 3);
-    setWildfireNotes(p.wildfire?.notes ?? '');
+      setFloodRating(p.flood?.rating ?? 3);
+      setFloodNotes(p.flood?.notes ?? '');
 
-    setHasOtherPeril(!!p.other);
-    setOtherLabel(p.other?.label ?? '');
-    setOtherRating(p.other?.rating ?? 3);
-    setOtherNotes(p.other?.notes ?? '');
+      setWindRating(p.wind?.rating ?? 3);
+      setWindNotes(p.wind?.notes ?? '');
 
-    setHumanExposureRating(ex.human_exposure?.rating ?? 3);
-    setHumanExposureNotes(ex.human_exposure?.notes ?? '');
-  }, [moduleInstance.id]);
+      setEarthquakeRating(p.earthquake?.rating ?? 3);
+      setEarthquakeNotes(p.earthquake?.notes ?? '');
+
+      setWildfireRating(p.wildfire?.rating ?? 3);
+      setWildfireNotes(p.wildfire?.notes ?? '');
+
+      setHasOtherPeril(!!p.other);
+      setOtherLabel(p.other?.label ?? '');
+      setOtherRating(p.other?.rating ?? 3);
+      setOtherNotes(p.other?.notes ?? '');
+
+      setHumanExposureRating(ex.human_exposure?.rating ?? 3);
+      setHumanExposureNotes(ex.human_exposure?.notes ?? '');
+
+      // Update tracking refs
+      lastIdRef.current = moduleInstance.id;
+      seenPopulatedForCurrentIdRef.current = hasPopulatedData;
+    }
+  }, [moduleInstance.id, moduleInstance.data]);
 
   const otherLabelTrim = useMemo(() => otherLabel.trim(), [otherLabel]);
   const includeOther = hasOtherPeril && otherLabelTrim.length > 0;

@@ -338,6 +338,14 @@ const fetchModules = async () => {
     // Filter modules to only expected keys (hide unwanted modules for RE docs)
     const filtered = (existing || []).filter((m: any) => expectedKeys.includes(m.module_key));
     const sorted = sortModulesByOrder(filtered);
+
+    if (import.meta.env.DEV) {
+      console.debug('[DocumentWorkspace] modules updated', {
+        count: sorted.length,
+        selectedModuleId,
+      });
+    }
+
     setModules(sorted as ModuleInstance[]);
   } catch (error) {
     console.error('Error fetching modules:', error);
@@ -478,6 +486,16 @@ const fetchModules = async () => {
   );
 
   const selectedModule = modules.find((m) => m.id === selectedModuleId);
+
+  // Debug logging for selectedModule changes
+  useEffect(() => {
+    if (import.meta.env.DEV && selectedModule) {
+      console.debug('[DocumentWorkspace] render ModuleRenderer', {
+        selectedModuleId: selectedModule.id,
+        moduleKey: selectedModule.module_key,
+      });
+    }
+  }, [selectedModule]);
 
   if (documentNotFound) {
     return (

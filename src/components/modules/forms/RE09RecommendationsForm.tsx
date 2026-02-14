@@ -218,6 +218,12 @@ export default function RE09RecommendationsForm({
   };
 
   const addRecommendationFromLibrary = (libraryItem: any) => {
+    const priorityToText = (priority: number): 'High' | 'Medium' | 'Low' => {
+      if (priority <= 2) return 'High';
+      if (priority <= 3) return 'Medium';
+      return 'Low';
+    };
+
     const newRec: Recommendation = {
       id: crypto.randomUUID(),
       document_id: document.id,
@@ -226,12 +232,12 @@ export default function RE09RecommendationsForm({
       library_id: libraryItem.id,
       source_module_key: libraryItem.related_module_key || 'OTHER',
       title: libraryItem.title,
-      observation_text: libraryItem.observation_text,
-      action_required_text: libraryItem.action_required_text,
+      observation_text: libraryItem.observation,
+      action_required_text: libraryItem.action_required,
       hazard_text: libraryItem.hazard_risk_description,
       comments_text: libraryItem.client_response_prompt || '',
       status: 'Open',
-      priority: libraryItem.priority,
+      priority: priorityToText(libraryItem.default_priority),
       target_date: undefined,
       owner: '',
       photos: [],

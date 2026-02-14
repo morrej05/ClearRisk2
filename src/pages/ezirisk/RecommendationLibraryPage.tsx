@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Edit2, Archive, CheckCircle, XCircle, Sparkles, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, Archive, CheckCircle, Sparkles, AlertTriangle } from 'lucide-react';
 import { generateHazardText, validateHazardNeutrality } from '../../utils/hazardTextGenerator';
 import ConfirmModal from '../../components/ConfirmModal';
 import FeedbackModal from '../../components/FeedbackModal';
@@ -8,18 +8,28 @@ import FeedbackModal from '../../components/FeedbackModal';
 interface LibraryItem {
   id: string;
   title: string;
-  observation_text: string;
-  action_required_text: string;
+  body: string;
+  observation: string;
+  action_required: string;
   hazard_risk_description: string;
   client_response_prompt: string | null;
-  priority: 'High' | 'Medium' | 'Low';
+  default_priority: number;
   related_module_key: string | null;
+  category: string;
   is_active: boolean;
-  tags: string[];
-  legacy_code: string | null;
+  code: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const CATEGORIES = [
+  'Construction',
+  'Management Systems',
+  'Fire Protection & Detection',
+  'Special Hazards',
+  'Business Continuity',
+  'Other'
+];
 
 const MODULE_OPTIONS = [
   { key: 'RE_01_DOC_CONTROL', label: 'RE-01 Document Control' },
@@ -32,6 +42,18 @@ const MODULE_OPTIONS = [
   { key: 'RE_12_LOSS_VALUES', label: 'RE-08 Loss & Values' },
   { key: 'OTHER', label: 'Other / General' },
 ];
+
+const priorityToText = (priority: number): 'High' | 'Medium' | 'Low' => {
+  if (priority <= 2) return 'High';
+  if (priority <= 3) return 'Medium';
+  return 'Low';
+};
+
+const textToPriority = (text: 'High' | 'Medium' | 'Low'): number => {
+  if (text === 'High') return 1;
+  if (text === 'Medium') return 3;
+  return 5;
+};
 
 export default function RecommendationLibraryPage() {
   const [items, setItems] = useState<LibraryItem[]>([]);
@@ -62,9 +84,10 @@ export default function RecommendationLibraryPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('recommendation_library')
+        .from('recommendation_templates')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('category', { ascending: true })
+        .order('title', { ascending: true });
 
       if (error) throw error;
       setItems(data || []);
@@ -85,15 +108,16 @@ export default function RecommendationLibraryPage() {
     setEditingItem({
       id: crypto.randomUUID(),
       title: '',
-      observation_text: '',
-      action_required_text: '',
+      body: '',
+      observation: '',
+      action_required: '',
       hazard_risk_description: '',
       client_response_prompt: null,
-      priority: 'Medium',
+      default_priority: 3,
       related_module_key: null,
+      category: 'Other',
       is_active: true,
-      tags: [],
-      legacy_code: null,
+      code: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
@@ -108,7 +132,7 @@ export default function RecommendationLibraryPage() {
   const handleToggleActive = async (item: LibraryItem) => {
     try {
       const { error } = await supabase
-        .from('recommendation_library')
+        .from('recommendation_templates')
         .update({ is_active: !item.is_active })
         .eq('id', item.id);
 
@@ -276,6 +300,7 @@ function LibraryItemCard({
   onToggleActive: (item: LibraryItem) => void;
 }) {
   const moduleLabel = MODULE_OPTIONS.find((m) => m.key === item.related_module_key)?.label || item.related_module_key || 'General';
+  const priorityText = priorityToText(item.default_priority);
 
   return (
     <div className={`bg-white rounded-lg border p-6 ${item.is_active ? 'border-slate-200' : 'border-slate-300 bg-slate-50'}`}>
@@ -287,18 +312,23 @@ function LibraryItemCard({
             </h3>
             <span
               className={`px-2 py-0.5 text-xs rounded-full ${
-                item.priority === 'High'
+                priorityText === 'High'
                   ? 'bg-red-100 text-red-800'
-                  : item.priority === 'Medium'
+                  : priorityText === 'Medium'
                   ? 'bg-amber-100 text-amber-800'
                   : 'bg-green-100 text-green-800'
               }`}
             >
-              {item.priority}
+              {priorityText}
             </span>
-            <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
-              {moduleLabel}
+            <span className="px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-700">
+              {item.category}
             </span>
+            {item.related_module_key && (
+              <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
+                {moduleLabel}
+              </span>
+            )}
             {!item.is_active && (
               <span className="px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-600">
                 Inactive
@@ -307,19 +337,9 @@ function LibraryItemCard({
           </div>
 
           <div className="space-y-2 text-sm text-slate-600">
-            <p><strong>Observation:</strong> {item.observation_text.substring(0, 150)}{item.observation_text.length > 150 ? '...' : ''}</p>
-            <p><strong>Action:</strong> {item.action_required_text.substring(0, 150)}{item.action_required_text.length > 150 ? '...' : ''}</p>
+            <p><strong>Observation:</strong> {item.observation.substring(0, 150)}{item.observation.length > 150 ? '...' : ''}</p>
+            <p><strong>Action:</strong> {item.action_required.substring(0, 150)}{item.action_required.length > 150 ? '...' : ''}</p>
           </div>
-
-          {item.tags.length > 0 && (
-            <div className="flex gap-2 mt-3">
-              {item.tags.map((tag) => (
-                <span key={tag} className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-2 ml-4">
@@ -360,12 +380,11 @@ function LibraryItemModal({
   const [saving, setSaving] = useState(false);
   const [generatingHazard, setGeneratingHazard] = useState(false);
   const [hazardValidation, setHazardValidation] = useState<{ valid: boolean; issues: string[] } | null>(null);
-  const [newTag, setNewTag] = useState('');
 
-  const isNewItem = !item.created_at || item.created_at === item.updated_at;
+  const isNewItem = !item.created_at || new Date(item.created_at).getTime() === new Date(item.updated_at).getTime();
 
   const handleGenerateHazard = () => {
-    if (!formData.observation_text || !formData.action_required_text) {
+    if (!formData.observation || !formData.action_required) {
       alert('Please fill in Observation and Action Required fields first.');
       return;
     }
@@ -373,8 +392,8 @@ function LibraryItemModal({
     setGeneratingHazard(true);
     setTimeout(() => {
       const hazardText = generateHazardText({
-        observation: formData.observation_text,
-        actionRequired: formData.action_required_text,
+        observation: formData.observation,
+        actionRequired: formData.action_required,
       });
 
       setFormData({ ...formData, hazard_risk_description: hazardText });
@@ -389,25 +408,10 @@ function LibraryItemModal({
     setHazardValidation(validation);
   };
 
-  const handleAddTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData({
-        ...formData,
-        tags: [...formData.tags, newTag.trim()],
-      });
-      setNewTag('');
-    }
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter((t) => t !== tag),
-    });
-  };
+  const priorityText = priorityToText(formData.default_priority);
 
   const handleSave = async () => {
-    if (!formData.title || !formData.observation_text || !formData.action_required_text || !formData.hazard_risk_description) {
+    if (!formData.title || !formData.observation || !formData.action_required || !formData.hazard_risk_description) {
       alert('Please fill in all required fields (title, observation, action, hazard).');
       return;
     }
@@ -417,20 +421,21 @@ function LibraryItemModal({
       const dataToSave = {
         id: isNewItem ? undefined : formData.id,
         title: formData.title,
-        observation_text: formData.observation_text,
-        action_required_text: formData.action_required_text,
+        body: formData.body || formData.title,
+        observation: formData.observation,
+        action_required: formData.action_required,
         hazard_risk_description: formData.hazard_risk_description,
         client_response_prompt: formData.client_response_prompt || null,
-        priority: formData.priority,
+        default_priority: formData.default_priority,
         related_module_key: formData.related_module_key || null,
+        category: formData.category,
         is_active: formData.is_active,
-        tags: formData.tags,
-        legacy_code: formData.legacy_code || null,
+        code: formData.code || null,
       };
 
       const { error } = isNewItem
-        ? await supabase.from('recommendation_library').insert([dataToSave])
-        : await supabase.from('recommendation_library').update(dataToSave).eq('id', formData.id);
+        ? await supabase.from('recommendation_templates').insert([dataToSave])
+        : await supabase.from('recommendation_templates').update(dataToSave).eq('id', formData.id);
 
       if (error) throw error;
 
@@ -467,14 +472,30 @@ function LibraryItemModal({
             />
           </div>
 
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Observation */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Observation <span className="text-red-600">*</span>
             </label>
             <textarea
-              value={formData.observation_text}
-              onChange={(e) => setFormData({ ...formData, observation_text: e.target.value })}
+              value={formData.observation}
+              onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
               rows={4}
               className="w-full px-3 py-2 border border-slate-300 rounded-md"
               placeholder="What was observed during the assessment?"
@@ -487,8 +508,8 @@ function LibraryItemModal({
               Action Required <span className="text-red-600">*</span>
             </label>
             <textarea
-              value={formData.action_required_text}
-              onChange={(e) => setFormData({ ...formData, action_required_text: e.target.value })}
+              value={formData.action_required}
+              onChange={(e) => setFormData({ ...formData, action_required: e.target.value })}
               rows={4}
               className="w-full px-3 py-2 border border-slate-300 rounded-md"
               placeholder="What action needs to be taken?"
@@ -536,7 +557,7 @@ function LibraryItemModal({
                 ) : (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <XCircle className="w-4 h-4" />
+                      <AlertTriangle className="w-4 h-4" />
                       <span className="font-medium">Neutrality issues found:</span>
                     </div>
                     <ul className="list-disc list-inside ml-6">
@@ -569,8 +590,8 @@ function LibraryItemModal({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
               <select
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value as LibraryItem['priority'] })}
+                value={priorityText}
+                onChange={(e) => setFormData({ ...formData, default_priority: textToPriority(e.target.value as 'High' | 'Medium' | 'Low') })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md"
               >
                 <option value="High">High</option>
@@ -594,45 +615,6 @@ function LibraryItemModal({
                 ))}
               </select>
             </div>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Tags</label>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm"
-                placeholder="Add a tag..."
-              />
-              <button
-                onClick={handleAddTag}
-                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200"
-              >
-                Add
-              </button>
-            </div>
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {formData.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 bg-slate-100 text-slate-700 text-sm rounded-full flex items-center gap-2"
-                  >
-                    {tag}
-                    <button
-                      onClick={() => handleRemoveTag(tag)}
-                      className="text-slate-500 hover:text-red-600"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Active Toggle */}

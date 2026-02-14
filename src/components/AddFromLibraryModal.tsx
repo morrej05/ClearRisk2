@@ -5,13 +5,13 @@ import { X, Search, Library } from 'lucide-react';
 interface LibraryItem {
   id: string;
   title: string;
-  observation_text: string;
-  action_required_text: string;
+  observation: string;
+  action_required: string;
   hazard_risk_description: string;
   client_response_prompt: string | null;
-  priority: 'High' | 'Medium' | 'Low';
+  default_priority: number;
   related_module_key: string | null;
-  tags: string[];
+  category: string;
 }
 
 interface AddFromLibraryModalProps {
@@ -53,9 +53,10 @@ export default function AddFromLibraryModal({
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('recommendation_library')
+        .from('recommendation_templates')
         .select('*')
         .eq('is_active', true)
+        .order('category', { ascending: true })
         .order('title', { ascending: true });
 
       if (error) throw error;
@@ -67,16 +68,22 @@ export default function AddFromLibraryModal({
     }
   };
 
+  const priorityToText = (priority: number): 'High' | 'Medium' | 'Low' => {
+    if (priority <= 2) return 'High';
+    if (priority <= 3) return 'Medium';
+    return 'Low';
+  };
+
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       !searchQuery ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.observation_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.action_required_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      item.observation.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.action_required.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesModule = !selectedModule || item.related_module_key === selectedModule;
-    const matchesPriority = !selectedPriority || item.priority === selectedPriority;
+    const matchesPriority = !selectedPriority || priorityToText(item.default_priority) === selectedPriority;
 
     return matchesSearch && matchesModule && matchesPriority;
   });
@@ -191,6 +198,14 @@ function LibraryItemCard({
     item.related_module_key ||
     'General';
 
+  const priorityToText = (priority: number): 'High' | 'Medium' | 'Low' => {
+    if (priority <= 2) return 'High';
+    if (priority <= 3) return 'Medium';
+    return 'Low';
+  };
+
+  const priorityText = priorityToText(item.default_priority);
+
   return (
     <div className="border border-slate-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
       <div className="flex items-start justify-between">
@@ -199,33 +214,38 @@ function LibraryItemCard({
             <h3 className="font-semibold text-slate-900">{item.title}</h3>
             <span
               className={`px-2 py-0.5 text-xs rounded-full ${
-                item.priority === 'High'
+                priorityText === 'High'
                   ? 'bg-red-100 text-red-800'
-                  : item.priority === 'Medium'
+                  : priorityText === 'Medium'
                   ? 'bg-amber-100 text-amber-800'
                   : 'bg-green-100 text-green-800'
               }`}
             >
-              {item.priority}
+              {priorityText}
             </span>
-            <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
-              {moduleLabel}
+            <span className="px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-700">
+              {item.category}
             </span>
+            {item.related_module_key && (
+              <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
+                {moduleLabel}
+              </span>
+            )}
           </div>
 
           <div className="text-sm text-slate-600 space-y-1 mb-3">
             <p>
               <strong>Observation:</strong>{' '}
               {expanded
-                ? item.observation_text
-                : `${item.observation_text.substring(0, 100)}${
-                    item.observation_text.length > 100 ? '...' : ''
+                ? item.observation
+                : `${item.observation.substring(0, 100)}${
+                    item.observation.length > 100 ? '...' : ''
                   }`}
             </p>
             {expanded && (
               <>
                 <p>
-                  <strong>Action Required:</strong> {item.action_required_text}
+                  <strong>Action Required:</strong> {item.action_required}
                 </p>
                 <p>
                   <strong>Hazard/Risk:</strong> {item.hazard_risk_description}
@@ -238,16 +258,6 @@ function LibraryItemCard({
               </>
             )}
           </div>
-
-          {item.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {item.tags.map((tag) => (
-                <span key={tag} className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
 
           <button
             onClick={() => setExpanded(!expanded)}

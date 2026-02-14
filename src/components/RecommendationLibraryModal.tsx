@@ -4,12 +4,14 @@ import { X, Search, BookOpen, Plus, Check } from 'lucide-react';
 
 interface RecommendationTemplate {
   id: string;
-  hazard: string;
-  description: string;
-  action: string;
+  title: string;
+  observation: string;
+  action_required: string;
+  hazard_risk_description: string;
   client_response_prompt: string | null;
   category: string;
   default_priority: number;
+  related_module_key: string | null;
   is_active: boolean;
 }
 
@@ -52,7 +54,7 @@ export default function RecommendationLibraryModal({
         .select('*')
         .eq('is_active', true)
         .order('category', { ascending: true })
-        .order('hazard', { ascending: true });
+        .order('title', { ascending: true });
 
       if (error) throw error;
       setTemplates(data || []);
@@ -82,14 +84,20 @@ export default function RecommendationLibraryModal({
         ? existingRecs[0].sort_index
         : -1;
 
+      const priorityToText = (priority: number): 'High' | 'Medium' | 'Low' => {
+        if (priority <= 2) return 'High';
+        if (priority <= 3) return 'Medium';
+        return 'Low';
+      };
+
       const { error } = await supabase
         .from('survey_recommendations')
         .insert([{
           survey_id: surveyId,
           template_id: template.id,
-          hazard: template.hazard,
-          description_final: template.description,
-          action_final: template.action,
+          hazard: template.title,
+          description_final: template.observation,
+          action_final: template.action_required,
           client_response: template.client_response_prompt || null,
           category: template.category,
           priority: template.default_priority,
@@ -123,9 +131,9 @@ export default function RecommendationLibraryModal({
 
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = searchQuery === '' ||
-      template.hazard.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.observation.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.action_required.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.category.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory = categoryFilter === 'all' || template.category === categoryFilter;
@@ -230,7 +238,7 @@ export default function RecommendationLibraryModal({
                                   </span>
                                 </div>
                                 <h4 className="font-semibold text-gray-900 mb-2">
-                                  {template.hazard}
+                                  {template.title}
                                 </h4>
                                 <div className="space-y-2">
                                   <div>
@@ -238,7 +246,7 @@ export default function RecommendationLibraryModal({
                                       Observation
                                     </p>
                                     <p className="text-sm text-gray-700 leading-relaxed">
-                                      {template.description}
+                                      {template.observation}
                                     </p>
                                   </div>
                                   <div>
@@ -246,7 +254,7 @@ export default function RecommendationLibraryModal({
                                       Recommended Action
                                     </p>
                                     <p className="text-sm text-gray-700 leading-relaxed">
-                                      {template.action}
+                                      {template.action_required}
                                     </p>
                                   </div>
                                 </div>

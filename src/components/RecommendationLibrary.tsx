@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, Save, X, AlertCircle, CheckCircle2, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, AlertCircle, CheckCircle2, Search, Sparkles } from 'lucide-react';
+import { generateHazardText, validateHazardNeutrality } from '../utils/hazardTextGenerator';
 
 interface RecommendationTemplate {
   id: string;
-  hazard: string;
-  description: string;
-  action: string;
+  title: string;
+  body: string;
+  observation: string;
+  action_required: string;
+  hazard_risk_description: string;
   client_response_prompt: string | null;
   category: string;
   default_priority: number;
+  related_module_key: string | null;
   is_active: boolean;
   scope: string;
   created_at: string;
@@ -35,12 +39,14 @@ export default function RecommendationLibrary() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    hazard: '',
-    description: '',
-    action: '',
+    title: '',
+    observation: '',
+    action_required: '',
+    hazard_risk_description: '',
     client_response_prompt: '',
     category: 'Management Systems',
     default_priority: 3,
+    related_module_key: '',
     is_active: true,
     scope: 'global'
   });
@@ -73,7 +79,10 @@ export default function RecommendationLibrary() {
     try {
       const { error } = await supabase
         .from('recommendation_templates')
-        .insert([formData]);
+        .insert([{
+          ...formData,
+          body: formData.title || formData.observation
+        }]);
 
       if (error) throw error;
 
@@ -93,7 +102,10 @@ export default function RecommendationLibrary() {
     try {
       const { error } = await supabase
         .from('recommendation_templates')
-        .update(formData)
+        .update({
+          ...formData,
+          body: formData.title || formData.observation
+        })
         .eq('id', id);
 
       if (error) throw error;
@@ -152,12 +164,14 @@ export default function RecommendationLibrary() {
   const startEdit = (template: RecommendationTemplate) => {
     setEditingId(template.id);
     setFormData({
-      hazard: template.hazard,
-      description: template.description,
-      action: template.action,
+      title: template.title,
+      observation: template.observation,
+      action_required: template.action_required,
+      hazard_risk_description: template.hazard_risk_description,
       client_response_prompt: template.client_response_prompt || '',
       category: template.category,
       default_priority: template.default_priority,
+      related_module_key: template.related_module_key || '',
       is_active: template.is_active,
       scope: template.scope
     });
@@ -172,12 +186,14 @@ export default function RecommendationLibrary() {
 
   const resetForm = () => {
     setFormData({
-      hazard: '',
-      description: '',
-      action: '',
+      title: '',
+      observation: '',
+      action_required: '',
+      hazard_risk_description: '',
       client_response_prompt: '',
       category: 'Management Systems',
       default_priority: 3,
+      related_module_key: '',
       is_active: true,
       scope: 'global'
     });
@@ -185,9 +201,9 @@ export default function RecommendationLibrary() {
 
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = searchQuery === '' ||
-      template.hazard.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.observation.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.action_required.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.category.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory = categoryFilter === 'all' || template.category === categoryFilter;
@@ -303,7 +319,7 @@ export default function RecommendationLibrary() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">{template.hazard}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{template.title}</h3>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <button
@@ -335,12 +351,18 @@ export default function RecommendationLibrary() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Observation</p>
-                    <p className="text-gray-700 text-sm leading-relaxed">{template.description}</p>
+                    <p className="text-gray-700 text-sm leading-relaxed">{template.observation}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Recommended Action</p>
-                    <p className="text-gray-700 text-sm leading-relaxed">{template.action}</p>
+                    <p className="text-gray-700 text-sm leading-relaxed">{template.action_required}</p>
                   </div>
+                  {template.hazard_risk_description && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Hazard / Risk Description</p>
+                      <p className="text-gray-700 text-sm leading-relaxed">{template.hazard_risk_description}</p>
+                    </div>
+                  )}
                   {template.client_response_prompt && (
                     <div>
                       <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Client Response Prompt</p>
@@ -380,8 +402,41 @@ interface TemplateFormProps {
 }
 
 function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormProps) {
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerate = () => {
+    if (!formData.observation || !formData.action_required) {
+      alert('Please fill in Observation and Action Required fields first.');
+      return;
+    }
+
+    setGenerating(true);
+    setTimeout(() => {
+      const hazardText = generateHazardText({
+        observation: formData.observation,
+        actionRequired: formData.action_required,
+      });
+      setFormData({ ...formData, hazard_risk_description: hazardText });
+      setGenerating(false);
+    }, 300);
+  };
+
   return (
     <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Title *
+        </label>
+        <input
+          type="text"
+          placeholder="Brief title for this recommendation"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          required
+        />
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Category *
@@ -400,26 +455,12 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Hazard / Identification *
-        </label>
-        <input
-          type="text"
-          placeholder="e.g., Hot Work, DSEAR, Malicious Arson"
-          value={formData.hazard}
-          onChange={(e) => setFormData({ ...formData, hazard: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Observation / Description *
+          Observation *
         </label>
         <textarea
-          placeholder="Describe the observation or current state"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="What was observed during the assessment?"
+          value={formData.observation}
+          onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           required
@@ -428,14 +469,39 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Recommended Action *
+          Action Required *
         </label>
         <textarea
-          placeholder="Specify the recommended action to address the issue"
-          value={formData.action}
-          onChange={(e) => setFormData({ ...formData, action: e.target.value })}
+          placeholder="What action needs to be taken?"
+          value={formData.action_required}
+          onChange={(e) => setFormData({ ...formData, action_required: e.target.value })}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          required
+        />
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium text-amber-900">
+            Hazard / Risk Description * (Admin Only)
+          </label>
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            type="button"
+            className="flex items-center gap-2 px-3 py-1 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50"
+          >
+            <Sparkles className="w-4 h-4" />
+            {generating ? 'Generating...' : 'Generate'}
+          </button>
+        </div>
+        <textarea
+          placeholder="Neutral, factual risk statement (no client/insurer references)"
+          value={formData.hazard_risk_description}
+          onChange={(e) => setFormData({ ...formData, hazard_risk_description: e.target.value })}
+          rows={4}
+          className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
           required
         />
       </div>
@@ -446,7 +512,7 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
         </label>
         <input
           type="text"
-          placeholder="e.g., Site Response, Client Comments"
+          placeholder="Optional guidance for client response/closeout"
           value={formData.client_response_prompt}
           onChange={(e) => setFormData({ ...formData, client_response_prompt: e.target.value })}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -462,11 +528,11 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
           onChange={(e) => setFormData({ ...formData, default_priority: parseInt(e.target.value) })}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
-          {[1, 2, 3, 4, 5].map(p => (
-            <option key={p} value={p}>
-              {p} {p === 5 ? '(Critical)' : p === 1 ? '(Low)' : ''}
-            </option>
-          ))}
+          <option value={1}>1 - High</option>
+          <option value={2}>2</option>
+          <option value={3}>3 - Medium</option>
+          <option value={4}>4</option>
+          <option value={5}>5 - Low</option>
         </select>
       </div>
 
@@ -486,6 +552,7 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
         <button
           onClick={onCancel}
+          type="button"
           className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
         >
           <X className="w-4 h-4" />
@@ -493,8 +560,9 @@ function TemplateForm({ formData, setFormData, onSave, onCancel }: TemplateFormP
         </button>
         <button
           onClick={onSave}
+          type="button"
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          disabled={!formData.title || !formData.body}
+          disabled={!formData.title || !formData.observation || !formData.action_required || !formData.hazard_risk_description}
         >
           <Save className="w-4 h-4" />
           Save Template

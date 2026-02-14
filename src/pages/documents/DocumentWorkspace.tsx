@@ -279,6 +279,12 @@ const fetchModules = async () => {
     return;
   }
 
+  console.log('[DocumentWorkspace] fetchModules START', {
+    documentId: id,
+    currentModuleCount: modules.length,
+    selectedModuleId,
+  });
+
   setIsLoading(true);
   try {
     // Need the document first so we know enabled_modules
@@ -300,6 +306,10 @@ const fetchModules = async () => {
       .eq('organisation_id', organisation.id);
 
     if (error) throw error;
+
+    console.log('[DocumentWorkspace] fetchModules GOT DATA', {
+      moduleCount: existing?.length || 0,
+    });
 
     const existingKeys = new Set((existing || []).map((m: any) => m.module_key));
     const expectedKeys = getExpectedKeysForDocument(doc);
@@ -332,6 +342,9 @@ const fetchModules = async () => {
       // Filter modules to only expected keys (hide unwanted modules for RE docs)
       const filtered = (seeded || []).filter((m: any) => expectedKeys.includes(m.module_key));
       const sorted = sortModulesByOrder(filtered);
+      console.log('[DocumentWorkspace] fetchModules SET MODULES (after seed)', {
+        moduleCount: sorted.length,
+      });
       setModules(sorted as ModuleInstance[]);
       return;
     }
@@ -347,10 +360,15 @@ const fetchModules = async () => {
       });
     }
 
+    console.log('[DocumentWorkspace] fetchModules SET MODULES', {
+      moduleCount: sorted.length,
+      selectedModuleId,
+    });
     setModules(sorted as ModuleInstance[]);
   } catch (error) {
     console.error('Error fetching modules:', error);
   } finally {
+    console.log('[DocumentWorkspace] fetchModules COMPLETE');
     setIsLoading(false);
   }
 };
@@ -367,7 +385,33 @@ const fetchModules = async () => {
     }
   };
 
-  const handleModuleSaved = () => {
+  const handleModuleSaved = async (moduleId?: string, updatedData?: any) => {
+    console.log('[DocumentWorkspace] handleModuleSaved CALLED', {
+      moduleId,
+      hasUpdatedData: !!updatedData,
+    });
+
+    // Optimistic update: immediately update local state if we have the data
+    if (moduleId && updatedData) {
+      console.log('[DocumentWorkspace] OPTIMISTIC UPDATE', { moduleId });
+      const now = new Date().toISOString();
+
+      setModules((prevModules) => {
+        return prevModules.map((m) => {
+          if (m.id === moduleId) {
+            return {
+              ...m,
+              data: updatedData,
+              updated_at: now,
+              _optimistic: true, // Mark as optimistic
+            } as any;
+          }
+          return m;
+        });
+      });
+    }
+
+    // Background refetch (don't await)
     fetchModules();
     fetchDocument();
   };

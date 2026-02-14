@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
@@ -71,7 +71,7 @@ interface ModuleInstance {
 interface ModuleRendererProps {
   moduleInstance: ModuleInstance;
   document: Document;
-  onSaved: () => void;
+  onSaved: (moduleId?: string, updatedData?: any) => void;
 }
 
 export default function ModuleRenderer({
@@ -79,6 +79,36 @@ export default function ModuleRenderer({
   document,
   onSaved,
 }: ModuleRendererProps) {
+  // Lifecycle instrumentation: track mount/unmount and prop changes
+  useEffect(() => {
+    const dataHash = JSON.stringify(moduleInstance.data || {}).substring(0, 100);
+    console.log('[ModuleRenderer] MOUNT', {
+      moduleKey: moduleInstance.module_key,
+      moduleId: moduleInstance.id,
+      documentId: document.id,
+      dataPreview: dataHash,
+      updatedAt: moduleInstance.updated_at,
+    });
+
+    return () => {
+      console.log('[ModuleRenderer] UNMOUNT', {
+        moduleKey: moduleInstance.module_key,
+        moduleId: moduleInstance.id,
+      });
+    };
+  }, []); // Empty deps = mount/unmount only
+
+  // Track when moduleInstance changes
+  useEffect(() => {
+    const dataHash = JSON.stringify(moduleInstance.data || {}).substring(0, 100);
+    console.log('[ModuleRenderer] PROPS CHANGE', {
+      moduleKey: moduleInstance.module_key,
+      moduleId: moduleInstance.id,
+      dataPreview: dataHash,
+      updatedAt: moduleInstance.updated_at,
+    });
+  }, [moduleInstance]);
+
   if (moduleInstance.module_key === 'A1_DOC_CONTROL') {
     return (
       <>

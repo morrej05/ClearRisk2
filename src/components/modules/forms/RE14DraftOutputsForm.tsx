@@ -63,12 +63,58 @@ export default function RE14DraftOutputsForm({
   });
   const [occupancyMissing, setOccupancyMissing] = useState(false);
 
+  // Lifecycle instrumentation
+  useEffect(() => {
+    const dataHash = JSON.stringify(moduleInstance.data || {}).substring(0, 100);
+    console.log('[RE14] MOUNT', {
+      moduleId: moduleInstance.id,
+      dirty,
+      executiveSummaryLength: executiveSummary.length,
+      dataPreview: dataHash,
+      updatedAt: moduleInstance.updated_at,
+    });
+
+    return () => {
+      console.log('[RE14] UNMOUNT', {
+        moduleId: moduleInstance.id,
+        dirty,
+        executiveSummaryLength: executiveSummary.length,
+      });
+    };
+  }, []); // mount/unmount only
+
+  // Track moduleInstance changes
+  useEffect(() => {
+    const dataHash = JSON.stringify(moduleInstance.data || {}).substring(0, 100);
+    console.log('[RE14] PROPS CHANGE', {
+      moduleId: moduleInstance.id,
+      dirty,
+      executiveSummaryLength: executiveSummary.length,
+      dataPreview: dataHash,
+      updatedAt: moduleInstance.updated_at,
+    });
+  }, [moduleInstance]);
+
   // Hydrate only when module ID changes, don't overwrite while user is editing
   useEffect(() => {
+    console.log('[RE14] HYDRATION CHECK', {
+      moduleId: moduleInstance.id,
+      dirty,
+      willHydrate: !dirty,
+      currentLength: executiveSummary.length,
+      incomingLength: (moduleInstance.data?.executive_summary || '').length,
+    });
+
     if (dirty) return; // Don't overwrite user edits
+
     setExecutiveSummary(moduleInstance.data?.executive_summary || '');
     setExecutiveSummaryAi(moduleInstance.data?.executive_summary_ai || '');
     setDirty(false); // Reset dirty flag on module change
+
+    console.log('[RE14] HYDRATED', {
+      moduleId: moduleInstance.id,
+      newLength: (moduleInstance.data?.executive_summary || '').length,
+    });
   }, [moduleInstance.id]);
 
   useEffect(() => {
@@ -149,20 +195,34 @@ export default function RE14DraftOutputsForm({
 
   const handleSaveExecutiveSummary = async () => {
     setSaving(true);
+    const updatedData = {
+      ...moduleInstance.data,
+      executive_summary: executiveSummary,
+    };
+
+    console.log('[RE14] SAVING', {
+      moduleId: moduleInstance.id,
+      executiveSummaryLength: executiveSummary.length,
+    });
+
     try {
       const { error } = await supabase
         .from('module_instances')
         .update({
-          data: {
-            ...moduleInstance.data,
-            executive_summary: executiveSummary,
-          },
+          data: updatedData,
         })
         .eq('id', moduleInstance.id);
 
       if (error) throw error;
+
+      console.log('[RE14] SAVE SUCCESS', {
+        moduleId: moduleInstance.id,
+      });
+
       setDirty(false); // Reset dirty flag after successful save
-      onSaved();
+
+      // Pass updated data for optimistic update
+      onSaved(moduleInstance.id, updatedData);
     } catch (error) {
       console.error('Error saving executive summary:', error);
       alert('Failed to save executive summary');

@@ -7,6 +7,7 @@ import UserRoleManagement from '../components/UserRoleManagement';
 import RecommendationLibrary from '../components/RecommendationLibrary';
 import RecommendationCSVImport from '../components/RecommendationCSVImport';
 import TriggerDebugger from '../components/TriggerDebugger';
+import PromoteRecommendationsToTemplates from '../components/PromoteRecommendationsToTemplates';
 
 type SuperAdminView = 'sector-weightings' | 'user-management' | 'recommendation-library' | 'trigger-debugger' | 'pricing-plans';
 
@@ -139,6 +140,9 @@ export default function SuperAdminDashboard() {
 
             {activeView === 'recommendation-library' && (
               <div className="space-y-6">
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+                  <PromoteRecommendationsToTemplates />
+                </div>
                 <RecommendationCSVImport />
                 <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
                   <RecommendationLibrary />

@@ -25,6 +25,7 @@ interface Photo {
   size_bytes: number;
   mime_type: string;
   uploaded_at: string;
+  previewUrl?: string; // For newly uploaded files (object URL)
 }
 
 interface Recommendation {
@@ -104,6 +105,7 @@ export default function RE09RecommendationsForm({
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('editor');
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
 
   const [feedback, setFeedback] = useState<{
     isOpen: boolean;
@@ -136,6 +138,22 @@ export default function RE09RecommendationsForm({
     loadRecommendations();
   }, [document.id]);
 
+  // Load photo URLs when recommendations change
+  useEffect(() => {
+    loadPhotoUrls();
+  }, [recommendations]);
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(photoUrls).forEach((url) => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, []);
+
   const loadRecommendations = async () => {
     setIsLoading(true);
     try {
@@ -161,6 +179,35 @@ export default function RE09RecommendationsForm({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadPhotoUrls = async () => {
+    const urls: Record<string, string> = {};
+
+    for (const rec of recommendations) {
+      for (const photo of rec.photos) {
+        // Skip if already have a preview URL (object URL from recent upload)
+        if (photo.previewUrl) {
+          urls[photo.path] = photo.previewUrl;
+          continue;
+        }
+
+        // Try to get public URL from storage
+        try {
+          const { data } = supabase.storage
+            .from('evidence')
+            .getPublicUrl(photo.path);
+
+          if (data?.publicUrl) {
+            urls[photo.path] = data.publicUrl;
+          }
+        } catch (error) {
+          console.error(`Failed to get URL for photo ${photo.path}:`, error);
+        }
+      }
+    }
+
+    setPhotoUrls(urls);
   };
 
   const addRecommendation = () => {
@@ -269,6 +316,9 @@ export default function RE09RecommendationsForm({
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `${document.id}/recommendations/${recId}/${fileName}`;
 
+      // Create object URL for immediate preview
+      const previewUrl = URL.createObjectURL(file);
+
       const { error: uploadError } = await supabase.storage
         .from('evidence')
         .upload(filePath, file);
@@ -281,11 +331,15 @@ export default function RE09RecommendationsForm({
         size_bytes: file.size,
         mime_type: file.type,
         uploaded_at: new Date().toISOString(),
+        previewUrl, // Include preview URL for immediate display
       };
 
       updateRecommendation(recId, {
         photos: [...rec.photos, photo],
       });
+
+      // Update photoUrls state for immediate display
+      setPhotoUrls((prev) => ({ ...prev, [filePath]: previewUrl }));
 
       setFeedback({
         isOpen: true,
@@ -808,27 +862,50 @@ export default function RE09RecommendationsForm({
 
                   {rec.photos.length > 0 ? (
                     <div className="grid grid-cols-3 gap-4">
-                      {rec.photos.map((photo) => (
-                        <div
-                          key={photo.path}
-                          className="relative bg-slate-50 border border-slate-200 rounded-lg overflow-hidden"
-                        >
-                          <div className="aspect-video bg-slate-100 flex items-center justify-center">
-                            <ImageIcon className="w-8 h-8 text-slate-400" />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removePhoto(rec.id, photo.path)}
-                            className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                      {rec.photos.map((photo) => {
+                        const imageUrl = photoUrls[photo.path];
+                        return (
+                          <div
+                            key={photo.path}
+                            className="relative bg-slate-50 border border-slate-200 rounded-lg overflow-hidden"
                           >
-                            <X className="w-4 h-4" />
-                          </button>
-                          <div className="p-2 text-xs text-slate-600">
-                            <p className="truncate" title={photo.file_name}>{photo.file_name}</p>
-                            <p className="text-slate-500">{(photo.size_bytes / 1024 / 1024).toFixed(1)} MB</p>
+                            <div className="aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
+                              {imageUrl ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={photo.file_name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Fallback to placeholder if image fails to load
+                                    e.currentTarget.style.display = 'none';
+                                    const placeholder = e.currentTarget.nextElementSibling;
+                                    if (placeholder) {
+                                      (placeholder as HTMLElement).style.display = 'flex';
+                                    }
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className="w-full h-full flex items-center justify-center"
+                                style={{ display: imageUrl ? 'none' : 'flex' }}
+                              >
+                                <ImageIcon className="w-8 h-8 text-slate-400" />
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(rec.id, photo.path)}
+                              className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 shadow-md"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <div className="p-2 text-xs text-slate-600">
+                              <p className="truncate" title={photo.file_name}>{photo.file_name}</p>
+                              <p className="text-slate-500">{(photo.size_bytes / 1024 / 1024).toFixed(1)} MB</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-6 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-sm text-slate-500">

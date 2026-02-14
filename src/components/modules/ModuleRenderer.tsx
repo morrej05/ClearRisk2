@@ -79,6 +79,9 @@ export default function ModuleRenderer({
   document,
   onSaved,
 }: ModuleRendererProps) {
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+
   // Lifecycle instrumentation: track mount/unmount and prop changes
   useEffect(() => {
     const dataHash = JSON.stringify(moduleInstance.data || {}).substring(0, 100);
@@ -109,13 +112,43 @@ export default function ModuleRenderer({
     });
   }, [moduleInstance]);
 
+  // Hide saved indicator after 3 seconds
+  useEffect(() => {
+    if (showSavedIndicator) {
+      const timer = setTimeout(() => {
+        setShowSavedIndicator(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSavedIndicator]);
+
+  // Wrap onSaved to show indicator
+  const handleSaved = (moduleId?: string, updatedData?: any) => {
+    setLastSavedAt(new Date());
+    setShowSavedIndicator(true);
+    onSaved(moduleId, updatedData);
+  };
+
+  // Saved indicator component
+  const SavedIndicator = showSavedIndicator && lastSavedAt ? (
+    <div className="fixed top-20 right-6 z-50 bg-green-50 border border-green-200 rounded-lg px-4 py-2 shadow-lg flex items-center gap-2 animate-fade-in">
+      <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+      <span className="text-sm font-medium text-green-800">
+        Saved {lastSavedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+      </span>
+    </div>
+  ) : null;
+
   if (moduleInstance.module_key === 'A1_DOC_CONTROL') {
     return (
       <>
+        {SavedIndicator}
         <A1DocumentControlForm
           moduleInstance={moduleInstance}
           document={document}
-          onSaved={onSaved}
+          onSaved={handleSaved}
         />
         {document?.id && moduleInstance?.id && (
           <div className="px-6 pb-6 max-w-5xl mx-auto">
@@ -131,270 +164,433 @@ export default function ModuleRenderer({
 
   if (moduleInstance.module_key === 'A2_BUILDING_PROFILE') {
     return (
-      <A2BuildingProfileForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <A2BuildingProfileForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'A3_PERSONS_AT_RISK') {
     return (
-      <A3PersonsAtRiskForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <A3PersonsAtRiskForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'A4_MANAGEMENT_CONTROLS') {
     return (
-      <A4ManagementControlsForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <A4ManagementControlsForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'A5_EMERGENCY_ARRANGEMENTS') {
     return (
-      <A5EmergencyArrangementsForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <A5EmergencyArrangementsForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FRA_1_HAZARDS') {
     return (
-      <FRA1FireHazardsForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FRA1FireHazardsForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FRA_2_ESCAPE_ASIS') {
     return (
-      <FRA2MeansOfEscapeForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FRA2MeansOfEscapeForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FRA_3_PROTECTION_ASIS') {
     return (
-      <FRA3FireProtectionForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FRA3FireProtectionForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FRA_4_SIGNIFICANT_FINDINGS') {
     return (
-      <FRA4SignificantFindingsForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FRA4SignificantFindingsForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FRA_5_EXTERNAL_FIRE_SPREAD') {
     return (
-      <FRA5ExternalFireSpreadForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FRA5ExternalFireSpreadForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_1_REG_BASIS') {
     return (
-      <FSD1RegulatoryBasisForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD1RegulatoryBasisForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_2_EVAC_STRATEGY') {
     return (
-      <FSD2EvacuationStrategyForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD2EvacuationStrategyForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_3_ESCAPE_DESIGN') {
     return (
-      <FSD3MeansOfEscapeDesignForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD3MeansOfEscapeDesignForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_4_PASSIVE_PROTECTION') {
     return (
-      <FSD4PassiveFireProtectionForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD4PassiveFireProtectionForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_5_ACTIVE_SYSTEMS') {
     return (
-      <FSD5ActiveFireSystemsDesignForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD5ActiveFireSystemsDesignForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_6_FRS_ACCESS') {
     return (
-      <FSD6FireServiceAccessForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD6FireServiceAccessForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_7_DRAWINGS') {
     return (
-      <FSD7DrawingsIndexForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD7DrawingsIndexForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_8_SMOKE_CONTROL') {
     return (
-      <FSD8SmokeControlForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD8SmokeControlForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'FSD_9_CONSTRUCTION_PHASE') {
     return (
-      <FSD9ConstructionPhaseFireSafetyForm
-        moduleInstance={moduleInstance}
-        document={document}
-        onSaved={onSaved}
-      />
+      <>
+        {SavedIndicator}
+        <FSD9ConstructionPhaseFireSafetyForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
     );
   }
 
   if (moduleInstance.module_key === 'RISK_ENGINEERING') {
-    // Route to RE-11 Summary & Key Findings (single authoritative summary view)
-    return <RE14DraftOutputsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE14DraftOutputsForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_01_DOC_CONTROL') {
-    return <RE01DocumentControlForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE01DocumentControlForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_02_CONSTRUCTION') {
-    return <RE02ConstructionForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE02ConstructionForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_03_OCCUPANCY') {
-    return <RE03OccupancyForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE03OccupancyForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_06_FIRE_PROTECTION') {
-    return <RE06FireProtectionForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE06FireProtectionForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_07_NATURAL_HAZARDS') {
-    return <RE07ExposuresForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE07ExposuresForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_08_UTILITIES') {
-    return <RE08UtilitiesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE08UtilitiesForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_09_MANAGEMENT') {
-    return <RE09ManagementForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE09ManagementForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_10_PROCESS_RISK') {
-    return <RE10ProcessRiskForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE10ProcessRiskForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_10_SITE_PHOTOS') {
-    return <RE10SitePhotosForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE10SitePhotosForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_12_LOSS_VALUES') {
-    return <RE12LossValuesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE12LossValuesForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_13_RECOMMENDATIONS') {
-    return <RE09RecommendationsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE09RecommendationsForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'RE_14_DRAFT_OUTPUTS') {
-    return <RE14DraftOutputsForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <RE14DraftOutputsForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'DSEAR_1_DANGEROUS_SUBSTANCES') {
-    return <DSEAR1DangerousSubstancesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <DSEAR1DangerousSubstancesForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'DSEAR_2_PROCESS_RELEASES') {
-    return <DSEAR2ProcessReleasesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <DSEAR2ProcessReleasesForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'DSEAR_3_HAZARDOUS_AREA_CLASSIFICATION') {
-    return <DSEAR3HazardousAreaClassificationForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <DSEAR3HazardousAreaClassificationForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'DSEAR_4_IGNITION_SOURCES') {
-    return <DSEAR4IgnitionSourcesForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <DSEAR4IgnitionSourcesForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'DSEAR_5_EXPLOSION_PROTECTION') {
-    return <DSEAR5ExplosionProtectionForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <DSEAR5ExplosionProtectionForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'DSEAR_6_RISK_ASSESSMENT') {
-    return <DSEAR6RiskAssessmentTableForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <DSEAR6RiskAssessmentTableForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'DSEAR_10_HIERARCHY_OF_CONTROL') {
-    return <DSEAR10HierarchyControlForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <DSEAR10HierarchyControlForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
   if (moduleInstance.module_key === 'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE') {
-    return <DSEAR11ExplosionEmergencyResponseForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+    return (
+      <>
+        {SavedIndicator}
+        <DSEAR11ExplosionEmergencyResponseForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+      </>
+    );
   }
 
-  return <PlaceholderModuleForm moduleInstance={moduleInstance} document={document} onSaved={onSaved} />;
+  return (
+    <>
+      {SavedIndicator}
+      <PlaceholderModuleForm moduleInstance={moduleInstance} document={document} onSaved={handleSaved} />
+    </>
+  );
 }
 
 function PlaceholderModuleForm({

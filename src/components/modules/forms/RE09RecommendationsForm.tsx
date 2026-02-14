@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 import FloatingSaveBar from './FloatingSaveBar';
 import FeedbackModal from '../../FeedbackModal';
 import ConfirmDialog from '../../ConfirmDialog';
 import AddFromLibraryModal from '../../AddFromLibraryModal';
-import { Plus, X, Upload, Image as ImageIcon, AlertTriangle, Filter, Table2, FileText, Library } from 'lucide-react';
+import { Plus, X, Upload, Image as ImageIcon, AlertTriangle, Filter, Table2, FileText, Library, BookmarkPlus } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -100,12 +101,14 @@ export default function RE09RecommendationsForm({
   document,
   onSaved,
 }: RE09RecommendationsFormProps) {
+  const { profile } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingPhotoForRec, setUploadingPhotoForRec] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('editor');
+  const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
 
@@ -250,6 +253,53 @@ export default function RE09RecommendationsForm({
       message: 'Recommendation template has been added. You can now customize it for this assessment.',
       autoClose: true,
     });
+  };
+
+  const saveToLibrary = async (recId: string) => {
+    setSavingToLibrary(recId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-recommendation-to-library`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ recommendation_id: recId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (result.isDuplicate) {
+          setFeedback({
+            type: 'warning',
+            message: 'This recommendation already exists in the library',
+            autoClose: true,
+          });
+        } else {
+          throw new Error(result.error || 'Failed to save to library');
+        }
+      } else {
+        setFeedback({
+          type: 'success',
+          message: 'Recommendation saved to library successfully!',
+          autoClose: true,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error saving to library:', error);
+      setFeedback({
+        type: 'error',
+        message: error.message || 'Failed to save recommendation to library',
+        autoClose: false,
+      });
+    } finally {
+      setSavingToLibrary(null);
+    }
   };
 
   const removeRecommendation = (id: string) => {
@@ -698,14 +748,28 @@ export default function RE09RecommendationsForm({
                       </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeRecommendation(rec.id)}
-                    className="text-red-600 hover:text-red-700 p-1"
-                    title="Delete recommendation"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {profile?.is_platform_admin && (
+                      <button
+                        type="button"
+                        onClick={() => saveToLibrary(rec.id)}
+                        disabled={savingToLibrary === rec.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Save this recommendation to the library for reuse"
+                      >
+                        <BookmarkPlus className="w-4 h-4" />
+                        {savingToLibrary === rec.id ? 'Saving...' : 'Save to Library'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeRecommendation(rec.id)}
+                      className="text-red-600 hover:text-red-700 p-1"
+                      title="Delete recommendation"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Title */}

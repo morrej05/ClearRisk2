@@ -45,6 +45,7 @@ export default function RE14DraftOutputsForm({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [executiveSummary, setExecutiveSummary] = useState('');
   const [executiveSummaryAi, setExecutiveSummaryAi] = useState('');
   const [industryKey, setIndustryKey] = useState<string | null>(null);
@@ -62,10 +63,13 @@ export default function RE14DraftOutputsForm({
   });
   const [occupancyMissing, setOccupancyMissing] = useState(false);
 
+  // Hydrate only when module ID changes, don't overwrite while user is editing
   useEffect(() => {
+    if (dirty) return; // Don't overwrite user edits
     setExecutiveSummary(moduleInstance.data?.executive_summary || '');
     setExecutiveSummaryAi(moduleInstance.data?.executive_summary_ai || '');
-  }, [moduleInstance]);
+    setDirty(false); // Reset dirty flag on module change
+  }, [moduleInstance.id]);
 
   useEffect(() => {
     async function loadSummaryData() {
@@ -157,6 +161,7 @@ export default function RE14DraftOutputsForm({
         .eq('id', moduleInstance.id);
 
       if (error) throw error;
+      setDirty(false); // Reset dirty flag after successful save
       onSaved();
     } catch (error) {
       console.error('Error saving executive summary:', error);
@@ -261,7 +266,10 @@ export default function RE14DraftOutputsForm({
         </div>
         <AutoExpandTextarea
           value={executiveSummary}
-          onChange={(e) => setExecutiveSummary(e.target.value)}
+          onChange={(e) => {
+            setExecutiveSummary(e.target.value);
+            setDirty(true);
+          }}
           placeholder="Enter executive summary here..."
           className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           minRows={6}

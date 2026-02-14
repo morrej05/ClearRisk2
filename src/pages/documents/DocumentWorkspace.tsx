@@ -167,6 +167,7 @@ export default function DocumentWorkspace() {
   const [document, setDocument] = useState<Document | null>(null);
   const [modules, setModules] = useState<ModuleInstance[]>([]);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+  const [selectedStable, setSelectedStable] = useState<ModuleInstance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [documentNotFound, setDocumentNotFound] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
@@ -485,17 +486,24 @@ const fetchModules = async () => {
     </button>
   );
 
-  const selectedModule = modules.find((m) => m.id === selectedModuleId);
-
-  // Debug logging for selectedModule changes
+  // Stabilize selected module - don't let it go null during refetch
   useEffect(() => {
-    if (import.meta.env.DEV && selectedModule) {
+    const found = modules.find((m) => m.id === selectedModuleId) ?? null;
+    if (found) {
+      setSelectedStable(found);
+    }
+    // If not found temporarily (refetch), keep previous selectedStable
+  }, [modules, selectedModuleId]);
+
+  // Debug logging for selectedStable changes
+  useEffect(() => {
+    if (import.meta.env.DEV && selectedStable) {
       console.debug('[DocumentWorkspace] render ModuleRenderer', {
-        selectedModuleId: selectedModule.id,
-        moduleKey: selectedModule.module_key,
+        selectedModuleId: selectedStable.id,
+        moduleKey: selectedStable.module_key,
       });
     }
-  }, [selectedModule]);
+  }, [selectedStable]);
 
   if (documentNotFound) {
     return (
@@ -753,16 +761,16 @@ return (
               />
             )}
 
-            {document.document_type === 'RE' && selectedModule?.module_key === 'RISK_ENGINEERING' && (
+            {document.document_type === 'RE' && selectedStable?.module_key === 'RISK_ENGINEERING' && (
               <div className="mb-6">
                 <OverallGradeWidget documentId={document.id} />
               </div>
             )}
 
-            {selectedModule ? (
+            {selectedStable ? (
               <ModuleRenderer
-                key={selectedModule.id}
-                moduleInstance={selectedModule}
+                key={selectedStable.id}
+                moduleInstance={selectedStable}
                 document={document}
                 onSaved={handleModuleSaved}
               />

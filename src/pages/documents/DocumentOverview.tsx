@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation } from 'react-rout
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getModuleName } from '../../lib/modules/moduleCatalog';
+import { getModuleName, sortModulesByOrder } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
@@ -177,11 +177,13 @@ export default function DocumentOverview() {
         .from('module_instances')
         .select('*')
         .eq('document_id', id)
-        .eq('organisation_id', organisation.id)
-        .order('created_at', { ascending: true });
+        .eq('organisation_id', organisation.id);
 
       if (error) throw error;
-      setModules(data || []);
+
+      // Sort modules by catalog order for consistent display
+      const sorted = sortModulesByOrder(data || []);
+      setModules(sorted as ModuleInstance[]);
     } catch (error) {
       console.error('Error fetching modules:', error);
     } finally {

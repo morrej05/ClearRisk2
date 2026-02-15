@@ -10,7 +10,7 @@ import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
 import { uploadDraftPdfAndSign, saveReModuleSelection, loadReModuleSelection, safeSlug } from '../../utils/draftPdf';
 import { saveAs } from 'file-saver';
 import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
-import { MODULE_CATALOG } from '../../lib/modules/moduleCatalog';
+import { getReModulesForDocument } from '../../lib/modules/moduleCatalog';
 
 type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED';
 type ReReportTab = 're_survey' | 're_lp';
@@ -33,7 +33,7 @@ export default function DocumentPreviewPage() {
 
   // RE-specific state
   const [reActiveTab, setReActiveTab] = useState<ReReportTab>('re_survey');
-  const [reAvailableModules, setReAvailableModules] = useState<string[]>([]);
+  const [reAvailableModules, setReAvailableModules] = useState<Array<{ code: string; title: string }>>([]);
   const [reSelectedModules, setReSelectedModules] = useState<string[]>([]);
 
   // Data for PDF generation
@@ -110,15 +110,8 @@ export default function DocumentPreviewPage() {
 
         // Setup modes/tabs based on document type
         if (doc.document_type === 'RE') {
-          // Load available RE modules
-          const reModules = Object.keys(MODULE_CATALOG).filter(
-            (key) => key.startsWith('RE_') && !MODULE_CATALOG[key].hidden
-          );
-          setReAvailableModules(reModules);
-
-          // Load saved module selection or default to all
-          const saved = await loadReModuleSelection(id);
-          setReSelectedModules(saved || reModules);
+          // We'll load canonical modules after we have module instances
+          // For now, just note that we need to handle RE
         } else {
           const modes = getAvailableOutputModes(doc);
           setAvailableModes(modes);
@@ -217,6 +210,18 @@ export default function DocumentPreviewPage() {
         setModuleInstances(modules);
         setEnrichedActions(actions);
         setActionRatings(ratings);
+
+        // Setup RE module selection if RE document
+        if (doc.document_type === 'RE') {
+          const canonicalModules = getReModulesForDocument(doc, modules);
+          setReAvailableModules(
+            canonicalModules.map(m => ({ code: m.code, title: m.title }))
+          );
+
+          // Load saved module selection or default to all
+          const saved = await loadReModuleSelection(id);
+          setReSelectedModules(saved || canonicalModules.map(m => m.code));
+        }
 
         setIsLoading(false);
       } catch (e: any) {
@@ -443,21 +448,20 @@ export default function DocumentPreviewPage() {
               <div className="p-4">
                 <h3 className="text-sm font-semibold text-neutral-900 mb-3">Included Modules</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {reAvailableModules.map((moduleKey) => {
-                    const module = MODULE_CATALOG[moduleKey];
-                    const isSelected = reSelectedModules.includes(moduleKey);
+                  {reAvailableModules.map((module) => {
+                    const isSelected = reSelectedModules.includes(module.code);
                     return (
                       <label
-                        key={moduleKey}
+                        key={module.code}
                         className="flex items-center gap-2 p-2 rounded hover:bg-neutral-50 cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => handleModuleToggle(moduleKey)}
+                          onChange={() => handleModuleToggle(module.code)}
                           className="w-4 h-4 text-blue-600 rounded"
                         />
-                        <span className="text-sm text-neutral-700">{module?.displayName || moduleKey}</span>
+                        <span className="text-sm text-neutral-700">{module.title}</span>
                       </label>
                     );
                   })}

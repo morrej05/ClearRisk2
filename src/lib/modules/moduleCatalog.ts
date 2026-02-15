@@ -231,3 +231,94 @@ export function getModuleKeysForDocType(docType: string): string[] {
     .sort((a, b) => (a[1].order ?? 999) - (b[1].order ?? 999))
     .map(([key]) => key);
 }
+
+/**
+ * Mapping from legacy module keys to canonical keys
+ * Used to normalize mismatched codes from database
+ */
+export const RE_MODULE_KEY_MAP: Record<string, string> = {
+  'RE_10_PROCESS_RISK': 'RE_10_SITE_PHOTOS',
+};
+
+/**
+ * Normalize a module key to its canonical form
+ */
+export function normalizeModuleKey(key: string): string {
+  return RE_MODULE_KEY_MAP[key] || key;
+}
+
+export interface CanonicalReModule {
+  code: string;
+  title: string;
+  order: number;
+  instanceId: string | null;
+  status: 'pending' | 'complete' | 'info_gap';
+}
+
+/**
+ * Get canonical RE modules for a document with status information
+ *
+ * @param document Document metadata
+ * @param moduleInstances Array of module instances from database
+ * @returns Ordered array of canonical RE modules with status
+ */
+export function getReModulesForDocument(
+  document: { document_type: string; enabled_modules?: string[] },
+  moduleInstances: Array<{
+    id: string;
+    module_key: string;
+    outcome: string | null;
+    completed_at: string | null;
+    updated_at: string;
+  }>
+): CanonicalReModule[] {
+  if (document.document_type !== 'RE') {
+    return [];
+  }
+
+  const expectedKeys = getModuleKeysForDocType('RE');
+  const instanceMap = new Map<string, {
+    id: string;
+    outcome: string | null;
+    completed_at: string | null;
+  }>();
+
+  // Build map of instances by canonical key
+  for (const instance of moduleInstances) {
+    const canonicalKey = normalizeModuleKey(instance.module_key);
+    instanceMap.set(canonicalKey, {
+      id: instance.id,
+      outcome: instance.outcome,
+      completed_at: instance.completed_at,
+    });
+  }
+
+  const result: CanonicalReModule[] = [];
+
+  for (const key of expectedKeys) {
+    const catalogEntry = MODULE_CATALOG[key];
+    if (!catalogEntry) continue;
+
+    const instance = instanceMap.get(key);
+
+    let status: 'pending' | 'complete' | 'info_gap' = 'pending';
+    if (instance) {
+      if (instance.outcome === 'info_gap') {
+        status = 'info_gap';
+      } else if (instance.outcome && instance.outcome !== 'info_gap') {
+        status = 'complete';
+      }
+    }
+
+    result.push({
+      code: key,
+      title: catalogEntry.name,
+      order: catalogEntry.order ?? 999,
+      instanceId: instance?.id || null,
+      status,
+    });
+  }
+
+  // Sort by order
+  return result.sort((a, b) => a.order - b.order);
+}

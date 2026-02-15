@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'reac
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck, Menu, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getModuleName, sortModulesByOrder, getModuleKeysForDocType } from '../../lib/modules/moduleCatalog';
+import { getModuleName, sortModulesByOrder, getModuleKeysForDocType, getReModulesForDocument } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
 import EditLockBanner from '../../components/EditLockBanner';
@@ -726,9 +726,11 @@ const fetchModules = async () => {
 
               const COMMON_MODULES = ['A1_DOC_CONTROL', 'A2_BUILDING_PROFILE', 'A3_PERSONS_AT_RISK'];
 
-              const reModules = modules.filter(
-  m => m.module_key.startsWith('RE_') || m.module_key === 'RISK_ENGINEERING'
-);
+              // Get canonical RE modules and match with instances
+              const canonicalReModules = document ? getReModulesForDocument(document, modules) : [];
+              const reModules = canonicalReModules
+                .map(canonical => modules.find(m => m.id === canonical.instanceId))
+                .filter((m): m is ModuleInstance => m !== undefined);
 
               if (isCombined) {
                 const sharedModules = modules.filter(m => COMMON_MODULES.includes(m.module_key));

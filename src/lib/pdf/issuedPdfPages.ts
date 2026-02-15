@@ -149,12 +149,11 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
     version_number,
     created_at,
     summary_text,
-    user_profiles (
-      full_name
-    )
+    generated_by
   `)
   .eq('base_document_id', document.base_document_id)
   .order('version_number', { ascending: false });
+
 
 if (error) console.error('[Change summaries] load error', error);
 

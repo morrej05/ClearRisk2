@@ -7,6 +7,7 @@ import AddActionModal from '../../actions/AddActionModal';
 import InfoGapQuickActions from '../InfoGapQuickActions';
 import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 
 interface Document {
   id: string;
@@ -41,7 +42,7 @@ export default function FRA3FireProtectionForm({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
-  const [actionsRefreshKey, setActionsRefreshKey] = useState(0);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
 
   const [formData, setFormData] = useState({
     fire_alarm_present: moduleInstance.data.fire_alarm_present || 'unknown',
@@ -663,7 +664,6 @@ export default function FRA3FireProtectionForm({
           onActionCreated={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);
-            setActionsRefreshKey((prev) => prev + 1);
           }}
           defaultAction={quickActionTemplate?.action}
           defaultLikelihood={quickActionTemplate?.likelihood}

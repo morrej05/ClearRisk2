@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -13,6 +14,7 @@ interface Props { moduleInstance: ModuleInstance; document: Document; onSaved: (
 export default function DSEAR10HierarchyControlForm({ moduleInstance, document, onSaved }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
   const [substitutionConsidered, setSubstitutionConsidered] = useState(moduleInstance.data.substitution_considered || '');
   const [eliminationPossible, setEliminationPossible] = useState(moduleInstance.data.elimination_possible || '');
   const [engineeringControls, setEngineeringControls] = useState(moduleInstance.data.engineering_controls || '');

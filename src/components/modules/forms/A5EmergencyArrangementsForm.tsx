@@ -7,6 +7,7 @@ import AddActionModal from '../../actions/AddActionModal';
 import InfoGapQuickActions from '../InfoGapQuickActions';
 import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 
 interface Document {
   id: string;
@@ -41,7 +42,7 @@ export default function A5EmergencyArrangementsForm({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
-  const [actionsRefreshKey, setActionsRefreshKey] = useState(0);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
 
   const [formData, setFormData] = useState({
     emergency_plan_exists: moduleInstance.data.emergency_plan_exists || 'unknown',
@@ -535,7 +536,6 @@ export default function A5EmergencyArrangementsForm({
           onActionCreated={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);
-            setActionsRefreshKey((prev) => prev + 1);
           }}
           defaultAction={quickActionTemplate?.action}
           defaultLikelihood={quickActionTemplate?.likelihood}

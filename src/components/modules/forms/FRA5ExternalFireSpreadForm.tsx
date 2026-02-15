@@ -5,6 +5,7 @@ import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 
 interface Document {
   id: string;
@@ -39,6 +40,7 @@ export default function FRA5ExternalFireSpreadForm({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
 
   const [formData, setFormData] = useState({
     external_wall_system_applicable: moduleInstance.data.external_wall_system_applicable || 'unknown',

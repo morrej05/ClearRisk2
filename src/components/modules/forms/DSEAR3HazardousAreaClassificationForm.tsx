@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -45,6 +46,7 @@ export default function DSEAR3HazardousAreaClassificationForm({
 }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
 
   const [zones, setZones] = useState<Zone[]>(
     moduleInstance.data.zones?.length > 0 ? moduleInstance.data.zones : [emptyZone()]

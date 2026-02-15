@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -57,6 +58,7 @@ export default function DSEAR1DangerousSubstancesForm({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
 
   const [substances, setSubstances] = useState<Substance[]>(
     moduleInstance.data.substances?.length > 0 ? moduleInstance.data.substances : [emptySubstance()]

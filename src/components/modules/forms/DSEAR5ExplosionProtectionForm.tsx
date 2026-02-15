@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -31,6 +32,7 @@ export default function DSEAR5ExplosionProtectionForm({
 }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
 
   const [preventionMeasures, setPreventionMeasures] = useState(moduleInstance.data.prevention_measures || '');
   const [explosionVenting, setExplosionVenting] = useState(moduleInstance.data.explosion_venting || '');

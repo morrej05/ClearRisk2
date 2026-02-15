@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -13,6 +14,7 @@ interface Props { moduleInstance: ModuleInstance; document: Document; onSaved: (
 export default function DSEAR11ExplosionEmergencyResponseForm({ moduleInstance, document, onSaved }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
   const [scenarios, setScenarios] = useState(moduleInstance.data.explosion_scenarios_considered || '');
   const [shutdownProcs, setShutdownProcs] = useState(moduleInstance.data.emergency_shutdown_procedures || '');
   const [isolation, setIsolation] = useState(moduleInstance.data.isolation_arrangements || '');

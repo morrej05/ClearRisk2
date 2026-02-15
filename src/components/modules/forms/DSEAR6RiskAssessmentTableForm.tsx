@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
@@ -26,6 +27,7 @@ const emptyRiskRow = (): RiskRow => ({ activity: '', hazard: '', persons_at_risk
 export default function DSEAR6RiskAssessmentTableForm({ moduleInstance, document, onSaved }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
   const [riskRows, setRiskRows] = useState<RiskRow[]>(moduleInstance.data.risk_rows?.length > 0 ? moduleInstance.data.risk_rows : [emptyRiskRow()]);
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');

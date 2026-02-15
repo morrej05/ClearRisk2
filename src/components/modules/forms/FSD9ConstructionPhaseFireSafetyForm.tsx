@@ -5,6 +5,7 @@ import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
 
 interface Document {
   id: string;
@@ -36,6 +37,7 @@ export default function FSD9ConstructionPhaseFireSafetyForm({
   onSaved,
 }: FSD9ConstructionPhaseFireSafetyFormProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);

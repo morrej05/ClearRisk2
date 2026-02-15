@@ -14,6 +14,12 @@ import {
   type FraExecutiveOutcome,
 } from '../modules/fra/severityEngine';
 import {
+  calculateSCS,
+  deriveFireProtectionReliance,
+  type FraBuildingComplexityInput,
+  type FireProtectionModuleData,
+} from '../modules/fra/complexityEngine';
+import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
   MARGIN,
@@ -71,6 +77,7 @@ interface Action {
   recommended_action: string;
   priority_band: string;
   status: string;
+  finding_category?: string | null;
   trigger_id?: string | null;
   trigger_text?: string | null;
   owner_user_id: string | null;
@@ -693,6 +700,111 @@ function drawExecutiveSummary(
 
   yPosition -= 30;
 
+  // Calculate SCS for top issues weighting (early calculation)
+  const buildingProfileEarly = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
+  const protectionModuleEarly = moduleInstances.find((m) => m.module_key === 'FRA_3_FIRE_PROTECTION');
+  const protectionDataEarly: FireProtectionModuleData = {
+    hasDetectionSystem: protectionModuleEarly?.data?.detection_system_present === true,
+    hasEmergencyLighting: protectionModuleEarly?.data?.emergency_lighting_present === true,
+    hasSuppressionSystem: protectionModuleEarly?.data?.suppression_system_present === true,
+    hasSmokeControl: protectionModuleEarly?.data?.smoke_control_present === true,
+    compartmentationCritical: protectionModuleEarly?.outcome === 'material_def',
+    engineeredEvacuationStrategy: protectionModuleEarly?.data?.engineered_strategy === true,
+  };
+  const fireProtectionRelianceEarly = deriveFireProtectionReliance(protectionDataEarly);
+  const scsInputEarly: FraBuildingComplexityInput = {
+    storeys: buildingProfileEarly?.data.number_of_storeys || null,
+    floorAreaM2: buildingProfileEarly?.data.floor_area_m2 || null,
+    sleepingRisk: buildingProfileEarly?.data.sleeping_risk || 'None',
+    layoutComplexity: buildingProfileEarly?.data.layout_complexity || 'Simple',
+    fireProtectionReliance: fireProtectionRelianceEarly,
+  };
+  const scsEarly = calculateSCS(scsInputEarly);
+
+  // Top Issues section with SCS-weighted sorting
+  if (openActions.length > 0) {
+    yPosition -= 10;
+    if (yPosition < MARGIN + 150) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText('Key Issues Requiring Attention:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 22;
+
+    // Sort actions with SCS weighting
+    const sortedTopActions = [...openActions].sort((a, b) => {
+      const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4 };
+      const aPriority = priorityOrder[a.priority_band as keyof typeof priorityOrder] || 5;
+      const bPriority = priorityOrder[b.priority_band as keyof typeof priorityOrder] || 5;
+
+      if (aPriority !== bPriority) return aPriority - bPriority;
+
+      // If same priority and SCS is High or VeryHigh, prefer critical categories
+      if (scsEarly.band === 'High' || scsEarly.band === 'VeryHigh') {
+        const criticalCategories = ['MeansOfEscape', 'DetectionAlarm', 'Compartmentation'];
+        const aIsCritical = criticalCategories.includes(a.finding_category || '');
+        const bIsCritical = criticalCategories.includes(b.finding_category || '');
+
+        if (aIsCritical && !bIsCritical) return -1;
+        if (!aIsCritical && bIsCritical) return 1;
+      }
+
+      return 0;
+    });
+
+    const topActions = sortedTopActions.slice(0, 3);
+
+    for (let i = 0; i < topActions.length; i++) {
+      const action = topActions[i];
+      const actionText = action.recommended_action || '(No action text)';
+      const truncatedText = actionText.length > 100 ? actionText.substring(0, 100) + '...' : actionText;
+
+      if (yPosition < MARGIN + 80) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      const priorityColor = getPriorityColor(action.priority_band);
+      page.drawRectangle({
+        x: MARGIN + 10,
+        y: yPosition - 2,
+        width: 30,
+        height: 12,
+        color: priorityColor,
+      });
+      page.drawText(action.priority_band, {
+        x: MARGIN + 15,
+        y: yPosition,
+        size: 9,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+      });
+
+      const issueLines = wrapText(truncatedText, CONTENT_WIDTH - 50, 10, font);
+      page.drawText(issueLines[0] || '', {
+        x: MARGIN + 50,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+
+      yPosition -= 20;
+    }
+
+    yPosition -= 10;
+  }
+
   const materialDefCount = moduleInstances.filter((m) => m.outcome === 'material_def').length;
   const infoGapCount = moduleInstances.filter((m) => m.outcome === 'info_gap').length;
 
@@ -721,6 +833,81 @@ function drawExecutiveSummary(
     font,
     color: infoGapCount > 0 ? rgb(0.6, 0.4, 0) : rgb(0, 0, 0),
   });
+
+  // Calculate and display Structural Complexity Score context
+  yPosition -= 30;
+  if (yPosition < MARGIN + 100) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+
+  // Derive fire protection reliance from modules
+  const protectionModule = moduleInstances.find((m) => m.module_key === 'FRA_3_FIRE_PROTECTION');
+  const protectionData: FireProtectionModuleData = {
+    hasDetectionSystem: protectionModule?.data?.detection_system_present === true,
+    hasEmergencyLighting: protectionModule?.data?.emergency_lighting_present === true,
+    hasSuppressionSystem: protectionModule?.data?.suppression_system_present === true,
+    hasSmokeControl: protectionModule?.data?.smoke_control_present === true,
+    compartmentationCritical: protectionModule?.outcome === 'material_def',
+    engineeredEvacuationStrategy: protectionModule?.data?.engineered_strategy === true,
+  };
+
+  const fireProtectionReliance = deriveFireProtectionReliance(protectionData);
+
+  // Build SCS input
+  const scsInput: FraBuildingComplexityInput = {
+    storeys: buildingProfile?.data.number_of_storeys || null,
+    floorAreaM2: buildingProfile?.data.floor_area_m2 || null,
+    sleepingRisk: buildingProfile?.data.sleeping_risk || 'None',
+    layoutComplexity: buildingProfile?.data.layout_complexity || 'Simple',
+    fireProtectionReliance,
+  };
+
+  const scs = calculateSCS(scsInput);
+
+  // Add complexity context paragraph based on SCS band
+  let complexityParagraph = '';
+  switch (scs.band) {
+    case 'VeryHigh':
+      complexityParagraph = 'The premises comprises a complex building with significant reliance on structural and active fire protection systems. Effective maintenance and management controls are critical.';
+      break;
+    case 'High':
+      complexityParagraph = 'The building presents structural and occupancy complexity which increases reliance on fire protection measures.';
+      break;
+    case 'Moderate':
+      complexityParagraph = 'The premises is of moderate complexity and requires structured management of fire safety systems.';
+      break;
+    case 'Low':
+    default:
+      complexityParagraph = 'The premises is of relatively straightforward layout and use.';
+  }
+
+  page.drawText('Building Complexity:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 20;
+  const complexityLines = wrapText(complexityParagraph, CONTENT_WIDTH, 11, font);
+  for (const line of complexityLines) {
+    if (yPosition < MARGIN + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 16;
+  }
 
   if (fra4Module.data.executive_summary) {
     yPosition -= 30;

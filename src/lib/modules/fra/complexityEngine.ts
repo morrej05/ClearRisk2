@@ -8,6 +8,11 @@ export interface FraBuildingComplexityInput {
   // "sleeping risk" is building/assessment-wide; keep it simple
   sleepingRisk?: "None" | "HMO" | "BlockOrHotel" | "Vulnerable";
   layoutComplexity?: "Simple" | "Moderate" | "Complex" | "MixedUse";
+  fireProtectionReliance?:
+    | "Basic"
+    | "DetectionAndEmergencyLighting"
+    | "CompartmentationCritical"
+    | "EngineeredSystemsCritical";
 }
 
 export interface FraSCSResult {
@@ -18,6 +23,7 @@ export interface FraSCSResult {
     area: number;
     sleeping: number;
     layout: number;
+    reliance: number;
   };
 }
 
@@ -65,18 +71,67 @@ function scoreLayout(l?: FraBuildingComplexityInput["layoutComplexity"]): number
   }
 }
 
+function scoreProtectionReliance(r?: FraBuildingComplexityInput["fireProtectionReliance"]): number {
+  switch (r) {
+    case "DetectionAndEmergencyLighting":
+      return 2;
+    case "CompartmentationCritical":
+      return 3;
+    case "EngineeredSystemsCritical":
+      return 4;
+    case "Basic":
+    default:
+      return 1;
+  }
+}
+
 export function calculateSCS(input: FraBuildingComplexityInput): FraSCSResult {
   const height = scoreHeight(input.storeys);
   const area = scoreArea(input.floorAreaM2);
   const sleeping = scoreSleeping(input.sleepingRisk);
   const layout = scoreLayout(input.layoutComplexity);
+  const reliance = scoreProtectionReliance(input.fireProtectionReliance);
 
-  const score = height + area + sleeping + layout;
+  const score = height + area + sleeping + layout + reliance;
 
   let band: FraComplexityBand = "Low";
-  if (score >= 16) band = "VeryHigh";
-  else if (score >= 12) band = "High";
-  else if (score >= 8) band = "Moderate";
+  if (score >= 18) band = "VeryHigh";
+  else if (score >= 14) band = "High";
+  else if (score >= 9) band = "Moderate";
 
-  return { score, band, breakdown: { height, area, sleeping, layout } };
+  return { score, band, breakdown: { height, area, sleeping, layout, reliance } };
+}
+
+export interface FireProtectionModuleData {
+  hasDetectionSystem?: boolean;
+  hasEmergencyLighting?: boolean;
+  hasSuppressionSystem?: boolean;
+  hasSmokeControl?: boolean;
+  compartmentationCritical?: boolean;
+  engineeredEvacuationStrategy?: boolean;
+}
+
+export function deriveFireProtectionReliance(
+  protectionData?: FireProtectionModuleData
+): FraBuildingComplexityInput["fireProtectionReliance"] {
+  if (!protectionData) return "Basic";
+
+  const hasEngineered =
+    protectionData.hasSuppressionSystem ||
+    protectionData.hasSmokeControl ||
+    protectionData.engineeredEvacuationStrategy;
+
+  if (hasEngineered) {
+    return "EngineeredSystemsCritical";
+  }
+
+  if (protectionData.compartmentationCritical) {
+    return "CompartmentationCritical";
+  }
+
+  if (protectionData.hasDetectionSystem && protectionData.hasEmergencyLighting) {
+    return "DetectionAndEmergencyLighting";
+  }
+
+  return "Basic";
 }

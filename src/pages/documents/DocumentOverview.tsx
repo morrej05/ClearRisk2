@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle, Circle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName, getModuleNavigationPath as getModulePath, getReModulesForDocument } from '../../lib/modules/moduleCatalog';
+import { buildModuleSections, getModuleCode, getModuleDisplayName, isDerivedModule } from '../../lib/modules/moduleDisplay';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
@@ -1022,41 +1023,70 @@ try {
               <p className="text-neutral-600">No modules found for this document</p>
             </div>
           ) : (
-            <div className="divide-y divide-neutral-200">
-              {modules.map((module) => (
-                <div
-                  key={module.id}
-                  className="px-6 py-4 hover:bg-neutral-50 transition-colors cursor-pointer"
-                  onClick={() => {
-                    // Don't save here - workspace will save when loaded
-                    navigate(`/documents/${id}/workspace?m=${module.id}`);
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="flex-shrink-0">
-                        {module.completed_at ? (
-                          <CheckCircle className="w-6 h-6 text-green-600" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full border-2 border-neutral-300" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-neutral-900">
-                          {getModuleName(module.module_key)}
-                        </p>
-                        {module.completed_at && (
-                          <p className="text-xs text-neutral-500 mt-0.5">
-                            Completed {formatDate(module.completed_at)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant={getOutcomeBadgeVariant(module.outcome)}>
-                        {getOutcomeLabel(module.outcome)}
-                      </Badge>
-                    </div>
+            <div>
+              {buildModuleSections(modules).map((section) => (
+                <div key={section.key}>
+                  {/* Section Header */}
+                  <div className="px-6 py-3 bg-neutral-50 border-b border-neutral-200">
+                    <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                      {section.label}
+                    </h3>
+                  </div>
+
+                  {/* Section Modules */}
+                  <div className="divide-y divide-neutral-200">
+                    {section.modules.map((module) => {
+                      const isDerived = isDerivedModule(module.module_key);
+
+                      return (
+                        <div
+                          key={module.id}
+                          className="px-6 py-3.5 hover:bg-neutral-50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            navigate(`/documents/${id}/workspace?m=${module.id}`);
+                          }}
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            {/* Left: Icon + Name */}
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="flex-shrink-0">
+                                {!isDerived && module.outcome && module.outcome !== 'info_gap' ? (
+                                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                                ) : !isDerived && module.outcome === 'info_gap' ? (
+                                  <AlertCircle className="w-5 h-5 text-blue-600" />
+                                ) : !isDerived ? (
+                                  <Circle className="w-5 h-5 text-neutral-300" />
+                                ) : (
+                                  <div className="w-5 h-5" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-neutral-900">
+                                  {getModuleDisplayName(module.module_key)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Right: Badges */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {isDerived && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium tracking-wide rounded-md bg-neutral-50 text-neutral-500 border border-neutral-200">
+                                  Auto
+                                </span>
+                              )}
+                              {!isDerived && module.outcome && (
+                                <Badge variant={getOutcomeBadgeVariant(module.outcome)} className="text-xs">
+                                  {getOutcomeLabel(module.outcome)}
+                                </Badge>
+                              )}
+                              <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-semibold tracking-wide rounded-md bg-neutral-100 text-neutral-600 border border-neutral-200">
+                                {getModuleCode(module.module_key)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

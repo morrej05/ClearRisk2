@@ -1,12 +1,11 @@
 import { CheckCircle2, Circle, AlertCircle, FileText, X } from 'lucide-react';
-import { getModuleName, MODULE_CATALOG } from '../../lib/modules/moduleCatalog';
-
-interface ModuleInstance {
-  id: string;
-  module_key: string;
-  outcome: string | null;
-  completed_at: string | null;
-}
+import {
+  buildModuleSections,
+  getModuleCode,
+  getModuleDisplayName,
+  isDerivedModule,
+  type ModuleInstance,
+} from '../../lib/modules/moduleDisplay';
 
 interface ModuleSidebarProps {
   modules: ModuleInstance[];
@@ -25,40 +24,6 @@ export default function ModuleSidebar({
   isMobileMenuOpen,
   onCloseMobileMenu,
 }: ModuleSidebarProps) {
-  const RE_BADGE_OVERRIDE: Record<string, string> = {
-    'RE_06_FIRE_PROTECTION': 'RE-04',
-    'RE_07_NATURAL_HAZARDS': 'RE-05',
-    'RE_08_UTILITIES': 'RE-06',
-    'RE_09_MANAGEMENT': 'RE-07',
-    'RE_12_LOSS_VALUES': 'RE-08',
-    'RE_13_RECOMMENDATIONS': 'RE-09',
-    'RE_10_SITE_PHOTOS': 'RE-10',
-  };
-
-  const getModuleCode = (module: ModuleInstance): string => {
-    if (module.module_key === 'RISK_ENGINEERING') return 'RE-00';
-
-    if (RE_BADGE_OVERRIDE[module.module_key]) {
-      return RE_BADGE_OVERRIDE[module.module_key];
-    }
-
-    const moduleCode = getModuleName(module.module_key).split(' ')[0];
-    return moduleCode.replace(/[–-]$/, '');
-  };
-
-  const getModuleDisplayName = (moduleKey: string): string => {
-    const fullName = getModuleName(moduleKey)
-      .replace(/^([A-Z]+-\d+|A\d+|RE-\d+)\s*[–-]\s*/u, '')
-      .replace(/\(As-Is\)/gi, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-
-    return fullName.charAt(0).toUpperCase() + fullName.slice(1);
-  };
-
-  const getModuleOrder = (moduleKey: string): number => MODULE_CATALOG[moduleKey]?.order ?? 999;
-
-  const sortByOrder = (items: ModuleInstance[]) => [...items].sort((a, b) => getModuleOrder(a.module_key) - getModuleOrder(b.module_key));
 
   const getOutcomeColor = (outcome: string | null) => {
     switch (outcome) {
@@ -85,10 +50,6 @@ export default function ModuleSidebar({
       return selectedModuleKey === module.module_key;
     }
     return false;
-  };
-
-  const isDerivedModule = (moduleKey: string): boolean => {
-    return MODULE_CATALOG[moduleKey]?.type === 'derived';
   };
 
   const ModuleNavItem = ({ module }: { module: ModuleInstance }) => {
@@ -128,7 +89,7 @@ export default function ModuleSidebar({
                 </span>
               )}
               <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-semibold tracking-wide rounded-md bg-neutral-100 text-neutral-600 border border-neutral-200">
-                {getModuleCode(module)}
+                {getModuleCode(module.module_key)}
               </span>
             </div>
           </div>
@@ -163,90 +124,7 @@ export default function ModuleSidebar({
     );
   };
 
-  const CORE_MODULE_KEYS = new Set(['A1_DOC_CONTROL', 'A2_BUILDING_PROFILE', 'A3_PERSONS_AT_RISK', 'A7_REVIEW_ASSURANCE']);
-  const FRA_ADDITIONAL_A_KEYS = new Set(['A4_MANAGEMENT_CONTROLS', 'A5_EMERGENCY_ARRANGEMENTS']);
-
-  const sortFraModules = (fraModules: ModuleInstance[]): ModuleInstance[] => {
-    const FRA_PREMIUM_ORDER = [
-      'FRA_1_HAZARDS',
-      'FRA_2_ESCAPE_ASIS',
-      'FRA_3_ACTIVE_SYSTEMS',
-      'FRA_4_PASSIVE_PROTECTION',
-      'FRA_8_FIREFIGHTING_EQUIPMENT',
-      'FRA_5_EXTERNAL_FIRE_SPREAD',
-      'FRA_6_MANAGEMENT_SYSTEMS',
-      'FRA_7_EMERGENCY_ARRANGEMENTS',
-      'FRA_90_SIGNIFICANT_FINDINGS',
-    ];
-
-    const orderMap = new Map(FRA_PREMIUM_ORDER.map((key, idx) => [key, idx]));
-
-    return [...fraModules].sort((a, b) => {
-      const orderA = orderMap.get(a.module_key) ?? 999;
-      const orderB = orderMap.get(b.module_key) ?? 999;
-      return orderA - orderB;
-    });
-  };
-
-  const filterFraModules = (fraModules: ModuleInstance[]): ModuleInstance[] => {
-    const moduleKeys = new Set(fraModules.map(m => m.module_key));
-    const hasNewSplitModules =
-      moduleKeys.has('FRA_3_ACTIVE_SYSTEMS') ||
-      moduleKeys.has('FRA_4_PASSIVE_PROTECTION') ||
-      moduleKeys.has('FRA_8_FIREFIGHTING_EQUIPMENT');
-
-    if (hasNewSplitModules) {
-      return fraModules.filter(m => m.module_key !== 'FRA_3_PROTECTION_ASIS');
-    }
-
-    return fraModules;
-  };
-
-  const fraModulesRaw = modules.filter((m) => m.module_key.startsWith('FRA_') || FRA_ADDITIONAL_A_KEYS.has(m.module_key));
-  const fraModulesFiltered = filterFraModules(fraModulesRaw);
-  const fraModulesSorted = sortFraModules(fraModulesFiltered);
-
-  const sections = [
-    {
-      key: 'core',
-      label: 'Core',
-      modules: sortByOrder(modules.filter((m) => CORE_MODULE_KEYS.has(m.module_key))),
-    },
-    {
-      key: 'fra',
-      label: 'Fire Risk Assessment',
-      modules: fraModulesSorted,
-    },
-    {
-      key: 'fsd',
-      label: 'Fire Strategy Design',
-      modules: sortByOrder(modules.filter((m) => m.module_key.startsWith('FSD_'))),
-    },
-    {
-      key: 'dsear',
-      label: 'Explosive Atmospheres',
-      modules: sortByOrder(modules.filter((m) => m.module_key.startsWith('DSEAR_'))),
-    },
-    {
-      key: 're',
-      label: 'Risk Engineering',
-      modules: sortByOrder(modules.filter((m) => m.module_key.startsWith('RE_') || m.module_key === 'RISK_ENGINEERING')),
-    },
-    {
-      key: 'other',
-      label: 'Additional',
-      modules: sortByOrder(modules.filter((m) => {
-        const key = m.module_key;
-        return !CORE_MODULE_KEYS.has(key)
-          && !FRA_ADDITIONAL_A_KEYS.has(key)
-          && !key.startsWith('FRA_')
-          && !key.startsWith('FSD_')
-          && !key.startsWith('DSEAR_')
-          && !key.startsWith('RE_')
-          && key !== 'RISK_ENGINEERING';
-      })),
-    },
-  ].filter((section) => section.modules.length > 0);
+  const sections = buildModuleSections(modules);
 
   return (
     <>

@@ -280,6 +280,11 @@ export default function DocumentPreviewPage() {
           filenameBase: safeSlug(document.title || 'document'),
           pdfBytes,
         });
+console.log('PDF ORG DEBUG:', {
+  id: organisation?.id,
+  name: organisation?.name,
+  branding_logo_path: organisation?.branding_logo_path
+});
 
         setSignedUrl(result.signedUrl);
         setDraftPath(result.path);

@@ -190,22 +190,25 @@ export default function OrganisationBranding() {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-org-logo`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ organisation_id: organisationId }),
-        }
-      );
+  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-org-logo`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: formData,
+  }
+);
 
-      const result = await response.json();
+// 👇 Put this RIGHT HERE (immediately under the fetch)
+const text = await response.text();
+console.log('[Logo Upload] status:', response.status);
+console.log('[Logo Upload] response body:', text);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Delete failed');
-      }
+if (!response.ok) {
+  throw new Error(`Upload failed (${response.status}): ${text}`);
+}
 
       setSuccess('Logo removed successfully');
       setLogoUrl(null);

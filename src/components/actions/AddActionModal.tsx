@@ -3,6 +3,13 @@ import { X, AlertTriangle, Upload, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadEvidenceFile, createAttachmentRow } from '../../lib/supabase/attachments';
+import {
+  deriveSeverityTier,
+  mapTierToPriority,
+  type FraFindingCategory,
+  type FraActionInput,
+  type FraContext,
+} from '../../lib/modules/fra/severityEngine';
 
 interface AddActionModalProps {
   documentId: string;
@@ -42,21 +49,53 @@ export default function AddActionModal({
 
   const [formData, setFormData] = useState({
     recommendedAction: defaultAction,
-    likelihood: defaultLikelihood,
-    impact: defaultImpact,
+    category: 'Other' as FraFindingCategory,
+    finalExitLocked: false,
+    finalExitObstructed: false,
+    noFireDetection: false,
+    detectionInadequateCoverage: false,
+    noEmergencyLighting: false,
+    seriousCompartmentationFailure: false,
+    singleStairCompromised: false,
+    highRiskRoomToEscapeRoute: false,
+    noFraEvidenceOrReview: false,
     timescale: 'next_review',
     overrideJustification: '',
     targetDate: '',
+    escalateToP1: false,
+    escalationJustification: '',
   });
 
-  const score = formData.likelihood * formData.impact;
-
-  const getPriorityBand = (score: number): string => {
-    if (score >= 20) return 'P1';
-    if (score >= 12) return 'P2';
-    if (score >= 6) return 'P3';
-    return 'P4';
+  // Build FRA context - for now, default to NonSleeping with 2 storeys
+  // In a real implementation, fetch this from document/building profile
+  const fraContext: FraContext = {
+    occupancyRisk: 'NonSleeping',
+    storeys: 2,
   };
+
+  // Build action input for severity engine
+  const actionInput: FraActionInput = {
+    category: formData.category,
+    finalExitLocked: formData.finalExitLocked,
+    finalExitObstructed: formData.finalExitObstructed,
+    noFireDetection: formData.noFireDetection,
+    detectionInadequateCoverage: formData.detectionInadequateCoverage,
+    noEmergencyLighting: formData.noEmergencyLighting,
+    seriousCompartmentationFailure: formData.seriousCompartmentationFailure,
+    singleStairCompromised: formData.singleStairCompromised,
+    highRiskRoomToEscapeRoute: formData.highRiskRoomToEscapeRoute,
+    noFraEvidenceOrReview: formData.noFraEvidenceOrReview,
+    assessorMarkedCritical: formData.escalateToP1,
+  };
+
+  // Derive priority from severity engine
+  const severityTier = deriveSeverityTier(actionInput, fraContext);
+  let priorityBand = mapTierToPriority(severityTier);
+
+  // Allow manual escalation to P1 with justification
+  if (formData.escalateToP1) {
+    priorityBand = 'P1';
+  }
 
   const getSuggestedTimescale = (priorityBand: string): string => {
     switch (priorityBand) {
@@ -73,7 +112,6 @@ export default function AddActionModal({
     }
   };
 
-  const priorityBand = getPriorityBand(score);
   const suggestedTimescale = getSuggestedTimescale(priorityBand);
   const isTimescaleOverride = formData.timescale !== suggestedTimescale;
 
@@ -102,6 +140,11 @@ export default function AddActionModal({
 
     if (!formData.recommendedAction.trim()) {
       alert('Please enter a recommended action.');
+      return;
+    }
+
+    if (formData.escalateToP1 && !formData.escalationJustification.trim()) {
+      alert('Please provide a justification for escalating this action to P1.');
       return;
     }
 
@@ -167,10 +210,15 @@ export default function AddActionModal({
         recommended_action: formData.recommendedAction.trim(),
         status: 'open',
         priority_band: priorityBand,
+        severity_tier: severityTier,
+        finding_category: formData.category,
         timescale: formData.timescale,
         target_date: targetDate,
         override_justification: isTimescaleOverride
           ? formData.overrideJustification.trim()
+          : null,
+        escalation_justification: formData.escalateToP1
+          ? formData.escalationJustification.trim()
           : null,
         source: source,
       };
@@ -182,22 +230,6 @@ export default function AddActionModal({
         .single();
 
       if (actionError) throw actionError;
-
-      const ratingData = {
-        action_id: action.id,
-        likelihood: formData.likelihood,
-        impact: formData.impact,
-        score: score,
-        rated_by_user_id: user.id,
-        rated_at: new Date().toISOString(),
-        rating_basis: null,
-      };
-
-      const { error: ratingError } = await supabase
-        .from('action_ratings')
-        .insert([ratingData]);
-
-      if (ratingError) throw ratingError;
 
       setCreatedActionId(action.id);
       setShowAttachmentPrompt(true);
@@ -331,56 +363,137 @@ export default function AddActionModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Likelihood (L) <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={formData.likelihood}
-                onChange={(e) =>
-                  setFormData({ ...formData, likelihood: parseInt(e.target.value) })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-                required
-              >
-                <option value={1}>1 - Very Unlikely</option>
-                <option value={2}>2 - Unlikely</option>
-                <option value={3}>3 - Possible</option>
-                <option value={4}>4 - Likely</option>
-                <option value={5}>5 - Very Likely</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Finding Category <span className="text-red-600">*</span>
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value as FraFindingCategory })
+              }
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              required
+            >
+              <option value="MeansOfEscape">Means of Escape</option>
+              <option value="DetectionAlarm">Detection & Alarm</option>
+              <option value="EmergencyLighting">Emergency Lighting</option>
+              <option value="Compartmentation">Compartmentation</option>
+              <option value="FireDoors">Fire Doors</option>
+              <option value="FireFighting">Fire Fighting Equipment</option>
+              <option value="Management">Management & Procedures</option>
+              <option value="Housekeeping">Housekeeping</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Impact (I) <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={formData.impact}
-                onChange={(e) =>
-                  setFormData({ ...formData, impact: parseInt(e.target.value) })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-                required
-              >
-                <option value={1}>1 - Negligible</option>
-                <option value={2}>2 - Minor</option>
-                <option value={3}>3 - Moderate</option>
-                <option value={4}>4 - Major</option>
-                <option value={5}>5 - Catastrophic</option>
-              </select>
+          <div className="border border-neutral-200 rounded-lg p-4">
+            <label className="block text-sm font-medium text-neutral-700 mb-3">
+              Critical Triggers (check if applicable)
+            </label>
+            <div className="space-y-2">
+              {(formData.category === 'MeansOfEscape' || formData.category === 'Other') && (
+                <>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.finalExitLocked}
+                      onChange={(e) => setFormData({ ...formData, finalExitLocked: e.target.checked })}
+                      className="mt-1"
+                    />
+                    <span className="text-sm text-neutral-700">Final exit locked / secured</span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.finalExitObstructed}
+                      onChange={(e) => setFormData({ ...formData, finalExitObstructed: e.target.checked })}
+                      className="mt-1"
+                    />
+                    <span className="text-sm text-neutral-700">Final exit obstructed</span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.singleStairCompromised}
+                      onChange={(e) => setFormData({ ...formData, singleStairCompromised: e.target.checked })}
+                      className="mt-1"
+                    />
+                    <span className="text-sm text-neutral-700">Single stair compromised (multi-storey)</span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.highRiskRoomToEscapeRoute}
+                      onChange={(e) => setFormData({ ...formData, highRiskRoomToEscapeRoute: e.target.checked })}
+                      className="mt-1"
+                    />
+                    <span className="text-sm text-neutral-700">High-risk room opens onto escape route</span>
+                  </label>
+                </>
+              )}
+              {(formData.category === 'DetectionAlarm' || formData.category === 'Other') && (
+                <>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.noFireDetection}
+                      onChange={(e) => setFormData({ ...formData, noFireDetection: e.target.checked })}
+                      className="mt-1"
+                    />
+                    <span className="text-sm text-neutral-700">No fire detection system present</span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.detectionInadequateCoverage}
+                      onChange={(e) => setFormData({ ...formData, detectionInadequateCoverage: e.target.checked })}
+                      className="mt-1"
+                    />
+                    <span className="text-sm text-neutral-700">Detection coverage inadequate</span>
+                  </label>
+                </>
+              )}
+              {(formData.category === 'EmergencyLighting' || formData.category === 'Other') && (
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.noEmergencyLighting}
+                    onChange={(e) => setFormData({ ...formData, noEmergencyLighting: e.target.checked })}
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-neutral-700">No emergency lighting present (multi-storey)</span>
+                </label>
+              )}
+              {(formData.category === 'Compartmentation' || formData.category === 'Other') && (
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.seriousCompartmentationFailure}
+                    onChange={(e) => setFormData({ ...formData, seriousCompartmentationFailure: e.target.checked })}
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-neutral-700">Serious compartmentation failure</span>
+                </label>
+              )}
+              {(formData.category === 'Management' || formData.category === 'Other') && (
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.noFraEvidenceOrReview}
+                    onChange={(e) => setFormData({ ...formData, noFraEvidenceOrReview: e.target.checked })}
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-neutral-700">No FRA evidence / overdue review</span>
+                </label>
+              )}
             </div>
           </div>
 
           <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-neutral-700">
-                Calculated Risk Score:
-              </span>
-              <span className="text-2xl font-bold text-neutral-900">
-                {formData.likelihood} × {formData.impact} = {score}
-              </span>
+              <span className="text-sm font-medium text-neutral-700">Computed Severity:</span>
+              <span className="text-lg font-bold text-neutral-900">{severityTier}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-neutral-700">Priority Band:</span>
@@ -393,9 +506,35 @@ export default function AddActionModal({
               </span>
             </div>
             <p className="text-xs text-neutral-500 mt-2">
-              P1: 20-25 • P2: 12-19 • P3: 6-11 • P4: 1-5
+              T4 → P1 (Material Life Safety Risk) • T3 → P2 (Significant Deficiency) • T2 → P3 (Improvement Required) • T1 → P4 (Minor)
             </p>
           </div>
+
+          {priorityBand !== 'P1' && (
+            <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.escalateToP1}
+                  onChange={(e) => setFormData({ ...formData, escalateToP1: e.target.checked })}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-neutral-700">Escalate to P1 (requires justification)</span>
+                  {formData.escalateToP1 && (
+                    <textarea
+                      value={formData.escalationJustification}
+                      onChange={(e) => setFormData({ ...formData, escalationJustification: e.target.value })}
+                      placeholder="Explain why this action should be escalated to P1..."
+                      rows={2}
+                      className="w-full mt-2 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 resize-none text-sm"
+                      required={formData.escalateToP1}
+                    />
+                  )}
+                </div>
+              </label>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">

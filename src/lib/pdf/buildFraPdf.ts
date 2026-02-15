@@ -8,6 +8,12 @@ import {
   type Jurisdiction,
 } from '../reportText';
 import {
+  deriveExecutiveOutcome,
+  checkMaterialDeficiency,
+  type FraContext,
+  type FraExecutiveOutcome,
+} from '../modules/fra/severityEngine';
+import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
   MARGIN,
@@ -569,41 +575,37 @@ function drawExecutiveSummary(
 
   yPosition -= 30;
 
-  // Determine stored rating from FRA-4 and compute fallback
-  const storedRating = fra4Module.data.overall_risk_rating;
-  const storedOverrideJustification = fra4Module.data.override_justification;
-  const fallbackRating = computeFallbackRating(actions, actionRatings, moduleInstances);
+  // Build context for severity engine
+  const buildingProfile = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
+  const fraContext: FraContext = {
+    occupancyRisk: (buildingProfile?.data.occupancy_risk || 'NonSleeping') as 'NonSleeping' | 'Sleeping' | 'Vulnerable',
+    storeys: buildingProfile?.data.number_of_storeys || null,
+  };
 
+  // Derive executive outcome using severity engine
   const openActions = actions.filter((a) => a.status === 'open' || a.status === 'in_progress');
-  const p1OpenCount = openActions.filter((a) => a.priority_band === 'P1').length;
+  const outcome: FraExecutiveOutcome = deriveExecutiveOutcome(openActions);
+  const { isMaterialDeficiency } = checkMaterialDeficiency(openActions, fraContext);
 
-  // Debug logging
-  console.log('[PDF] Rating Analysis:', {
-    storedRating,
-    fallbackRating,
-    p1OpenCount,
-    overrideJustificationPresent: !!storedOverrideJustification,
-  });
+  // Map outcome to display text
+  const outcomeLabels: Record<FraExecutiveOutcome, string> = {
+    MaterialLifeSafetyRiskPresent: 'MATERIAL LIFE SAFETY RISK PRESENT',
+    SignificantDeficiencies: 'SIGNIFICANT DEFICIENCIES IDENTIFIED',
+    ImprovementsRequired: 'IMPROVEMENTS REQUIRED',
+    SatisfactoryWithImprovements: 'SATISFACTORY WITH IMPROVEMENTS',
+  };
 
-  // Determine primary rating: use stored if present, else fallback
-  let primaryRating = storedRating && storedRating !== 'unknown' && storedRating.trim()
-    ? storedRating
-    : fallbackRating;
+  const outcomeColors: Record<FraExecutiveOutcome, ReturnType<typeof rgb>> = {
+    MaterialLifeSafetyRiskPresent: rgb(0.7, 0, 0),
+    SignificantDeficiencies: rgb(0.8, 0.3, 0),
+    ImprovementsRequired: rgb(0.9, 0.6, 0),
+    SatisfactoryWithImprovements: rgb(0.2, 0.6, 0.2),
+  };
 
-  // Check for override scenario: stored rating conflicts with P1-derived INTOLERABLE
-  const isOverride =
-    storedRating &&
-    storedRating !== 'unknown' &&
-    storedRating.trim() &&
-    fallbackRating.toLowerCase() === 'intolerable' &&
-    storedRating.toLowerCase() !== 'intolerable';
+  const outcomeLabel = outcomeLabels[outcome];
+  const outcomeColor = outcomeColors[outcome];
 
-  const ratingLabel = isOverride
-    ? `${primaryRating.toUpperCase()} (OVERRIDDEN)`
-    : primaryRating.toUpperCase();
-  const ratingColor = getRatingColor(primaryRating);
-
-  page.drawText('Overall Fire Risk Rating:', {
+  page.drawText('Overall Fire Safety Assessment:', {
     x: MARGIN,
     y: yPosition,
     size: 12,
@@ -615,11 +617,11 @@ function drawExecutiveSummary(
   page.drawRectangle({
     x: MARGIN,
     y: yPosition - 5,
-    width: isOverride ? 250 : 150,
+    width: Math.min(CONTENT_WIDTH, outcomeLabel.length * 8),
     height: 30,
-    color: ratingColor,
+    color: outcomeColor,
   });
-  page.drawText(ratingLabel, {
+  page.drawText(outcomeLabel, {
     x: MARGIN + 10,
     y: yPosition + 3,
     size: 14,
@@ -629,52 +631,27 @@ function drawExecutiveSummary(
 
   yPosition -= 40;
 
-  // Show override details if applicable
-  if (isOverride) {
-    const justificationText = storedOverrideJustification && storedOverrideJustification.trim()
-      ? storedOverrideJustification
-      : '(Not provided - please record justification in FRA-4)';
-
-    page.drawText('Override justification:', {
-      x: MARGIN + 10,
-      y: yPosition,
-      size: 10,
-      font: fontBold,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-
-    yPosition -= 15;
-    const justificationLines = wrapText(justificationText, CONTENT_WIDTH - 20, 10, font);
-    for (const line of justificationLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = checkPageBreak(yPosition, pdfDoc, totalPages, isDraft, font);
-        page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
-      }
-      page.drawText(line, {
-        x: MARGIN + 15,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.4, 0.4, 0.4),
-      });
-      yPosition -= 14;
+  // Material deficiency warning
+  if (isMaterialDeficiency) {
+    if (yPosition < MARGIN + 80) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
-    yPosition -= 5;
-    page.drawText(`System suggested rating: ${fallbackRating.toUpperCase()} (based on open P1 actions)`, {
-      x: MARGIN + 10,
+    const warningText = 'Material fire safety deficiencies have been identified which require urgent attention.';
+    page.drawText(warningText, {
+      x: MARGIN,
       y: yPosition,
-      size: 9,
-      font,
-      color: rgb(0.5, 0.5, 0.5),
+      size: 11,
+      font: fontBold,
+      color: rgb(0.7, 0, 0),
     });
 
     yPosition -= 25;
-  } else {
-    yPosition -= 5;
   }
 
+  const p1OpenCount = openActions.filter((a) => a.priority_band === 'P1').length;
   const p2Actions = openActions.filter((a) => a.priority_band === 'P2').length;
 
   page.drawText('Priority Actions Summary:', {
@@ -1662,26 +1639,6 @@ function drawActionRegister(
       font: fontBold,
       color: rgb(1, 1, 1),
     });
-
-    // Get latest rating
-    const rating = ratingMap.get(action.id);
-    if (rating) {
-      page.drawText(`L${rating.likelihood} × I${rating.impact} = ${rating.score}`, {
-        x: MARGIN + 35,
-        y: yPosition,
-        size: 9,
-        font,
-        color: rgb(0.4, 0.4, 0.4),
-      });
-    } else {
-      page.drawText('(Rating not set)', {
-        x: MARGIN + 35,
-        y: yPosition,
-        size: 9,
-        font,
-        color: rgb(0.6, 0.6, 0.6),
-      });
-    }
 
     yPosition -= 18;
 

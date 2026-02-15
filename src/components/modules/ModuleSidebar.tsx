@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, AlertCircle, FileText, X } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, FileText, X, Sparkles } from 'lucide-react';
 import { getModuleName, MODULE_CATALOG } from '../../lib/modules/moduleCatalog';
 
 interface ModuleInstance {
@@ -73,7 +73,14 @@ export default function ModuleSidebar({
     return false;
   };
 
-  const ModuleNavItem = ({ module }: { module: ModuleInstance }) => (
+  const isDerivedModule = (moduleKey: string): boolean => {
+    return MODULE_CATALOG[moduleKey]?.type === 'derived';
+  };
+
+  const ModuleNavItem = ({ module }: { module: ModuleInstance }) => {
+    const isDerived = isDerivedModule(module.module_key);
+
+    return (
     <button
       onClick={() => onModuleSelect(module.id)}
       className={`w-full text-left px-3 py-2.5 transition-all duration-200 md:px-2 lg:px-3 rounded-xl border ${
@@ -85,7 +92,9 @@ export default function ModuleSidebar({
     >
       <div className="flex items-start gap-2.5 md:flex-col md:items-center md:gap-1 lg:flex-row lg:items-start lg:gap-2.5">
         <div className="flex-shrink-0 mt-0.5 md:mt-0">
-          {module.outcome && module.outcome !== 'info_gap' ? (
+          {isDerived ? (
+            <Sparkles className="w-4 h-4 text-violet-500" />
+          ) : module.outcome && module.outcome !== 'info_gap' ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           ) : module.outcome === 'info_gap' ? (
             <AlertCircle className="w-4 h-4 text-blue-600" />
@@ -98,11 +107,18 @@ export default function ModuleSidebar({
             <p className="text-sm font-medium text-neutral-900 leading-5 flex-1 min-w-0">
               {getModuleDisplayName(module.module_key)}
             </p>
-            <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-semibold tracking-wide rounded-md bg-neutral-100 text-neutral-600 border border-neutral-200 shrink-0">
-              {getModuleCode(module)}
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {isDerived && (
+                <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-semibold tracking-wide rounded-md bg-violet-50 text-violet-700 border border-violet-200">
+                  Auto
+                </span>
+              )}
+              <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-semibold tracking-wide rounded-md bg-neutral-100 text-neutral-600 border border-neutral-200">
+                {getModuleCode(module)}
+              </span>
+            </div>
           </div>
-          {module.outcome && (
+          {!isDerived && module.outcome && (
             <span
               className={`inline-flex mt-1 px-2 py-0.5 text-[11px] font-medium rounded border ${getOutcomeColor(
                 module.outcome
@@ -118,7 +134,9 @@ export default function ModuleSidebar({
         </div>
         {/* Icon-only badge for tablet view */}
         <div className="hidden md:block lg:hidden">
-          {module.outcome && (
+          {isDerived ? (
+            <div className="w-2 h-2 rounded-full bg-violet-500" />
+          ) : module.outcome && (
             <div className={`w-2 h-2 rounded-full ${
               module.outcome === 'compliant' ? 'bg-green-600' :
               module.outcome === 'minor_def' ? 'bg-amber-600' :
@@ -130,7 +148,8 @@ export default function ModuleSidebar({
         </div>
       </div>
     </button>
-  );
+    );
+  };
 
   const CORE_MODULE_KEYS = new Set(['A1_DOC_CONTROL', 'A2_BUILDING_PROFILE', 'A3_PERSONS_AT_RISK', 'A7_REVIEW_ASSURANCE']);
   const FRA_ADDITIONAL_A_KEYS = new Set(['A4_MANAGEMENT_CONTROLS', 'A5_EMERGENCY_ARRANGEMENTS']);

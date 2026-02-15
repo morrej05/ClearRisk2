@@ -8,6 +8,8 @@ import { buildFsdPdf } from '../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../lib/pdf/buildDsearPdf';
 import { saveAs } from 'file-saver';
 import { getLockedPdfInfo, downloadLockedPdf } from '../utils/pdfLocking';
+import { migrateLegacyFraActions } from '../lib/modules/fra/migrateLegacyFraActions';
+import type { FraContext } from '../lib/modules/fra/severityEngine';
 
 interface Document {
   id: string;
@@ -120,6 +122,17 @@ export default function ClientDocumentView() {
 
       if (actionError) throw actionError;
 
+      // Apply legacy FRA action migration if needed
+      let migratedActions = actions || [];
+      if (document.document_type === 'FRA' || document.document_type === 'FSD' || document.document_type === 'DSEAR') {
+        const buildingProfile = (modules || []).find((m: any) => m.module_key === 'A2_BUILDING_PROFILE');
+        const fraContext: FraContext = {
+          occupancyRisk: (buildingProfile?.data?.occupancy_risk || 'NonSleeping') as 'NonSleeping' | 'Sleeping' | 'Vulnerable',
+          storeys: buildingProfile?.data?.number_of_storeys || null,
+        };
+        migratedActions = migrateLegacyFraActions(migratedActions, fraContext);
+      }
+
       const { data: org, error: orgError } = await supabase
         .from('organisations')
         .select('*')
@@ -133,7 +146,7 @@ export default function ClientDocumentView() {
       const buildOptions = {
         document,
         moduleInstances: modules || [],
-        actions: actions || [],
+        actions: migratedActions,
         actionRatings: {},
         organisation: { ...org, branding_logo_path: org.branding_logo_path },
         renderMode: 'issued' as const,

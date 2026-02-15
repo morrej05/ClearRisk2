@@ -13,6 +13,8 @@ import { uploadDraftPdfAndSign, saveReModuleSelection, loadReModuleSelection, sa
 import { saveAs } from 'file-saver';
 import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
 import { getReModulesForDocument } from '../../lib/modules/moduleCatalog';
+import { migrateLegacyFraActions } from '../../lib/modules/fra/migrateLegacyFraActions';
+import type { FraContext } from '../../lib/modules/fra/severityEngine';
 
 type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED';
 type ReReportTab = 're_survey' | 're_lp';
@@ -207,6 +209,16 @@ export default function DocumentPreviewPage() {
             ...a,
             owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
           }));
+        }
+
+        // Apply legacy FRA action migration if needed
+        if (doc.document_type === 'FRA' || doc.document_type === 'FSD' || doc.document_type === 'DSEAR') {
+          const buildingProfile = modules.find((m: any) => m.module_key === 'A2_BUILDING_PROFILE');
+          const fraContext: FraContext = {
+            occupancyRisk: (buildingProfile?.data?.occupancy_risk || 'NonSleeping') as 'NonSleeping' | 'Sleeping' | 'Vulnerable',
+            storeys: buildingProfile?.data?.number_of_storeys || null,
+          };
+          actions = migrateLegacyFraActions(actions, fraContext);
         }
 
         setModuleInstances(modules);

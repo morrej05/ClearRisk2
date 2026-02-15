@@ -11,6 +11,8 @@ import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
 import { saveAs } from 'file-saver';
 import { withTimeout, isTimeoutError } from '../../utils/withTimeout';
+import { migrateLegacyFraActions } from '../../lib/modules/fra/migrateLegacyFraActions';
+import type { FraContext } from '../../lib/modules/fra/severityEngine';
 import { getAssessmentShortName } from '../../utils/displayNames';
 import VersionStatusBanner from '../../components/documents/VersionStatusBanner';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
@@ -511,7 +513,18 @@ try {
 
       if (actionsError) throw actionsError;
 
-      const actionIds = (actions || []).map(a => a.id);
+      // Apply legacy FRA action migration if needed
+      let migratedActions = actions || [];
+      if (document.document_type === 'FRA' || document.document_type === 'FSD' || document.document_type === 'DSEAR') {
+        const buildingProfile = (moduleInstances || []).find((m: any) => m.module_key === 'A2_BUILDING_PROFILE');
+        const fraContext: FraContext = {
+          occupancyRisk: (buildingProfile?.data?.occupancy_risk || 'NonSleeping') as 'NonSleeping' | 'Sleeping' | 'Vulnerable',
+          storeys: buildingProfile?.data?.number_of_storeys || null,
+        };
+        migratedActions = migrateLegacyFraActions(migratedActions, fraContext);
+      }
+
+      const actionIds = migratedActions.map(a => a.id);
       let actionRatings = [];
       if (actionIds.length > 0) {
         const { data: ratings } = await supabase
@@ -526,7 +539,7 @@ try {
       const pdfOptions = {
         document,
         moduleInstances: moduleInstances || [],
-        actions: actions || [],
+        actions: migratedActions,
         actionRatings,
         organisation: { id: organisation.id, name: organisation.name, branding_logo_path: organisation.branding_logo_path },
         renderMode: (document.issue_status === 'issued' || document.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,

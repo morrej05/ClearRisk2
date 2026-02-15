@@ -36,6 +36,7 @@ export default function FSD5ActiveFireSystemsDesignForm({
   onSaved,
 }: FSD5ActiveFireSystemsDesignFormProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const actionsRefreshKey = `${document.id}-${moduleInstance.id}`;
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);

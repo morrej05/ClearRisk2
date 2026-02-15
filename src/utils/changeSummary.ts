@@ -186,6 +186,26 @@ export async function getChangeSummary(documentId: string): Promise<ChangeSummar
   .limit(1)
   .maybeSingle();
 
+if (error) throw error;
+if (!data) return null;
+
+let authorName: string | null = null;
+
+if (data.generated_by) {
+  const { data: profile, error: profErr } = await supabase
+    .from('user_profiles')
+    .select('full_name')
+    .eq('id', data.generated_by)
+    .maybeSingle();
+
+  if (!profErr && profile) authorName = profile.full_name ?? null;
+}
+
+return {
+  ...data,
+  authorName,
+};
+
     if (error) {
       console.error('[getChangeSummary] Error fetching change summary:', {
         error,

@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
-import { FileText, CheckCircle, AlertTriangle, AlertCircle, Info } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { FileText, CheckCircle, AlertTriangle, AlertCircle, Info, RefreshCw, Shield } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import OutcomePanel from '../OutcomePanel';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { computeFraSummary, type FraComputedSummary } from '../../../lib/modules/fra/significantFindingsEngine';
+import { deriveStoreysForScoring, type FraComplexityBand } from '../../../lib/modules/fra/complexityEngine';
+import type { FraContext, FraPriority, FraFindingCategory } from '../../../lib/modules/fra/severityEngine';
 
 interface Document {
   id: string;
   title: string;
+  scs_band?: FraComplexityBand;
 }
 
 interface ModuleInstance {
@@ -24,46 +28,12 @@ interface FRA4SignificantFindingsFormProps {
 
 interface Action {
   id: string;
-  action: string;
-  likelihood: number;
-  impact: number;
-  priority_score: number;
-  priority_band: string;
+  title: string;
+  priority?: FraPriority;
+  category?: FraFindingCategory;
+  trigger_text?: string;
   status: string;
-  module_instance_id: string;
-  target_date: string | null;
   created_at: string;
-}
-
-interface ModuleSummary {
-  module_key: string;
-  outcome: string | null;
-}
-
-function sortActionsByPriority(actions: Action[]): Action[] {
-  const priorityMap: Record<string, number> = {
-    P1: 1,
-    P2: 2,
-    P3: 3,
-    P4: 4,
-  };
-
-  return [...actions].sort((a, b) => {
-    const aPriority = priorityMap[a.priority_band] || 999;
-    const bPriority = priorityMap[b.priority_band] || 999;
-
-    if (aPriority !== bPriority) {
-      return aPriority - bPriority;
-    }
-
-    if (a.target_date && b.target_date) {
-      return new Date(a.target_date).getTime() - new Date(b.target_date).getTime();
-    }
-    if (a.target_date && !b.target_date) return -1;
-    if (!a.target_date && b.target_date) return 1;
-
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-  });
 }
 
 export default function FRA4SignificantFindingsForm({
@@ -75,34 +45,46 @@ export default function FRA4SignificantFindingsForm({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [isLoadingActions, setIsLoadingActions] = useState(true);
   const [actions, setActions] = useState<Action[]>([]);
-  const [modules, setModules] = useState<ModuleSummary[]>([]);
+  const [buildingProfile, setBuildingProfile] = useState<any>(null);
 
-  const [formData, setFormData] = useState({
-    executive_summary: moduleInstance.data.executive_summary || '',
-    overall_risk_rating: moduleInstance.data.overall_risk_rating || '',
-    override_justification: moduleInstance.data.override_justification || '',
-    key_assumptions: moduleInstance.data.key_assumptions || '',
-    review_recommendation: moduleInstance.data.review_recommendation || '',
-  });
+  const [overrideEnabled, setOverrideEnabled] = useState(
+    moduleInstance.data.override?.enabled || false
+  );
+  const [overrideOutcome, setOverrideOutcome] = useState(
+    moduleInstance.data.override?.outcome || ''
+  );
+  const [overrideReason, setOverrideReason] = useState(
+    moduleInstance.data.override?.reason || ''
+  );
+
+  const [executiveCommentary, setExecutiveCommentary] = useState(
+    moduleInstance.data.commentary?.executiveCommentary || ''
+  );
+  const [limitationsAssumptions, setLimitationsAssumptions] = useState(
+    moduleInstance.data.commentary?.limitationsAssumptions || ''
+  );
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
 
   useEffect(() => {
-    loadActionsAndModules();
+    loadData();
   }, [document.id]);
 
-  const loadActionsAndModules = async () => {
+  const loadData = async () => {
     setIsLoadingActions(true);
     try {
       const { data: moduleInstances, error: moduleError } = await supabase
         .from('module_instances')
-        .select('id, module_key, outcome')
+        .select('id, module_key, data')
         .eq('document_id', document.id);
 
       if (moduleError) throw moduleError;
 
-      setModules(moduleInstances || []);
+      const buildingProfileModule = moduleInstances?.find(
+        (m) => m.module_key === 'A2_BUILDING_PROFILE'
+      );
+      setBuildingProfile(buildingProfileModule || null);
 
       const moduleIds = moduleInstances?.map((m) => m.id) || [];
 
@@ -113,69 +95,64 @@ export default function FRA4SignificantFindingsForm({
 
       const { data: actionsData, error: actionsError } = await supabase
         .from('actions')
-        .select('*')
+        .select('id, title, priority, category, trigger_text, status, created_at')
         .in('module_instance_id', moduleIds)
-        .neq('status', 'completed')
         .order('created_at', { ascending: true });
 
       if (actionsError) throw actionsError;
 
-      const sortedActions = sortActionsByPriority(actionsData || []);
-      setActions(sortedActions);
+      setActions(actionsData || []);
     } catch (error) {
-      console.error('Error loading actions:', error);
+      console.error('Error loading data:', error);
     } finally {
       setIsLoadingActions(false);
     }
   };
 
-  const getSuggestedRating = (): { rating: string; reason: string } => {
-    const p1Actions = actions.filter((a) => a.priority_band === 'P1');
-    const p2Actions = actions.filter((a) => a.priority_band === 'P2');
+  const computedSummary: FraComputedSummary | null = useMemo(() => {
+    if (isLoadingActions || !buildingProfile) return null;
 
-    const materialDefCount = modules.filter((m) => m.outcome === 'material_def').length;
+    const scsBand = document.scs_band || 'Moderate';
 
-    if (p1Actions.length > 0) {
-      return {
-        rating: 'intolerable',
-        reason: `${p1Actions.length} P1 (immediate priority) action${p1Actions.length > 1 ? 's' : ''} outstanding`,
-      };
-    }
+    const derivedStoreys = deriveStoreysForScoring({
+      storeysBand: buildingProfile.data.storeys_band,
+      storeysExact: buildingProfile.data.storeys_exact || buildingProfile.data.number_of_storeys
+    });
 
-    if (p2Actions.length >= 3 || materialDefCount > 0) {
-      return {
-        rating: 'high',
-        reason: p2Actions.length >= 3
-          ? `${p2Actions.length} P2 actions outstanding`
-          : `${materialDefCount} module${materialDefCount > 1 ? 's' : ''} with material deficiencies`,
-      };
-    }
-
-    const minorDefCount = modules.filter((m) => m.outcome === 'minor_def').length;
-
-    if (p2Actions.length > 0 || minorDefCount >= 2) {
-      return {
-        rating: 'medium',
-        reason: p2Actions.length > 0
-          ? `${p2Actions.length} P2 action${p2Actions.length > 1 ? 's' : ''} outstanding`
-          : `${minorDefCount} modules with minor deficiencies`,
-      };
-    }
-
-    return {
-      rating: 'low',
-      reason: 'No significant deficiencies identified, routine management controls in place',
+    const fraContext: FraContext = {
+      occupancyRisk: (buildingProfile.data.occupancy_risk || 'NonSleeping') as 'NonSleeping' | 'Sleeping' | 'Vulnerable',
+      storeys: derivedStoreys,
     };
-  };
 
-  const suggestedRating = getSuggestedRating();
+    return computeFraSummary({
+      actions,
+      scsBand,
+      fraContext,
+    });
+  }, [actions, buildingProfile, document.scs_band, isLoadingActions]);
 
   const handleSave = async () => {
+    if (overrideEnabled && !overrideReason.trim()) {
+      alert('Override reason is required when overriding the computed outcome.');
+      return;
+    }
+
     setIsSaving(true);
 
     try {
       const payload = sanitizeModuleInstancePayload({
-        data: formData,
+        data: {
+          computed: computedSummary,
+          override: {
+            enabled: overrideEnabled,
+            outcome: overrideEnabled ? overrideOutcome : null,
+            reason: overrideEnabled ? overrideReason : null,
+          },
+          commentary: {
+            executiveCommentary,
+            limitationsAssumptions,
+          },
+        },
         outcome,
         assessor_notes: assessorNotes,
         updated_at: new Date().toISOString(),
@@ -198,45 +175,80 @@ export default function FRA4SignificantFindingsForm({
     }
   };
 
-  const getRatingColor = (rating: string) => {
-    switch (rating) {
-      case 'low':
-        return 'text-green-700 bg-green-50 border-green-200';
-      case 'medium':
-        return 'text-yellow-700 bg-yellow-50 border-yellow-200';
-      case 'high':
-        return 'text-orange-700 bg-orange-50 border-orange-200';
-      case 'intolerable':
+  const getOutcomeLabel = (outcome: string) => {
+    switch (outcome) {
+      case 'MaterialLifeSafetyRiskPresent':
+        return 'Material Life Safety Risk Present';
+      case 'SignificantDeficiencies':
+        return 'Significant Deficiencies';
+      case 'ImprovementsRequired':
+        return 'Improvements Required';
+      case 'SatisfactoryWithImprovements':
+        return 'Satisfactory with Improvements';
+      default:
+        return outcome;
+    }
+  };
+
+  const getOutcomeColor = (outcome: string) => {
+    switch (outcome) {
+      case 'MaterialLifeSafetyRiskPresent':
         return 'text-red-700 bg-red-50 border-red-200';
+      case 'SignificantDeficiencies':
+        return 'text-orange-700 bg-orange-50 border-orange-200';
+      case 'ImprovementsRequired':
+        return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+      case 'SatisfactoryWithImprovements':
+        return 'text-green-700 bg-green-50 border-green-200';
       default:
         return 'text-neutral-700 bg-neutral-50 border-neutral-200';
     }
   };
 
-  const getRatingIcon = (rating: string) => {
-    switch (rating) {
-      case 'low':
-        return <CheckCircle className="w-5 h-5" />;
-      case 'medium':
-        return <Info className="w-5 h-5" />;
-      case 'high':
-        return <AlertTriangle className="w-5 h-5" />;
-      case 'intolerable':
+  const getOutcomeIcon = (outcome: string) => {
+    switch (outcome) {
+      case 'MaterialLifeSafetyRiskPresent':
         return <AlertCircle className="w-5 h-5" />;
+      case 'SignificantDeficiencies':
+        return <AlertTriangle className="w-5 h-5" />;
+      case 'ImprovementsRequired':
+        return <Info className="w-5 h-5" />;
+      case 'SatisfactoryWithImprovements':
+        return <CheckCircle className="w-5 h-5" />;
       default:
         return <Info className="w-5 h-5" />;
     }
   };
 
-  const getPriorityBadge = (score: number) => {
-    if (score >= 20)
-      return <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded">P1</span>;
-    if (score >= 12)
-      return <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-bold rounded">P2</span>;
-    if (score >= 6)
-      return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">P3</span>;
-    return <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded">P4</span>;
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'P1':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'P2':
+        return 'bg-orange-100 text-orange-800 border-orange-300';
+      case 'P3':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'P4':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      default:
+        return 'bg-neutral-100 text-neutral-800 border-neutral-300';
+    }
   };
+
+  if (isLoadingActions || !computedSummary) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="flex items-center justify-center py-12">
+          <RefreshCw className="w-8 h-8 text-neutral-400 animate-spin" />
+          <span className="ml-3 text-neutral-600">Loading computed summary...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const displayOutcome = overrideEnabled && overrideOutcome
+    ? overrideOutcome
+    : computedSummary.computedOutcome;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -248,7 +260,7 @@ export default function FRA4SignificantFindingsForm({
           </h2>
         </div>
         <p className="text-neutral-600">
-          Executive summary, overall risk rating, and key findings from the fire risk assessment
+          Computed executive summary based on action priorities and building complexity
         </p>
         {lastSaved && (
           <div className="flex items-center gap-2 mt-2 text-sm text-green-700">
@@ -260,244 +272,208 @@ export default function FRA4SignificantFindingsForm({
 
       <div className="space-y-6">
         <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Overall Fire Risk Rating
-          </h3>
-
-          {!formData.overall_risk_rating && (
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                {getRatingIcon(suggestedRating.rating)}
-                <div>
-                  <h4 className="text-sm font-bold text-blue-900 mb-1">
-                    Suggested Rating: {suggestedRating.rating.toUpperCase()}
-                  </h4>
-                  <p className="text-sm text-blue-800">{suggestedRating.reason}</p>
-                  <button
-                    onClick={() =>
-                      setFormData({ ...formData, overall_risk_rating: suggestedRating.rating })
-                    }
-                    className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    Accept Suggested Rating
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Overall fire risk rating
-            </label>
-            <select
-              value={formData.overall_risk_rating}
-              onChange={(e) =>
-                setFormData({ ...formData, overall_risk_rating: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-            >
-              <option value="">Select rating...</option>
-              <option value="low">Low - Acceptable routine controls</option>
-              <option value="medium">Medium - Enhanced controls required</option>
-              <option value="high">High - Significant remedial action required</option>
-              <option value="intolerable">Intolerable - Immediate action required</option>
-            </select>
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-bold text-neutral-900">
+              Computed Summary (Auto-generated)
+            </h3>
           </div>
 
-          {formData.overall_risk_rating && (
-            <div className={`mt-4 p-4 border rounded-lg flex items-center gap-3 ${getRatingColor(formData.overall_risk_rating)}`}>
-              {getRatingIcon(formData.overall_risk_rating)}
-              <div>
-                <h4 className="font-bold text-sm">
-                  Selected Rating: {formData.overall_risk_rating.toUpperCase()}
+          <div className="space-y-4">
+            <div className={`p-4 border rounded-lg flex items-start gap-3 ${getOutcomeColor(displayOutcome)}`}>
+              {getOutcomeIcon(displayOutcome)}
+              <div className="flex-1">
+                <h4 className="font-bold text-sm mb-1">
+                  Overall Outcome: {getOutcomeLabel(displayOutcome)}
                 </h4>
-                <p className="text-xs mt-1">
-                  {formData.overall_risk_rating === 'low' &&
-                    'Fire risk is acceptable with routine management controls'}
-                  {formData.overall_risk_rating === 'medium' &&
-                    'Fire risk requires enhanced controls and monitoring'}
-                  {formData.overall_risk_rating === 'high' &&
-                    'Fire risk requires significant remedial action within defined timescales'}
-                  {formData.overall_risk_rating === 'intolerable' &&
-                    'Fire risk is unacceptable - immediate action required, consider closure until remedied'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {formData.overall_risk_rating &&
-            formData.overall_risk_rating !== suggestedRating.rating && (
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Override justification (required)
-              </label>
-              <textarea
-                value={formData.override_justification}
-                onChange={(e) =>
-                  setFormData({ ...formData, override_justification: e.target.value })
-                }
-                placeholder={`Explain why you have selected '${formData.overall_risk_rating}' instead of the suggested '${suggestedRating.rating}' rating. Consider compensating controls, mitigating factors, or additional context...`}
-                rows={3}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
-              />
-              <p className="text-xs text-neutral-500 mt-1">
-                Professional judgment override must be clearly justified and defensible
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Priority Actions Overview
-          </h3>
-
-          {isLoadingActions ? (
-            <div className="text-center py-8 text-neutral-500">
-              <p className="text-sm">Loading actions...</p>
-            </div>
-          ) : actions.length === 0 ? (
-            <div className="text-center py-8 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="text-sm text-green-800 font-medium">No outstanding actions</p>
-              <p className="text-xs text-green-700 mt-1">All identified actions have been completed</p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-4 grid grid-cols-4 gap-4">
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="text-2xl font-bold text-red-700">
-                    {actions.filter((a) => a.priority_score >= 20).length}
-                  </div>
-                  <div className="text-xs text-red-600">P1 Actions</div>
-                </div>
-                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <div className="text-2xl font-bold text-orange-700">
-                    {actions.filter((a) => a.priority_score >= 12 && a.priority_score < 20).length}
-                  </div>
-                  <div className="text-xs text-orange-600">P2 Actions</div>
-                </div>
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="text-2xl font-bold text-yellow-700">
-                    {actions.filter((a) => a.priority_score >= 6 && a.priority_score < 12).length}
-                  </div>
-                  <div className="text-xs text-yellow-600">P3 Actions</div>
-                </div>
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-700">
-                    {actions.filter((a) => a.priority_score < 6).length}
-                  </div>
-                  <div className="text-xs text-blue-600">P4 Actions</div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-bold text-neutral-700 mb-2">
-                  Top {Math.min(10, actions.length)} Priority Actions
-                </h4>
-                {actions.slice(0, 10).map((action, index) => (
-                  <div
-                    key={action.id}
-                    className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold text-neutral-500">#{index + 1}</span>
-                          {getPriorityBadge(action.priority_score)}
-                          <span className="text-xs text-neutral-500">
-                            L{action.likelihood} × I{action.impact} = {action.priority_score}
-                          </span>
-                        </div>
-                        <p className="text-sm text-neutral-700">{action.action}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {actions.length > 10 && (
-                  <p className="text-xs text-neutral-500 text-center pt-2">
-                    +{actions.length - 10} more actions (see Actions Dashboard for full list)
+                {computedSummary.materialDeficiency && (
+                  <p className="text-xs font-medium mt-1">
+                    Material deficiency identified - immediate attention required
                   </p>
                 )}
               </div>
-            </>
-          )}
-        </div>
+            </div>
 
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Module Outcomes Summary
-          </h3>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="text-2xl font-bold text-red-700">
-                {modules.filter((m) => m.outcome === 'material_def').length}
+            <div className="grid grid-cols-4 gap-3">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-2xl font-bold text-red-700">
+                  {computedSummary.counts.p1}
+                </div>
+                <div className="text-xs text-red-600">P1 Actions</div>
               </div>
-              <div className="text-xs text-red-600">Material Deficiencies</div>
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="text-2xl font-bold text-orange-700">
+                  {computedSummary.counts.p2}
+                </div>
+                <div className="text-xs text-orange-600">P2 Actions</div>
+              </div>
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-700">
+                  {computedSummary.counts.p3}
+                </div>
+                <div className="text-xs text-yellow-600">P3 Actions</div>
+              </div>
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">
+                  {computedSummary.counts.p4}
+                </div>
+                <div className="text-xs text-blue-600">P4 Actions</div>
+              </div>
             </div>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="text-2xl font-bold text-amber-700">
-                {modules.filter((m) => m.outcome === 'info_gap').length}
-              </div>
-              <div className="text-xs text-amber-600">Information Gaps</div>
+
+            <div>
+              <h4 className="text-sm font-bold text-neutral-700 mb-2">
+                Top Priority Issues
+              </h4>
+              {computedSummary.topIssues.length === 0 ? (
+                <div className="text-center py-6 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                  <p className="text-sm text-green-800 font-medium">No outstanding issues</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {computedSummary.topIssues.map((issue, index) => (
+                    <div
+                      key={index}
+                      className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className={`px-2 py-0.5 text-xs font-bold rounded border ${getPriorityColor(issue.priority)}`}>
+                          {issue.priority}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-neutral-900">{issue.title}</p>
+                          {issue.triggerText && (
+                            <p className="text-xs text-neutral-600 mt-1 italic">
+                              Trigger: {issue.triggerText}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-700">
-                {modules.filter((m) => m.outcome === 'minor_def').length}
-              </div>
-              <div className="text-xs text-yellow-600">Minor Deficiencies</div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-bold text-blue-900 mb-2">Complexity Context</h4>
+              <p className="text-sm text-blue-800 leading-relaxed">
+                {computedSummary.toneParagraph}
+              </p>
             </div>
           </div>
-          <p className="text-xs text-neutral-500">
-            Total modules assessed: {modules.length}
-          </p>
         </div>
 
         <div className="bg-white rounded-lg border border-neutral-200 p-6">
           <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Executive Summary
+            Override Computed Outcome (Optional)
+          </h3>
+
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={overrideEnabled}
+                onChange={(e) => {
+                  setOverrideEnabled(e.target.checked);
+                  if (!e.target.checked) {
+                    setOverrideOutcome('');
+                    setOverrideReason('');
+                  }
+                }}
+                className="w-4 h-4 text-neutral-900 border-neutral-300 rounded focus:ring-neutral-900"
+              />
+              <span className="text-sm font-medium text-neutral-700">
+                Override computed outcome with professional judgment
+              </span>
+            </label>
+
+            {overrideEnabled && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Overridden outcome
+                  </label>
+                  <select
+                    value={overrideOutcome}
+                    onChange={(e) => setOverrideOutcome(e.target.value)}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  >
+                    <option value="">Select outcome...</option>
+                    <option value="SatisfactoryWithImprovements">
+                      Satisfactory with Improvements
+                    </option>
+                    <option value="ImprovementsRequired">
+                      Improvements Required
+                    </option>
+                    <option value="SignificantDeficiencies">
+                      Significant Deficiencies
+                    </option>
+                    <option value="MaterialLifeSafetyRiskPresent">
+                      Material Life Safety Risk Present
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Override reason (required) <span className="text-red-600">*</span>
+                  </label>
+                  <textarea
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="Provide a clear, professional justification for overriding the computed outcome. Examples: compensating controls in place, additional context not captured by automatic assessment, recent remedial works completed..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Override must be clearly justified and defensible. Maximum 300 characters.
+                  </p>
+                </div>
+
+                {overrideReason.trim() && overrideOutcome && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs text-amber-800">
+                      <strong>Note:</strong> The PDF report will clearly indicate that the outcome
+                      was overridden by the assessor and include your justification.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <h3 className="text-lg font-bold text-neutral-900 mb-4">
+            Assessor Executive Commentary
           </h3>
           <p className="text-sm text-neutral-600 mb-3">
-            Provide a high-level summary of the assessment findings suitable for non-technical stakeholders
+            Provide additional context, professional observations, and executive-level commentary
+            beyond the auto-generated summary
           </p>
           <textarea
-            value={formData.executive_summary}
-            onChange={(e) =>
-              setFormData({ ...formData, executive_summary: e.target.value })
-            }
-            placeholder="Summarize the key findings of this fire risk assessment. Include: building description, significant fire risks identified, overall level of risk, priority actions required, and general recommendations. This section should be understandable by building owners and duty holders without technical fire safety knowledge."
-            rows={8}
+            value={executiveCommentary}
+            onChange={(e) => setExecutiveCommentary(e.target.value)}
+            placeholder="Add your professional commentary on the overall fire safety position. Include context such as: building management arrangements, recent improvements, planned works, particular concerns, compensating controls, or any factors that provide important context for stakeholders..."
+            rows={6}
             className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
           />
         </div>
 
         <div className="bg-white rounded-lg border border-neutral-200 p-6">
           <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Key Assumptions & Limitations
+            Limitations and Assumptions
           </h3>
+          <p className="text-sm text-neutral-600 mb-3">
+            Document key assumptions made during assessment and any limitations
+          </p>
           <textarea
-            value={formData.key_assumptions}
-            onChange={(e) =>
-              setFormData({ ...formData, key_assumptions: e.target.value })
-            }
-            placeholder="Document key assumptions made during assessment and any limitations. Examples: areas not inspected, information not available, destructive testing not undertaken, concealed construction assumed based on visible elements..."
+            value={limitationsAssumptions}
+            onChange={(e) => setLimitationsAssumptions(e.target.value)}
+            placeholder="Document key assumptions and limitations of this assessment. Examples: areas not inspected, information not available, destructive testing not undertaken, concealed construction assumed based on visible elements, weather conditions limiting external inspection..."
             rows={4}
-            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
-          />
-        </div>
-
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Review Recommendation
-          </h3>
-          <textarea
-            value={formData.review_recommendation}
-            onChange={(e) =>
-              setFormData({ ...formData, review_recommendation: e.target.value })
-            }
-            placeholder="Recommend when this fire risk assessment should be reviewed. Consider: nature of findings, changes to building use, completion of remedial works, regulatory requirements (typically 12 months for normal risk, 6 months if significant deficiencies)..."
-            rows={3}
             className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
           />
         </div>

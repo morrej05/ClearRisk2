@@ -598,10 +598,16 @@ function drawExecutiveSummary(
     storeys: derivedStoreys,
   };
 
-  // Derive executive outcome using severity engine
+  // Derive executive outcome using severity engine or stored computed summary
   const openActions = actions.filter((a) => a.status === 'open' || a.status === 'in_progress');
-  const outcome: FraExecutiveOutcome = deriveExecutiveOutcome(openActions);
+  const computedOutcome: FraExecutiveOutcome = deriveExecutiveOutcome(openActions);
   const { isMaterialDeficiency } = checkMaterialDeficiency(openActions, fraContext);
+
+  // Check for override in FRA-4 module data
+  const hasOverride = fra4Module.data.override?.enabled === true;
+  const overrideOutcome = fra4Module.data.override?.outcome;
+  const overrideReason = fra4Module.data.override?.reason;
+  const outcome: FraExecutiveOutcome = hasOverride && overrideOutcome ? overrideOutcome : computedOutcome;
 
   // Map outcome to display text
   const outcomeLabels: Record<FraExecutiveOutcome, string> = {
@@ -646,6 +652,43 @@ function drawExecutiveSummary(
   });
 
   yPosition -= 40;
+
+  // Override notice
+  if (hasOverride && overrideReason) {
+    if (yPosition < MARGIN + 80) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText('ASSESSOR OVERRIDE APPLIED', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.6, 0.4, 0),
+    });
+
+    yPosition -= 16;
+    const overrideLines = wrapText(`Reason: ${overrideReason}`, CONTENT_WIDTH, 9, font);
+    for (const line of overrideLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.5, 0.3, 0),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 10;
+  }
 
   // Material deficiency warning
   if (isMaterialDeficiency) {
@@ -905,21 +948,23 @@ function drawExecutiveSummary(
 
   const scs = calculateSCS(scsInput);
 
-  // Add complexity context paragraph based on SCS band
-  let complexityParagraph = '';
-  switch (scs.band) {
-    case 'VeryHigh':
-      complexityParagraph = 'The premises comprises a complex building with significant reliance on structural and active fire protection systems. Effective maintenance and management controls are critical.';
-      break;
-    case 'High':
-      complexityParagraph = 'The building presents structural and occupancy complexity which increases reliance on fire protection measures.';
-      break;
-    case 'Moderate':
-      complexityParagraph = 'The premises is of moderate complexity and requires structured management of fire safety systems.';
-      break;
-    case 'Low':
-    default:
-      complexityParagraph = 'The premises is of relatively straightforward layout and use.';
+  // Use computed tone paragraph if available, otherwise generate from SCS
+  let complexityParagraph = fra4Module.data.computed?.toneParagraph || '';
+  if (!complexityParagraph) {
+    switch (scs.band) {
+      case 'VeryHigh':
+        complexityParagraph = 'The premises comprises a complex building with significant reliance on structural and active fire protection systems. Effective maintenance and management controls are critical.';
+        break;
+      case 'High':
+        complexityParagraph = 'The building presents structural and occupancy complexity which increases reliance on fire protection measures.';
+        break;
+      case 'Moderate':
+        complexityParagraph = 'The premises is of moderate complexity and requires structured management of fire safety systems.';
+        break;
+      case 'Low':
+      default:
+        complexityParagraph = 'The premises is of relatively straightforward layout and use.';
+    }
   }
 
   page.drawText('Building Complexity:', {
@@ -946,6 +991,80 @@ function drawExecutiveSummary(
       color: rgb(0.1, 0.1, 0.1),
     });
     yPosition -= 16;
+  }
+
+  // Add assessor executive commentary if present
+  if (fra4Module.data.commentary?.executiveCommentary) {
+    yPosition -= 20;
+
+    if (yPosition < 200) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText('Assessor Commentary:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 20;
+    const commentaryLines = wrapText(fra4Module.data.commentary.executiveCommentary, CONTENT_WIDTH, 11, font);
+    for (const line of commentaryLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 16;
+    }
+  }
+
+  // Add limitations and assumptions if present
+  if (fra4Module.data.commentary?.limitationsAssumptions) {
+    yPosition -= 20;
+
+    if (yPosition < 200) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText('Limitations and Assumptions:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 20;
+    const limitationsLines = wrapText(fra4Module.data.commentary.limitationsAssumptions, CONTENT_WIDTH, 11, font);
+    for (const line of limitationsLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 16;
+    }
   }
 
   if (fra4Module.data.executive_summary) {

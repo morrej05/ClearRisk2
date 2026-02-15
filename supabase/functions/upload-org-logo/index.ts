@@ -13,8 +13,32 @@ Deno.serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
+
+    console.log("[Logo Upload] Authorization header check:", {
+      hasAuthHeader: !!authHeader,
+      authHeaderPrefix: authHeader?.substring(0, 20) + "...",
+    });
+
     if (!authHeader) {
-      throw new Error("Missing authorization header");
+      console.error("[Logo Upload] Missing Authorization header");
+      return new Response(
+        JSON.stringify({ error: "Missing Authorization header" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!authHeader.startsWith("Bearer ")) {
+      console.error("[Logo Upload] Invalid Authorization header format");
+      return new Response(
+        JSON.stringify({ error: "Invalid Authorization header format" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const supabaseClient = createClient(
@@ -23,13 +47,42 @@ Deno.serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    console.log("[Logo Upload] Getting user from token...");
+
     const {
       data: { user },
       error: userError,
     } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      throw new Error("Unauthorized");
+
+    if (userError) {
+      console.error("[Logo Upload] User authentication error:", {
+        message: userError.message,
+        status: userError.status,
+      });
+      return new Response(
+        JSON.stringify({ error: `Authentication failed: ${userError.message}` }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
+
+    if (!user) {
+      console.error("[Logo Upload] No user found from token");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - no user found" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log("[Logo Upload] User authenticated:", {
+      userId: user.id,
+      email: user.email,
+    });
 
     const { data: profile, error: profileError } = await supabaseClient
       .from("user_profiles")

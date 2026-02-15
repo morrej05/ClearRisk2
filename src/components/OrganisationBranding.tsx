@@ -66,7 +66,17 @@ export default function OrganisationBranding() {
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file || !organisationId) return;
+    if (!file || !organisationId) {
+      console.warn('[Logo Upload] Missing file or organisationId');
+      return;
+    }
+
+    // Validate user is signed in
+    if (!user) {
+      setError('You must be signed in to upload a logo.');
+      console.error('[Logo Upload] No user in auth context');
+      return;
+    }
 
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
@@ -89,16 +99,33 @@ export default function OrganisationBranding() {
         fileType: file.type,
         fileSize: file.size,
         organisationId,
+        userId: user.id,
       });
+
+      // Get fresh session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      console.log('[Logo Upload] Session check:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        sessionError: sessionError?.message,
+      });
+
+      if (sessionError) {
+        console.error('[Logo Upload] Session error:', sessionError);
+        throw new Error(`Authentication error: ${sessionError.message}`);
+      }
+
+      if (!session?.access_token) {
+        console.error('[Logo Upload] No valid session or access token');
+        throw new Error('You must be signed in to upload a logo. Please sign in and try again.');
+      }
 
       const formData = new FormData();
       formData.append('logo', file);
       formData.append('organisation_id', organisationId);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      console.log('[Logo Upload] Calling edge function...');
+      console.log('[Logo Upload] Calling edge function with auth...');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-org-logo`,
@@ -122,6 +149,12 @@ export default function OrganisationBranding() {
       if (!response.ok) {
         const errorMessage = result.error || `Upload failed (${response.status})`;
         console.error('[Logo Upload] Upload failed:', errorMessage);
+
+        // Provide specific error message for 401
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please sign out and sign back in, then try again.');
+        }
+
         throw new Error(errorMessage);
       }
 
@@ -245,22 +278,28 @@ export default function OrganisationBranding() {
             {logoUrl ? 'Replace Logo' : 'Upload Logo'}
           </label>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50">
+            <label className={`flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg transition-colors ${
+              uploading || !user || !organisationId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800 cursor-pointer'
+            }`}>
               <Upload className="w-4 h-4" />
               <span className="text-sm font-medium">
-                {uploading ? 'Uploading...' : 'Choose File'}
+                {uploading ? 'Uploading...' : !user ? 'Sign in to Upload' : 'Choose File'}
               </span>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/jpg,image/svg+xml"
                 onChange={handleUpload}
-                disabled={uploading}
+                disabled={uploading || !user || !organisationId}
                 className="hidden"
               />
             </label>
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            PNG, JPG, or SVG. Maximum 1MB. Recommended: wide format with transparent background (~1000×300px).
+            {!user ? (
+              <span className="text-amber-600">You must be signed in to upload a logo.</span>
+            ) : (
+              'PNG, JPG, or SVG. Maximum 1MB. Recommended: wide format with transparent background (~1000×300px).'
+            )}
           </p>
         </div>
 

@@ -59,7 +59,7 @@ export async function createInitialIssueSummary(
   try {
     const { data: document, error: docError } = await supabase
       .from('documents')
-      .select('organisation_id, base_document_id')
+      .select('organisation_id, base_document_id, version_number')
       .eq('id', documentId)
       .single();
 
@@ -81,6 +81,7 @@ export async function createInitialIssueSummary(
       base_document_id: document.base_document_id,
       document_id: documentId,
       previous_document_id: null,
+      version_number: document.version_number,
       new_actions_count: openActions.length,
       closed_actions_count: 0,
       reopened_actions_count: 0,

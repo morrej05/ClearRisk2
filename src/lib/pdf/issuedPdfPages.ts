@@ -144,26 +144,40 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
   if (document.base_document_id) {
     try {
       const { data: summaries, error } = await supabase
-  .from('document_change_summaries')
-  .select(`
-    version_number,
-    created_at,
-    summary_text,
-    generated_by
-  `)
-  .eq('base_document_id', document.base_document_id)
-  .order('version_number', { ascending: false });
+        .from('document_change_summaries')
+        .select('version_number, created_at, summary_text, generated_by')
+        .eq('base_document_id', document.base_document_id)
+        .order('version_number', { ascending: false });
 
-if (error) console.error('[Change summaries] load error', error);
+      if (error) {
+        console.error('[Change summaries] load error', error);
+      }
 
-      if (summaries) {
+      if (summaries && summaries.length > 0) {
+        // Collect unique user IDs
+        const userIds = [...new Set(summaries.map((s: any) => s.generated_by).filter(Boolean))];
+
+        // Fetch user names in a separate query
+        const userNamesMap: Record<string, string> = {};
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('user_profiles')
+            .select('id, full_name')
+            .in('id', userIds);
+
+          if (profiles) {
+            profiles.forEach(p => {
+              userNamesMap[p.id] = p.full_name || 'Unknown';
+            });
+          }
+        }
+
         revisionHistory = summaries.map((s: any) => ({
-  version_number: s.version_number,
-  issue_date: s.created_at,
-  change_summary: s.summary_text,
-  issued_by_name: null, // or s.generated_by
-}));
-
+          version_number: s.version_number,
+          issue_date: s.created_at,
+          change_summary: s.summary_text,
+          issued_by_name: s.generated_by ? userNamesMap[s.generated_by] || null : null,
+        }));
       }
     } catch (error) {
       console.warn('[Issued PDF] Failed to load revision history:', error);

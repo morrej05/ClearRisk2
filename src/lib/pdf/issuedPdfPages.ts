@@ -5,6 +5,7 @@ import {
   PAGE_HEIGHT,
   drawCoverPage,
   drawDocumentControlPage,
+  fetchAndEmbedLogo,
 } from './pdfUtils';
 import { resolveOrganisationLogo } from './logoResolver';
 // Enable PDF image logos via env var (default: true)

@@ -119,6 +119,7 @@ const MODULE_ORDER_LEGACY = [
   'FRA_6_MANAGEMENT_SYSTEMS',
   'A5_EMERGENCY_ARRANGEMENTS',
   'FRA_7_EMERGENCY_ARRANGEMENTS',
+  'A7_REVIEW_ASSURANCE',
   'FRA_2_ESCAPE_ASIS',
   'FRA_3_PROTECTION_ASIS',
   'FRA_5_EXTERNAL_FIRE_SPREAD',
@@ -133,6 +134,7 @@ const MODULE_ORDER_SPLIT = [
   'FRA_6_MANAGEMENT_SYSTEMS',
   'A5_EMERGENCY_ARRANGEMENTS',
   'FRA_7_EMERGENCY_ARRANGEMENTS',
+  'A7_REVIEW_ASSURANCE',
   'FRA_2_ESCAPE_ASIS',
   'FRA_3_ACTIVE_SYSTEMS',
   'FRA_4_PASSIVE_PROTECTION',
@@ -1400,6 +1402,25 @@ function drawModuleKeyDetails(
       if (data.peeps_in_place) keyDetails.push(['PEEPs in Place', data.peeps_in_place]);
       if (data.utilities_isolation_known) keyDetails.push(['Utilities Isolation Known', data.utilities_isolation_known]);
       if (data.emergency_services_info) keyDetails.push(['Emergency Services Info', data.emergency_services_info]);
+      break;
+
+    case 'A7_REVIEW_ASSURANCE':
+      if (data.review) {
+        const checklist = [];
+        if (data.review.peerReview === 'yes') checklist.push('Peer review completed');
+        if (data.review.siteInspection === 'yes') checklist.push('Site inspection completed');
+        if (data.review.photos === 'yes') checklist.push('Photos taken');
+        if (data.review.alarmEvidence === 'yes') checklist.push('Alarm test evidence reviewed');
+        if (data.review.elEvidence === 'yes') checklist.push('EL test evidence reviewed');
+        if (data.review.drillEvidence === 'yes') checklist.push('Drill evidence reviewed');
+        if (data.review.maintenanceLogs === 'yes') checklist.push('Maintenance logs reviewed');
+        if (data.review.rpInterview === 'yes') checklist.push('RP interview completed');
+        if (checklist.length > 0) {
+          keyDetails.push(['Review Activities', checklist.join('; ')]);
+        }
+      }
+      if (data.assumptionsLimitations) keyDetails.push(['Assumptions/Limitations', data.assumptionsLimitations]);
+      if (data.commentary) keyDetails.push(['Commentary', data.commentary]);
       break;
 
     case 'FRA_1_HAZARDS':

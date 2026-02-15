@@ -7,6 +7,7 @@ import A2BuildingProfileForm from './forms/A2BuildingProfileForm';
 import A3PersonsAtRiskForm from './forms/A3PersonsAtRiskForm';
 import A4ManagementControlsForm from './forms/A4ManagementControlsForm';
 import A5EmergencyArrangementsForm from './forms/A5EmergencyArrangementsForm';
+import A7ReviewAssuranceForm from './forms/A7ReviewAssuranceForm';
 import FRA1FireHazardsForm from './forms/FRA1FireHazardsForm';
 import FRA2MeansOfEscapeForm from './forms/FRA2MeansOfEscapeForm';
 import FRA3FireProtectionForm from './forms/FRA3FireProtectionForm';
@@ -206,6 +207,19 @@ export default function ModuleRenderer({
       <>
         {SavedIndicator}
         <A5EmergencyArrangementsForm
+          moduleInstance={moduleInstance}
+          document={document}
+          onSaved={handleSaved}
+        />
+      </>
+    );
+  }
+
+  if (moduleInstance.module_key === 'A7_REVIEW_ASSURANCE') {
+    return (
+      <>
+        {SavedIndicator}
+        <A7ReviewAssuranceForm
           moduleInstance={moduleInstance}
           document={document}
           onSaved={handleSaved}

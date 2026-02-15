@@ -46,9 +46,12 @@ export default function A2BuildingProfileForm({
     building_name: moduleInstance.data.building_name || '',
     year_built: moduleInstance.data.year_built || '',
     height_m: moduleInstance.data.height_m || '',
-    number_of_storeys: moduleInstance.data.number_of_storeys || '',
-    floor_area_sqm: moduleInstance.data.floor_area_sqm || '',
-    building_use_primary: moduleInstance.data.building_use_primary || 'unknown',
+    storeys_band: moduleInstance.data.storeys_band || (moduleInstance.data.number_of_storeys ? 'custom' : 'unknown'),
+    storeys_exact: moduleInstance.data.storeys_exact || moduleInstance.data.number_of_storeys || '',
+    floor_area_band: moduleInstance.data.floor_area_band || (moduleInstance.data.floor_area_sqm ? 'custom' : 'unknown'),
+    floor_area_m2: moduleInstance.data.floor_area_m2 || moduleInstance.data.floor_area_sqm || '',
+    building_use_uk: moduleInstance.data.building_use_uk || moduleInstance.data.building_use_primary || 'unknown',
+    building_use_other: moduleInstance.data.building_use_other || '',
     secondary_uses: moduleInstance.data.secondary_uses || [],
     secondary_uses_other: moduleInstance.data.secondary_uses_other || '',
     construction_frame: moduleInstance.data.construction_frame || 'unknown',
@@ -65,10 +68,10 @@ export default function A2BuildingProfileForm({
   const getSuggestedOutcome = (): { outcome: string; reason: string } | null => {
     const unknowns = [
       formData.height_m === '' || formData.height_m === 'unknown',
-      formData.number_of_storeys === '' || formData.number_of_storeys === 'unknown',
+      formData.storeys_band === 'unknown',
       formData.year_built === '' || formData.year_built === 'unknown',
       formData.construction_frame === 'unknown',
-      formData.building_use_primary === 'unknown',
+      formData.building_use_uk === 'unknown',
     ].filter(Boolean).length;
 
     if (unknowns >= 4) {
@@ -152,9 +155,9 @@ export default function A2BuildingProfileForm({
   };
 
   const heightUnknown = formData.height_m === '' || formData.height_m === 'unknown';
-  const storeysUnknown = formData.number_of_storeys === '' || formData.number_of_storeys === 'unknown';
+  const storeysUnknown = formData.storeys_band === 'unknown';
   const constructionUnknown = formData.construction_frame === 'unknown';
-  const useComplex = formData.building_use_primary === 'mixed' || formData.secondary_uses.length > 2;
+  const useComplex = formData.building_use_uk === 'mixed_use' || formData.secondary_uses.length > 2;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -237,13 +240,30 @@ export default function A2BuildingProfileForm({
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Number of Storeys
                 </label>
-                <input
-                  type="text"
-                  value={formData.number_of_storeys}
-                  onChange={(e) => setFormData({ ...formData, number_of_storeys: e.target.value })}
-                  placeholder="e.g., 6 or unknown"
+                <select
+                  value={formData.storeys_band}
+                  onChange={(e) => setFormData({ ...formData, storeys_band: e.target.value, storeys_exact: e.target.value === 'custom' ? formData.storeys_exact : '' })}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-                />
+                >
+                  <option value="unknown">Unknown</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5-6">5–6</option>
+                  <option value="7-10">7–10</option>
+                  <option value="11+">11+</option>
+                  <option value="custom">Custom</option>
+                </select>
+                {formData.storeys_band === 'custom' && (
+                  <input
+                    type="number"
+                    value={formData.storeys_exact}
+                    onChange={(e) => setFormData({ ...formData, storeys_exact: e.target.value })}
+                    placeholder="Enter exact number"
+                    className="mt-2 w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  />
+                )}
               </div>
             </div>
 
@@ -251,13 +271,29 @@ export default function A2BuildingProfileForm({
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Total Floor Area (m²)
               </label>
-              <input
-                type="text"
-                value={formData.floor_area_sqm}
-                onChange={(e) => setFormData({ ...formData, floor_area_sqm: e.target.value })}
-                placeholder="e.g., 5000"
+              <select
+                value={formData.floor_area_band}
+                onChange={(e) => setFormData({ ...formData, floor_area_band: e.target.value, floor_area_m2: e.target.value === 'custom' ? formData.floor_area_m2 : '' })}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              />
+              >
+                <option value="unknown">Unknown</option>
+                <option value="<150">&lt;150 m²</option>
+                <option value="150-300">150–300 m²</option>
+                <option value="300-1000">300–1,000 m²</option>
+                <option value="1000-5000">1,000–5,000 m²</option>
+                <option value="5000-10000">5,000–10,000 m²</option>
+                <option value="10000+">10,000+ m²</option>
+                <option value="custom">Custom</option>
+              </select>
+              {formData.floor_area_band === 'custom' && (
+                <input
+                  type="number"
+                  value={formData.floor_area_m2}
+                  onChange={(e) => setFormData({ ...formData, floor_area_m2: e.target.value })}
+                  placeholder="Enter exact floor area (m²)"
+                  className="mt-2 w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              )}
             </div>
 
             {(heightUnknown || storeysUnknown) && (
@@ -286,23 +322,37 @@ export default function A2BuildingProfileForm({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Primary Use
+                Building Use (UK)
               </label>
               <select
-                value={formData.building_use_primary}
-                onChange={(e) => setFormData({ ...formData, building_use_primary: e.target.value })}
+                value={formData.building_use_uk}
+                onChange={(e) => setFormData({ ...formData, building_use_uk: e.target.value })}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
               >
                 <option value="unknown">Unknown</option>
+                <option value="hmo">HMO (House in Multiple Occupation)</option>
+                <option value="block_of_flats_purpose_built">Block of flats (purpose-built)</option>
+                <option value="converted_flats">Converted flats</option>
+                <option value="hotel_hostel">Hotel / hostel</option>
+                <option value="care_home">Care home / vulnerable accommodation</option>
                 <option value="office">Office</option>
-                <option value="industrial">Industrial / Warehouse</option>
-                <option value="retail">Retail / Shop</option>
-                <option value="residential">Residential</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="education">Education</option>
-                <option value="mixed">Mixed Use</option>
-                <option value="other">Other</option>
+                <option value="retail">Retail</option>
+                <option value="industrial_warehouse">Industrial / warehouse</option>
+                <option value="educational">Educational</option>
+                <option value="healthcare_non_residential">Healthcare (non-residential clinic)</option>
+                <option value="assembly_leisure">Assembly &amp; leisure</option>
+                <option value="mixed_use">Mixed use</option>
+                <option value="other">Other (specify)</option>
               </select>
+              {formData.building_use_uk === 'other' && (
+                <input
+                  type="text"
+                  value={formData.building_use_other}
+                  onChange={(e) => setFormData({ ...formData, building_use_other: e.target.value })}
+                  placeholder="Specify building use"
+                  className="mt-2 w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              )}
             </div>
 
             <div>

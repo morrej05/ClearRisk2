@@ -65,6 +65,8 @@ export default function OrganisationBranding() {
   }
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const { data: { session }, error: sessErr } = await supabase.auth.getSession();
+    console.log('[Logo Upload] session exists?', !!session, 'sessErr=', sessErr, 'user=', session?.user?.id);
     const file = event.target.files?.[0];
     if (!file || !organisationId) {
       console.warn('[Logo Upload] Missing file or organisationId');
@@ -128,15 +130,16 @@ export default function OrganisationBranding() {
       console.log('[Logo Upload] Calling edge function with auth...');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-org-logo`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: formData,
-        }
-      );
+  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-org-logo`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: formData,
+  }
+);
 
       const result = await response.json();
 

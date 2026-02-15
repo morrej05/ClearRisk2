@@ -95,7 +95,7 @@ interface BuildPdfOptions {
   renderMode?: 'preview' | 'issued';
 }
 
-const MODULE_ORDER = [
+const MODULE_ORDER_LEGACY = [
   'A1_DOC_CONTROL',
   'FRA_4_SIGNIFICANT_FINDINGS',
   'FRA_90_SIGNIFICANT_FINDINGS',
@@ -106,6 +106,22 @@ const MODULE_ORDER = [
   'FRA_7_EMERGENCY_ARRANGEMENTS',
   'FRA_2_ESCAPE_ASIS',
   'FRA_3_PROTECTION_ASIS',
+  'FRA_5_EXTERNAL_FIRE_SPREAD',
+];
+
+const MODULE_ORDER_SPLIT = [
+  'A1_DOC_CONTROL',
+  'FRA_4_SIGNIFICANT_FINDINGS',
+  'FRA_90_SIGNIFICANT_FINDINGS',
+  'FRA_1_HAZARDS',
+  'A4_MANAGEMENT_CONTROLS',
+  'FRA_6_MANAGEMENT_SYSTEMS',
+  'A5_EMERGENCY_ARRANGEMENTS',
+  'FRA_7_EMERGENCY_ARRANGEMENTS',
+  'FRA_2_ESCAPE_ASIS',
+  'FRA_3_ACTIVE_SYSTEMS',
+  'FRA_4_PASSIVE_PROTECTION',
+  'FRA_8_FIREFIGHTING_EQUIPMENT',
   'FRA_5_EXTERNAL_FIRE_SPREAD',
 ];
 
@@ -313,16 +329,25 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 }
 
 function sortModules(moduleInstances: ModuleInstance[]): ModuleInstance[] {
-  return [...moduleInstances].sort((a, b) => {
-    const aIndex = MODULE_ORDER.indexOf(a.module_key);
-    const bIndex = MODULE_ORDER.indexOf(b.module_key);
+  const hasLegacyProtection = moduleInstances.some((module) => module.module_key === 'FRA_3_PROTECTION_ASIS');
+  const moduleOrder = hasLegacyProtection ? MODULE_ORDER_LEGACY : MODULE_ORDER_SPLIT;
 
-    if (aIndex === -1 && bIndex === -1) return 0;
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
+  return [...moduleInstances]
+    .filter((module) => !(hasLegacyProtection && [
+      'FRA_3_ACTIVE_SYSTEMS',
+      'FRA_4_PASSIVE_PROTECTION',
+      'FRA_8_FIREFIGHTING_EQUIPMENT',
+    ].includes(module.module_key)))
+    .sort((a, b) => {
+      const aIndex = moduleOrder.indexOf(a.module_key);
+      const bIndex = moduleOrder.indexOf(b.module_key);
 
-    return aIndex - bIndex;
-  });
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+
+      return aIndex - bIndex;
+    });
 }
 
 function getOrganisationDisplayName(organisation: Organisation): string {
@@ -1212,14 +1237,21 @@ function drawModuleKeyDetails(
       break;
 
     case 'FRA_3_PROTECTION_ASIS':
+    case 'FRA_3_ACTIVE_SYSTEMS':
       if (data.alarm_present) keyDetails.push(['Alarm Present', data.alarm_present]);
       if (data.alarm_category) keyDetails.push(['Alarm Category', data.alarm_category]);
       if (data.alarm_testing_evidence) keyDetails.push(['Alarm Testing Evidence', data.alarm_testing_evidence]);
       if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
       if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
+      break;
+
+    case 'FRA_4_PASSIVE_PROTECTION':
       if (data.fire_doors_condition) keyDetails.push(['Fire Doors Condition', data.fire_doors_condition]);
       if (data.compartmentation_condition) keyDetails.push(['Compartmentation Condition', data.compartmentation_condition]);
       if (data.fire_stopping_confidence) keyDetails.push(['Fire Stopping Confidence', data.fire_stopping_confidence]);
+      break;
+
+    case 'FRA_8_FIREFIGHTING_EQUIPMENT':
       if (data.extinguishers_present) keyDetails.push(['Extinguishers Present', data.extinguishers_present]);
       if (data.extinguishers_servicing) keyDetails.push(['Extinguishers Servicing', data.extinguishers_servicing]);
       break;

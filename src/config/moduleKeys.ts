@@ -19,6 +19,9 @@ export const MODULE_KEYS = {
   hazards: 'FRA_1_HAZARDS',
   means_of_escape: 'FRA_2_ESCAPE_ASIS',
   fire_protection: 'FRA_3_PROTECTION_ASIS',
+  active_fire_protection: 'FRA_3_ACTIVE_SYSTEMS',
+  passive_fire_protection: 'FRA_4_PASSIVE_PROTECTION',
+  firefighting_equipment: 'FRA_8_FIREFIGHTING_EQUIPMENT',
   significant_findings: 'FRA_90_SIGNIFICANT_FINDINGS',
   external_fire_spread: 'FRA_5_EXTERNAL_FIRE_SPREAD',
 

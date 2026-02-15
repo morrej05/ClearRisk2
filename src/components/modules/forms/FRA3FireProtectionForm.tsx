@@ -620,12 +620,12 @@ export default function FRA3FireProtectionForm({
       />
 
       {(() => {
-        const infoGapDetection = detectInfoGaps('FRA_3_PROTECTION_ASIS', formData, outcome);
+        const infoGapDetection = detectInfoGaps(moduleInstance.module_key, formData, outcome);
         return infoGapDetection.hasInfoGap ? (
           <div className="mt-6">
             <InfoGapQuickActions
               detection={infoGapDetection}
-              moduleKey="FRA_3_PROTECTION_ASIS"
+              moduleKey={moduleInstance.module_key}
               onCreateAction={(actionText, defaultL, defaultI) => {
                 setQuickActionTemplate({
                   action: actionText,

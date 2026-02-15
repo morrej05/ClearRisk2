@@ -240,7 +240,7 @@ export default function ModuleRenderer({
     );
   }
 
-  if (moduleInstance.module_key === 'FRA_3_PROTECTION_ASIS') {
+  if (['FRA_3_PROTECTION_ASIS', 'FRA_3_ACTIVE_SYSTEMS', 'FRA_4_PASSIVE_PROTECTION', 'FRA_8_FIREFIGHTING_EQUIPMENT'].includes(moduleInstance.module_key)) {
     return (
       <>
         {SavedIndicator}

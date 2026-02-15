@@ -97,7 +97,7 @@ interface BuildPdfOptions {
   renderMode?: 'preview' | 'issued';
 }
 
-const FRA_MODULE_ORDER = [
+const FRA_MODULE_ORDER_LEGACY = [
   'A1_DOC_CONTROL',
   'FRA_4_SIGNIFICANT_FINDINGS',
   'FRA_90_SIGNIFICANT_FINDINGS',
@@ -108,6 +108,22 @@ const FRA_MODULE_ORDER = [
   'FRA_7_EMERGENCY_ARRANGEMENTS',
   'FRA_2_ESCAPE_ASIS',
   'FRA_3_PROTECTION_ASIS',
+  'FRA_5_EXTERNAL_FIRE_SPREAD',
+];
+
+const FRA_MODULE_ORDER_SPLIT = [
+  'A1_DOC_CONTROL',
+  'FRA_4_SIGNIFICANT_FINDINGS',
+  'FRA_90_SIGNIFICANT_FINDINGS',
+  'FRA_1_HAZARDS',
+  'A4_MANAGEMENT_CONTROLS',
+  'FRA_6_MANAGEMENT_SYSTEMS',
+  'A5_EMERGENCY_ARRANGEMENTS',
+  'FRA_7_EMERGENCY_ARRANGEMENTS',
+  'FRA_2_ESCAPE_ASIS',
+  'FRA_3_ACTIVE_SYSTEMS',
+  'FRA_4_PASSIVE_PROTECTION',
+  'FRA_8_FIREFIGHTING_EQUIPMENT',
   'FRA_5_EXTERNAL_FIRE_SPREAD',
 ];
 
@@ -242,9 +258,11 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   yPosition = drawTextSection(page, 'Responsible Person Duties', fraResponsiblePersonDutiesText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // FRA Modules
+  const allFraModules = moduleInstances.filter(m => m.module_key.startsWith('FRA_') && !COMMON_MODULES.includes(m.module_key));
+  const hasLegacyFraProtection = allFraModules.some((m) => m.module_key === 'FRA_3_PROTECTION_ASIS');
   const fraModules = sortModulesByOrder(
-    moduleInstances.filter(m => m.module_key.startsWith('FRA_') && !COMMON_MODULES.includes(m.module_key)),
-    FRA_MODULE_ORDER
+    allFraModules.filter((m) => !(hasLegacyFraProtection && ['FRA_3_ACTIVE_SYSTEMS', 'FRA_4_PASSIVE_PROTECTION', 'FRA_8_FIREFIGHTING_EQUIPMENT'].includes(m.module_key))),
+    hasLegacyFraProtection ? FRA_MODULE_ORDER_LEGACY : FRA_MODULE_ORDER_SPLIT
   );
 
   for (const module of fraModules) {

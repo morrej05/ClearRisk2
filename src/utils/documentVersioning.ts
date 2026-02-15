@@ -83,6 +83,9 @@ export async function validateDocumentForIssue(
         'A2_BUILDING_PROFILE',
         'A3_PERSONS_AT_RISK',
         'FRA_7_EMERGENCY_ARRANGEMENTS',
+        'FRA_3_ACTIVE_SYSTEMS',
+        'FRA_4_PASSIVE_PROTECTION',
+        'FRA_8_FIREFIGHTING_EQUIPMENT',
         'FRA_90_SIGNIFICANT_FINDINGS'
       ];
 
@@ -103,14 +106,28 @@ export async function validateDocumentForIssue(
       if (document.document_type === 'FRA') {
         const requiredModuleKeys = new Set(REQUIRED_FRA_MODULES);
         const modulesMap = new Map(modules.map(m => [m.module_key, m]));
+        const hasLegacyProtectionModule = modulesMap.has('FRA_3_PROTECTION_ASIS');
 
         // Check required modules
         for (const requiredKey of requiredModuleKeys) {
+          if (
+            hasLegacyProtectionModule &&
+            ['FRA_3_ACTIVE_SYSTEMS', 'FRA_4_PASSIVE_PROTECTION', 'FRA_8_FIREFIGHTING_EQUIPMENT'].includes(requiredKey)
+          ) {
+            continue;
+          }
           const module = modulesMap.get(requiredKey);
           if (!module) {
             errors.push(`Required module ${requiredKey} is missing`);
           } else if (!moduleHasData(module)) {
             errors.push(`Required module ${requiredKey} has no data`);
+          }
+        }
+
+        if (hasLegacyProtectionModule) {
+          const legacyProtectionModule = modulesMap.get('FRA_3_PROTECTION_ASIS');
+          if (legacyProtectionModule && !moduleHasData(legacyProtectionModule)) {
+            errors.push('Required module FRA_3_PROTECTION_ASIS has no data');
           }
         }
 

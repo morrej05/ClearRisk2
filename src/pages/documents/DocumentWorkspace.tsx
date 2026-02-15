@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'reac
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck, Menu, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getModuleName, sortModulesByOrder, getModuleKeysForDocType, getModuleNavigationPath, getReModulesForDocument, normalizeReModuleKey } from '../../lib/modules/moduleCatalog';
+import { getModuleName, sortModulesByOrder, getModuleKeysForDocType, getModuleNavigationPath, getReModulesForDocument, normalizeReModuleKey, filterDeprecatedModuleKeysForNavigation } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
 import EditLockBanner from '../../components/EditLockBanner';
@@ -74,15 +74,17 @@ const isREKey = (k: string) =>
   k.startsWith('RE-') ||
   k.toLowerCase().includes('risk_engineering'); // safety
 
-function getExpectedKeysForDocument(document: Document): string[] {
+function getExpectedKeysForDocument(document: Document, existingModuleKeys: string[] = []): string[] {
   // IMPORTANT: use enabled_modules to decide what should exist
   const enabled = document.enabled_modules ?? [document.document_type];
 
   const expected: string[] = [];
+  const existing = new Set(existingModuleKeys);
 
   // Use module catalog for base document types
   if (document.document_type === 'FRA') {
-    expected.push(...getModuleKeysForDocType('FRA'));
+    const fraModuleKeys = getModuleKeysForDocType('FRA', { includeDeprecatedIfPresent: existing });
+    expected.push(...filterDeprecatedModuleKeysForNavigation(fraModuleKeys, existing));
   }
 
   if (document.document_type === 'FSD') {
@@ -109,7 +111,9 @@ function getExpectedKeysForDocument(document: Document): string[] {
       'A7_REVIEW_ASSURANCE',
       'FRA_1_HAZARDS',
       'FRA_2_ESCAPE_ASIS',
-      'FRA_3_PROTECTION_ASIS',
+      ...(existing.has('FRA_3_PROTECTION_ASIS')
+        ? ['FRA_3_PROTECTION_ASIS']
+        : ['FRA_3_ACTIVE_SYSTEMS', 'FRA_4_PASSIVE_PROTECTION', 'FRA_8_FIREFIGHTING_EQUIPMENT']),
       'FRA_90_SIGNIFICANT_FINDINGS',
       'FRA_5_EXTERNAL_FIRE_SPREAD'
     );
@@ -312,15 +316,16 @@ const fetchModules = async () => {
       moduleCount: existing?.length || 0,
     });
 
+    const existingModuleKeys = (existing || []).map((m: any) => m.module_key);
     const existingKeys = new Set(
-      (existing || []).map((m: any) => {
+      existingModuleKeys.map((key) => {
         if (doc.document_type === 'RE') {
-          return normalizeReModuleKey(m.module_key) ?? m.module_key;
+          return normalizeReModuleKey(key) ?? key;
         }
-        return m.module_key;
+        return key;
       })
     );
-    const expectedKeys = getExpectedKeysForDocument(doc);
+    const expectedKeys = getExpectedKeysForDocument(doc, existingModuleKeys);
 
     const missingKeys = expectedKeys.filter((k) => !existingKeys.has(k));
 

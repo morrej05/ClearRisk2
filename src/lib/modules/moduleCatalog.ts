@@ -2,8 +2,9 @@ export interface ModuleDefinition {
   name: string;
   docTypes: string[];
   order: number;
-  type: 'input' | 'derived';
+  type?: 'input' | 'derived';
   hidden?: boolean; // If true, hide from navigation but allow programmatic access
+  deprecated?: boolean;
 }
 
 export interface ModuleInstanceLike {
@@ -141,17 +142,36 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     docTypes: ['FRA'],
     order: 12,
     type: 'input',
+    deprecated: true,
+  },
+  FRA_3_ACTIVE_SYSTEMS: {
+    name: 'FRA-3 – Active Fire Protection (As-Is)',
+    docTypes: ['FRA'],
+    order: 12,
+    type: 'input',
+  },
+  FRA_4_PASSIVE_PROTECTION: {
+    name: 'FRA-4 – Passive Fire Protection (As-Is)',
+    docTypes: ['FRA'],
+    order: 13,
+    type: 'input',
+  },
+  FRA_8_FIREFIGHTING_EQUIPMENT: {
+    name: 'FRA-8 – Firefighting Equipment (As-Is)',
+    docTypes: ['FRA'],
+    order: 14,
+    type: 'input',
   },
   FRA_5_EXTERNAL_FIRE_SPREAD: {
     name: 'FRA-5 - External Fire Spread',
     docTypes: ['FRA'],
-    order: 13,
+    order: 15,
     type: 'input',
   },
   FRA_90_SIGNIFICANT_FINDINGS: {
     name: 'FRA-90 - Significant Findings (Summary)',
     docTypes: ['FRA'],
-    order: 999,
+    order: 16,
     type: 'derived',
   },
   FSD_1_REG_BASIS: {
@@ -295,11 +315,35 @@ export function sortModulesByOrder(
   });
 }
 
-export function getModuleKeysForDocType(docType: string): string[] {
+export function getModuleKeysForDocType(
+  docType: string,
+  options?: { includeDeprecated?: boolean; includeDeprecatedIfPresent?: Iterable<string> }
+): string[] {
+  const includeDeprecated = options?.includeDeprecated ?? false;
+  const includeDeprecatedIfPresent = new Set(options?.includeDeprecatedIfPresent ?? []);
+
   return Object.entries(MODULE_CATALOG)
-    .filter(([, def]) => def.docTypes.includes(docType) && !def.hidden)
+    .filter(([key, def]) => {
+      if (!def.docTypes.includes(docType) || def.hidden) return false;
+      if (!def.deprecated) return true;
+      if (includeDeprecated) return true;
+      return includeDeprecatedIfPresent.has(key);
+    })
     .sort((a, b) => (a[1].order ?? 999) - (b[1].order ?? 999))
     .map(([key]) => key);
+}
+
+export function filterDeprecatedModuleKeysForNavigation(
+  moduleKeys: string[],
+  documentModuleKeys: Iterable<string>
+): string[] {
+  const presentKeys = new Set(documentModuleKeys);
+
+  return moduleKeys.filter((moduleKey) => {
+    const def = MODULE_CATALOG[moduleKey];
+    if (!def?.deprecated) return true;
+    return presentKeys.has(moduleKey);
+  });
 }
 
 // Legacy RE keys that should normalize to canonical MODULE_CATALOG keys

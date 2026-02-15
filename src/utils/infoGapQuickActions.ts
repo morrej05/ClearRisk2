@@ -163,6 +163,7 @@ export function detectInfoGaps(
       break;
 
     case 'FRA_3_PROTECTION_ASIS':
+    case 'FRA_3_ACTIVE_SYSTEMS':
       if (moduleData.alarm_present === 'unknown' || !moduleData.alarm_present) {
         reasons.push('Fire alarm system presence unknown');
         quickActions.push({
@@ -203,6 +204,9 @@ export function detectInfoGaps(
           defaultImpact: 3,
         });
       }
+      break;
+
+    case 'FRA_4_PASSIVE_PROTECTION':
       if (moduleData.fire_stopping_confidence === 'low' || moduleData.fire_stopping_confidence === 'unknown') {
         reasons.push('Fire stopping integrity uncertain');
         quickActions.push({
@@ -211,6 +215,39 @@ export function detectInfoGaps(
           priority: 'P2',
           defaultLikelihood: 4,
           defaultImpact: 4,
+        });
+      }
+      if (moduleData.compartmentation_condition === 'unknown' || !moduleData.compartmentation_condition) {
+        reasons.push('Compartmentation condition unknown');
+        quickActions.push({
+          action: 'Inspect and record compartmentation condition, including walls/ceilings and penetrations.',
+          reason: 'Compartmentation limits fire and smoke spread',
+          priority: 'P2',
+          defaultLikelihood: 4,
+          defaultImpact: 4,
+        });
+      }
+      break;
+
+    case 'FRA_8_FIREFIGHTING_EQUIPMENT':
+      if (moduleData.extinguishers_present === 'unknown' || !moduleData.extinguishers_present) {
+        reasons.push('Portable firefighting equipment provision unknown');
+        quickActions.push({
+          action: 'Survey and document extinguisher types, locations, and coverage to verify suitability.',
+          reason: 'Initial attack equipment supports early-stage fire control',
+          priority: 'P2',
+          defaultLikelihood: 3,
+          defaultImpact: 3,
+        });
+      }
+      if (moduleData.extinguishers_servicing === 'unknown' || moduleData.extinguishers_servicing === 'partial') {
+        reasons.push('Extinguisher servicing evidence incomplete');
+        quickActions.push({
+          action: 'Obtain extinguisher servicing records and implement routine maintenance schedule.',
+          reason: 'Servicing is needed to ensure reliable firefighting equipment',
+          priority: 'P2',
+          defaultLikelihood: 3,
+          defaultImpact: 3,
         });
       }
       break;
@@ -296,7 +333,12 @@ export function getModuleInfoGapTitle(moduleKey: string): string {
     case 'FRA_2_ESCAPE_ASIS':
       return 'Means of Escape Information Gaps';
     case 'FRA_3_PROTECTION_ASIS':
-      return 'Fire Protection Information Gaps';
+    case 'FRA_3_ACTIVE_SYSTEMS':
+      return 'Active Fire Protection Information Gaps';
+    case 'FRA_4_PASSIVE_PROTECTION':
+      return 'Passive Fire Protection Information Gaps';
+    case 'FRA_8_FIREFIGHTING_EQUIPMENT':
+      return 'Firefighting Equipment Information Gaps';
     case 'FRA_5_EXTERNAL_FIRE_SPREAD':
       return 'External Fire Spread Information Gaps';
     case 'FRA_4_SIGNIFICANT_FINDINGS':

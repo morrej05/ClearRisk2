@@ -12,30 +12,18 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Create admin client with service role key
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
-
     // Extract Authorization header and token
     const authHeader = req.headers.get('Authorization') ?? '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    console.log('[upload-org-logo] auth header present?', !!authHeader);
+    console.log('[upload-org-logo] auth header prefix:', authHeader.slice(0, 20));
 
-    console.log('[upload-org-logo] hasAuthHeader', !!authHeader);
-    console.log('[upload-org-logo] hasToken', !!token);
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!token) {
       return new Response(
         JSON.stringify({
           error: 'Missing bearer token',
-          hasAuthHeader: !!authHeader
+          authHeaderPresent: !!authHeader
         }),
         {
           status: 401,
@@ -44,17 +32,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validate token using admin client
-    const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
+    // Create admin client with service role key
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    console.log('[upload-org-logo] getUser ok', !!user, 'err', userErr);
+    // Validate JWT
+    const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
+    console.log('[upload-org-logo] getUser ok?', !!user, 'err=', userErr);
 
     if (userErr || !user) {
       return new Response(
         JSON.stringify({
           error: 'Invalid token',
-          details: userErr?.message,
-          code: userErr?.code
+          details: userErr?.message ?? null,
+          code: (userErr as any)?.code ?? null
         }),
         {
           status: 401,

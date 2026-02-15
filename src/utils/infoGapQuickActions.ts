@@ -51,6 +51,7 @@ export function detectInfoGaps(
       break;
 
     case 'A4_MANAGEMENT_CONTROLS':
+    case 'FRA_6_MANAGEMENT_SYSTEMS':
       if (moduleData.testing_records === 'unknown' || !moduleData.testing_records) {
         reasons.push('Testing records availability unknown');
         quickActions.push({
@@ -84,6 +85,7 @@ export function detectInfoGaps(
       break;
 
     case 'A5_EMERGENCY_ARRANGEMENTS':
+    case 'FRA_7_EMERGENCY_ARRANGEMENTS':
       if (moduleData.emergency_plan_exists === 'unknown' || !moduleData.emergency_plan_exists || moduleData.drill_frequency === 'unknown' || !moduleData.drill_frequency) {
         reasons.push('Emergency plan or drill records status unknown');
         quickActions.push({
@@ -249,6 +251,7 @@ export function detectInfoGaps(
       break;
 
     case 'FRA_4_SIGNIFICANT_FINDINGS':
+    case 'FRA_90_SIGNIFICANT_FINDINGS':
       if (!moduleData.overall_risk_rating || moduleData.overall_risk_rating === 'unknown') {
         reasons.push('Overall risk rating not determined');
         quickActions.push({
@@ -283,8 +286,10 @@ export function getModuleInfoGapTitle(moduleKey: string): string {
     case 'A1_DOC_CONTROL':
       return 'Document Control Information Gaps';
     case 'A4_MANAGEMENT_CONTROLS':
+    case 'FRA_6_MANAGEMENT_SYSTEMS':
       return 'Management Systems Information Gaps';
     case 'A5_EMERGENCY_ARRANGEMENTS':
+    case 'FRA_7_EMERGENCY_ARRANGEMENTS':
       return 'Emergency Arrangements Information Gaps';
     case 'FRA_1_HAZARDS':
       return 'Hazard Identification Information Gaps';
@@ -295,6 +300,7 @@ export function getModuleInfoGapTitle(moduleKey: string): string {
     case 'FRA_5_EXTERNAL_FIRE_SPREAD':
       return 'External Fire Spread Information Gaps';
     case 'FRA_4_SIGNIFICANT_FINDINGS':
+    case 'FRA_90_SIGNIFICANT_FINDINGS':
       return 'Assessment Completion Information Gaps';
     default:
       return 'Information Gaps';

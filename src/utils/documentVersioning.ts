@@ -82,8 +82,8 @@ export async function validateDocumentForIssue(
         'A1_DOC_CONTROL',
         'A2_BUILDING_PROFILE',
         'A3_PERSONS_AT_RISK',
-        'A5_EMERGENCY_ARRANGEMENTS',
-        'FRA_4_SIGNIFICANT_FINDINGS'
+        'FRA_7_EMERGENCY_ARRANGEMENTS',
+        'FRA_90_SIGNIFICANT_FINDINGS'
       ];
 
       const isEmptyObject = (v: any) =>

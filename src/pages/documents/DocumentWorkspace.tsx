@@ -104,13 +104,13 @@ function getExpectedKeysForDocument(document: Document): string[] {
       'A1_DOC_CONTROL',
       'A2_BUILDING_PROFILE',
       'A3_PERSONS_AT_RISK',
-      'A4_MANAGEMENT_CONTROLS',
-      'A5_EMERGENCY_ARRANGEMENTS',
+      'FRA_6_MANAGEMENT_SYSTEMS',
+      'FRA_7_EMERGENCY_ARRANGEMENTS',
       'A7_REVIEW_ASSURANCE',
       'FRA_1_HAZARDS',
       'FRA_2_ESCAPE_ASIS',
       'FRA_3_PROTECTION_ASIS',
-      'FRA_4_SIGNIFICANT_FINDINGS',
+      'FRA_90_SIGNIFICANT_FINDINGS',
       'FRA_5_EXTERNAL_FIRE_SPREAD'
     );
   }

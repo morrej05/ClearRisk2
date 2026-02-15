@@ -188,7 +188,7 @@ export default function ModuleRenderer({
     );
   }
 
-  if (moduleInstance.module_key === 'A4_MANAGEMENT_CONTROLS') {
+  if (moduleInstance.module_key === 'A4_MANAGEMENT_CONTROLS' || moduleInstance.module_key === 'FRA_6_MANAGEMENT_SYSTEMS') {
     return (
       <>
         {SavedIndicator}
@@ -201,7 +201,7 @@ export default function ModuleRenderer({
     );
   }
 
-  if (moduleInstance.module_key === 'A5_EMERGENCY_ARRANGEMENTS') {
+  if (moduleInstance.module_key === 'A5_EMERGENCY_ARRANGEMENTS' || moduleInstance.module_key === 'FRA_7_EMERGENCY_ARRANGEMENTS') {
     return (
       <>
         {SavedIndicator}
@@ -253,7 +253,7 @@ export default function ModuleRenderer({
     );
   }
 
-  if (moduleInstance.module_key === 'FRA_4_SIGNIFICANT_FINDINGS') {
+  if (moduleInstance.module_key === 'FRA_4_SIGNIFICANT_FINDINGS' || moduleInstance.module_key === 'FRA_90_SIGNIFICANT_FINDINGS') {
     return (
       <>
         {SavedIndicator}

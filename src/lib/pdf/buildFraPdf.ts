@@ -98,9 +98,12 @@ interface BuildPdfOptions {
 const MODULE_ORDER = [
   'A1_DOC_CONTROL',
   'FRA_4_SIGNIFICANT_FINDINGS',
+  'FRA_90_SIGNIFICANT_FINDINGS',
   'FRA_1_HAZARDS',
   'A4_MANAGEMENT_CONTROLS',
+  'FRA_6_MANAGEMENT_SYSTEMS',
   'A5_EMERGENCY_ARRANGEMENTS',
+  'FRA_7_EMERGENCY_ARRANGEMENTS',
   'FRA_2_ESCAPE_ASIS',
   'FRA_3_PROTECTION_ASIS',
   'FRA_5_EXTERNAL_FIRE_SPREAD',
@@ -217,7 +220,9 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   }
 
   const sortedModules = sortModules(moduleInstances);
-  const fra4Module = sortedModules.find((m) => m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS');
+  const fra4Module = sortedModules.find((m) =>
+    m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS' || m.module_key === 'FRA_90_SIGNIFICANT_FINDINGS'
+  );
 
   if (fra4Module) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
@@ -230,7 +235,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   }
 
   for (const module of sortedModules) {
-    if (module.module_key === 'FRA_4_SIGNIFICANT_FINDINGS') continue;
+    if (module.module_key === 'FRA_4_SIGNIFICANT_FINDINGS' || module.module_key === 'FRA_90_SIGNIFICANT_FINDINGS') continue;
 
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
@@ -1161,6 +1166,7 @@ function drawModuleKeyDetails(
       break;
 
     case 'A4_MANAGEMENT_CONTROLS':
+    case 'FRA_6_MANAGEMENT_SYSTEMS':
       if (data.responsibilities_defined) keyDetails.push(['Responsibilities Defined', data.responsibilities_defined]);
       if (data.fire_safety_policy) keyDetails.push(['Fire Policy Exists', data.fire_safety_policy]);
       if (data.training_induction) keyDetails.push(['Induction Training', data.training_induction]);
@@ -1172,6 +1178,7 @@ function drawModuleKeyDetails(
       break;
 
     case 'A5_EMERGENCY_ARRANGEMENTS':
+    case 'FRA_7_EMERGENCY_ARRANGEMENTS':
       if (data.emergency_plan_exists) keyDetails.push(['Emergency Plan Exists', data.emergency_plan_exists]);
       if (data.assembly_points_defined) keyDetails.push(['Assembly Points Defined', data.assembly_points_defined]);
       if (data.drill_frequency) keyDetails.push(['Drill Frequency', data.drill_frequency]);
@@ -1235,6 +1242,7 @@ function drawModuleKeyDetails(
       break;
 
     case 'FRA_4_SIGNIFICANT_FINDINGS':
+    case 'FRA_90_SIGNIFICANT_FINDINGS':
       if (data.overall_risk_rating) keyDetails.push(['Overall Risk Rating', data.overall_risk_rating.toUpperCase()]);
       if (data.executive_summary) {
         const truncated = data.executive_summary.length > 200

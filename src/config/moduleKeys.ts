@@ -14,12 +14,12 @@ export const MODULE_KEYS = {
   persons_at_risk: 'A3_PERSONS_AT_RISK',
 
   // FRA - Specific modules
-  management: 'A4_MANAGEMENT_CONTROLS',
-  emergency_arrangements: 'A5_EMERGENCY_ARRANGEMENTS',
+  management: 'FRA_6_MANAGEMENT_SYSTEMS',
+  emergency_arrangements: 'FRA_7_EMERGENCY_ARRANGEMENTS',
   hazards: 'FRA_1_HAZARDS',
   means_of_escape: 'FRA_2_ESCAPE_ASIS',
   fire_protection: 'FRA_3_PROTECTION_ASIS',
-  significant_findings: 'FRA_4_SIGNIFICANT_FINDINGS',
+  significant_findings: 'FRA_90_SIGNIFICANT_FINDINGS',
   external_fire_spread: 'FRA_5_EXTERNAL_FIRE_SPREAD',
 
   // FSD - Specific modules

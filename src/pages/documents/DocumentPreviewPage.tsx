@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileDown, Lock } from 'lucide-react';
+import { ArrowLeft, FileDown, RefreshCw, ExternalLink, CheckSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
-import { downloadLockedPdf, getLockedPdfInfo } from '../../utils/pdfLocking';
+import { uploadDraftPdfAndSign, saveReModuleSelection, loadReModuleSelection, safeSlug } from '../../utils/draftPdf';
 import { saveAs } from 'file-saver';
 import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
+import { MODULE_CATALOG } from '../../lib/modules/moduleCatalog';
 
 type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED';
+type ReReportTab = 're_survey' | 're_lp';
 
 export default function DocumentPreviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,18 +24,30 @@ export default function DocumentPreviewPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [document, setDocument] = useState<any>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [draftPath, setDraftPath] = useState<string | null>(null);
   const [filename, setFilename] = useState<string>('document.pdf');
   const [outputMode, setOutputMode] = useState<OutputMode>('FRA');
   const [availableModes, setAvailableModes] = useState<OutputMode[]>(['FRA']);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    };
-  }, [pdfUrl]);
+  // RE-specific state
+  const [reActiveTab, setReActiveTab] = useState<ReReportTab>('re_survey');
+  const [reAvailableModules, setReAvailableModules] = useState<string[]>([]);
+  const [reSelectedModules, setReSelectedModules] = useState<string[]>([]);
+
+  // Data for PDF generation
+  const [moduleInstances, setModuleInstances] = useState<any[]>([]);
+  const [enrichedActions, setEnrichedActions] = useState<any[]>([]);
+  const [actionRatings, setActionRatings] = useState<any[]>([]);
+
+  const isReDocument = document?.document_type === 'RE';
 
   const getAvailableOutputModes = (doc: any): OutputMode[] => {
+    if (doc.document_type === 'RE') {
+      return []; // RE uses tabs instead of output modes
+    }
+
     const enabledModules = doc.enabled_modules || [doc.document_type];
     const modes: OutputMode[] = [];
 
@@ -58,17 +72,18 @@ export default function DocumentPreviewPage() {
     return enabledModules[0] as OutputMode;
   };
 
-  const formatFilename = (doc: any, mode: OutputMode) => {
+  const formatFilename = (doc: any, mode: OutputMode | ReReportTab) => {
     const siteName = (doc.title || 'document')
       .replace(/[^a-z0-9]/gi, '_')
       .replace(/_+/g, '_')
       .toLowerCase();
     const dateStr = doc.assessment_date ? new Date(doc.assessment_date).toISOString().split('T')[0] : 'date';
-    const docType = mode === 'COMBINED' ? 'COMBINED' : (doc.document_type || 'DOC');
+    const docType = mode === 'COMBINED' ? 'COMBINED' : (mode === 're_survey' ? 'RE_SURVEY' : mode === 're_lp' ? 'RE_LP' : doc.document_type || 'DOC');
     const v = doc.version_number || doc.version || 1;
     return `${docType}_${siteName}_${dateStr}_v${v}.pdf`;
   };
 
+  // Load document and data
   useEffect(() => {
     if (!id || !organisation?.id) return;
 
@@ -93,52 +108,62 @@ export default function DocumentPreviewPage() {
 
         setDocument(doc);
 
-        const modes = getAvailableOutputModes(doc);
-        setAvailableModes(modes);
+        // Setup modes/tabs based on document type
+        if (doc.document_type === 'RE') {
+          // Load available RE modules
+          const reModules = Object.keys(MODULE_CATALOG).filter(
+            (key) => key.startsWith('RE_') && !MODULE_CATALOG[key].hidden
+          );
+          setReAvailableModules(reModules);
 
-        const defaultMode = getDefaultOutputMode(doc);
-        setOutputMode(defaultMode);
+          // Load saved module selection or default to all
+          const saved = await loadReModuleSelection(id);
+          setReSelectedModules(saved || reModules);
+        } else {
+          const modes = getAvailableOutputModes(doc);
+          setAvailableModes(modes);
+          const defaultMode = getDefaultOutputMode(doc);
+          setOutputMode(defaultMode);
+        }
 
-        const fname = formatFilename(doc, defaultMode);
+        const fname = formatFilename(doc, doc.document_type === 'RE' ? 're_survey' : getDefaultOutputMode(doc));
         setFilename(fname);
 
         // Load module and action data for PDF generation
-        let moduleInstances: any[] = [];
-        let enrichedActions: any[] = [];
-        let actionRatings: any[] = [];
+        let modules: any[] = [];
+        let actions: any[] = [];
+        let ratings: any[] = [];
 
         if (doc.issue_status !== 'draft') {
-          // For issued documents, load from live tables for preview
-          // Note: The locked PDF is the source of truth, but this preview allows
-          // viewing different output modes (FRA, FSD, Combined) on-the-fly
-          const { data: modules } = await supabase
+          // For issued documents, load from live tables
+          const { data: modulesData } = await supabase
             .from('module_instances')
             .select('*')
             .eq('document_id', id)
             .eq('organisation_id', organisation.id);
 
-          moduleInstances = modules || [];
+          modules = modulesData || [];
 
-          const { data: actions } = await supabase
+          const { data: actionsData } = await supabase
             .from('actions')
             .select(`*`)
             .eq('document_id', id)
             .eq('organisation_id', organisation.id)
             .is('deleted_at', null);
 
-          enrichedActions = actions || [];
+          actions = actionsData || [];
         } else {
           // Draft document: load live data
-          const { data: modules, error: moduleError } = await supabase
+          const { data: modulesData, error: moduleError } = await supabase
             .from('module_instances')
             .select('*')
             .eq('document_id', id)
             .eq('organisation_id', organisation.id);
 
           if (moduleError) throw moduleError;
-          moduleInstances = modules || [];
+          modules = modulesData || [];
 
-          const { data: actions, error: actionsError } = await supabase
+          const { data: actionsData, error: actionsError } = await supabase
             .from('actions')
             .select(`
               id,
@@ -157,18 +182,18 @@ export default function DocumentPreviewPage() {
 
           if (actionsError) throw actionsError;
 
-          const actionIds = (actions || []).map((a: any) => a.id);
+          const actionIds = (actionsData || []).map((a: any) => a.id);
           if (actionIds.length > 0) {
-            const { data: ratings } = await supabase
+            const { data: ratingsData } = await supabase
               .from('action_ratings')
               .select('action_id, likelihood, impact, score, rated_at')
               .in('action_id', actionIds)
               .order('rated_at', { ascending: false });
 
-            actionRatings = ratings || [];
+            ratings = ratingsData || [];
           }
 
-          const ownerUserIds = (actions || []).map((a: any) => a.owner_user_id).filter(Boolean);
+          const ownerUserIds = (actionsData || []).map((a: any) => a.owner_user_id).filter(Boolean);
           const uniqueOwnerIds = [...new Set(ownerUserIds)];
           const userNameMap = new Map<string, string>();
 
@@ -183,35 +208,16 @@ export default function DocumentPreviewPage() {
             });
           }
 
-          enrichedActions = (actions || []).map((a: any) => ({
+          actions = (actionsData || []).map((a: any) => ({
             ...a,
             owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
           }));
         }
 
-        const pdfOptions = {
-          document: doc,
-          moduleInstances: moduleInstances || [],
-          actions: enrichedActions,
-          actionRatings,
-          organisation: { id: organisation.id, name: organisation.name, branding_logo_path: (organisation as any).branding_logo_path },
-          renderMode: (doc.issue_status === 'issued' || doc.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
-        };
+        setModuleInstances(modules);
+        setEnrichedActions(actions);
+        setActionRatings(ratings);
 
-        let pdfBytes: Uint8Array;
-        if (defaultMode === 'COMBINED') {
-          pdfBytes = await buildCombinedPdf(pdfOptions);
-        } else if (defaultMode === 'FSD') {
-          pdfBytes = await buildFsdPdf(pdfOptions);
-        } else if (defaultMode === 'DSEAR') {
-          pdfBytes = await buildDsearPdf(pdfOptions);
-        } else {
-          pdfBytes = await buildFraPdf(pdfOptions);
-        }
-
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        setPdfUrl(url);
         setIsLoading(false);
       } catch (e: any) {
         console.error(e);
@@ -223,137 +229,96 @@ export default function DocumentPreviewPage() {
     run();
   }, [id, organisation?.id]);
 
-  useEffect(() => {
+  const handleGeneratePdf = async () => {
     if (!document || !organisation?.id) return;
 
-    const regeneratePdf = async () => {
-      try {
-        let moduleInstances: any[] = [];
-        let enrichedActions: any[] = [];
-        let actionRatings: any[] = [];
+    setIsGenerating(true);
+    setErrorMsg(null);
 
-        if (document.issue_status !== 'draft') {
-          // For issued documents, load from live tables for preview
-          const { data: modules } = await supabase
-            .from('module_instances')
-            .select('*')
-            .eq('document_id', document.id)
-            .eq('organisation_id', organisation.id);
+    try {
+      const pdfOptions = {
+        document,
+        moduleInstances,
+        actions: enrichedActions,
+        actionRatings,
+        organisation: {
+          id: organisation.id,
+          name: organisation.name,
+          branding_logo_path: (organisation as any).branding_logo_path,
+        },
+        renderMode: (document.issue_status === 'issued' || document.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
+      };
 
-          moduleInstances = modules || [];
+      let pdfBytes: Uint8Array;
+      let reportKind: 'fra' | 'fsd' | 'ex' | 're_survey' | 're_lp';
 
-          const { data: actions } = await supabase
-            .from('actions')
-            .select(`*`)
-            .eq('document_id', document.id)
-            .eq('organisation_id', organisation.id)
-            .is('deleted_at', null);
-
-          enrichedActions = actions || [];
+      if (isReDocument) {
+        // RE documents - placeholder for now
+        if (reActiveTab === 're_survey') {
+          // TODO: Build RE Survey Report with selected modules
+          throw new Error('RE Survey Report PDF generation not yet implemented');
         } else {
-          // Load live data for draft documents
-          const { data: modules, error: moduleError } = await supabase
-            .from('module_instances')
-            .select('*')
-            .eq('document_id', document.id)
-            .eq('organisation_id', organisation.id);
-
-          if (moduleError) throw moduleError;
-          moduleInstances = modules || [];
-
-          const { data: actions, error: actionsError } = await supabase
-            .from('actions')
-            .select(`
-              id,
-              recommended_action,
-              priority_band,
-              status,
-              owner_user_id,
-              target_date,
-              module_instance_id,
-              created_at
-            `)
-            .eq('document_id', document.id)
-            .eq('organisation_id', organisation.id)
-            .is('deleted_at', null)
-            .order('created_at', { ascending: true });
-
-          if (actionsError) throw actionsError;
-
-          const actionIds = (actions || []).map((a: any) => a.id);
-          if (actionIds.length > 0) {
-            const { data: ratings } = await supabase
-              .from('action_ratings')
-              .select('action_id, likelihood, impact, score, rated_at')
-              .in('action_id', actionIds)
-              .order('rated_at', { ascending: false });
-
-            actionRatings = ratings || [];
-          }
-
-          const ownerUserIds = (actions || []).map((a: any) => a.owner_user_id).filter(Boolean);
-          const uniqueOwnerIds = [...new Set(ownerUserIds)];
-          const userNameMap = new Map<string, string>();
-
-          if (uniqueOwnerIds.length > 0) {
-            const { data: profiles } = await supabase
-              .from('user_profiles')
-              .select('user_id, name')
-              .in('user_id', uniqueOwnerIds);
-
-            (profiles || []).forEach((p: any) => {
-              if (p?.name) userNameMap.set(p.user_id, p.name);
-            });
-          }
-
-          enrichedActions = (actions || []).map((a: any) => ({
-            ...a,
-            owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
-          }));
+          // TODO: Build RE Loss Prevention Report
+          throw new Error('RE Loss Prevention Report PDF generation not yet implemented');
         }
-
-        const pdfOptions = {
-          document: document,
-          moduleInstances: moduleInstances || [],
-          actions: enrichedActions,
-          actionRatings,
-          organisation: { id: organisation.id, name: organisation.name, branding_logo_path: (organisation as any).branding_logo_path },
-          renderMode: (document.issue_status === 'issued' || document.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
-        };
-
-        let pdfBytes: Uint8Array;
+      } else {
+        // Standard documents
         if (outputMode === 'COMBINED') {
           pdfBytes = await buildCombinedPdf(pdfOptions);
+          reportKind = 'fra'; // Use fra as base
         } else if (outputMode === 'FSD') {
           pdfBytes = await buildFsdPdf(pdfOptions);
+          reportKind = 'fsd';
         } else if (outputMode === 'DSEAR') {
           pdfBytes = await buildDsearPdf(pdfOptions);
+          reportKind = 'ex';
         } else {
           pdfBytes = await buildFraPdf(pdfOptions);
+          reportKind = 'fra';
         }
 
-        if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+        // Upload to storage and get signed URL
+        const result = await uploadDraftPdfAndSign({
+          organisationId: organisation.id,
+          documentId: document.id,
+          reportKind,
+          filenameBase: safeSlug(document.title || 'document'),
+          pdfBytes,
+        });
 
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        setPdfUrl(url);
+        setSignedUrl(result.signedUrl);
+        setDraftPath(result.path);
         setFilename(formatFilename(document, outputMode));
-      } catch (e: any) {
-        console.error('[PDF Regeneration Error]', e);
       }
-    };
-
-    regeneratePdf();
-  }, [outputMode]);
+    } catch (e: any) {
+      console.error('[PDF Generation Error]', e);
+      setErrorMsg(e?.message || 'Failed to generate PDF');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleDownload = async () => {
-    if (!pdfUrl) return;
+    if (!signedUrl) return;
     try {
-      const res = await fetch(pdfUrl);
+      const res = await fetch(signedUrl);
       const blob = await res.blob();
       saveAs(blob, filename);
     } catch (e) {
-      alert('Failed to download preview PDF.');
+      alert('Failed to download PDF.');
+    }
+  };
+
+  const handleModuleToggle = (moduleKey: string) => {
+    const newSelection = reSelectedModules.includes(moduleKey)
+      ? reSelectedModules.filter((k) => k !== moduleKey)
+      : [...reSelectedModules, moduleKey];
+
+    setReSelectedModules(newSelection);
+
+    // Persist to database
+    if (document?.id) {
+      saveReModuleSelection(document.id, newSelection);
     }
   };
 
@@ -365,7 +330,7 @@ export default function DocumentPreviewPage() {
     );
   }
 
-  if (errorMsg) {
+  if (errorMsg && !document) {
     return (
       <div className="min-h-screen bg-neutral-50">
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -397,15 +362,35 @@ export default function DocumentPreviewPage() {
             Back
           </button>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleDownload}
-              disabled={!pdfUrl}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleGeneratePdf}
+              disabled={isGenerating}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FileDown className="w-4 h-4" />
-              Download PDF
+              <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+              {isGenerating ? 'Generating...' : signedUrl ? 'Refresh' : 'Generate PDF'}
             </button>
+
+            {signedUrl && (
+              <>
+                <button
+                  onClick={() => window.open(signedUrl, '_blank')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open in New Tab
+                </button>
+
+                <button
+                  onClick={handleDownload}
+                  className="px-4 py-2 bg-slate-600 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors flex items-center gap-2"
+                >
+                  <FileDown className="w-4 h-4" />
+                  Download
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -419,21 +404,83 @@ export default function DocumentPreviewPage() {
           </div>
         )}
 
-        {document && document.issue_status !== 'draft' && (
-          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-            <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-sm font-semibold text-blue-900 mb-1">
-                Issued v{document.version_number || document.version} (Immutable)
-              </h3>
-              <p className="text-sm text-blue-700">
-                This is a locked revision. The content cannot be edited. Create a new revision to make changes.
-              </p>
-            </div>
+        {errorMsg && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-700">{errorMsg}</p>
           </div>
         )}
 
-        {availableModes.length > 1 && (
+        {/* RE Document: Tabs */}
+        {isReDocument && (
+          <div className="mb-4 bg-white border border-neutral-200 rounded-lg">
+            <div className="border-b border-neutral-200">
+              <div className="flex">
+                <button
+                  onClick={() => setReActiveTab('re_survey')}
+                  className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+                    reActiveTab === 're_survey'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-neutral-600 hover:text-neutral-900'
+                  }`}
+                >
+                  Survey Report
+                </button>
+                <button
+                  onClick={() => setReActiveTab('re_lp')}
+                  className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+                    reActiveTab === 're_lp'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-neutral-600 hover:text-neutral-900'
+                  }`}
+                >
+                  Loss Prevention Report
+                </button>
+              </div>
+            </div>
+
+            {/* Survey Report: Module Selection */}
+            {reActiveTab === 're_survey' && (
+              <div className="p-4">
+                <h3 className="text-sm font-semibold text-neutral-900 mb-3">Included Modules</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {reAvailableModules.map((moduleKey) => {
+                    const module = MODULE_CATALOG[moduleKey];
+                    const isSelected = reSelectedModules.includes(moduleKey);
+                    return (
+                      <label
+                        key={moduleKey}
+                        className="flex items-center gap-2 p-2 rounded hover:bg-neutral-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleModuleToggle(moduleKey)}
+                          className="w-4 h-4 text-blue-600 rounded"
+                        />
+                        <span className="text-sm text-neutral-700">{module?.displayName || moduleKey}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs text-neutral-600">
+                  Selected modules will be included in the Survey Report. Selection is saved automatically.
+                </p>
+              </div>
+            )}
+
+            {/* Loss Prevention Report: No options needed */}
+            {reActiveTab === 're_lp' && (
+              <div className="p-4">
+                <p className="text-sm text-neutral-600">
+                  The Loss Prevention Report includes comprehensive analysis and recommendations.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Non-RE Document: Output Mode Selector */}
+        {!isReDocument && availableModes.length > 1 && (
           <div className="mb-4 bg-white border border-neutral-200 rounded-lg p-4">
             <label htmlFor="outputMode" className="block text-sm font-semibold text-neutral-900 mb-2">
               Output Mode
@@ -458,13 +505,22 @@ export default function DocumentPreviewPage() {
           </div>
         )}
 
+        {/* PDF Viewer */}
         <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden" style={{ height: '80vh' }}>
-          {pdfUrl && (
+          {signedUrl ? (
             <iframe
+              key={signedUrl}
               title="Document Preview"
-              src={pdfUrl}
+              src={signedUrl}
               className="w-full h-full"
             />
+          ) : (
+            <div className="flex items-center justify-center h-full text-neutral-500">
+              <div className="text-center">
+                <p className="text-lg font-medium mb-2">No PDF generated yet</p>
+                <p className="text-sm">Click "Generate PDF" to create a preview</p>
+              </div>
+            </div>
           )}
         </div>
       </div>

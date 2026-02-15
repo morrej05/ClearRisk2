@@ -142,18 +142,20 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
 
   if (document.base_document_id) {
     try {
-      const { data: summaries } = await supabase
-        .from('change_summaries')
-        .select(`
-          version_number,
-          created_at,
-          summary_text,
-          user_profiles!change_summaries_created_by_fkey (
-            full_name
-          )
-        `)
-        .eq('base_document_id', document.base_document_id)
-        .order('version_number', { ascending: false });
+      const { data: summaries, error } = await supabase
+  .from('document_change_summaries')
+  .select(`
+    version_number,
+    created_at,
+    summary_text,
+    user_profiles (
+      full_name
+    )
+  `)
+  .eq('base_document_id', document.base_document_id)
+  .order('version_number', { ascending: false });
+
+if (error) console.error('[Change summaries] load error', error);
 
       if (summaries) {
         revisionHistory = summaries.map((s: any) => ({

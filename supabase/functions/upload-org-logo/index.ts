@@ -32,22 +32,53 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log('[upload-org-logo] token length:', token.length);
+
+    // Verify environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    console.log('[upload-org-logo] SUPABASE_URL present?', !!supabaseUrl);
+    console.log('[upload-org-logo] SUPABASE_SERVICE_ROLE_KEY present?', !!serviceRoleKey);
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(
+        JSON.stringify({
+          error: 'Server configuration error',
+          details: 'Missing required environment variables'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Create admin client with service role key
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
 
     // Validate JWT
+    console.log('[upload-org-logo] calling getUser...');
     const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
-    console.log('[upload-org-logo] getUser ok?', !!user, 'err=', userErr);
+    console.log('[upload-org-logo] getUser ok?', !!user, 'err=', userErr?.message);
 
     if (userErr || !user) {
+      console.error('[upload-org-logo] getUser failed:', {
+        message: userErr?.message,
+        code: (userErr as any)?.code,
+        status: (userErr as any)?.status
+      });
       return new Response(
         JSON.stringify({
           error: 'Invalid token',
           details: userErr?.message ?? null,
-          code: (userErr as any)?.code ?? null
+          code: (userErr as any)?.code ?? null,
+          status: (userErr as any)?.status ?? null
         }),
         {
           status: 401,
@@ -56,7 +87,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('[upload-org-logo] User authenticated:', user.id);
+    console.log('[upload-org-logo] User authenticated:', user.id, user.email);
 
     // Parse FormData
     const formData = await req.formData();

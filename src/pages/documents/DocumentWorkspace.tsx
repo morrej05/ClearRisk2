@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'reac
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, CheckCircle, AlertCircle, FileText, List, FileCheck, Menu, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getModuleName, sortModulesByOrder, getModuleKeysForDocType, getReModulesForDocument } from '../../lib/modules/moduleCatalog';
+import { getModuleName, sortModulesByOrder, getModuleKeysForDocType, getModuleNavigationPath, getReModulesForDocument, normalizeReModuleKey } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
 import EditLockBanner from '../../components/EditLockBanner';
@@ -312,7 +312,14 @@ const fetchModules = async () => {
       moduleCount: existing?.length || 0,
     });
 
-    const existingKeys = new Set((existing || []).map((m: any) => m.module_key));
+    const existingKeys = new Set(
+      (existing || []).map((m: any) => {
+        if (doc.document_type === 'RE') {
+          return normalizeReModuleKey(m.module_key) ?? m.module_key;
+        }
+        return m.module_key;
+      })
+    );
     const expectedKeys = getExpectedKeysForDocument(doc);
 
     const missingKeys = expectedKeys.filter((k) => !existingKeys.has(k));
@@ -341,7 +348,9 @@ const fetchModules = async () => {
       if (seededErr) throw seededErr;
 
       // Filter modules to only expected keys (hide unwanted modules for RE docs)
-      const filtered = (seeded || []).filter((m: any) => expectedKeys.includes(m.module_key));
+      const filtered = doc.document_type === 'RE'
+        ? getReModulesForDocument((seeded || []) as ModuleInstance[], { documentId: id })
+        : (seeded || []).filter((m: any) => expectedKeys.includes(m.module_key));
       const sorted = sortModulesByOrder(filtered);
       console.log('[DocumentWorkspace] fetchModules SET MODULES (after seed)', {
         moduleCount: sorted.length,
@@ -351,7 +360,9 @@ const fetchModules = async () => {
     }
 
     // Filter modules to only expected keys (hide unwanted modules for RE docs)
-    const filtered = (existing || []).filter((m: any) => expectedKeys.includes(m.module_key));
+    const filtered = doc.document_type === 'RE'
+      ? getReModulesForDocument((existing || []) as ModuleInstance[], { documentId: id })
+      : (existing || []).filter((m: any) => expectedKeys.includes(m.module_key));
     const sorted = sortModulesByOrder(filtered);
 
     if (import.meta.env.DEV) {

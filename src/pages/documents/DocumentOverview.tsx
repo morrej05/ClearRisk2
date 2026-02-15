@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation } from 'react-rout
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getModuleName, sortModulesByOrder } from '../../lib/modules/moduleCatalog';
+import { getModuleName, getModuleNavigationPath as getModulePath, getReModulesForDocument } from '../../lib/modules/moduleCatalog';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
@@ -173,6 +173,15 @@ export default function DocumentOverview() {
 
     setIsLoading(true);
     try {
+      const { data: doc, error: docErr } = await supabase
+        .from('documents')
+        .select('document_type')
+        .eq('id', id)
+        .eq('organisation_id', organisation.id)
+        .maybeSingle();
+
+      if (docErr) throw docErr;
+
       const { data, error } = await supabase
         .from('module_instances')
         .select('*')
@@ -181,9 +190,11 @@ export default function DocumentOverview() {
 
       if (error) throw error;
 
-      // Sort modules by catalog order for consistent display
-      const sorted = sortModulesByOrder(data || []);
-      setModules(sorted as ModuleInstance[]);
+      const modulesForUi = doc?.document_type === 'RE'
+        ? getReModulesForDocument((data as any[]) || [], { documentId: id })
+        : ((data as any[]) || []);
+
+      setModules(modulesForUi);
     } catch (error) {
       console.error('Error fetching modules:', error);
     } finally {

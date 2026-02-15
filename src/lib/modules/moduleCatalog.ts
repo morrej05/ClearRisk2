@@ -5,6 +5,12 @@ export interface ModuleDefinition {
   hidden?: boolean; // If true, hide from navigation but allow programmatic access
 }
 
+export interface ModuleInstanceLike {
+  id: string;
+  module_key: string;
+  [key: string]: unknown;
+}
+
 export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
   RISK_ENGINEERING: {
     name: 'RE-00 – Summary',
@@ -227,98 +233,52 @@ export function sortModulesByOrder(
 
 export function getModuleKeysForDocType(docType: string): string[] {
   return Object.entries(MODULE_CATALOG)
-    .filter(([_, def]) => def.docTypes.includes(docType) && !def.hidden)
+    .filter(([, def]) => def.docTypes.includes(docType) && !def.hidden)
     .sort((a, b) => (a[1].order ?? 999) - (b[1].order ?? 999))
     .map(([key]) => key);
 }
 
-/**
- * Mapping from legacy module keys to canonical keys
- * Used to normalize mismatched codes from database
- */
+// Legacy RE keys that should normalize to canonical MODULE_CATALOG keys
 export const RE_MODULE_KEY_MAP: Record<string, string> = {
-  'RE_10_PROCESS_RISK': 'RE_10_SITE_PHOTOS',
+  RE_10_PROCESS_RISK: 'RE_10_SITE_PHOTOS',
 };
 
-/**
- * Normalize a module key to its canonical form
- */
-export function normalizeModuleKey(key: string): string {
-  return RE_MODULE_KEY_MAP[key] || key;
+export function normalizeReModuleKey(moduleKey: string): string | null {
+  const mapped = RE_MODULE_KEY_MAP[moduleKey] ?? moduleKey;
+  return MODULE_CATALOG[mapped] ? mapped : null;
 }
 
-export interface CanonicalReModule {
-  code: string;
-  title: string;
-  order: number;
-  instanceId: string | null;
-  status: 'pending' | 'complete' | 'info_gap';
-}
-
-/**
- * Get canonical RE modules for a document with status information
- *
- * @param document Document metadata
- * @param moduleInstances Array of module instances from database
- * @returns Ordered array of canonical RE modules with status
- */
 export function getReModulesForDocument(
-  document: { document_type: string; enabled_modules?: string[] },
-  moduleInstances: Array<{
-    id: string;
-    module_key: string;
-    outcome: string | null;
-    completed_at: string | null;
-    updated_at: string;
-  }>
-): CanonicalReModule[] {
-  if (document.document_type !== 'RE') {
-    return [];
-  }
+  moduleInstances: ModuleInstanceLike[],
+  opts?: { documentId?: string | null }
+): ModuleInstanceLike[] {
+  const canonicalKeys = getModuleKeysForDocType('RE');
+  const canonicalSet = new Set(canonicalKeys);
+  const byKey = new Map<string, ModuleInstanceLike>();
 
-  const expectedKeys = getModuleKeysForDocType('RE');
-  const instanceMap = new Map<string, {
-    id: string;
-    outcome: string | null;
-    completed_at: string | null;
-  }>();
-
-  // Build map of instances by canonical key
   for (const instance of moduleInstances) {
-    const canonicalKey = normalizeModuleKey(instance.module_key);
-    instanceMap.set(canonicalKey, {
-      id: instance.id,
-      outcome: instance.outcome,
-      completed_at: instance.completed_at,
-    });
-  }
+    const normalizedKey = normalizeReModuleKey(instance.module_key);
 
-  const result: CanonicalReModule[] = [];
-
-  for (const key of expectedKeys) {
-    const catalogEntry = MODULE_CATALOG[key];
-    if (!catalogEntry) continue;
-
-    const instance = instanceMap.get(key);
-
-    let status: 'pending' | 'complete' | 'info_gap' = 'pending';
-    if (instance) {
-      if (instance.outcome === 'info_gap') {
-        status = 'info_gap';
-      } else if (instance.outcome && instance.outcome !== 'info_gap') {
-        status = 'complete';
+    if (!normalizedKey || !canonicalSet.has(normalizedKey)) {
+      if (import.meta.env.DEV) {
+        console.warn('[getReModulesForDocument] Ignoring unmatched RE module_instance', {
+          document_id: opts?.documentId ?? null,
+          module_key: instance.module_key,
+        });
       }
+      continue;
     }
 
-    result.push({
-      code: key,
-      title: catalogEntry.name,
-      order: catalogEntry.order ?? 999,
-      instanceId: instance?.id || null,
-      status,
-    });
+    const mapped = { ...instance, module_key: normalizedKey };
+    const existing = byKey.get(normalizedKey);
+
+    // Prefer the row that already uses the canonical key when both exist
+    if (!existing || (existing.module_key !== normalizedKey && instance.module_key === normalizedKey)) {
+      byKey.set(normalizedKey, mapped);
+    }
   }
 
-  // Sort by order
-  return result.sort((a, b) => a.order - b.order);
+  return canonicalKeys
+    .map((key) => byKey.get(key))
+    .filter((module): module is ModuleInstanceLike => Boolean(module));
 }

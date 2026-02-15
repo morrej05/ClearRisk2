@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, AlertCircle, FileText, X, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, FileText, X } from 'lucide-react';
 import { getModuleName, MODULE_CATALOG } from '../../lib/modules/moduleCatalog';
 
 interface ModuleInstance {
@@ -25,8 +25,22 @@ export default function ModuleSidebar({
   isMobileMenuOpen,
   onCloseMobileMenu,
 }: ModuleSidebarProps) {
+  const RE_BADGE_OVERRIDE: Record<string, string> = {
+    'RE_06_FIRE_PROTECTION': 'RE-04',
+    'RE_07_NATURAL_HAZARDS': 'RE-05',
+    'RE_08_UTILITIES': 'RE-06',
+    'RE_09_MANAGEMENT': 'RE-07',
+    'RE_12_LOSS_VALUES': 'RE-08',
+    'RE_13_RECOMMENDATIONS': 'RE-09',
+    'RE_10_SITE_PHOTOS': 'RE-10',
+  };
+
   const getModuleCode = (module: ModuleInstance): string => {
     if (module.module_key === 'RISK_ENGINEERING') return 'RE-00';
+
+    if (RE_BADGE_OVERRIDE[module.module_key]) {
+      return RE_BADGE_OVERRIDE[module.module_key];
+    }
 
     const moduleCode = getModuleName(module.module_key).split(' ')[0];
     return moduleCode.replace(/[–-]$/, '');
@@ -92,14 +106,14 @@ export default function ModuleSidebar({
     >
       <div className="flex items-start gap-2.5 md:flex-col md:items-center md:gap-1 lg:flex-row lg:items-start lg:gap-2.5">
         <div className="flex-shrink-0 mt-0.5 md:mt-0">
-          {isDerived ? (
-            <Sparkles className="w-4 h-4 text-violet-500" />
-          ) : module.outcome && module.outcome !== 'info_gap' ? (
+          {!isDerived && module.outcome && module.outcome !== 'info_gap' ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          ) : module.outcome === 'info_gap' ? (
+          ) : !isDerived && module.outcome === 'info_gap' ? (
             <AlertCircle className="w-4 h-4 text-blue-600" />
-          ) : (
+          ) : !isDerived ? (
             <Circle className="w-4 h-4 text-neutral-300" />
+          ) : (
+            <div className="w-4 h-4" />
           )}
         </div>
         <div className="flex-1 min-w-0 md:hidden lg:block">
@@ -109,7 +123,7 @@ export default function ModuleSidebar({
             </p>
             <div className="flex items-center gap-1.5 shrink-0">
               {isDerived && (
-                <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-semibold tracking-wide rounded-md bg-violet-50 text-violet-700 border border-violet-200">
+                <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium tracking-wide rounded-md bg-neutral-50 text-neutral-500 border border-neutral-200">
                   Auto
                 </span>
               )}
@@ -134,9 +148,7 @@ export default function ModuleSidebar({
         </div>
         {/* Icon-only badge for tablet view */}
         <div className="hidden md:block lg:hidden">
-          {isDerived ? (
-            <div className="w-2 h-2 rounded-full bg-violet-500" />
-          ) : module.outcome && (
+          {!isDerived && module.outcome && (
             <div className={`w-2 h-2 rounded-full ${
               module.outcome === 'compliant' ? 'bg-green-600' :
               module.outcome === 'minor_def' ? 'bg-amber-600' :
@@ -154,6 +166,46 @@ export default function ModuleSidebar({
   const CORE_MODULE_KEYS = new Set(['A1_DOC_CONTROL', 'A2_BUILDING_PROFILE', 'A3_PERSONS_AT_RISK', 'A7_REVIEW_ASSURANCE']);
   const FRA_ADDITIONAL_A_KEYS = new Set(['A4_MANAGEMENT_CONTROLS', 'A5_EMERGENCY_ARRANGEMENTS']);
 
+  const sortFraModules = (fraModules: ModuleInstance[]): ModuleInstance[] => {
+    const FRA_PREMIUM_ORDER = [
+      'FRA_1_HAZARDS',
+      'FRA_2_ESCAPE_ASIS',
+      'FRA_3_ACTIVE_SYSTEMS',
+      'FRA_4_PASSIVE_PROTECTION',
+      'FRA_8_FIREFIGHTING_EQUIPMENT',
+      'FRA_5_EXTERNAL_FIRE_SPREAD',
+      'FRA_6_MANAGEMENT_SYSTEMS',
+      'FRA_7_EMERGENCY_ARRANGEMENTS',
+      'FRA_90_SIGNIFICANT_FINDINGS',
+    ];
+
+    const orderMap = new Map(FRA_PREMIUM_ORDER.map((key, idx) => [key, idx]));
+
+    return [...fraModules].sort((a, b) => {
+      const orderA = orderMap.get(a.module_key) ?? 999;
+      const orderB = orderMap.get(b.module_key) ?? 999;
+      return orderA - orderB;
+    });
+  };
+
+  const filterFraModules = (fraModules: ModuleInstance[]): ModuleInstance[] => {
+    const moduleKeys = new Set(fraModules.map(m => m.module_key));
+    const hasNewSplitModules =
+      moduleKeys.has('FRA_3_ACTIVE_SYSTEMS') ||
+      moduleKeys.has('FRA_4_PASSIVE_PROTECTION') ||
+      moduleKeys.has('FRA_8_FIREFIGHTING_EQUIPMENT');
+
+    if (hasNewSplitModules) {
+      return fraModules.filter(m => m.module_key !== 'FRA_3_PROTECTION_ASIS');
+    }
+
+    return fraModules;
+  };
+
+  const fraModulesRaw = modules.filter((m) => m.module_key.startsWith('FRA_') || FRA_ADDITIONAL_A_KEYS.has(m.module_key));
+  const fraModulesFiltered = filterFraModules(fraModulesRaw);
+  const fraModulesSorted = sortFraModules(fraModulesFiltered);
+
   const sections = [
     {
       key: 'core',
@@ -163,7 +215,7 @@ export default function ModuleSidebar({
     {
       key: 'fra',
       label: 'Fire Risk Assessment',
-      modules: sortByOrder(modules.filter((m) => m.module_key.startsWith('FRA_') || FRA_ADDITIONAL_A_KEYS.has(m.module_key))),
+      modules: fraModulesSorted,
     },
     {
       key: 'fsd',

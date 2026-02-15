@@ -799,7 +799,31 @@ function drawExecutiveSummary(
         color: rgb(0.1, 0.1, 0.1),
       });
 
-      yPosition -= 20;
+      yPosition -= 14;
+
+      // Add trigger reason for P1/P2 actions in executive summary
+      if ((action.priority_band === 'P1' || action.priority_band === 'P2') && action.trigger_text) {
+        const reasonText = sanitizePdfText(action.trigger_text);
+        const truncatedReason = reasonText.length > 80 ? reasonText.substring(0, 77) + '...' : reasonText;
+
+        if (yPosition < MARGIN + 60) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+
+        page.drawText(`(${truncatedReason})`, {
+          x: MARGIN + 50,
+          y: yPosition,
+          size: 8,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+
+        yPosition -= 12;
+      } else {
+        yPosition -= 6;
+      }
     }
 
     yPosition -= 10;

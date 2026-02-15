@@ -1,2 +1,2 @@
 [functions.upload-org-logo]
-verify_jwt = true
+verify_jwt = false

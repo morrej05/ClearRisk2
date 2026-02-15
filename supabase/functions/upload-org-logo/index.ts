@@ -11,207 +11,119 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+  const respond = (status: number, payload: Record<string, unknown>) =>
+    new Response(JSON.stringify(payload), { status, headers: jsonHeaders });
+
   try {
-    // Extract Authorization header and token
-    const authHeader = req.headers.get('Authorization') ?? '';
-    console.log('[upload-org-logo] auth header present?', !!authHeader);
-    console.log('[upload-org-logo] auth header prefix:', authHeader.slice(0, 20));
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    console.log("[upload-org-logo] authHeader present:", Boolean(authHeader));
+    console.log("[upload-org-logo] token present:", Boolean(token));
 
-    if (!token) {
-      return new Response(
-        JSON.stringify({
-          error: 'Missing bearer token',
-          authHeaderPresent: !!authHeader
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    console.log('[upload-org-logo] token length:', token.length);
-
-    // Verify environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    console.log('[upload-org-logo] SUPABASE_URL present?', !!supabaseUrl);
-    console.log('[upload-org-logo] SUPABASE_SERVICE_ROLE_KEY present?', !!serviceRoleKey);
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(
-        JSON.stringify({
-          error: 'Server configuration error',
-          details: 'Missing required environment variables'
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Create admin client with service role key
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    // Validate JWT
-    console.log('[upload-org-logo] calling getUser...');
-    const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
-    console.log('[upload-org-logo] getUser ok?', !!user, 'err=', userErr?.message);
-
-    if (userErr || !user) {
-      console.error('[upload-org-logo] getUser failed:', {
-        message: userErr?.message,
-        code: (userErr as any)?.code,
-        status: (userErr as any)?.status
+    if (!authHeader || !token) {
+      return respond(401, {
+        error: "Missing or malformed Authorization header",
+        details: {
+          authHeaderPresent: Boolean(authHeader),
+          tokenPresent: Boolean(token),
+          expectedFormat: "Authorization: Bearer <access_token>",
+        },
       });
-      return new Response(
-        JSON.stringify({
-          error: 'Invalid token',
-          details: userErr?.message ?? null,
-          code: (userErr as any)?.code ?? null,
-          status: (userErr as any)?.status ?? null
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
     }
 
-    console.log('[upload-org-logo] User authenticated:', user.id, user.email);
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
 
-    // Parse FormData
-    const formData = await req.formData();
-    const file = formData.get("logo") as File;
-    const organisationId = String(formData.get("organisation_id") || "");
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(token);
 
-    console.log("[Logo Upload] organisationId received?", !!organisationId);
+    console.log("[upload-org-logo] getUser ok:", Boolean(user) && !userError);
 
-    if (!file) {
-      return new Response(
-        JSON.stringify({ error: "No file provided" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    if (userError || !user) {
+      console.error("[upload-org-logo] getUser failed:", userError);
+      return respond(401, {
+        error: "Invalid or expired access token",
+        details: {
+          message: userError?.message ?? "No user returned",
+          code: userError?.code ?? null,
+          status: userError?.status ?? null,
+        },
+      });
     }
 
-    if (!organisationId) {
-      return new Response(
-        JSON.stringify({ error: "No organisation_id provided" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
 
-    // Check user authorization (admin role or platform admin)
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseClient
       .from("user_profiles")
       .select("organisation_id, role, is_platform_admin")
       .eq("id", user.id)
       .maybeSingle();
 
     if (profileError || !profile) {
-      console.error("[Logo Upload] Profile lookup error:", profileError?.message);
-      return new Response(
-        JSON.stringify({
-          error: "User profile not found",
-          details: profileError?.message
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return respond(403, {
+        error: "User profile not found",
+        details: {
+          message: profileError?.message ?? "No profile returned",
+          code: profileError?.code ?? null,
+        },
+      });
     }
 
     const isOrgAdmin = profile.role === "admin";
     const isPlatformAdmin = profile.is_platform_admin === true;
 
     if (!isOrgAdmin && !isPlatformAdmin) {
-      console.error("[Logo Upload] User is not admin:", { role: profile.role });
-      return new Response(
-        JSON.stringify({
-          error: "Forbidden",
-          details: "Only organisation admins can upload logos. Your role: " + profile.role
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (profile.organisation_id !== organisationId && !isPlatformAdmin) {
-      console.error("[Logo Upload] Org mismatch:", {
-        userOrg: profile.organisation_id,
-        targetOrg: organisationId
+      return respond(403, {
+        error: "Only organisation admins can upload logos",
       });
-      return new Response(
-        JSON.stringify({
-          error: "Forbidden",
-          details: "Cannot upload logo for a different organisation"
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
     }
 
-    // Validate file type
+    const formData = await req.formData();
+    const file = formData.get("logo") as File;
+    const orgId = formData.get("organisation_id") as string;
+
+    console.log("[upload-org-logo] organisation_id:", orgId ?? null);
+
+    if (!file) {
+      return respond(400, { error: "No file provided" });
+    }
+
+    if (!orgId) {
+      return respond(400, { error: "No organisation_id provided" });
+    }
+
+    if (profile.organisation_id !== orgId && !isPlatformAdmin) {
+      return respond(403, { error: "Cannot upload logo for different organisation" });
+    }
+
     const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml"];
     if (!allowedTypes.includes(file.type)) {
-      return new Response(
-        JSON.stringify({
-          error: "Invalid file type",
-          details: "Only PNG, JPG, and SVG are allowed"
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return respond(400, { error: "Invalid file type. Only PNG, JPG, and SVG are allowed." });
     }
 
-    // Validate file size
     const maxSize = 1024 * 1024;
     if (file.size > maxSize) {
-      return new Response(
-        JSON.stringify({
-          error: "File too large",
-          details: "Maximum size is 1MB"
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return respond(400, { error: "File too large. Maximum size is 1MB." });
     }
 
-    // Prepare file upload
     const fileExt = file.name.split(".").pop();
     const fileName = `logo.${fileExt}`;
-    const filePath = `org-logos/${organisationId}/${fileName}`;
-
-    console.log("[Logo Upload] Uploading:", filePath);
+    const filePath = `org-logos/${orgId}/${fileName}`;
 
     const fileBuffer = await file.arrayBuffer();
 
-    // Upload to storage using admin client
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+    const { error: uploadError } = await supabaseClient.storage
       .from("org-assets")
       .upload(filePath, fileBuffer, {
         contentType: file.type,
@@ -219,60 +131,25 @@ Deno.serve(async (req: Request) => {
       });
 
     if (uploadError) {
-      console.error("[Logo Upload] Storage error:", uploadError.message);
-      return new Response(
-        JSON.stringify({
-          error: "Storage upload failed",
-          details: uploadError.message
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return respond(400, { error: `Upload failed: ${uploadError.message}` });
     }
 
-    console.log("[Logo Upload] Storage success");
-
-    // Update organisation record using admin client
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await supabaseClient
       .from("organisations")
       .update({
         branding_logo_path: filePath,
         branding_updated_at: new Date().toISOString(),
       })
-      .eq("id", organisationId);
+      .eq("id", orgId);
 
     if (updateError) {
-      console.error("[Logo Upload] DB update error:", updateError.message);
-      return new Response(
-        JSON.stringify({
-          error: "Failed to update organisation",
-          details: updateError.message
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return respond(400, { error: `Failed to update organisation: ${updateError.message}` });
     }
 
-    console.log("[Logo Upload] Success");
-
-    return new Response(
-      JSON.stringify({ success: true, path: filePath }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return respond(200, { success: true, path: filePath });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    console.error("[upload-org-logo] unhandled error:", error);
+    return respond(500, { error: message });
   }
 });

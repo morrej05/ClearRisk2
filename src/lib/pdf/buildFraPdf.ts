@@ -83,6 +83,7 @@ interface ActionRating {
 interface Organisation {
   id: string;
   name: string;
+  branding_logo_path?: string | null;
 }
 
 interface BuildPdfOptions {
@@ -154,39 +155,32 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
   console.log('[PDF FRA] Render mode:', isIssuedMode ? 'ISSUED' : 'DRAFT');
 
-  if (isIssuedMode) {
-    console.log('[PDF FRA] Adding issued report pages (cover + doc control)');
-    const { coverPage, docControlPage } = await addIssuedReportPages({
-      pdfDoc,
-      document: {
-        id: document.id,
-        title: document.title,
-        document_type: 'FRA',
-        version_number: (document as any).version_number || document.version || 1,
-        issue_date: (document as any).issue_date || new Date().toISOString(),
-        issue_status: 'issued',
-        assessor_name: document.assessor_name,
-        base_document_id: (document as any).base_document_id,
-      },
-      organisation: {
-        id: organisation.id,
-        name: organisation.name,
-        branding_logo_path: (organisation as any).branding_logo_path,
-      },
-      client: {
-        name: document.responsible_person,
-        site: document.scope_description,
-      },
-      fonts: { bold: fontBold, regular: font },
-    });
-    totalPages.push(coverPage, docControlPage);
-  } else {
-    page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    totalPages.push(page);
-    yPosition = PAGE_HEIGHT - MARGIN;
-
-    yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition, renderMode);
-  }
+  // Use addIssuedReportPages for both draft and issued modes to ensure logo embedding
+  console.log('[PDF FRA] Adding report pages with logo (cover + doc control)');
+  const { coverPage, docControlPage } = await addIssuedReportPages({
+    pdfDoc,
+    document: {
+      id: document.id,
+      title: document.title,
+      document_type: 'FRA',
+      version_number: (document as any).version_number || document.version || 1,
+      issue_date: (document as any).issue_date || new Date().toISOString(),
+      issue_status: isIssuedMode ? 'issued' : 'draft',
+      assessor_name: document.assessor_name,
+      base_document_id: (document as any).base_document_id,
+    },
+    organisation: {
+      id: organisation.id,
+      name: organisation.name,
+      branding_logo_path: organisation.branding_logo_path,
+    },
+    client: {
+      name: document.responsible_person,
+      site: document.scope_description,
+    },
+    fonts: { bold: fontBold, regular: font },
+  });
+  totalPages.push(coverPage, docControlPage);
 
   addExecutiveSummaryPages(
     pdfDoc,

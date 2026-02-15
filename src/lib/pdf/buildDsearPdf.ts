@@ -27,6 +27,7 @@ import {
   addExecutiveSummaryPages,
   addSupersededWatermark,
 } from './pdfUtils';
+import { addIssuedReportPages } from './issuedPdfPages';
 
 interface Document {
   id: string;
@@ -84,6 +85,7 @@ interface ActionRating {
 interface Organisation {
   id: string;
   name: string;
+  branding_logo_path?: string | null;
 }
 
 interface BuildPdfOptions {
@@ -124,19 +126,41 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const isDraft = document.status !== 'issued';
+  const isIssuedMode = renderMode === 'issued';
+  const isDraft = !isIssuedMode;
   const totalPages: PDFPage[] = [];
 
-  let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  totalPages.push(page);
-  let yPosition = PAGE_HEIGHT - MARGIN;
+  console.log('[DSEAR PDF] Render mode:', isIssuedMode ? 'ISSUED' : 'DRAFT');
+  console.log('[DSEAR PDF] Adding report pages with logo (cover + doc control)');
 
-  if (isDraft) {
-    drawDraftWatermark(page);
-  }
+  // Use addIssuedReportPages for both draft and issued modes to ensure logo embedding
+  const { coverPage, docControlPage } = await addIssuedReportPages({
+    pdfDoc,
+    document: {
+      id: document.id,
+      title: document.title,
+      document_type: 'DSEAR',
+      version_number: (document as any).version_number || document.version || 1,
+      issue_date: (document as any).issue_date || new Date().toISOString(),
+      issue_status: isIssuedMode ? 'issued' : 'draft',
+      assessor_name: document.assessor_name,
+      base_document_id: (document as any).base_document_id,
+    },
+    organisation: {
+      id: organisation.id,
+      name: organisation.name,
+      branding_logo_path: organisation.branding_logo_path,
+    },
+    client: {
+      name: document.responsible_person,
+      site: document.scope_description,
+    },
+    fonts: { bold: fontBold, regular: font },
+  });
+  totalPages.push(coverPage, docControlPage);
 
-  // SECTION 1: Cover Page
-  yPosition = drawCoverPage(page, document, organisation, font, fontBold, yPosition, renderMode);
+  let page: PDFPage;
+  let yPosition: number;
 
   // SECTION 2: Executive Summary (AI/Author/Both/None)
   addExecutiveSummaryPages(

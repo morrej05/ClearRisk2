@@ -243,15 +243,38 @@ export default function DocumentPreviewPage() {
     setErrorMsg(null);
 
     try {
+      // Fetch fresh organisation data from DB to ensure branding_logo_path is current
+      const { data: freshOrg, error: orgError } = await supabase
+        .from('organisations')
+        .select('id, name, branding_logo_path')
+        .eq('id', organisation.id)
+        .maybeSingle();
+
+      if (orgError) {
+        console.error('[PDF Preview] Failed to fetch organisation:', orgError);
+        throw new Error('Failed to fetch organisation data');
+      }
+
+      if (!freshOrg) {
+        console.error('[PDF Preview] Organisation not found');
+        throw new Error('Organisation not found');
+      }
+
+      console.log('[PDF Preview] Fresh organisation data:', {
+        id: freshOrg.id,
+        name: freshOrg.name,
+        branding_logo_path: freshOrg.branding_logo_path
+      });
+
       const pdfOptions = {
         document,
         moduleInstances,
         actions: enrichedActions,
         actionRatings,
         organisation: {
-          id: organisation.id,
-          name: organisation.name,
-          branding_logo_path: (organisation as any).branding_logo_path,
+          id: freshOrg.id,
+          name: freshOrg.name,
+          branding_logo_path: freshOrg.branding_logo_path,
         },
         renderMode: (document.issue_status === 'issued' || document.issue_status === 'superseded') ? 'issued' as const : 'preview' as const,
       };
@@ -280,11 +303,6 @@ export default function DocumentPreviewPage() {
           filenameBase: safeSlug(document.title || 'document'),
           pdfBytes,
         });
-console.log('PDF ORG DEBUG:', {
-  id: organisation?.id,
-  name: organisation?.name,
-  branding_logo_path: organisation?.branding_logo_path
-});
 
         setSignedUrl(result.signedUrl);
         setDraftPath(result.path);

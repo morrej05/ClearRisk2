@@ -23,6 +23,7 @@ import {
   addSupersededWatermark,
   drawDraftWatermark,
 } from './pdfUtils';
+import { addIssuedReportPages } from './issuedPdfPages';
 
 interface Document {
   id: string;
@@ -79,6 +80,7 @@ interface ActionRating {
 interface Organisation {
   id: string;
   name: string;
+  branding_logo_path?: string | null;
 }
 
 interface BuildFsdPdfOptions {
@@ -126,11 +128,38 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const isDraft = document.status === 'draft';
+  const isIssuedMode = renderMode === 'issued';
+  const isDraft = !isIssuedMode;
   const totalPages: PDFPage[] = [];
 
-  let { page } = addNewPage(pdfDoc, isDraft, totalPages);
-  drawCoverPage(page, document, organisation, font, fontBold, renderMode);
+  console.log('[FSD PDF] Render mode:', isIssuedMode ? 'ISSUED' : 'DRAFT');
+  console.log('[FSD PDF] Adding report pages with logo (cover + doc control)');
+
+  // Use addIssuedReportPages for both draft and issued modes to ensure logo embedding
+  const { coverPage, docControlPage } = await addIssuedReportPages({
+    pdfDoc,
+    document: {
+      id: document.id,
+      title: document.title,
+      document_type: 'FSD',
+      version_number: (document as any).version_number || document.version || 1,
+      issue_date: (document as any).issue_date || new Date().toISOString(),
+      issue_status: isIssuedMode ? 'issued' : 'draft',
+      assessor_name: document.assessor_name,
+      base_document_id: (document as any).base_document_id,
+    },
+    organisation: {
+      id: organisation.id,
+      name: organisation.name,
+      branding_logo_path: organisation.branding_logo_path,
+    },
+    client: {
+      name: document.responsible_person,
+      site: document.scope_description,
+    },
+    fonts: { bold: fontBold, regular: font },
+  });
+  totalPages.push(coverPage, docControlPage);
 
   addExecutiveSummaryPages(
     pdfDoc,

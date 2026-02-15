@@ -187,12 +187,11 @@ export default function OrganisationBranding() {
       setSuccess(null);
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+if (!session?.access_token) {
+  throw new Error('Not authenticated (no access token)');
+}
 
-      const response = await fetch(
-        const text = await response.text();
-console.log('[Logo Upload] status:', response.status);
-console.log('[Logo Upload] body:', text);
+const response = await fetch(
   `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-org-logo`,
   {
     method: 'POST',
@@ -204,14 +203,17 @@ console.log('[Logo Upload] body:', text);
   }
 );
 
-// 👇 Put this RIGHT HERE (immediately under the fetch)
+// ✅ THESE LINES GO AFTER fetch(...) — not inside it
 const text = await response.text();
 console.log('[Logo Upload] status:', response.status);
-console.log('[Logo Upload] response body:', text);
+console.log('[Logo Upload] body:', text);
 
 if (!response.ok) {
   throw new Error(`Upload failed (${response.status}): ${text}`);
 }
+
+// if success, you can continue here
+console.log('[Logo Upload] Upload OK');
 
       setSuccess('Logo removed successfully');
       setLogoUrl(null);

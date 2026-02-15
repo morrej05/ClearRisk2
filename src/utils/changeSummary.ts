@@ -173,19 +173,18 @@ export async function getChangeSummary(documentId: string): Promise<ChangeSummar
     if (!doc?.base_document_id) return null;
 
     const { data, error } = await supabase
-      .from('document_change_summaries')
-      .select(`
-        id,
-        base_document_id,
-        created_at,
-        generated_by,
-        summary_text,
-        user_profiles(name)
-      `)
-      .eq('base_document_id', doc.base_document_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  .from('document_change_summaries')
+  .select(`
+    id,
+    base_document_id,
+    created_at,
+    generated_by,
+    summary_text
+  `)
+  .eq('base_document_id', doc.base_document_id)
+  .order('created_at', { ascending: false })
+  .limit(1)
+  .maybeSingle();
 
     if (error) {
       console.error('[getChangeSummary] Error fetching change summary:', {

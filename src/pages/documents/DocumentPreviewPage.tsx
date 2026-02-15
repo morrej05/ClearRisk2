@@ -7,6 +7,8 @@ import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
+import { buildReSurveyPdf } from '../../lib/pdf/buildReSurveyPdf';
+import { buildReLpPdf } from '../../lib/pdf/buildReLpPdf';
 import { uploadDraftPdfAndSign, saveReModuleSelection, loadReModuleSelection, safeSlug } from '../../utils/draftPdf';
 import { saveAs } from 'file-saver';
 import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
@@ -213,14 +215,14 @@ export default function DocumentPreviewPage() {
 
         // Setup RE module selection if RE document
         if (doc.document_type === 'RE') {
-          const canonicalModules = getReModulesForDocument(doc, modules);
+          const canonicalModules = getReModulesForDocument(modules, { documentId: id });
           setReAvailableModules(
-            canonicalModules.map(m => ({ code: m.code, title: m.title }))
+            canonicalModules.map(m => ({ code: m.module_key, title: m.module_key }))
           );
 
           // Load saved module selection or default to all
           const saved = await loadReModuleSelection(id);
-          setReSelectedModules(saved || canonicalModules.map(m => m.code));
+          setReSelectedModules(saved || canonicalModules.map(m => m.module_key));
         }
 
         setIsLoading(false);
@@ -258,14 +260,30 @@ export default function DocumentPreviewPage() {
       let reportKind: 'fra' | 'fsd' | 'ex' | 're_survey' | 're_lp';
 
       if (isReDocument) {
-        // RE documents - placeholder for now
+        // RE documents
         if (reActiveTab === 're_survey') {
-          // TODO: Build RE Survey Report with selected modules
-          throw new Error('RE Survey Report PDF generation not yet implemented');
+          pdfBytes = await buildReSurveyPdf({
+            ...pdfOptions,
+            selectedModules: reSelectedModules,
+          });
+          reportKind = 're_survey';
         } else {
-          // TODO: Build RE Loss Prevention Report
-          throw new Error('RE Loss Prevention Report PDF generation not yet implemented');
+          pdfBytes = await buildReLpPdf(pdfOptions);
+          reportKind = 're_lp';
         }
+
+        // Upload to storage and get signed URL
+        const result = await uploadDraftPdfAndSign({
+          organisationId: organisation.id,
+          documentId: document.id,
+          reportKind,
+          filenameBase: safeSlug(document.title || 'document'),
+          pdfBytes,
+        });
+
+        setSignedUrl(result.signedUrl);
+        setDraftPath(result.path);
+        setFilename(formatFilename(document, reActiveTab));
       } else {
         // Standard documents
         if (outputMode === 'COMBINED') {

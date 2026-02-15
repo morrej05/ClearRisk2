@@ -6,7 +6,10 @@ import {
   drawCoverPage,
   drawDocumentControlPage,
 } from './pdfUtils';
-const ENABLE_PDF_IMAGE_LOGOS = false; // TEMP: disable image embedding (webcontainer fix)
+import { resolveOrganisationLogo } from './logoResolver';
+// Enable PDF image logos via env var (default: true)
+// Set VITE_PDF_IMAGE_LOGOS=false to disable for debugging
+const ENABLE_PDF_IMAGE_LOGOS = (import.meta.env.VITE_PDF_IMAGE_LOGOS ?? 'true') === 'true';
 
 /**
  * Wraps a promise with a timeout
@@ -73,17 +76,10 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
       // Wrap entire org logo loading in timeout
       logoData = await withTimeout(
         (async () => {
-          const { data, error } = await supabase.storage
-            .from('org-assets')
-            .createSignedUrl(organisation.branding_logo_path!, 3600);
+          const logoResult = await resolveOrganisationLogo(organisation.id, organisation.branding_logo_path);
 
-          if (error) {
-            console.warn('[PDF Logo] Failed to create signed URL for org logo:', error);
-            return null;
-          }
-
-          if (!data?.signedUrl) {
-            console.warn('[PDF Logo] No signed URL returned');
+          if (!logoResult.signedUrl) {
+            console.warn('[PDF Logo] No signed URL returned from resolver');
             return null;
           }
 
@@ -91,7 +87,7 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
           const result = await fetchAndEmbedLogo(
             pdfDoc,
             organisation.branding_logo_path!,
-            data.signedUrl
+            logoResult.signedUrl
           );
 
           if (result) {

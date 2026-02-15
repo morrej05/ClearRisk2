@@ -527,6 +527,8 @@ function getDocumentTypeLabel(type: string): string {
       return 'Explosion Risk Assessment';
     case 'combined':
       return 'Combined Assessment';
+    case 'RE':
+      return 'Risk Engineering Survey';
     default:
       return type;
   }

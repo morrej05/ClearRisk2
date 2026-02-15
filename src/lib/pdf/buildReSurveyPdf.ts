@@ -87,91 +87,32 @@ export async function buildReSurveyPdf(options: BuildPdfOptions): Promise<Uint8A
 
   console.log('[PDF RE Survey] Render mode:', isIssuedMode ? 'ISSUED' : 'DRAFT');
 
-  if (isIssuedMode) {
-    console.log('[PDF RE Survey] Adding issued report pages (cover + doc control)');
-    const { coverPage, docControlPage } = await addIssuedReportPages({
-      pdfDoc,
-      document: {
-        id: document.id,
-        title: document.title,
-        document_type: 'RE',
-        version_number: (document as any).version_number || document.version || 1,
-        issue_date: (document as any).issue_date || new Date().toISOString(),
-        issue_status: 'issued',
-        assessor_name: document.assessor_name,
-        base_document_id: (document as any).base_document_id,
-      },
-      organisation: {
-        id: organisation.id,
-        name: organisation.name,
-        branding_logo_path: organisation.branding_logo_path,
-      },
-      client: {
-        name: document.responsible_person,
-        site: document.scope_description,
-      },
-      fonts: { bold: fontBold, regular: font },
-    });
-    totalPages.push(coverPage, docControlPage);
-  } else {
-    // Draft mode: simple cover page
-    const { page } = addNewPage(pdfDoc, isDraft, totalPages);
-    let yPosition = PAGE_HEIGHT - MARGIN - 20;
-
-    page.drawText('Risk Engineering Survey Report', {
-      x: MARGIN,
-      y: yPosition,
-      size: 18,
-      font: fontBold,
-      color: rgb(0, 0, 0),
-    });
-
-    yPosition -= 40;
-
-    const titleLines = wrapText(document.title, CONTENT_WIDTH, 14, fontBold);
-    for (const line of titleLines) {
-      page.drawText(line, {
-        x: MARGIN,
-        y: yPosition,
-        size: 14,
-        font: fontBold,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= 20;
-    }
-
-    yPosition -= 20;
-
-    page.drawText(`Version ${document.version}.0 - DRAFT`, {
-      x: MARGIN,
-      y: yPosition,
-      size: 11,
-      font: font,
-      color: rgb(0.7, 0, 0),
-    });
-
-    yPosition -= 30;
-
-    page.drawText(`Organisation: ${organisation.name}`, {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
-
-    yPosition -= 15;
-
-    if (document.assessor_name) {
-      page.drawText(`Assessor: ${document.assessor_name}`, {
-        x: MARGIN,
-        y: yPosition,
-        size: 10,
-        font: font,
-        color: rgb(0, 0, 0),
-      });
-    }
-  }
+  // Use addIssuedReportPages for both draft and issued modes (logo embedding + professional layout)
+  console.log('[PDF RE Survey] Adding report pages with logo (cover + doc control)');
+  const { coverPage, docControlPage } = await addIssuedReportPages({
+    pdfDoc,
+    document: {
+      id: document.id,
+      title: document.title,
+      document_type: 'RE',
+      version_number: (document as any).version_number || document.version || 1,
+      issue_date: (document as any).issue_date || new Date().toISOString(),
+      issue_status: isIssuedMode ? 'issued' : 'draft',
+      assessor_name: document.assessor_name,
+      base_document_id: (document as any).base_document_id,
+    },
+    organisation: {
+      id: organisation.id,
+      name: organisation.name,
+      branding_logo_path: organisation.branding_logo_path,
+    },
+    client: {
+      name: document.responsible_person,
+      site: document.scope_description,
+    },
+    fonts: { bold: fontBold, regular: font },
+  });
+  totalPages.push(coverPage, docControlPage);
 
   // Add executive summary if configured
   addExecutiveSummaryPages(

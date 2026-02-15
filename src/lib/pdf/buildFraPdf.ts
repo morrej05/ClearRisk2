@@ -16,6 +16,7 @@ import {
 import {
   calculateSCS,
   deriveFireProtectionReliance,
+  deriveStoreysForScoring,
   type FraBuildingComplexityInput,
   type FireProtectionModuleData,
 } from '../modules/fra/complexityEngine';
@@ -588,9 +589,13 @@ function drawExecutiveSummary(
 
   // Build context for severity engine
   const buildingProfile = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
+  const derivedStoreys = buildingProfile ? deriveStoreysForScoring({
+    storeysBand: buildingProfile.data.storeys_band,
+    storeysExact: buildingProfile.data.storeys_exact || buildingProfile.data.number_of_storeys
+  }) : null;
   const fraContext: FraContext = {
     occupancyRisk: (buildingProfile?.data.occupancy_risk || 'NonSleeping') as 'NonSleeping' | 'Sleeping' | 'Vulnerable',
-    storeys: buildingProfile?.data.number_of_storeys || null,
+    storeys: derivedStoreys,
   };
 
   // Derive executive outcome using severity engine
@@ -716,7 +721,11 @@ function drawExecutiveSummary(
   const fireProtectionRelianceEarly = deriveFireProtectionReliance(protectionDataEarly);
   const scsInputEarly: FraBuildingComplexityInput = {
     storeys: buildingProfileEarly?.data.number_of_storeys || null,
-    floorAreaM2: buildingProfileEarly?.data.floor_area_m2 || null,
+    floorAreaM2: buildingProfileEarly?.data.floor_area_m2 || buildingProfileEarly?.data.floor_area_sqm || null,
+    storeysBand: buildingProfileEarly?.data.storeys_band || null,
+    storeysExact: buildingProfileEarly?.data.storeys_exact || null,
+    floorAreaBand: buildingProfileEarly?.data.floor_area_band || null,
+    floorAreaM2Exact: buildingProfileEarly?.data.floor_area_m2 || null,
     sleepingRisk: buildingProfileEarly?.data.sleeping_risk || 'None',
     layoutComplexity: buildingProfileEarly?.data.layout_complexity || 'Simple',
     fireProtectionReliance: fireProtectionRelianceEarly,
@@ -884,7 +893,11 @@ function drawExecutiveSummary(
   // Build SCS input
   const scsInput: FraBuildingComplexityInput = {
     storeys: buildingProfile?.data.number_of_storeys || null,
-    floorAreaM2: buildingProfile?.data.floor_area_m2 || null,
+    floorAreaM2: buildingProfile?.data.floor_area_m2 || buildingProfile?.data.floor_area_sqm || null,
+    storeysBand: buildingProfile?.data.storeys_band || null,
+    storeysExact: buildingProfile?.data.storeys_exact || null,
+    floorAreaBand: buildingProfile?.data.floor_area_band || null,
+    floorAreaM2Exact: buildingProfile?.data.floor_area_m2 || null,
     sleepingRisk: buildingProfile?.data.sleeping_risk || 'None',
     layoutComplexity: buildingProfile?.data.layout_complexity || 'Simple',
     fireProtectionReliance,

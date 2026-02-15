@@ -2,9 +2,34 @@
 
 export type FraComplexityBand = "Low" | "Moderate" | "High" | "VeryHigh";
 
+export type StoreysBand =
+  | "1"
+  | "2"
+  | "3"
+  | "4"
+  | "5-6"
+  | "7-10"
+  | "11+"
+  | "unknown"
+  | "custom";
+
+export type FloorAreaBand =
+  | "<150"
+  | "150-300"
+  | "300-1000"
+  | "1000-5000"
+  | "5000-10000"
+  | "10000+"
+  | "unknown"
+  | "custom";
+
 export interface FraBuildingComplexityInput {
   storeys?: number | null;
   floorAreaM2?: number | null;
+  storeysBand?: StoreysBand | string | null;
+  storeysExact?: number | string | null;
+  floorAreaBand?: FloorAreaBand | string | null;
+  floorAreaM2Exact?: number | string | null;
   // "sleeping risk" is building/assessment-wide; keep it simple
   sleepingRisk?: "None" | "HMO" | "BlockOrHotel" | "Vulnerable";
   layoutComplexity?: "Simple" | "Moderate" | "Complex" | "MixedUse";
@@ -25,6 +50,79 @@ export interface FraSCSResult {
     layout: number;
     reliance: number;
   };
+}
+
+export function deriveStoreysForScoring(params: {
+  storeysBand?: StoreysBand | string | null;
+  storeysExact?: number | string | null;
+}): number {
+  const exactRaw = params.storeysExact;
+  const exact = typeof exactRaw === 'number' ? exactRaw : (typeof exactRaw === 'string' && exactRaw ? parseFloat(exactRaw) : null);
+  const band = (params.storeysBand ?? null) as string | null;
+
+  if (band === "custom" && typeof exact === "number" && exact > 0 && !isNaN(exact)) {
+    return exact;
+  }
+
+  switch (band) {
+    case "1":
+      return 1;
+    case "2":
+      return 2;
+    case "3":
+      return 3;
+    case "4":
+      return 4;
+    case "5-6":
+      return 6;
+    case "7-10":
+      return 10;
+    case "11+":
+      return 11;
+    case "unknown":
+      return 4;
+    default:
+      if (typeof exact === "number" && exact > 0 && !isNaN(exact)) {
+        return exact;
+      }
+      return 4;
+  }
+}
+
+export function deriveFloorAreaM2ForScoring(params: {
+  floorAreaBand?: FloorAreaBand | string | null;
+  floorAreaM2?: number | string | null;
+  floorAreaM2Exact?: number | string | null;
+}): number {
+  const exactRaw = params.floorAreaM2Exact ?? params.floorAreaM2;
+  const exact = typeof exactRaw === 'number' ? exactRaw : (typeof exactRaw === 'string' && exactRaw ? parseFloat(exactRaw) : null);
+  const band = (params.floorAreaBand ?? null) as string | null;
+
+  if (band === "custom" && typeof exact === "number" && exact > 0 && !isNaN(exact)) {
+    return exact;
+  }
+
+  switch (band) {
+    case "<150":
+      return 150;
+    case "150-300":
+      return 300;
+    case "300-1000":
+      return 1000;
+    case "1000-5000":
+      return 5000;
+    case "5000-10000":
+      return 10000;
+    case "10000+":
+      return 10000;
+    case "unknown":
+      return 1000;
+    default:
+      if (typeof exact === "number" && exact > 0 && !isNaN(exact)) {
+        return exact;
+      }
+      return 1000;
+  }
 }
 
 function scoreHeight(storeys?: number | null): number {
@@ -86,8 +184,19 @@ function scoreProtectionReliance(r?: FraBuildingComplexityInput["fireProtectionR
 }
 
 export function calculateSCS(input: FraBuildingComplexityInput): FraSCSResult {
-  const height = scoreHeight(input.storeys);
-  const area = scoreArea(input.floorAreaM2);
+  const storeysForScoring = deriveStoreysForScoring({
+    storeysBand: input.storeysBand,
+    storeysExact: input.storeysExact ?? input.storeys
+  });
+
+  const areaForScoring = deriveFloorAreaM2ForScoring({
+    floorAreaBand: input.floorAreaBand,
+    floorAreaM2: input.floorAreaM2,
+    floorAreaM2Exact: input.floorAreaM2Exact
+  });
+
+  const height = scoreHeight(storeysForScoring);
+  const area = scoreArea(areaForScoring);
   const sleeping = scoreSleeping(input.sleepingRisk);
   const layout = scoreLayout(input.layoutComplexity);
   const reliance = scoreProtectionReliance(input.fireProtectionReliance);

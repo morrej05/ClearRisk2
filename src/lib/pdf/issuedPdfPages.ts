@@ -154,7 +154,6 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
   .eq('base_document_id', document.base_document_id)
   .order('version_number', { ascending: false });
 
-
 if (error) console.error('[Change summaries] load error', error);
 
       if (summaries) {

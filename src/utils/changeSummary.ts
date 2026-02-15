@@ -156,31 +156,63 @@ export async function generateChangeSummary(
  * Get the most recent change summary for a document (by documentId).
  *
  * NOTE: ChangeSummaryPanel passes the current *document id*,
- * but the view is keyed by base_document_id. So we resolve base_document_id first.
+ * but the table is keyed by base_document_id. So we resolve base_document_id first.
  */
 export async function getChangeSummary(documentId: string): Promise<ChangeSummaryViewRow | null> {
   try {
     const { data: doc, error: docErr } = await supabase
       .from('documents')
-      .select('base_document_id')
+      .select('base_document_id, version_number')
       .eq('id', documentId)
       .maybeSingle();
 
-    if (docErr) throw docErr;
+    if (docErr) {
+      console.error('[getChangeSummary] Error fetching document:', docErr);
+      throw docErr;
+    }
     if (!doc?.base_document_id) return null;
 
     const { data, error } = await supabase
-      .from('change_summaries')
-      .select('id, base_document_id, version_number, created_at, created_by, full_name, summary_text')
+      .from('document_change_summaries')
+      .select(`
+        id,
+        base_document_id,
+        created_at,
+        generated_by,
+        summary_text,
+        user_profiles(name)
+      `)
       .eq('base_document_id', doc.base_document_id)
-      .order('version_number', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (error) throw error;
-    return data as ChangeSummaryViewRow | null;
-  } catch (error) {
-    console.error('Error fetching change summary:', error);
+    if (error) {
+      console.error('[getChangeSummary] Error fetching change summary:', {
+        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+
+    if (!data) return null;
+
+    // Transform the response to match the expected interface
+    const profile = data.user_profiles as any;
+    return {
+      id: data.id,
+      base_document_id: data.base_document_id,
+      version_number: doc.version_number,
+      created_at: data.created_at,
+      created_by: data.generated_by,
+      full_name: profile?.name ?? null,
+      summary_text: data.summary_text
+    };
+  } catch (error: any) {
+    console.error('[getChangeSummary] Unhandled error:', error);
     return null;
   }
 }

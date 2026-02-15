@@ -12,27 +12,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Extract Authorization header
-    const authHeader = req.headers.get("Authorization");
-    console.log("[Logo Upload] Token present?", !!authHeader);
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.error("[Logo Upload] Missing or invalid Authorization header");
-      return new Response(
-        JSON.stringify({
-          error: "Missing or invalid Authorization header",
-          details: "Authorization header must be in format: Bearer <token>"
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Extract token from "Bearer <token>"
-    const token = authHeader.replace("Bearer ", "");
-
     // Create admin client with service role key
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -45,20 +24,37 @@ Deno.serve(async (req: Request) => {
       }
     );
 
+    // Extract Authorization header and token
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    console.log('[upload-org-logo] hasAuthHeader', !!authHeader);
+    console.log('[upload-org-logo] hasToken', !!token);
+
+    if (!token) {
+      return new Response(
+        JSON.stringify({
+          error: 'Missing bearer token',
+          hasAuthHeader: !!authHeader
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Validate token using admin client
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
 
-    console.log("[Logo Upload] getUser success?", !!user);
+    console.log('[upload-org-logo] getUser ok', !!user, 'err', userErr);
 
-    if (userError) {
-      console.error("[Logo Upload] Auth error:", {
-        message: userError.message,
-        status: userError.status,
-      });
+    if (userErr || !user) {
       return new Response(
         JSON.stringify({
-          error: "Authentication failed",
-          details: userError.message
+          error: 'Invalid token',
+          details: userErr?.message,
+          code: userErr?.code
         }),
         {
           status: 401,
@@ -67,21 +63,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!user) {
-      console.error("[Logo Upload] No user found from token");
-      return new Response(
-        JSON.stringify({
-          error: "Authentication failed",
-          details: "No user found from token"
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    console.log("[Logo Upload] User authenticated:", user.id);
+    console.log('[upload-org-logo] User authenticated:', user.id);
 
     // Parse FormData
     const formData = await req.formData();

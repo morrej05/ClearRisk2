@@ -190,6 +190,9 @@ export default function OrganisationBranding() {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
+        const text = await response.text();
+console.log('[Logo Upload] status:', response.status);
+console.log('[Logo Upload] body:', text);
   `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-org-logo`,
   {
     method: 'POST',

@@ -1,12 +1,13 @@
 // src/lib/modules/fra/migrateLegacyFraActions.ts
 
 import {
-  deriveSeverityTier,
+  deriveSeverity,
   mapTierToPriority,
   type FraContext,
   type FraSeverityTier,
   type FraPriority,
   type FraActionInput,
+  type FraSeverityResult,
 } from './severityEngine';
 
 /**
@@ -16,32 +17,41 @@ import {
  * - Preserves existing severityTier and priority if already set
  * - Maps legacy riskScore bands to severity tiers
  * - Falls back to severity engine rules if no score available
+ * - Populates trigger_id and trigger_text
  *
  * @param action Legacy action with likelihood/impact/riskScore
  * @param ctx FRA context (occupancy risk, storeys)
- * @returns Action with severityTier and priority populated
+ * @returns Action with severityTier, priority, and trigger fields populated
  */
 export function migrateLegacyFraAction(action: any, ctx: FraContext): any {
   // If already migrated, skip
-  if (action.severity_tier && action.priority_band) {
+  if (action.severity_tier && action.priority_band && action.trigger_id) {
     return action;
   }
 
-  let tier: FraSeverityTier = 'T2';
+  let result: FraSeverityResult;
 
   // Try to use legacy riskScore if available
   const score = action.risk_score ?? null;
 
   if (score !== null) {
-    // Map legacy score bands to new severity tiers
-    // Original mapping: P1: 20-25, P2: 12-19, P3: 6-11, P4: 1-5
-    // We're being slightly more conservative in the migration
-    if (score >= 20) tier = 'T4'; // P1 material life safety
-    else if (score >= 12) tier = 'T3'; // P2 significant deficiency
-    else if (score >= 6) tier = 'T2'; // P3 improvement required
-    else tier = 'T1'; // P4 minor
+    // Map legacy score bands to new severity tiers with legacy trigger
+    let tier: FraSeverityTier = 'T2';
+    if (score >= 20) tier = 'T4';
+    else if (score >= 12) tier = 'T3';
+    else if (score >= 6) tier = 'T2';
+    else tier = 'T1';
+
+    const priority = mapTierToPriority(tier);
+
+    result = {
+      tier,
+      priority,
+      triggerId: 'LEGACY-SCORE',
+      triggerText: 'Priority derived from legacy scoring (migrated).',
+    };
   } else {
-    // No score available - try to use severity engine
+    // No score available - use severity engine
     // Build action input from available fields
     const actionInput: FraActionInput = {
       category: action.finding_category || 'Other',
@@ -56,17 +66,16 @@ export function migrateLegacyFraAction(action: any, ctx: FraContext): any {
       noFraEvidenceOrReview: action.no_fra_evidence_or_review || false,
     };
 
-    tier = deriveSeverityTier(actionInput, ctx);
+    result = deriveSeverity(actionInput, ctx);
   }
 
-  // Map tier to priority
-  const priority = mapTierToPriority(tier);
-
-  // Return migrated action
+  // Return migrated action with all fields
   return {
     ...action,
-    severity_tier: tier,
-    priority_band: priority,
+    severity_tier: result.tier,
+    priority_band: result.priority,
+    trigger_id: result.triggerId,
+    trigger_text: result.triggerText,
   };
 }
 
@@ -91,5 +100,5 @@ export function migrateLegacyFraActions(
  * @returns true if migration needed
  */
 export function needsMigration(action: any): boolean {
-  return !action.severity_tier || !action.priority_band;
+  return !action.severity_tier || !action.priority_band || !action.trigger_id;
 }

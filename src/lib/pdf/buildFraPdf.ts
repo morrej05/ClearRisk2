@@ -71,6 +71,8 @@ interface Action {
   recommended_action: string;
   priority_band: string;
   status: string;
+  trigger_id?: string | null;
+  trigger_text?: string | null;
   owner_user_id: string | null;
   owner_display_name?: string;
   target_date: string | null;
@@ -1656,6 +1658,24 @@ function drawActionRegister(
         size: 10,
         font,
         color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 14;
+    }
+
+    // Add reason for priority for P1/P2 actions
+    if ((action.priority_band === 'P1' || action.priority_band === 'P2') && action.trigger_text) {
+      yPosition -= 2;
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(`Reason: ${sanitizePdfText(action.trigger_text)}`, {
+        x: MARGIN + 5,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.6, 0.3, 0.3),
       });
       yPosition -= 14;
     }

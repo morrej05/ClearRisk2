@@ -39,58 +39,156 @@ export interface FraActionInput {
   assessorMarkedCritical?: boolean; // only allowed to UP-rate with justification in UI
 }
 
+export interface FraSeverityResult {
+  tier: FraSeverityTier;
+  priority: FraPriority;
+  triggerId: string;
+  triggerText: string;
+}
+
 /**
- * Returns Tier (T1..T4) using deterministic, defensible trigger rules.
- * No Likelihood x Impact.
+ * Derives severity with full trigger context (ID + text explanation).
+ * This is the primary function to use for new action creation/editing.
  */
-export function deriveSeverityTier(
+export function deriveSeverity(
   action: FraActionInput,
   ctx: FraContext
-): FraSeverityTier {
+): FraSeverityResult {
   const sleepingOrVulnerable =
     ctx.occupancyRisk === "Sleeping" || ctx.occupancyRisk === "Vulnerable";
 
-  // --- T4 (Material Life Safety Risk) -> P1 ---
-  // Final exits / escape integrity
-  if (action.finalExitLocked || action.finalExitObstructed) return "T4";
+  // P1 / T4 triggers (return immediately)
+  if (action.finalExitLocked)
+    return {
+      tier: "T4",
+      priority: "P1",
+      triggerId: "MOE-P1-01",
+      triggerText: "Final exit is locked or secured in a manner that may prevent escape."
+    };
 
-  // Detection absent in sleeping / vulnerable premises
-  if (sleepingOrVulnerable && action.noFireDetection) return "T4";
+  if (action.finalExitObstructed)
+    return {
+      tier: "T4",
+      priority: "P1",
+      triggerId: "MOE-P1-02",
+      triggerText: "Escape route or final exit is obstructed, potentially delaying evacuation."
+    };
 
-  // Emergency lighting absent in multi-storey
-  if ((ctx.storeys ?? 0) >= 2 && action.noEmergencyLighting) return "T4";
+  if (sleepingOrVulnerable && action.noFireDetection)
+    return {
+      tier: "T4",
+      priority: "P1",
+      triggerId: "DA-P1-01",
+      triggerText: "Sleeping premises with no suitable fire detection and warning system."
+    };
 
-  // Single stair compromised above low-rise
-  if ((ctx.storeys ?? 0) >= 4 && action.singleStairCompromised) return "T4";
+  if ((ctx.storeys ?? 0) >= 2 && action.noEmergencyLighting)
+    return {
+      tier: "T4",
+      priority: "P1",
+      triggerId: "EL-P1-01",
+      triggerText: "No effective emergency lighting where power failure could impair escape."
+    };
 
-  // Severe compartmentation failure where escape relies on it
-  if (sleepingOrVulnerable && action.seriousCompartmentationFailure) return "T4";
+  if ((ctx.storeys ?? 0) >= 4 && action.singleStairCompromised)
+    return {
+      tier: "T4",
+      priority: "P1",
+      triggerId: "MOE-P1-03",
+      triggerText: "Single escape stair compromised in a building reliant on that stair for evacuation."
+    };
 
-  // High-risk room opening onto escape route without protection (simple flag)
-  if (action.highRiskRoomToEscapeRoute) return "T4";
+  if (sleepingOrVulnerable && action.seriousCompartmentationFailure)
+    return {
+      tier: "T4",
+      priority: "P1",
+      triggerId: "COMP-P1-01",
+      triggerText: "Significant compartmentation failures in sleeping premises affecting smoke/fire spread."
+    };
 
-  // No FRA evidence/review in complex building could be escalated, but keep as T3 unless you want hard T4
-  // if (action.noFraEvidenceOrReview && (ctx.storeys ?? 0) >= 4) return "T4";
+  if (action.highRiskRoomToEscapeRoute)
+    return {
+      tier: "T4",
+      priority: "P1",
+      triggerId: "COMP-P1-03",
+      triggerText: "High-risk room opens onto an escape route without suitable protection."
+    };
 
-  // --- T3 (Significant Deficiency) -> P2 ---
-  if (action.noFireDetection) return "T3"; // non-sleeping: still serious
-  if (action.detectionInadequateCoverage) return "T3";
-  if (action.seriousCompartmentationFailure) return "T3";
-  if (action.singleStairCompromised) return "T3";
-  if (action.noFraEvidenceOrReview) return "T3";
+  // P2 / T3 triggers
+  if (action.noFireDetection)
+    return {
+      tier: "T3",
+      priority: "P2",
+      triggerId: "DA-P2-01",
+      triggerText: "No suitable fire detection and warning system to provide timely warning."
+    };
 
-  // --- T2 (Improvement Required) -> P3 ---
-  // Use category-based defaults if no explicit hard trigger flags were set.
+  if (action.detectionInadequateCoverage)
+    return {
+      tier: "T3",
+      priority: "P2",
+      triggerId: "DA-P2-02",
+      triggerText: "Fire detection coverage is incomplete and may delay warning."
+    };
+
+  if (action.seriousCompartmentationFailure)
+    return {
+      tier: "T3",
+      priority: "P2",
+      triggerId: "COMP-P2-01",
+      triggerText: "Compartmentation deficiencies likely to compromise the intended strategy."
+    };
+
+  if (action.singleStairCompromised)
+    return {
+      tier: "T3",
+      priority: "P2",
+      triggerId: "MOE-P2-01",
+      triggerText: "Stair/escape route weaknesses increase the potential for smoke spread during evacuation."
+    };
+
+  if (action.noFraEvidenceOrReview)
+    return {
+      tier: "T3",
+      priority: "P2",
+      triggerId: "MGMT-P2-01",
+      triggerText: "Insufficient evidence of fire safety management arrangements and review."
+    };
+
+  // P3 / T2 - Management/Housekeeping defaults
   if (
     action.category === "Management" ||
     action.category === "Housekeeping" ||
     action.category === "FireFighting"
   ) {
-    return "T2";
+    return {
+      tier: "T2",
+      priority: "P3",
+      triggerId: "GEN-P3-01",
+      triggerText: "Improvement required to strengthen fire safety management arrangements."
+    };
   }
 
-  // --- T1 (Minor) -> P4 ---
-  return "T1";
+  // P4 / T1 - Default/good practice
+  return {
+    tier: "T1",
+    priority: "P4",
+    triggerId: "GEN-P4-01",
+    triggerText: "Good practice recommendation."
+  };
+}
+
+/**
+ * Returns Tier (T1..T4) using deterministic, defensible trigger rules.
+ * No Likelihood x Impact.
+ *
+ * @deprecated Use deriveSeverity() instead for full trigger context
+ */
+export function deriveSeverityTier(
+  action: FraActionInput,
+  ctx: FraContext
+): FraSeverityTier {
+  return deriveSeverity(action, ctx).tier;
 }
 
 export function mapTierToPriority(tier: FraSeverityTier): FraPriority {

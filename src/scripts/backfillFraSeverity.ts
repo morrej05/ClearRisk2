@@ -44,6 +44,8 @@ interface Action {
   document_id: string;
   severity_tier: string | null;
   priority_band: string | null;
+  trigger_id: string | null;
+  trigger_text: string | null;
   risk_score: number | null;
   likelihood: number | null;
   impact: number | null;
@@ -98,7 +100,7 @@ async function backfillFraSeverity() {
       // Fetch actions for this document
       const { data: actions, error: actionsError } = await supabase
         .from('actions')
-        .select('id, document_id, severity_tier, priority_band, risk_score, likelihood, impact, finding_category')
+        .select('id, document_id, severity_tier, priority_band, trigger_id, trigger_text, risk_score, likelihood, impact, finding_category')
         .eq('document_id', doc.id)
         .is('deleted_at', null);
 
@@ -119,7 +121,7 @@ async function backfillFraSeverity() {
         totalActionsProcessed++;
 
         // Skip if already migrated
-        if (action.severity_tier && action.priority_band) {
+        if (action.severity_tier && action.priority_band && action.trigger_id) {
           totalActionsSkipped++;
           continue;
         }
@@ -133,6 +135,8 @@ async function backfillFraSeverity() {
           .update({
             severity_tier: migratedAction.severity_tier,
             priority_band: migratedAction.priority_band,
+            trigger_id: migratedAction.trigger_id,
+            trigger_text: migratedAction.trigger_text,
           })
           .eq('id', action.id);
 

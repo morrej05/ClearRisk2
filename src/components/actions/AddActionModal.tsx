@@ -4,8 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadEvidenceFile, createAttachmentRow } from '../../lib/supabase/attachments';
 import {
-  deriveSeverityTier,
-  mapTierToPriority,
+  deriveSeverity,
   type FraFindingCategory,
   type FraActionInput,
   type FraContext,
@@ -89,12 +88,18 @@ export default function AddActionModal({
   };
 
   // Derive priority from severity engine
-  const severityTier = deriveSeverityTier(actionInput, fraContext);
-  let priorityBand = mapTierToPriority(severityTier);
+  const severityResult = deriveSeverity(actionInput, fraContext);
+  let priorityBand = severityResult.priority;
+  let severityTier = severityResult.tier;
+  let triggerId = severityResult.triggerId;
+  let triggerText = severityResult.triggerText;
 
   // Allow manual escalation to P1 with justification
   if (formData.escalateToP1) {
     priorityBand = 'P1';
+    severityTier = 'T4';
+    triggerId = 'MANUAL-P1';
+    triggerText = 'Manually escalated to P1 by assessor.';
   }
 
   const getSuggestedTimescale = (priorityBand: string): string => {
@@ -211,6 +216,8 @@ export default function AddActionModal({
         status: 'open',
         priority_band: priorityBand,
         severity_tier: severityTier,
+        trigger_id: triggerId,
+        trigger_text: triggerText,
         finding_category: formData.category,
         timescale: formData.timescale,
         target_date: targetDate,

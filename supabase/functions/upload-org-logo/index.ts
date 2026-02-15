@@ -78,9 +78,17 @@ Deno.serve(async (req: Request) => {
     const fileName = `logo.${fileExt}`;
     const filePath = `org-logos/${orgId}/${fileName}`;
 
+    console.log("[Logo Upload] Uploading to storage:", {
+      bucket: "org-assets",
+      filePath,
+      contentType: file.type,
+      fileSize: file.size,
+      orgId,
+    });
+
     const fileBuffer = await file.arrayBuffer();
 
-    const { error: uploadError } = await supabaseClient.storage
+    const { data: uploadData, error: uploadError } = await supabaseClient.storage
       .from("org-assets")
       .upload(filePath, fileBuffer, {
         contentType: file.type,
@@ -88,10 +96,22 @@ Deno.serve(async (req: Request) => {
       });
 
     if (uploadError) {
+      console.error("[Logo Upload] Storage upload error:", {
+        message: uploadError.message,
+        statusCode: uploadError.statusCode,
+        error: uploadError,
+      });
       throw new Error(`Upload failed: ${uploadError.message}`);
     }
 
-    const { error: updateError } = await supabaseClient
+    console.log("[Logo Upload] Storage upload successful:", uploadData);
+
+    console.log("[Logo Upload] Updating organisation record:", {
+      orgId,
+      branding_logo_path: filePath,
+    });
+
+    const { data: updateData, error: updateError } = await supabaseClient
       .from("organisations")
       .update({
         branding_logo_path: filePath,
@@ -100,8 +120,16 @@ Deno.serve(async (req: Request) => {
       .eq("id", orgId);
 
     if (updateError) {
+      console.error("[Logo Upload] Organisation update error:", {
+        message: updateError.message,
+        code: updateError.code,
+        details: updateError.details,
+        error: updateError,
+      });
       throw new Error(`Failed to update organisation: ${updateError.message}`);
     }
+
+    console.log("[Logo Upload] Organisation updated successfully:", updateData);
 
     return new Response(
       JSON.stringify({ success: true, path: filePath }),

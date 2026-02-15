@@ -84,12 +84,21 @@ export default function OrganisationBranding() {
       setError(null);
       setSuccess(null);
 
+      console.log('[Logo Upload] Starting upload:', {
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        organisationId,
+      });
+
       const formData = new FormData();
       formData.append('logo', file);
       formData.append('organisation_id', organisationId);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
+
+      console.log('[Logo Upload] Calling edge function...');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-org-logo`,
@@ -104,15 +113,26 @@ export default function OrganisationBranding() {
 
       const result = await response.json();
 
+      console.log('[Logo Upload] Response:', {
+        status: response.status,
+        ok: response.ok,
+        result,
+      });
+
       if (!response.ok) {
-        throw new Error(result.error || 'Upload failed');
+        const errorMessage = result.error || `Upload failed (${response.status})`;
+        console.error('[Logo Upload] Upload failed:', errorMessage);
+        throw new Error(errorMessage);
       }
 
+      console.log('[Logo Upload] Upload successful:', result);
       setSuccess('Logo uploaded successfully');
       await loadOrganisationBranding();
     } catch (err: any) {
-      console.error('Error uploading logo:', err);
-      setError(err.message);
+      console.error('[Logo Upload] Error:', err);
+      const errorMessage = err.message || 'Upload failed';
+      console.error('[Logo Upload] Detailed error:', errorMessage);
+      setError(errorMessage);
     } finally {
       setUploading(false);
     }

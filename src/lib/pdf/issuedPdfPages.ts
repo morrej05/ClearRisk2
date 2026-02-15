@@ -158,11 +158,12 @@ if (error) console.error('[Change summaries] load error', error);
 
       if (summaries) {
         revisionHistory = summaries.map((s: any) => ({
-          version_number: s.version_number,
-          issue_date: s.created_at,
-          change_summary: s.summary_text,
-          issued_by_name: s.user_profiles?.full_name || null,
-        }));
+  version_number: s.version_number,
+  issue_date: s.created_at,
+  change_summary: s.summary_text,
+  issued_by_name: null, // or s.generated_by
+}));
+
       }
     } catch (error) {
       console.warn('[Issued PDF] Failed to load revision history:', error);

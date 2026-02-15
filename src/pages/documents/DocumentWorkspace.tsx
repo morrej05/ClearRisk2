@@ -348,9 +348,10 @@ const fetchModules = async () => {
       if (seededErr) throw seededErr;
 
       // Filter modules to only expected keys (hide unwanted modules for RE docs)
+      const seededSafe = Array.isArray(seeded) ? seeded : [];
       const filtered = doc.document_type === 'RE'
-        ? getReModulesForDocument((seeded || []) as ModuleInstance[], { documentId: id })
-        : (seeded || []).filter((m: any) => expectedKeys.includes(m.module_key));
+        ? getReModulesForDocument(seededSafe as ModuleInstance[], { documentId: id })
+        : seededSafe.filter((m: any) => expectedKeys.includes(m.module_key));
       const sorted = sortModulesByOrder(filtered);
       console.log('[DocumentWorkspace] fetchModules SET MODULES (after seed)', {
         moduleCount: sorted.length,
@@ -360,9 +361,10 @@ const fetchModules = async () => {
     }
 
     // Filter modules to only expected keys (hide unwanted modules for RE docs)
+    const existingSafe = Array.isArray(existing) ? existing : [];
     const filtered = doc.document_type === 'RE'
-      ? getReModulesForDocument((existing || []) as ModuleInstance[], { documentId: id })
-      : (existing || []).filter((m: any) => expectedKeys.includes(m.module_key));
+      ? getReModulesForDocument(existingSafe as ModuleInstance[], { documentId: id })
+      : existingSafe.filter((m: any) => expectedKeys.includes(m.module_key));
     const sorted = sortModulesByOrder(filtered);
 
     if (import.meta.env.DEV) {

@@ -252,11 +252,12 @@ export function getReModulesForDocument(
   moduleInstances: ModuleInstanceLike[],
   opts?: { documentId?: string | null }
 ): ModuleInstanceLike[] {
+  const instances = Array.isArray(moduleInstances) ? moduleInstances : [];
   const canonicalKeys = getModuleKeysForDocType('RE');
   const canonicalSet = new Set(canonicalKeys);
   const byKey = new Map<string, ModuleInstanceLike>();
 
-  for (const instance of moduleInstances) {
+  for (const instance of instances) {
     const normalizedKey = normalizeReModuleKey(instance.module_key);
 
     if (!normalizedKey || !canonicalSet.has(normalizedKey)) {

@@ -190,9 +190,10 @@ export default function DocumentOverview() {
 
       if (error) throw error;
 
+      const moduleInstancesSafe = Array.isArray(data) ? data : [];
       const modulesForUi = doc?.document_type === 'RE'
-        ? getReModulesForDocument((data as any[]) || [], { documentId: id })
-        : ((data as any[]) || []);
+        ? getReModulesForDocument(moduleInstancesSafe as any[], { documentId: id })
+        : moduleInstancesSafe;
 
       setModules(modulesForUi);
     } catch (error) {

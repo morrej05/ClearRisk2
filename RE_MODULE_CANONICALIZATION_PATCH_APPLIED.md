@@ -4,6 +4,8 @@
 
 Applied exact patch set to canonicalize RE module lists across 3 files. Legacy module keys like `RE_10_PROCESS_RISK` are now automatically normalized to canonical keys like `RE_10_SITE_PHOTOS`, preventing duplicate module entries and ensuring consistent ordering.
 
+**UPDATE:** Added defensive programming to prevent "moduleInstances is not iterable" runtime crashes. All calls to `getReModulesForDocument()` now handle `null`/`undefined` inputs gracefully.
+
 ---
 
 ## Files Changed

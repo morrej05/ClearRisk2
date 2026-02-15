@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, AlertCircle, List, FileCheck, Menu } from 'lucide-react';
+import { ArrowLeft, AlertCircle, List, FileCheck, Menu, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { sortModulesByOrder, getModuleKeysForDocType, getModuleNavigationPath, getReModulesForDocument, normalizeReModuleKey, filterDeprecatedModuleKeysForNavigation } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';

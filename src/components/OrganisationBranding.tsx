@@ -141,7 +141,6 @@ export default function OrganisationBranding() {
   }
 );
 
-
       const result = await response.json();
 
       console.log('[Logo Upload] Response:', {

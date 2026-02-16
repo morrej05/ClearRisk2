@@ -625,6 +625,7 @@ const fetchModules = async () => {
           onModuleSelect={handleModuleSelect}
           isMobileMenuOpen={isMobileMenuOpen}
           onCloseMobileMenu={() => setIsMobileMenuOpen(false)}
+          documentId={document?.id}
         />
 
         <div className="flex-1 min-w-0 overflow-y-auto bg-neutral-50">

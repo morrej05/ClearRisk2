@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { X, ArrowUpCircle, Lock } from 'lucide-react';
+import { X, ArrowUpCircle, Lock, Flame, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { canAccessRiskEngineering } from '../../utils/entitlements';
+import { updateDocumentMeta } from '../../lib/documents/updateDocumentMeta';
 
 interface CreateDocumentModalProps {
   onClose: () => void;
@@ -78,6 +79,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
     availableTypes = availableTypes.filter(t => t === 'FRA');
   }
 
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     enabledModules: [availableTypes[0]] as string[],
     title: '',
@@ -91,7 +93,18 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
     jurisdiction: 'UK',
   });
 
+  const handleTemplateSelect = (template: string) => {
+    setSelectedTemplate(template);
+    if (template === 'FIRE_EXPLOSION') {
+      setFormData((prev) => ({
+        ...prev,
+        enabledModules: ['FRA', 'DSEAR'],
+      }));
+    }
+  };
+
   const handleModuleToggle = (moduleType: string) => {
+    setSelectedTemplate(null);
     setFormData((prev) => {
       const isCurrentlyEnabled = prev.enabledModules.includes(moduleType);
 
@@ -145,6 +158,11 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
                                   enabledModules.includes('FSD') ? 'FSD' :
                                   enabledModules.includes('DSEAR') ? 'DSEAR' : 'FRA';
 
+      const packageMeta = selectedTemplate === 'FIRE_EXPLOSION' ? {
+        package: 'FIRE_EXPLOSION',
+        enabled_products: ['FRA', 'DSEAR'],
+      } : {};
+
       const documentData = {
         organisation_id: organisation.id,
         document_type: primaryDocumentType,
@@ -160,6 +178,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
         limitations_assumptions: formData.limitationsAssumptions.trim() || null,
         standards_selected: formData.standardsSelected,
         jurisdiction: formData.jurisdiction,
+        meta: packageMeta,
       };
 
       const { data: document, error: docError } = await supabase
@@ -219,9 +238,45 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {canAccessEngineering && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-3">
+                Quick Templates
+              </label>
+              <div
+                onClick={() => handleTemplateSelect('FIRE_EXPLOSION')}
+                className={`relative px-4 py-3 border-2 rounded-lg cursor-pointer transition-all ${
+                  selectedTemplate === 'FIRE_EXPLOSION'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex gap-1 mt-0.5">
+                    <Flame className={`w-4 h-4 ${selectedTemplate === 'FIRE_EXPLOSION' ? 'text-orange-600' : 'text-orange-500'}`} />
+                    <Zap className={`w-4 h-4 ${selectedTemplate === 'FIRE_EXPLOSION' ? 'text-yellow-600' : 'text-yellow-500'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-neutral-900">Fire + Explosion (Combined)</span>
+                    <p className="text-xs text-neutral-600 mt-0.5">
+                      Fire Risk Assessment + Explosive Atmospheres (DSEAR) in one assessment
+                    </p>
+                  </div>
+                  {selectedTemplate === 'FIRE_EXPLOSION' && (
+                    <div className="absolute top-2 right-2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-3">
-              Assessment Type <span className="text-red-600">*</span>
+              {canAccessEngineering ? 'Assessment Type (or select individual modules)' : 'Assessment Type'} <span className="text-red-600">*</span>
             </label>
             <div className="space-y-2">
               <label className="flex items-start gap-3 px-4 py-3 border-2 border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer transition-colors">

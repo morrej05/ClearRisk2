@@ -72,6 +72,7 @@ interface Document {
   locked_pdf_size_bytes: number | null;
   locked_pdf_sha256: string | null;
   jurisdiction: string;
+  meta?: any;
 }
 
 interface ModuleInstance {
@@ -963,6 +964,80 @@ try {
                 <FileText className="w-4 h-4 mr-2" />
                 Create New Version
               </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Identity Completeness Nudge */}
+        {document && !document.meta?.site?.address?.line1 && !document.meta?.site?.address?.postcode && (
+          <Callout variant="info" className="mb-6">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-900 mb-1">Add Site Address</p>
+                <p className="text-sm text-blue-800">
+                  Add the site address in module A1 to support mapping and ensure consistent report identity across all outputs.
+                </p>
+              </div>
+            </div>
+          </Callout>
+        )}
+
+        {/* Available Outputs */}
+        {document && document.enabled_modules && document.enabled_modules.length > 0 && (
+          <Card className="mb-6">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Available Outputs</h2>
+            <div className="space-y-3">
+              {document.enabled_modules.includes('FRA') && (
+                <div className="flex items-start gap-3 px-3 py-2 bg-neutral-50 rounded-lg">
+                  <FileText className="w-5 h-5 text-neutral-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-neutral-900">Fire Risk Assessment (FRA)</p>
+                    <p className="text-xs text-neutral-600">Regulatory compliance report under RRO</p>
+                  </div>
+                </div>
+              )}
+              {document.enabled_modules.includes('FSD') && (
+                <div className="flex items-start gap-3 px-3 py-2 bg-neutral-50 rounded-lg">
+                  <FileText className="w-5 h-5 text-neutral-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-neutral-900">Fire Strategy Document (FSD)</p>
+                    <p className="text-xs text-neutral-600">Design-stage fire engineering documentation</p>
+                  </div>
+                </div>
+              )}
+              {document.enabled_modules.includes('DSEAR') && (
+                <div className="flex items-start gap-3 px-3 py-2 bg-neutral-50 rounded-lg">
+                  <FileText className="w-5 h-5 text-neutral-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-neutral-900">Explosive Atmospheres (DSEAR)</p>
+                    <p className="text-xs text-neutral-600">Dangerous substances and explosive atmospheres assessment</p>
+                  </div>
+                </div>
+              )}
+              {document.enabled_modules.includes('FRA') && document.enabled_modules.includes('FSD') && (
+                <div className="flex items-start gap-3 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                  <Package className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Combined FRA + FSD Report</p>
+                    <p className="text-xs text-blue-700">Single report with both fire risk and strategy sections</p>
+                  </div>
+                </div>
+              )}
+              {document.enabled_modules.includes('FRA') && document.enabled_modules.includes('DSEAR') && (
+                <div className="flex items-start gap-3 px-3 py-2 bg-orange-50 rounded-lg border border-orange-200">
+                  <Package className="w-5 h-5 text-orange-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-900">Combined Fire + Explosion Report</p>
+                    <p className="text-xs text-orange-700">Single report with both fire risk and explosion risk sections</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 pt-4 border-t border-neutral-200">
+              <p className="text-xs text-neutral-600 mb-2">
+                Click <strong>Preview Report</strong> to view and download any of these outputs.
+              </p>
             </div>
           </Card>
         )}

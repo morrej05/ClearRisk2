@@ -8,6 +8,7 @@ interface CreateDocumentParams {
   documentType: DocumentType;
   title?: string;
   jurisdiction?: string;
+  enabledModules?: string[];
 }
 
 export async function createDocument({
@@ -15,6 +16,7 @@ export async function createDocument({
   documentType,
   title,
   jurisdiction = 'UK',
+  enabledModules,
 }: CreateDocumentParams): Promise<string> {
   const documentTitle = title || `New ${documentType}`;
   const assessmentDate = new Date().toISOString().split('T')[0];
@@ -44,6 +46,7 @@ export async function createDocument({
     assessment_date: assessmentDate,
     jurisdiction,
     section_grades: sectionGrades,
+    enabled_modules: enabledModules || null,
   };
 
   console.log('[documentCreation.createDocument] Insert payload:', documentData);
@@ -73,8 +76,21 @@ export async function createDocument({
 
   console.log('[documentCreation.createDocument] Created document:', document.id, 'type:', documentType);
 
-  const moduleKeys = getModuleKeysForDocType(documentType);
-  console.log('[documentCreation.createDocument] Module keys for', documentType, ':', moduleKeys);
+  // Get module keys - if enabledModules provided, combine keys from all enabled types
+  let moduleKeys: string[];
+  if (enabledModules && enabledModules.length > 0) {
+    const allKeys: string[] = [];
+    for (const moduleType of enabledModules) {
+      const keys = getModuleKeysForDocType(moduleType as DocumentType);
+      allKeys.push(...keys);
+    }
+    // Ensure uniqueness
+    moduleKeys = Array.from(new Set(allKeys));
+    console.log('[documentCreation.createDocument] Combined module keys from', enabledModules, ':', moduleKeys);
+  } else {
+    moduleKeys = getModuleKeysForDocType(documentType);
+    console.log('[documentCreation.createDocument] Module keys for', documentType, ':', moduleKeys);
+  }
 
   const moduleInstances = moduleKeys.map((moduleKey) => ({
     organisation_id: organisationId,

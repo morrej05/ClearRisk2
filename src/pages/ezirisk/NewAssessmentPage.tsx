@@ -46,7 +46,7 @@ export default function NewAssessmentPage() {
     return location.pathname === path;
   };
 
-  const fireAssessments: AssessmentType[] = [
+  const assessmentPackages: AssessmentType[] = [
     {
       id: 'fra',
       title: 'Fire Risk Assessment',
@@ -54,20 +54,11 @@ export default function NewAssessmentPage() {
       enabled: true,
     },
     {
-      id: 'fsd',
-      title: 'Fire Strategy',
-      description: 'Fire strategy inputs aligned to formal output.',
-      enabled: true,
-    },
-  ];
-
-  const riskEngineeringAssessments: AssessmentType[] = [
-    {
-      id: 'property',
-      title: 'Property Risk Survey',
-      description: 'Property risk engineering survey and report.',
-      enabled: hasRiskEngineering,
-      requiresUpgrade: !hasRiskEngineering,
+      id: 'fire_explosion',
+      title: 'Fire + Explosion Assessment',
+      description: 'Integrated Fire Risk and Explosive Atmospheres (DSEAR) assessment in a single report.',
+      enabled: hasExplosion,
+      requiresUpgrade: !hasExplosion,
     },
     {
       id: 'dsear',
@@ -75,6 +66,19 @@ export default function NewAssessmentPage() {
       description: 'Explosion risk assessment and controls.',
       enabled: hasExplosion,
       requiresUpgrade: !hasExplosion,
+    },
+    {
+      id: 'fsd',
+      title: 'Fire Strategy',
+      description: 'Fire strategy inputs aligned to formal output.',
+      enabled: true,
+    },
+    {
+      id: 'property',
+      title: 'Property Risk Survey',
+      description: 'Property risk engineering survey and report.',
+      enabled: hasRiskEngineering,
+      requiresUpgrade: !hasRiskEngineering,
     },
   ];
 
@@ -96,7 +100,7 @@ export default function NewAssessmentPage() {
       return;
     }
 
-    if (typeId === 'dsear' && !hasExplosion) {
+    if ((typeId === 'dsear' || typeId === 'fire_explosion') && !hasExplosion) {
       alert('This assessment type requires an upgrade to your plan.');
       navigate('/upgrade');
       return;
@@ -117,6 +121,20 @@ export default function NewAssessmentPage() {
           throw new Error('Document creation returned no ID');
         }
         console.log('[NewAssessment] Created FRA document:', documentId);
+        navigate(`/documents/${documentId}/workspace`);
+      } else if (typeId === 'fire_explosion') {
+        const payload = {
+          organisationId: organisation.id,
+          documentType: 'FRA' as const,
+          title: 'New Fire + Explosion Assessment',
+          enabledModules: ['FRA', 'DSEAR'],
+        };
+        console.log('[NewAssessment] Creating Fire + Explosion with payload:', payload);
+        const documentId = await createDocument(payload);
+        if (!documentId) {
+          throw new Error('Document creation returned no ID');
+        }
+        console.log('[NewAssessment] Created Fire + Explosion document:', documentId);
         navigate(`/documents/${documentId}/workspace`);
       } else if (typeId === 'fsd') {
         const payload = {
@@ -204,42 +222,15 @@ export default function NewAssessmentPage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-xl font-semibold text-slate-900 mb-1">New Assessment</h2>
-            <p className="text-sm text-slate-600 mb-6">Select an assessment type to start.</p>
+            <p className="text-sm text-slate-600 mb-6">Select an assessment package to begin.</p>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Fire</h3>
-            </div>
             <div className="divide-y divide-slate-200">
-              {fireAssessments.map((assessment) => (
-                <div key={assessment.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                  <div className="flex-1">
-                    <h4 className="text-base font-medium text-slate-900">{assessment.title}</h4>
-                    <p className="text-sm text-slate-600 mt-1">{assessment.description}</p>
-                  </div>
-                  <button
-                    onClick={() => handleStart(assessment.id)}
-                    disabled={creatingType !== null}
-                    className="ml-6 flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {creatingType === assessment.id ? 'Starting...' : 'Start'}
-                    {creatingType !== assessment.id && <ArrowRight className="w-4 h-4" />}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Risk Engineering</h3>
-            </div>
-            <div className="divide-y divide-slate-200">
-              {riskEngineeringAssessments
+              {assessmentPackages
                 .filter(a => a.enabled || a.requiresUpgrade)
                 .map((assessment) => (
-                  <div key={assessment.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                  <div key={assessment.id} className="px-6 py-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h4 className="text-base font-medium text-slate-900">{assessment.title}</h4>

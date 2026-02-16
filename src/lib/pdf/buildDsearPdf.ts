@@ -28,6 +28,7 @@ import {
   addSupersededWatermark,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
+import { computeExplosionSummary } from '../dsear/criticalityEngine';
 
 interface Document {
   id: string;
@@ -175,6 +176,13 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     { bold: fontBold, regular: font }
   );
 
+  // SECTION 2.5: Computed Explosion Criticality Summary
+  const explosionSummary = computeExplosionSummary({ modules: moduleInstances });
+  const critResult = addNewPage(pdfDoc, isDraft, totalPages);
+  page = critResult.page;
+  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = drawExplosionCriticalitySummary(page, explosionSummary, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
   // SECTION 3: Purpose and Introduction (Neutral)
   const purposeResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = purposeResult.page;
@@ -223,6 +231,14 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   page = refResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
   yPosition = drawReferencesAndCompliance(page, document.jurisdiction as Jurisdiction, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+  // SECTION 12.5: Compliance-Critical Findings
+  if (explosionSummary.flags.length > 0) {
+    const findResult = addNewPage(pdfDoc, isDraft, totalPages);
+    page = findResult.page;
+    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = drawComplianceCriticalFindings(page, explosionSummary.flags, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
 
   // SECTION 13: Action Register
   const result2 = addNewPage(pdfDoc, isDraft, totalPages);
@@ -1508,6 +1524,312 @@ function drawReferencesAndCompliance(
     }
 
     yPosition -= 8;
+  }
+
+  return yPosition;
+}
+
+function drawExplosionCriticalitySummary(
+  page: PDFPage,
+  explosionSummary: ReturnType<typeof computeExplosionSummary>,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  page.drawText('EXPLOSION CRITICALITY ASSESSMENT', {
+    x: MARGIN,
+    y: yPosition,
+    size: 18,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const criticalityColors: Record<string, ReturnType<typeof rgb>> = {
+    Critical: rgb(0.8, 0, 0),
+    High: rgb(0.9, 0.5, 0),
+    Moderate: rgb(0.9, 0.7, 0),
+    Low: rgb(0.2, 0.7, 0.2),
+  };
+
+  const criticalityStatements: Record<string, string> = {
+    Critical: 'Compliance-critical deficiencies identified which require urgent attention.',
+    High: 'Significant explosion safety issues identified which require prompt remediation.',
+    Moderate: 'Areas of improvement identified; explosion risk controls should be strengthened.',
+    Low: 'Explosion risk controls appear broadly appropriate within the scope assessed.',
+  };
+
+  const criticalityColor = criticalityColors[explosionSummary.overall] || rgb(0, 0, 0);
+  const criticalityStatement = criticalityStatements[explosionSummary.overall] || '';
+
+  page.drawRectangle({
+    x: MARGIN,
+    y: yPosition - 5,
+    width: CONTENT_WIDTH,
+    height: 30,
+    color: criticalityColor,
+  });
+
+  page.drawText(`OVERALL CRITICALITY: ${explosionSummary.overall.toUpperCase()}`, {
+    x: MARGIN + 10,
+    y: yPosition + 5,
+    size: 14,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
+
+  yPosition -= 45;
+
+  const statementLines = wrapText(criticalityStatement, CONTENT_WIDTH, 11, font);
+  for (const line of statementLines) {
+    if (yPosition < MARGIN + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 16;
+  }
+
+  yPosition -= 10;
+
+  if (explosionSummary.flags.length > 0) {
+    page.drawText('Top Compliance Issues:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 22;
+
+    const levelColors: Record<string, ReturnType<typeof rgb>> = {
+      critical: rgb(0.7, 0, 0),
+      high: rgb(0.9, 0.5, 0),
+      moderate: rgb(0, 0.5, 0.7),
+    };
+
+    const levelLabels: Record<string, string> = {
+      critical: 'CRITICAL',
+      high: 'HIGH',
+      moderate: 'MODERATE',
+    };
+
+    const topFlags = explosionSummary.flags.slice(0, 3);
+    for (const flag of topFlags) {
+      if (yPosition < MARGIN + 80) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN;
+      }
+
+      const levelLabel = levelLabels[flag.level] || flag.level.toUpperCase();
+      const levelColor = levelColors[flag.level] || rgb(0, 0, 0);
+
+      page.drawText(`[${levelLabel}] ${sanitizePdfText(flag.title)}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font: fontBold,
+        color: levelColor,
+      });
+
+      yPosition -= 16;
+
+      const detailLines = wrapText(sanitizePdfText(flag.detail), CONTENT_WIDTH - 30, 9, font);
+      for (const line of detailLines.slice(0, 2)) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN;
+        }
+        page.drawText(line, {
+          x: MARGIN + 20,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPosition -= 13;
+      }
+
+      yPosition -= 10;
+    }
+  }
+
+  yPosition -= 10;
+
+  page.drawText('Summary of Findings:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 20;
+
+  page.drawText(`• Critical issues: ${explosionSummary.criticalCount}`, {
+    x: MARGIN + 10,
+    y: yPosition,
+    size: 10,
+    font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 16;
+
+  page.drawText(`• High priority issues: ${explosionSummary.highCount}`, {
+    x: MARGIN + 10,
+    y: yPosition,
+    size: 10,
+    font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 16;
+
+  page.drawText(`• Moderate concerns: ${explosionSummary.moderateCount}`, {
+    x: MARGIN + 10,
+    y: yPosition,
+    size: 10,
+    font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 16;
+
+  return yPosition;
+}
+
+function drawComplianceCriticalFindings(
+  page: PDFPage,
+  flags: ReturnType<typeof computeExplosionSummary>['flags'],
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  page.drawText('COMPLIANCE-CRITICAL FINDINGS', {
+    x: MARGIN,
+    y: yPosition,
+    size: 18,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 25;
+
+  page.drawText('The following compliance issues have been identified through automated checks:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 11,
+    font,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+
+  yPosition -= 30;
+
+  if (flags.length === 0) {
+    page.drawText('All compliance checks passed. No critical issues identified.', {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.2, 0.6, 0.2),
+    });
+    return yPosition;
+  }
+
+  const levelColors: Record<string, ReturnType<typeof rgb>> = {
+    critical: rgb(0.7, 0, 0),
+    high: rgb(0.9, 0.5, 0),
+    moderate: rgb(0, 0.5, 0.7),
+  };
+
+  const levelLabels: Record<string, string> = {
+    critical: 'CRITICAL',
+    high: 'HIGH',
+    moderate: 'MODERATE',
+  };
+
+  for (let i = 0; i < flags.length; i++) {
+    const flag = flags[i];
+
+    if (yPosition < MARGIN + 120) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawRectangle({
+      x: MARGIN,
+      y: yPosition - 5,
+      width: CONTENT_WIDTH,
+      height: 1,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+
+    yPosition -= 15;
+
+    const levelLabel = levelLabels[flag.level] || flag.level.toUpperCase();
+    const levelColor = levelColors[flag.level] || rgb(0, 0, 0);
+
+    page.drawRectangle({
+      x: MARGIN,
+      y: yPosition - 3,
+      width: 60,
+      height: 16,
+      color: levelColor,
+    });
+
+    page.drawText(levelLabel, {
+      x: MARGIN + 5,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: rgb(1, 1, 1),
+    });
+
+    page.drawText(sanitizePdfText(flag.title), {
+      x: MARGIN + 70,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 22;
+
+    const detailText = sanitizePdfText(flag.detail);
+    const detailLines = wrapText(detailText, CONTENT_WIDTH - 20, 10, font);
+    for (const line of detailLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 12;
   }
 
   return yPosition;

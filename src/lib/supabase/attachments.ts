@@ -187,7 +187,8 @@ export async function deleteAttachment(attachmentId: string): Promise<{ success:
         .single();
 
       if (orgData) {
-        const newStorageMb = Math.max(0, (orgData.storage_used_mb || 0) - fileSizeMb);
+        // Round to 3 decimal places for sensible precision (nearest 1KB)
+        const newStorageMb = Number(Math.max(0, (orgData.storage_used_mb || 0) - fileSizeMb).toFixed(3));
         await supabase
           .from('organisations')
           .update({ storage_used_mb: newStorageMb })
@@ -306,7 +307,8 @@ export async function uploadEvidenceFile(
 
   const storageUsedMb = orgData.storage_used_mb || 0;
   const maxStorageMb = (orgData.plan_definitions as any)?.max_storage_mb || 0;
-  const newTotalMb = storageUsedMb + fileSizeMb;
+  // Round to 3 decimal places for sensible precision (nearest 1KB)
+  const newTotalMb = Number((storageUsedMb + fileSizeMb).toFixed(3));
 
   if (newTotalMb > maxStorageMb) {
     const remainingMb = Math.max(0, maxStorageMb - storageUsedMb);

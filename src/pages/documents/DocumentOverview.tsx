@@ -9,11 +9,13 @@ import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
+import { buildFraDsearCombinedPdf } from '../../lib/pdf/buildFraDsearCombinedPdf';
 import { saveAs } from 'file-saver';
 import { withTimeout, isTimeoutError } from '../../utils/withTimeout';
 import { migrateLegacyFraActions } from '../../lib/modules/fra/migrateLegacyFraActions';
 import type { FraContext } from '../../lib/modules/fra/severityEngine';
 import { migrateLegacyDsearActions } from '../../lib/dsear/migrateLegacyDsearActions';
+import { computeExplosionSummary, type ExplosionSummary } from '../../lib/dsear/criticalityEngine';
 import { getAssessmentShortName } from '../../utils/displayNames';
 import VersionStatusBanner from '../../components/documents/VersionStatusBanner';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
@@ -94,6 +96,7 @@ export default function DocumentOverview() {
   const [actionCounts, setActionCounts] = useState({ P1: 0, P2: 0, P3: 0, P4: 0 });
   const [totalActions, setTotalActions] = useState(0);
   const [evidenceCount, setEvidenceCount] = useState(0);
+  const [explosionSummary, setExplosionSummary] = useState<ExplosionSummary | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showNewVersionModal, setShowNewVersionModal] = useState(false);
@@ -140,6 +143,29 @@ export default function DocumentOverview() {
       fetchDefencePack();
     }
   }, [id, organisation?.id]);
+
+  useEffect(() => {
+    if (!document || modules.length === 0) return;
+
+    const isDsearDocument = document.document_type === 'DSEAR' ||
+      (document.enabled_modules && document.enabled_modules.some(m => m.startsWith('DSEAR')));
+
+    if (isDsearDocument) {
+      try {
+        const modulesForEngine = modules.map(m => ({
+          module_key: m.module_key,
+          outcome: m.outcome,
+          assessor_notes: '',
+          data: {},
+        }));
+
+        const summary = computeExplosionSummary({ modules: modulesForEngine });
+        setExplosionSummary(summary);
+      } catch (error) {
+        console.error('Error computing explosion summary:', error);
+      }
+    }
+  }, [document, modules]);
 
   const fetchDocument = async () => {
     if (!id || !organisation?.id) return;
@@ -554,17 +580,28 @@ try {
 
       let pdfBytes;
       const enabledModules = document.enabled_modules || [document.document_type];
-      const isCombined = enabledModules.length > 1 &&
-                         enabledModules.includes('FRA') &&
-                         enabledModules.includes('FSD');
+      const isCombinedFraFsd = enabledModules.length > 1 &&
+                               enabledModules.includes('FRA') &&
+                               enabledModules.includes('FSD');
+      const isCombinedFraDsear = enabledModules.length > 1 &&
+                                 enabledModules.includes('FRA') &&
+                                 enabledModules.includes('DSEAR');
 
       console.log('[PDF Download] Enabled modules:', enabledModules);
-      console.log('[PDF Download] Is combined:', isCombined);
+      console.log('[PDF Download] Is combined FRA+FSD:', isCombinedFraFsd);
+      console.log('[PDF Download] Is combined FRA+DSEAR:', isCombinedFraDsear);
 
       const PDF_GENERATION_TIMEOUT = 30000;
 
       try {
-        if (isCombined) {
+        if (isCombinedFraDsear) {
+          console.log('[PDF Download] Building combined FRA+DSEAR PDF');
+          pdfBytes = await withTimeout(
+            buildFraDsearCombinedPdf(pdfOptions),
+            PDF_GENERATION_TIMEOUT,
+            'FRA+DSEAR PDF generation timed out after 30 seconds'
+          );
+        } else if (isCombinedFraFsd) {
           console.log('[PDF Download] Building combined FRA+FSD PDF');
           pdfBytes = await withTimeout(
             buildCombinedPdf(pdfOptions),
@@ -984,6 +1021,38 @@ try {
               </div>
             </div>
           </Card>
+
+          {explosionSummary && (
+            <Card>
+              <h3 className="text-sm font-medium text-neutral-500 uppercase mb-4">Explosion Criticality</h3>
+              <div className="mb-3">
+                <div className="text-2xl font-semibold mb-1" style={{
+                  color: explosionSummary.overall === 'Critical' ? '#b91c1c' :
+                         explosionSummary.overall === 'High' ? '#c2410c' :
+                         explosionSummary.overall === 'Moderate' ? '#d97706' : '#737373'
+                }}>
+                  {explosionSummary.overall}
+                </div>
+                <div className="text-sm text-neutral-600">Overall status</div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-neutral-600">Critical findings</span>
+                  <span className="text-sm font-semibold text-red-700">{explosionSummary.criticalCount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-neutral-600">High findings</span>
+                  <span className="text-sm font-semibold text-orange-700">{explosionSummary.highCount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-neutral-600">Information gaps</span>
+                  <span className="text-sm font-semibold text-amber-700">
+                    {modules.filter(m => m.outcome === 'info_gap').length}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          )}
 
           <Card>
             <h3 className="text-sm font-medium text-neutral-500 uppercase mb-4">Quick Links</h3>

@@ -149,10 +149,25 @@ export default function DSEAR6RiskAssessmentTableForm({ moduleInstance, document
                   <option value="High">High (significant improvement required)</option>
                   <option value="Critical">Critical (urgent / compliance-critical)</option>
                 </select>
+                {row.residualRiskBand && (
+                  <div className="mt-2">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      row.residualRiskBand === 'Critical' ? 'bg-red-100 text-red-800 border border-red-200' :
+                      row.residualRiskBand === 'High' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                      row.residualRiskBand === 'Moderate' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                      'bg-green-100 text-green-800 border border-green-200'
+                    }`}>
+                      {row.residualRiskBand}
+                    </span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Band (Optional)</label>
                 <input type="text" value={row.rationale || ''} onChange={(e) => updateRiskRow(index, 'rationale', e.target.value)} placeholder="Brief justification..." maxLength={200} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                {row.rationale && (
+                  <p className="text-xs text-gray-600 mt-1 italic">{row.rationale}</p>
+                )}
               </div>
             </div>
           </div>

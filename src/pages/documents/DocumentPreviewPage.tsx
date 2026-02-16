@@ -7,6 +7,7 @@ import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
 import { buildFsdPdf } from '../../lib/pdf/buildFsdPdf';
 import { buildDsearPdf } from '../../lib/pdf/buildDsearPdf';
 import { buildCombinedPdf } from '../../lib/pdf/buildCombinedPdf';
+import { buildFraDsearCombinedPdf } from '../../lib/pdf/buildFraDsearCombinedPdf';
 import { buildReSurveyPdf } from '../../lib/pdf/buildReSurveyPdf';
 import { buildReLpPdf } from '../../lib/pdf/buildReLpPdf';
 import { uploadDraftPdfAndSign, saveReModuleSelection, loadReModuleSelection, safeSlug } from '../../utils/draftPdf';
@@ -16,7 +17,7 @@ import { getReModulesForDocument } from '../../lib/modules/moduleCatalog';
 import { migrateLegacyFraActions } from '../../lib/modules/fra/migrateLegacyFraActions';
 import type { FraContext } from '../../lib/modules/fra/severityEngine';
 
-type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED';
+type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED' | 'FIRE_EXPLOSION_COMBINED';
 type ReReportTab = 're_survey' | 're_lp';
 
 export default function DocumentPreviewPage() {
@@ -59,8 +60,12 @@ export default function DocumentPreviewPage() {
     if (enabledModules.includes('FSD')) modes.push('FSD');
     if (enabledModules.includes('DSEAR')) modes.push('DSEAR');
 
-    if (enabledModules.length > 1 && (enabledModules.includes('FRA') && enabledModules.includes('FSD'))) {
+    if (enabledModules.length > 1 && enabledModules.includes('FRA') && enabledModules.includes('FSD')) {
       modes.push('COMBINED');
+    }
+
+    if (enabledModules.length > 1 && enabledModules.includes('FRA') && enabledModules.includes('DSEAR')) {
+      modes.push('FIRE_EXPLOSION_COMBINED');
     }
 
     return modes.length > 0 ? modes : [doc.document_type as OutputMode];
@@ -321,7 +326,10 @@ export default function DocumentPreviewPage() {
         setFilename(formatFilename(document, reActiveTab));
       } else {
         // Standard documents
-        if (outputMode === 'COMBINED') {
+        if (outputMode === 'FIRE_EXPLOSION_COMBINED') {
+          pdfBytes = await buildFraDsearCombinedPdf(pdfOptions);
+          reportKind = 'fra'; // Use fra as base
+        } else if (outputMode === 'COMBINED') {
           pdfBytes = await buildCombinedPdf(pdfOptions);
           reportKind = 'fra'; // Use fra as base
         } else if (outputMode === 'FSD') {
@@ -550,12 +558,18 @@ export default function DocumentPreviewPage() {
             >
               {availableModes.map((mode) => (
                 <option key={mode} value={mode}>
-                  {mode === 'COMBINED' ? 'Combined FRA + FSD Report' : `${mode} Report Only`}
+                  {mode === 'FIRE_EXPLOSION_COMBINED'
+                    ? 'Combined Fire + Explosion Report'
+                    : mode === 'COMBINED'
+                    ? 'Combined FRA + FSD Report'
+                    : `${mode} Report Only`}
                 </option>
               ))}
             </select>
             <p className="mt-2 text-xs text-neutral-600">
-              {outputMode === 'COMBINED'
+              {outputMode === 'FIRE_EXPLOSION_COMBINED'
+                ? 'Viewing combined report with both Fire Risk Assessment and Explosion Risk Assessment sections.'
+                : outputMode === 'COMBINED'
                 ? 'Viewing combined report with both FRA and FSD sections.'
                 : `Viewing ${outputMode} report only.`}
             </p>

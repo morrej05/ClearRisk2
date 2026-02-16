@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { HRG_MASTER_MAP, humanizeIndustryKey } from '../../../lib/re/reference/hrgMasterMap';
 import { ensureRatingsObject } from '../../../lib/re/scoring/riskEngineeringHelpers';
+import { updateDocumentMeta } from '../../../lib/documents/updateDocumentMeta';
 import FloatingSaveBar from './FloatingSaveBar';
 import { Plus, X } from 'lucide-react';
 
@@ -184,6 +185,30 @@ export default function RE01DocumentControlForm({
         .eq('id', moduleInstance.id);
 
       if (error) throw error;
+
+      // Sync identity to document.meta
+      const addressLines = (formData.client_site.address || '').split('\n').filter(l => l.trim());
+      const firstContact = formData.site_contacts[0];
+
+      await updateDocumentMeta(document.id, {
+        client: {
+          name: formData.client_site.client || ''
+        },
+        site: {
+          name: formData.client_site.site || '',
+          address: {
+            line1: addressLines[0] || '',
+            line2: addressLines[1] || undefined,
+            country: formData.client_site.country || 'United Kingdom'
+          },
+          contact: firstContact ? {
+            name: firstContact.name || undefined,
+            email: firstContact.email || undefined,
+            phone: firstContact.phone || undefined
+          } : undefined
+        }
+      });
+
       onSaved();
     } catch (error) {
       console.error('Error saving module:', error);

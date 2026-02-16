@@ -76,6 +76,19 @@ export function formatDate(dateString: string | null): string {
   });
 }
 
+export function formatAddress(addr?: any): string {
+  if (!addr) return '';
+  const parts = [
+    addr.line1,
+    addr.line2,
+    addr.city,
+    addr.county,
+    addr.postcode,
+    addr.country
+  ].filter(Boolean);
+  return parts.join(', ');
+}
+
 export function getRatingColor(rating: string): { r: number; g: number; b: number } {
   switch (rating.toLowerCase()) {
     case 'low':

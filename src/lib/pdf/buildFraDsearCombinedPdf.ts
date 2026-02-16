@@ -10,6 +10,7 @@ import {
   sanitizePdfText,
   wrapText,
   formatDate,
+  formatAddress,
   getPriorityColor,
   drawDraftWatermark,
   addNewPage,
@@ -37,6 +38,7 @@ interface Document {
   executive_summary_mode?: string | null;
   enabled_modules?: string[];
   jurisdiction?: 'UK' | 'IE';
+  meta?: any;
 }
 
 interface ModuleInstance {
@@ -138,15 +140,57 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   });
   yPosition -= 40;
 
+  // Client
+  const clientName = document.meta?.client?.name || document.responsible_person || '';
+  if (clientName) {
+    page.drawText(sanitizePdfText(`Client: ${clientName}`), {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 20;
+  }
+
+  // Site
+  const siteName = document.meta?.site?.name || document.scope_description || '';
+  if (siteName) {
+    page.drawText(sanitizePdfText(`Site: ${siteName}`), {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 20;
+  }
+
+  // Address
+  const address = document.meta?.site?.address;
+  if (address) {
+    const formattedAddress = formatAddress(address);
+    if (formattedAddress) {
+      page.drawText(sanitizePdfText(`Address: ${formattedAddress}`), {
+        x: MARGIN,
+        y: yPosition,
+        size: 10,
+        font: font,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPosition -= 20;
+    }
+  }
+
   // Organisation
-  page.drawText(sanitizePdfText(`Organisation: ${organisation.name}`), {
+  page.drawText(sanitizePdfText(`Assessment Organisation: ${organisation.name}`), {
     x: MARGIN,
     y: yPosition,
-    size: 11,
+    size: 10,
     font: font,
-    color: rgb(0, 0, 0),
+    color: rgb(0.3, 0.3, 0.3),
   });
-  yPosition -= 20;
+  yPosition -= 25;
 
   // Assessment date
   page.drawText(sanitizePdfText(`Assessment Date: ${formatDate(document.assessment_date)}`), {

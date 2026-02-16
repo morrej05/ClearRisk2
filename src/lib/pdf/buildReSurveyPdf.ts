@@ -34,6 +34,7 @@ interface Document {
   executive_summary_author?: string | null;
   executive_summary_mode?: string | null;
   jurisdiction?: string;
+  meta?: any;
 }
 
 interface ModuleInstance {
@@ -107,8 +108,9 @@ export async function buildReSurveyPdf(options: BuildPdfOptions): Promise<Uint8A
       branding_logo_path: organisation.branding_logo_path,
     },
     client: {
-      name: document.responsible_person,
-      site: document.scope_description,
+      name: document.meta?.client?.name || document.responsible_person || '',
+      site: document.meta?.site?.name || document.scope_description || '',
+      address: document.meta?.site?.address,
     },
     fonts: { bold: fontBold, regular: font },
   });

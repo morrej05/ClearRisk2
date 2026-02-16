@@ -3,6 +3,7 @@ import { FileText, CheckCircle, Building2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import OutcomePanel from '../OutcomePanel';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
+import { updateDocumentMeta } from '../../../lib/documents/updateDocumentMeta';
 import { useAuth } from '../../../contexts/AuthContext';
 
 interface Document {
@@ -17,6 +18,7 @@ interface Document {
   standards_selected: string[];
   jurisdiction: string;
   organisation_id: string;
+  meta?: any;
 }
 
 interface ModuleInstance {
@@ -73,6 +75,20 @@ export default function A1DocumentControlForm({
     documentOwner: moduleInstance.data.document_owner || '',
   });
 
+  const [clientSiteData, setClientSiteData] = useState({
+    clientName: document.meta?.client?.name || moduleInstance.data.client?.name || document.responsible_person || '',
+    siteName: document.meta?.site?.name || moduleInstance.data.site?.name || document.scope_description || '',
+    addressLine1: document.meta?.site?.address?.line1 || moduleInstance.data.site?.address?.line1 || '',
+    addressLine2: document.meta?.site?.address?.line2 || moduleInstance.data.site?.address?.line2 || '',
+    city: document.meta?.site?.address?.city || moduleInstance.data.site?.address?.city || '',
+    county: document.meta?.site?.address?.county || moduleInstance.data.site?.address?.county || '',
+    postcode: document.meta?.site?.address?.postcode || moduleInstance.data.site?.address?.postcode || '',
+    country: document.meta?.site?.address?.country || moduleInstance.data.site?.address?.country || 'United Kingdom',
+    contactName: document.meta?.site?.contact?.name || moduleInstance.data.site?.contact?.name || '',
+    contactEmail: document.meta?.site?.contact?.email || moduleInstance.data.site?.contact?.email || '',
+    contactPhone: document.meta?.site?.contact?.phone || moduleInstance.data.site?.contact?.phone || '',
+  });
+
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
 
@@ -120,8 +136,34 @@ export default function A1DocumentControlForm({
 
       if (docError) throw docError;
 
+      // Structure client/site data for module storage
+      const clientSiteForModule = {
+        client: {
+          name: clientSiteData.clientName
+        },
+        site: {
+          name: clientSiteData.siteName,
+          address: {
+            line1: clientSiteData.addressLine1,
+            line2: clientSiteData.addressLine2 || undefined,
+            city: clientSiteData.city || undefined,
+            county: clientSiteData.county || undefined,
+            postcode: clientSiteData.postcode || undefined,
+            country: clientSiteData.country
+          },
+          contact: clientSiteData.contactName || clientSiteData.contactEmail || clientSiteData.contactPhone ? {
+            name: clientSiteData.contactName || undefined,
+            email: clientSiteData.contactEmail || undefined,
+            phone: clientSiteData.contactPhone || undefined
+          } : undefined
+        }
+      };
+
       const payload = sanitizeModuleInstancePayload({
-        data: moduleData,
+        data: {
+          ...moduleData,
+          ...clientSiteForModule
+        },
         outcome,
         assessor_notes: assessorNotes,
         updated_at: new Date().toISOString(),
@@ -133,6 +175,9 @@ export default function A1DocumentControlForm({
         .eq('id', moduleInstance.id);
 
       if (moduleError) throw moduleError;
+
+      // Sync identity to document.meta
+      await updateDocumentMeta(document.id, clientSiteForModule);
 
       setLastSaved(new Date().toLocaleTimeString());
       onSaved();
@@ -341,6 +386,167 @@ export default function A1DocumentControlForm({
                     <span className="text-sm text-neutral-700">{standard}</span>
                   </label>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-6 border-t border-neutral-200">
+          <h3 className="text-lg font-bold text-neutral-900 mb-4">
+            Client & Site Identity
+          </h3>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Client Name
+                </label>
+                <input
+                  type="text"
+                  value={clientSiteData.clientName}
+                  onChange={(e) => setClientSiteData({ ...clientSiteData, clientName: e.target.value })}
+                  placeholder="e.g., ABC Manufacturing Ltd"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Site Name
+                </label>
+                <input
+                  type="text"
+                  value={clientSiteData.siteName}
+                  onChange={(e) => setClientSiteData({ ...clientSiteData, siteName: e.target.value })}
+                  placeholder="e.g., Main Factory, Building A"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Address Line 1
+              </label>
+              <input
+                type="text"
+                value={clientSiteData.addressLine1}
+                onChange={(e) => setClientSiteData({ ...clientSiteData, addressLine1: e.target.value })}
+                placeholder="e.g., 123 Industrial Estate"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Address Line 2
+              </label>
+              <input
+                type="text"
+                value={clientSiteData.addressLine2}
+                onChange={(e) => setClientSiteData({ ...clientSiteData, addressLine2: e.target.value })}
+                placeholder="e.g., Unit 5B"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  City/Town
+                </label>
+                <input
+                  type="text"
+                  value={clientSiteData.city}
+                  onChange={(e) => setClientSiteData({ ...clientSiteData, city: e.target.value })}
+                  placeholder="e.g., Manchester"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  County/Region
+                </label>
+                <input
+                  type="text"
+                  value={clientSiteData.county}
+                  onChange={(e) => setClientSiteData({ ...clientSiteData, county: e.target.value })}
+                  placeholder="e.g., Greater Manchester"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Postcode
+                </label>
+                <input
+                  type="text"
+                  value={clientSiteData.postcode}
+                  onChange={(e) => setClientSiteData({ ...clientSiteData, postcode: e.target.value })}
+                  placeholder="e.g., M1 1AA"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Country
+              </label>
+              <input
+                type="text"
+                value={clientSiteData.country}
+                onChange={(e) => setClientSiteData({ ...clientSiteData, country: e.target.value })}
+                placeholder="e.g., United Kingdom"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              />
+            </div>
+
+            <div className="pt-4 border-t border-neutral-200">
+              <h4 className="text-sm font-semibold text-neutral-900 mb-3">
+                Site Contact (Optional)
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Contact Name
+                  </label>
+                  <input
+                    type="text"
+                    value={clientSiteData.contactName}
+                    onChange={(e) => setClientSiteData({ ...clientSiteData, contactName: e.target.value })}
+                    placeholder="e.g., John Smith"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    value={clientSiteData.contactEmail}
+                    onChange={(e) => setClientSiteData({ ...clientSiteData, contactEmail: e.target.value })}
+                    placeholder="e.g., john.smith@example.com"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Contact Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={clientSiteData.contactPhone}
+                    onChange={(e) => setClientSiteData({ ...clientSiteData, contactPhone: e.target.value })}
+                    placeholder="e.g., +44 20 1234 5678"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
           </div>

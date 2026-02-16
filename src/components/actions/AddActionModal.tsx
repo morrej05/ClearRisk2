@@ -45,6 +45,7 @@ export default function AddActionModal({
   const [showAttachmentPrompt, setShowAttachmentPrompt] = useState(false);
   const [createdActionId, setCreatedActionId] = useState<string | null>(null);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+  const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
   const [documentType, setDocumentType] = useState<string | null>(null);
   const [moduleInstances, setModuleInstances] = useState<any[]>([]);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
@@ -290,7 +291,7 @@ export default function AddActionModal({
 
       setCreatedActionId(action.id);
       setShowAttachmentPrompt(true);
-      onActionCreated();
+      // DO NOT call onActionCreated() here - it will be called when user finishes with attachments
     } catch (error) {
       console.error('Error creating action:', error);
       alert('Failed to create action. Please try again.');
@@ -319,6 +320,8 @@ export default function AddActionModal({
         });
       }
 
+      setUploadedFilesCount(prev => prev + files.length);
+
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -334,6 +337,7 @@ export default function AddActionModal({
   };
 
   const handleFinish = () => {
+    onActionCreated();
     onClose();
   };
 
@@ -353,6 +357,14 @@ export default function AddActionModal({
               Would you like to attach evidence or photos to this action?
             </p>
 
+            {uploadedFilesCount > 0 && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800 font-medium">
+                  {uploadedFilesCount} file{uploadedFilesCount !== 1 ? 's' : ''} attached successfully
+                </p>
+              </div>
+            )}
+
             <input
               ref={fileInputRef}
               type="file"
@@ -363,22 +375,46 @@ export default function AddActionModal({
             />
 
             <div className="space-y-3">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingAttachments}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors disabled:opacity-50"
-              >
-                <Upload className="w-4 h-4" />
-                {isUploadingAttachments ? 'Uploading...' : 'Attach Files'}
-              </button>
+              {uploadedFilesCount > 0 ? (
+                <>
+                  <button
+                    onClick={handleFinish}
+                    disabled={isUploadingAttachments}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Done
+                  </button>
 
-              <button
-                onClick={handleFinish}
-                disabled={isUploadingAttachments}
-                className="w-full px-4 py-3 border-2 border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
-              >
-                Skip for Now
-              </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingAttachments}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {isUploadingAttachments ? 'Uploading...' : 'Attach More Files'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingAttachments}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {isUploadingAttachments ? 'Uploading...' : 'Attach Files'}
+                  </button>
+
+                  <button
+                    onClick={handleFinish}
+                    disabled={isUploadingAttachments}
+                    className="w-full px-4 py-3 border-2 border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                  >
+                    Skip for Now
+                  </button>
+                </>
+              )}
             </div>
 
             <p className="text-xs text-neutral-500 mt-4 text-center">

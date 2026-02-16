@@ -7,7 +7,7 @@ import {
   isDerivedModule,
   type ModuleInstance,
 } from '../../lib/modules/moduleDisplay';
-import { getModuleKeysForDocType } from '../../lib/modules/moduleCatalog';
+import { getDsearSpecificModuleKeys, getFireRiskModuleKeys } from '../../lib/modules/moduleCatalog';
 
 interface ModuleSidebarProps {
   modules: ModuleInstance[];
@@ -62,12 +62,16 @@ export default function ModuleSidebar({
   };
 
   // Determine if we should use grouped UI
-  const fraKeys = new Set(getModuleKeysForDocType('FRA'));
-  const dsearKeys = new Set(getModuleKeysForDocType('DSEAR'));
+  const dsearSpecificKeys = getDsearSpecificModuleKeys();
+  const fireRiskKeys = getFireRiskModuleKeys();
 
-  const fraModules = modules.filter(m => fraKeys.has(m.module_key));
-  const dsearModules = modules.filter(m => dsearKeys.has(m.module_key));
-  const otherModules = modules.filter(m => !fraKeys.has(m.module_key) && !dsearKeys.has(m.module_key));
+  const fraModules = modules.filter(
+    (module) => fireRiskKeys.has(module.module_key) && !dsearSpecificKeys.has(module.module_key)
+  );
+  const dsearModules = modules.filter((module) => dsearSpecificKeys.has(module.module_key));
+  const otherModules = modules.filter(
+    (module) => !fireRiskKeys.has(module.module_key) && !dsearSpecificKeys.has(module.module_key)
+  );
 
   const shouldUseGroupedUI = fraModules.length > 0 && dsearModules.length > 0;
   const showProductTags = shouldUseGroupedUI;

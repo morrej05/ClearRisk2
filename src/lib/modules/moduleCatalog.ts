@@ -391,3 +391,16 @@ export function getReModulesForDocument(
     .map((key) => byKey.get(key))
     .filter((module): module is ModuleInstanceLike => Boolean(module));
 }
+
+export function getDsearSpecificModuleKeys(): Set<string> {
+  return new Set(
+    getModuleKeysForDocType('DSEAR').filter((moduleKey) => moduleKey.startsWith('DSEAR_'))
+  );
+}
+
+export function getFireRiskModuleKeys(): Set<string> {
+  return new Set([
+    ...getModuleKeysForDocType('FRA'),
+    ...getModuleKeysForDocType('FSD'),
+  ]);
+}

@@ -34,10 +34,11 @@ export function computeExplosionSummary(context: {
   const dsear3 = modules.find((m) => m.module_key === 'DSEAR_3_HAC');
   const dsear4 = modules.find((m) => m.module_key === 'DSEAR_4_IGNITION_SOURCES');
   const dsear5 = modules.find((m) => m.module_key === 'DSEAR_5_EXPLOSION_PROTECTION');
+  const dsear6 = modules.find((m) => m.module_key === 'DSEAR_6_RISK_ASSESSMENT');
   const dsear10 = modules.find((m) => m.module_key === 'DSEAR_10_HIERARCHY_CONTROL');
 
   checkCriticalTriggers(flags, dsear1, dsear2, dsear3, dsear4, dsear5);
-  checkHighTriggers(flags, dsear2, dsear4, modules);
+  checkHighTriggers(flags, dsear2, dsear4, dsear6, modules);
   checkModerateTriggers(flags, modules);
 
   flags.sort((a, b) => {
@@ -214,10 +215,12 @@ function checkHighTriggers(
   flags: ExplosionFlag[],
   dsear2: ModuleInstance | undefined,
   dsear4: ModuleInstance | undefined,
+  dsear6: ModuleInstance | undefined,
   modules: ModuleInstance[]
 ): void {
   checkVentilationUnknown(flags, dsear2);
   checkNoInspectionRegime(flags, dsear4);
+  checkRiskAssessmentBands(flags, dsear6);
   checkMultipleMaterialDeficiencies(flags, modules);
 }
 
@@ -264,6 +267,41 @@ function checkNoInspectionRegime(
       detail:
         'ATEX or explosion-protected equipment is present but no inspection, testing, or verification regime is documented. Regular inspection is a DSEAR maintenance requirement.',
       relatedModules: ['DSEAR_4_IGNITION_SOURCES'],
+    });
+  }
+}
+
+function checkRiskAssessmentBands(
+  flags: ExplosionFlag[],
+  dsear6: ModuleInstance | undefined
+): void {
+  if (!dsear6) return;
+
+  const riskRows = dsear6.data.risk_rows || [];
+  const criticalRows = riskRows.filter(
+    (r: any) => r.residualRiskBand === 'Critical' && r.activity
+  );
+  const highRows = riskRows.filter(
+    (r: any) => r.residualRiskBand === 'High' && r.activity
+  );
+
+  if (criticalRows.length > 0) {
+    const activities = criticalRows.map((r: any) => r.activity).slice(0, 3).join(', ');
+    flags.push({
+      id: 'EX-HI-04',
+      level: 'high',
+      title: 'Critical residual risk identified in risk assessment',
+      detail: `${criticalRows.length} risk row(s) have been assessed as Critical residual risk, indicating urgent risk management gaps. Activities include: ${activities}.`,
+      relatedModules: ['DSEAR_6_RISK_ASSESSMENT'],
+    });
+  } else if (highRows.length >= 2) {
+    const activities = highRows.map((r: any) => r.activity).slice(0, 3).join(', ');
+    flags.push({
+      id: 'EX-HI-05',
+      level: 'high',
+      title: 'Multiple high residual risks identified',
+      detail: `${highRows.length} risk row(s) have been assessed as High residual risk, indicating significant safety improvements required. Activities include: ${activities}.`,
+      relatedModules: ['DSEAR_6_RISK_ASSESSMENT'],
     });
   }
 }

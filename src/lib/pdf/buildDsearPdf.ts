@@ -716,23 +716,78 @@ function drawRiskAssessmentTable(
     });
     yPosition -= 14;
 
-    const details = [
-      `Hazard: ${row.hazard || '-'}`,
-      `Likelihood: ${row.likelihood || '-'}, Severity: ${row.severity || '-'}`,
-      `Residual Risk: ${row.residual_risk || '-'}`,
-    ];
-
-    details.forEach(detail => {
-      page.drawText(sanitizePdfText(detail), {
-        x: MARGIN + 20,
-        y: yPosition,
-        size: 9,
-        font: font,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-      yPosition -= 12;
+    page.drawText(sanitizePdfText(`Hazard: ${row.hazard || '-'}`), {
+      x: MARGIN + 20,
+      y: yPosition,
+      size: 9,
+      font: font,
+      color: rgb(0.3, 0.3, 0.3),
     });
-    yPosition -= 5;
+    yPosition -= 12;
+
+    page.drawText(sanitizePdfText(`Persons at Risk: ${row.persons_at_risk || '-'}`), {
+      x: MARGIN + 20,
+      y: yPosition,
+      size: 9,
+      font: font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPosition -= 12;
+
+    if (row.existing_controls) {
+      const controlLines = wrapText(`Existing Controls: ${row.existing_controls}`, CONTENT_WIDTH - 20, 9, font);
+      for (const line of controlLines.slice(0, 3)) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN;
+        }
+        page.drawText(sanitizePdfText(line), {
+          x: MARGIN + 20,
+          y: yPosition,
+          size: 9,
+          font: font,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPosition -= 12;
+      }
+    }
+
+    const riskBand = row.residualRiskBand || row.residual_risk || '-';
+    const bandColor = riskBand === 'Critical' ? rgb(0.7, 0, 0) :
+                      riskBand === 'High' || riskBand === 'high' ? rgb(0.9, 0.5, 0) :
+                      riskBand === 'Moderate' || riskBand === 'medium' ? rgb(0.9, 0.7, 0) :
+                      rgb(0.3, 0.3, 0.3);
+
+    page.drawText(sanitizePdfText(`Residual Risk: ${riskBand}`), {
+      x: MARGIN + 20,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: bandColor,
+    });
+    yPosition -= 12;
+
+    if (row.rationale) {
+      const rationaleLines = wrapText(`Rationale: ${row.rationale}`, CONTENT_WIDTH - 20, 9, font);
+      for (const line of rationaleLines) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN;
+        }
+        page.drawText(sanitizePdfText(line), {
+          x: MARGIN + 20,
+          y: yPosition,
+          size: 8,
+          font: font,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        yPosition -= 11;
+      }
+    }
+
+    yPosition -= 8;
   });
 
   return yPosition;

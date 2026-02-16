@@ -13,6 +13,7 @@ import { saveAs } from 'file-saver';
 import { withTimeout, isTimeoutError } from '../../utils/withTimeout';
 import { migrateLegacyFraActions } from '../../lib/modules/fra/migrateLegacyFraActions';
 import type { FraContext } from '../../lib/modules/fra/severityEngine';
+import { migrateLegacyDsearActions } from '../../lib/dsear/migrateLegacyDsearActions';
 import { getAssessmentShortName } from '../../utils/displayNames';
 import VersionStatusBanner from '../../components/documents/VersionStatusBanner';
 import IssueDocumentModal from '../../components/documents/IssueDocumentModal';
@@ -513,9 +514,11 @@ try {
 
       if (actionsError) throw actionsError;
 
-      // Apply legacy FRA action migration if needed
+      // Apply legacy action migration if needed
       let migratedActions = actions || [];
-      if (document.document_type === 'FRA' || document.document_type === 'FSD' || document.document_type === 'DSEAR') {
+      if (document.document_type === 'DSEAR') {
+        migratedActions = migrateLegacyDsearActions(migratedActions);
+      } else if (document.document_type === 'FRA' || document.document_type === 'FSD') {
         const buildingProfile = (moduleInstances || []).find((m: any) => m.module_key === 'A2_BUILDING_PROFILE');
         const fraContext: FraContext = {
           occupancyRisk: (buildingProfile?.data?.occupancy_risk || 'NonSleeping') as 'NonSleeping' | 'Sleeping' | 'Vulnerable',

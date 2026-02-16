@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, AlertTriangle, Upload, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -9,6 +9,7 @@ import {
   type FraActionInput,
   type FraContext,
 } from '../../lib/modules/fra/severityEngine';
+import { deriveExplosionSeverity } from '../../lib/dsear/criticalityEngine';
 
 interface AddActionModalProps {
   documentId: string;
@@ -44,6 +45,9 @@ export default function AddActionModal({
   const [showAttachmentPrompt, setShowAttachmentPrompt] = useState(false);
   const [createdActionId, setCreatedActionId] = useState<string | null>(null);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+  const [documentType, setDocumentType] = useState<string | null>(null);
+  const [moduleInstances, setModuleInstances] = useState<any[]>([]);
+  const [isLoadingContext, setIsLoadingContext] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -64,6 +68,37 @@ export default function AddActionModal({
     escalateToP1: false,
     escalationJustification: '',
   });
+
+  useEffect(() => {
+    const fetchContext = async () => {
+      try {
+        const { data: doc, error: docError } = await supabase
+          .from('documents')
+          .select('document_type')
+          .eq('id', documentId)
+          .single();
+
+        if (docError) throw docError;
+        setDocumentType(doc.document_type);
+
+        if (doc.document_type === 'DSEAR') {
+          const { data: modules, error: modulesError } = await supabase
+            .from('module_instances')
+            .select('module_key, outcome, assessor_notes, data')
+            .eq('document_id', documentId);
+
+          if (modulesError) throw modulesError;
+          setModuleInstances(modules || []);
+        }
+      } catch (error) {
+        console.error('Error fetching context:', error);
+      } finally {
+        setIsLoadingContext(false);
+      }
+    };
+
+    fetchContext();
+  }, [documentId]);
 
   // Build FRA context - for now, default to NonSleeping with 2 storeys
   // In a real implementation, fetch this from document/building profile
@@ -87,12 +122,27 @@ export default function AddActionModal({
     assessorMarkedCritical: formData.escalateToP1,
   };
 
-  // Derive priority from severity engine
-  const severityResult = deriveSeverity(actionInput, fraContext);
-  let priorityBand = severityResult.priority;
-  let severityTier = severityResult.tier;
-  let triggerId = severityResult.triggerId;
-  let triggerText = severityResult.triggerText;
+  // Derive priority from appropriate severity engine based on document type
+  let priorityBand: string;
+  let severityTier: string;
+  let triggerId: string;
+  let triggerText: string;
+
+  if (documentType === 'DSEAR') {
+    const explosionResult = deriveExplosionSeverity({ modules: moduleInstances });
+    priorityBand = explosionResult.priority;
+    severityTier = explosionResult.level === 'critical' ? 'T4' :
+                   explosionResult.level === 'high' ? 'T3' :
+                   explosionResult.level === 'moderate' ? 'T2' : 'T1';
+    triggerId = explosionResult.triggerId;
+    triggerText = explosionResult.triggerText;
+  } else {
+    const severityResult = deriveSeverity(actionInput, fraContext);
+    priorityBand = severityResult.priority;
+    severityTier = severityResult.tier;
+    triggerId = severityResult.triggerId;
+    triggerText = severityResult.triggerText;
+  }
 
   // Allow manual escalation to P1 with justification
   if (formData.escalateToP1) {
@@ -334,6 +384,19 @@ export default function AddActionModal({
             <p className="text-xs text-neutral-500 mt-4 text-center">
               You can also attach files later from the Evidence tab
             </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoadingContext) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
+            <p className="text-neutral-600">Loading context...</p>
           </div>
         </div>
       </div>

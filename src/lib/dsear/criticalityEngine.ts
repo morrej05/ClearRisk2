@@ -16,6 +16,13 @@ export interface ExplosionSummary {
   moderateCount: number;
 }
 
+export interface ExplosionSeverityResult {
+  level: 'critical' | 'high' | 'moderate' | 'low';
+  priority: 'P1' | 'P2' | 'P3' | 'P4';
+  triggerId: string;
+  triggerText: string;
+}
+
 interface ModuleInstance {
   module_key: string;
   outcome: string | null;
@@ -370,4 +377,52 @@ function determineOverallCriticality(
   }
 
   return 'Low';
+}
+
+export function deriveExplosionSeverity(context: {
+  modules: ModuleInstance[];
+}): ExplosionSeverityResult {
+  const { modules } = context;
+  const flags: ExplosionFlag[] = [];
+
+  const dsear1 = modules.find((m) => m.module_key === 'DSEAR_1_SUBSTANCES');
+  const dsear2 = modules.find((m) => m.module_key === 'DSEAR_2_PROCESS_RELEASES');
+  const dsear3 = modules.find((m) => m.module_key === 'DSEAR_3_HAC');
+  const dsear4 = modules.find((m) => m.module_key === 'DSEAR_4_IGNITION_SOURCES');
+  const dsear5 = modules.find((m) => m.module_key === 'DSEAR_5_EXPLOSION_PROTECTION');
+  const dsear6 = modules.find((m) => m.module_key === 'DSEAR_6_RISK_ASSESSMENT');
+
+  checkCriticalTriggers(flags, dsear1, dsear2, dsear3, dsear4, dsear5);
+  checkHighTriggers(flags, dsear2, dsear4, dsear6, modules);
+  checkModerateTriggers(flags, modules);
+
+  flags.sort((a, b) => {
+    const levelOrder: Record<string, number> = {
+      critical: 3,
+      high: 2,
+      moderate: 1,
+    };
+    return levelOrder[b.level] - levelOrder[a.level];
+  });
+
+  if (flags.length === 0) {
+    return {
+      level: 'low',
+      priority: 'P4',
+      triggerId: 'EX-LOW-01',
+      triggerText: 'Advisory improvement identified during assessment.',
+    };
+  }
+
+  const topFlag = flags[0];
+  const priority = topFlag.level === 'critical' ? 'P1' :
+                   topFlag.level === 'high' ? 'P2' :
+                   topFlag.level === 'moderate' ? 'P3' : 'P4';
+
+  return {
+    level: topFlag.level,
+    priority,
+    triggerId: topFlag.id,
+    triggerText: topFlag.detail,
+  };
 }

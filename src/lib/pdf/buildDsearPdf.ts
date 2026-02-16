@@ -430,6 +430,52 @@ function drawExecutiveSummary(
   });
   yPosition -= 25;
 
+  // Top critical/high findings
+  if (p1Count > 0 || p2Count > 0) {
+    page.drawText(sanitizePdfText('Compliance-Critical Findings Identified:'), {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0.7, 0, 0),
+    });
+    yPosition -= 18;
+
+    const criticalActions = actions
+      .filter(a => a.priority_band === 'P1' || a.priority_band === 'P2')
+      .filter(a => a.trigger_text && a.trigger_text !== 'Priority derived from previous assessment model.')
+      .slice(0, 3);
+
+    if (criticalActions.length > 0) {
+      criticalActions.forEach((action, idx) => {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN;
+        }
+
+        const truncatedText = action.trigger_text!.length > 120
+          ? action.trigger_text!.substring(0, 117) + '...'
+          : action.trigger_text!;
+
+        const wrapped = wrapText(`${idx + 1}. ${truncatedText}`, CONTENT_WIDTH - 20, 9, font);
+        wrapped.slice(0, 2).forEach(line => {
+          page.drawText(sanitizePdfText(line), {
+            x: MARGIN + 20,
+            y: yPosition,
+            size: 9,
+            font: font,
+            color: rgb(0.3, 0.3, 0.3),
+          });
+          yPosition -= 12;
+        });
+        yPosition -= 3;
+      });
+
+      yPosition -= 10;
+    }
+  }
+
   // Risk profile statement (NO OVERALL RATING)
   page.drawText(sanitizePdfText('Explosion Risk Profile:'), {
     x: MARGIN,
@@ -905,7 +951,35 @@ function drawActionRegister(
       font: font,
       color: rgb(0.4, 0.4, 0.4),
     });
-    yPosition -= 15;
+    yPosition -= 13;
+
+    if ((action.priority_band === 'P1' || action.priority_band === 'P2') && action.trigger_text) {
+      const triggerLines = wrapText(
+        `Reason: ${action.trigger_text}`,
+        CONTENT_WIDTH - 20,
+        8,
+        font
+      );
+
+      for (const line of triggerLines.slice(0, 2)) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_HEIGHT - MARGIN;
+        }
+
+        page.drawText(sanitizePdfText(line), {
+          x: MARGIN + 20,
+          y: yPosition,
+          size: 8,
+          font: font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+        yPosition -= 11;
+      }
+    }
+
+    yPosition -= 5;
   });
 
   return yPosition;

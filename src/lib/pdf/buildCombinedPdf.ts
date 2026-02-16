@@ -192,8 +192,8 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
       branding_logo_path: organisation.branding_logo_path,
     },
     client: {
-      name: document.responsible_person,
-      site: document.scope_description,
+      name: (document as any).meta?.client?.name || document.responsible_person || '',
+      site: (document as any).meta?.site?.name || document.scope_description || '',
     },
     fonts: { bold: fontBold, regular: font },
   });

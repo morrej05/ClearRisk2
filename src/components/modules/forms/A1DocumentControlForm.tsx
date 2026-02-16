@@ -75,18 +75,29 @@ export default function A1DocumentControlForm({
     documentOwner: moduleInstance.data.document_owner || '',
   });
 
-  const [clientSiteData, setClientSiteData] = useState({
-    clientName: document.meta?.client?.name || moduleInstance.data.client?.name || document.responsible_person || '',
-    siteName: document.meta?.site?.name || moduleInstance.data.site?.name || document.scope_description || '',
-    addressLine1: document.meta?.site?.address?.line1 || moduleInstance.data.site?.address?.line1 || '',
-    addressLine2: document.meta?.site?.address?.line2 || moduleInstance.data.site?.address?.line2 || '',
-    city: document.meta?.site?.address?.city || moduleInstance.data.site?.address?.city || '',
-    county: document.meta?.site?.address?.county || moduleInstance.data.site?.address?.county || '',
-    postcode: document.meta?.site?.address?.postcode || moduleInstance.data.site?.address?.postcode || '',
-    country: document.meta?.site?.address?.country || moduleInstance.data.site?.address?.country || 'United Kingdom',
-    contactName: document.meta?.site?.contact?.name || moduleInstance.data.site?.contact?.name || '',
-    contactEmail: document.meta?.site?.contact?.email || moduleInstance.data.site?.contact?.email || '',
-    contactPhone: document.meta?.site?.contact?.phone || moduleInstance.data.site?.contact?.phone || '',
+  const [clientSiteData, setClientSiteData] = useState(() => {
+    const legacyClientName = document.meta?.clientName || moduleInstance.data.clientName;
+    const legacySiteName = document.meta?.siteName || moduleInstance.data.siteName;
+    const legacyAddressLine1 = document.meta?.addressLine1 || moduleInstance.data.addressLine1;
+    const legacyAddressLine2 = document.meta?.addressLine2 || moduleInstance.data.addressLine2;
+    const legacyCity = document.meta?.city || moduleInstance.data.city;
+    const legacyCounty = document.meta?.county || moduleInstance.data.county;
+    const legacyPostcode = document.meta?.postcode || moduleInstance.data.postcode;
+    const legacyCountry = document.meta?.country || moduleInstance.data.country;
+
+    return {
+      clientName: document.meta?.client?.name || moduleInstance.data.client?.name || legacyClientName || document.responsible_person || '',
+      siteName: document.meta?.site?.name || moduleInstance.data.site?.name || legacySiteName || document.scope_description || '',
+      addressLine1: document.meta?.site?.address?.line1 || moduleInstance.data.site?.address?.line1 || legacyAddressLine1 || '',
+      addressLine2: document.meta?.site?.address?.line2 || moduleInstance.data.site?.address?.line2 || legacyAddressLine2 || '',
+      city: document.meta?.site?.address?.city || moduleInstance.data.site?.address?.city || legacyCity || '',
+      county: document.meta?.site?.address?.county || moduleInstance.data.site?.address?.county || legacyCounty || '',
+      postcode: document.meta?.site?.address?.postcode || moduleInstance.data.site?.address?.postcode || legacyPostcode || '',
+      country: document.meta?.site?.address?.country || moduleInstance.data.site?.address?.country || legacyCountry || 'United Kingdom',
+      contactName: document.meta?.site?.contact?.name || moduleInstance.data.site?.contact?.name || '',
+      contactEmail: document.meta?.site?.contact?.email || moduleInstance.data.site?.contact?.email || '',
+      contactPhone: document.meta?.site?.contact?.phone || moduleInstance.data.site?.contact?.phone || '',
+    };
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
@@ -215,38 +226,23 @@ export default function A1DocumentControlForm({
             Core Document Information
           </h3>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  <Building2 className="w-4 h-4 inline mr-1" />
-                  Client (Organisation)
-                </label>
-                <div className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-700">
-                  {organisation?.name || 'Loading...'}
-                </div>
-                <p className="mt-1 text-xs text-neutral-500">
-                  Organisation is set at document creation
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Site Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={documentFields.title}
-                  onChange={(e) =>
-                    setDocumentFields({ ...documentFields, title: e.target.value })
-                  }
-                  placeholder="e.g., Building A, Main Office, Factory Site"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-                  required
-                />
-                <p className="mt-1 text-xs text-neutral-500">
-                  Identifies the specific site or location for this assessment
-                </p>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Document Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={documentFields.title}
+                onChange={(e) =>
+                  setDocumentFields({ ...documentFields, title: e.target.value })
+                }
+                placeholder="e.g., Fire Risk Assessment - Main Office"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                required
+              />
+              <p className="mt-1 text-xs text-neutral-500">
+                Internal reference title for this assessment document
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

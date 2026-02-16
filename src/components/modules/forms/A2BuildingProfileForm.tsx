@@ -44,6 +44,11 @@ export default function A2BuildingProfileForm({
 
   const [formData, setFormData] = useState({
     building_name: moduleInstance.data.building_name || '',
+    has_building_address: moduleInstance.data.has_building_address || false,
+    building_address_line1: moduleInstance.data.building_address_line1 || '',
+    building_address_line2: moduleInstance.data.building_address_line2 || '',
+    building_address_city: moduleInstance.data.building_address_city || '',
+    building_address_postcode: moduleInstance.data.building_address_postcode || '',
     year_built: moduleInstance.data.year_built || '',
     height_m: moduleInstance.data.height_m || '',
     storeys_band: moduleInstance.data.storeys_band || (moduleInstance.data.number_of_storeys ? 'custom' : 'unknown'),
@@ -198,15 +203,90 @@ export default function A2BuildingProfileForm({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Building Name / Address
+                Building Name
               </label>
               <input
                 type="text"
                 value={formData.building_name}
                 onChange={(e) => setFormData({ ...formData, building_name: e.target.value })}
-                placeholder="Enter building name or address"
+                placeholder="e.g., Building A, North Wing, Main Factory"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
               />
+              <p className="mt-1 text-xs text-neutral-500">
+                Site address is captured in A1 Document Control. Only provide building-specific address if it differs from the site address.
+              </p>
+            </div>
+
+            <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.has_building_address}
+                  onChange={(e) => setFormData({ ...formData, has_building_address: e.target.checked })}
+                  className="w-4 h-4 text-neutral-900 border-neutral-300 rounded focus:ring-neutral-900"
+                />
+                <span className="text-sm font-medium text-neutral-700">
+                  Building address differs from site address
+                </span>
+              </label>
+              <p className="text-xs text-neutral-600 mt-1 ml-6">
+                Enable this if this building has a different address than the main site
+              </p>
+
+              {formData.has_building_address && (
+                <div className="mt-4 space-y-3 pt-3 border-t border-neutral-200">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Address Line 1
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.building_address_line1}
+                      onChange={(e) => setFormData({ ...formData, building_address_line1: e.target.value })}
+                      placeholder="e.g., 456 Industrial Road"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Address Line 2 (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.building_address_line2}
+                      onChange={(e) => setFormData({ ...formData, building_address_line2: e.target.value })}
+                      placeholder="e.g., Unit 7B"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent bg-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        City/Town
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.building_address_city}
+                        onChange={(e) => setFormData({ ...formData, building_address_city: e.target.value })}
+                        placeholder="e.g., Birmingham"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        Postcode
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.building_address_postcode}
+                        onChange={(e) => setFormData({ ...formData, building_address_postcode: e.target.value })}
+                        placeholder="e.g., B1 1AA"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

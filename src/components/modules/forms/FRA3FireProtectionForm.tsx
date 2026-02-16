@@ -44,6 +44,31 @@ export default function FRA3FireProtectionForm({
   const [quickActionTemplate, setQuickActionTemplate] = useState<QuickActionTemplate | null>(null);
   const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
 
+  const key = moduleInstance.module_key;
+  const showActive = key === 'FRA_3_ACTIVE_SYSTEMS' || key === 'FRA_3_PROTECTION_ASIS';
+  const showPassive = key === 'FRA_4_PASSIVE_PROTECTION' || key === 'FRA_3_PROTECTION_ASIS';
+  const showFirefighting = key === 'FRA_8_FIREFIGHTING_EQUIPMENT' || key === 'FRA_3_PROTECTION_ASIS';
+
+  const getModuleTitle = () => {
+    if (key === 'FRA_3_ACTIVE_SYSTEMS') return 'Active Fire Protection';
+    if (key === 'FRA_4_PASSIVE_PROTECTION') return 'Passive Fire Protection';
+    if (key === 'FRA_8_FIREFIGHTING_EQUIPMENT') return 'Firefighting Equipment';
+    return 'Fire Protection Measures';
+  };
+
+  const getModuleDescription = () => {
+    if (key === 'FRA_3_ACTIVE_SYSTEMS') {
+      return 'Assess fire detection, alarm systems, and emergency lighting';
+    }
+    if (key === 'FRA_4_PASSIVE_PROTECTION') {
+      return 'Assess fire doors, compartmentation, and fire stopping';
+    }
+    if (key === 'FRA_8_FIREFIGHTING_EQUIPMENT') {
+      return 'Assess portable firefighting equipment and servicing arrangements';
+    }
+    return 'Assess fire detection, alarm, emergency lighting, fire doors, and compartmentation';
+  };
+
   const [formData, setFormData] = useState({
     fire_alarm_present: moduleInstance.data.fire_alarm_present || 'unknown',
     fire_alarm_category: moduleInstance.data.fire_alarm_category || 'unknown',
@@ -154,11 +179,11 @@ export default function FRA3FireProtectionForm({
         <div className="flex items-center gap-3 mb-2">
           <Shield className="w-6 h-6 text-neutral-700" />
           <h2 className="text-2xl font-bold text-neutral-900">
-            FRA-3 - Fire Protection Measures
+            {getModuleTitle()}
           </h2>
         </div>
         <p className="text-neutral-600">
-          Assess fire detection, alarm, emergency lighting, fire doors, and compartmentation
+          {getModuleDescription()}
         </p>
         {lastSaved && (
           <div className="flex items-center gap-2 mt-2 text-sm text-green-700">
@@ -179,10 +204,11 @@ export default function FRA3FireProtectionForm({
       )}
 
       <div className="space-y-6">
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Fire Alarm System
-          </h3>
+        {showActive && (
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h3 className="text-lg font-bold text-neutral-900 mb-4">
+              Fire Alarm System
+            </h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -281,12 +307,14 @@ export default function FRA3FireProtectionForm({
               </>
             )}
           </div>
-        </div>
+          </div>
+        )}
 
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Emergency Lighting
-          </h3>
+        {showActive && (
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h3 className="text-lg font-bold text-neutral-900 mb-4">
+              Emergency Lighting
+            </h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -367,12 +395,14 @@ export default function FRA3FireProtectionForm({
               </>
             )}
           </div>
-        </div>
+          </div>
+        )}
 
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Fire Doors
-          </h3>
+        {showPassive && (
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h3 className="text-lg font-bold text-neutral-900 mb-4">
+              Fire Doors
+            </h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -430,12 +460,14 @@ export default function FRA3FireProtectionForm({
               </select>
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Compartmentation & Fire Stopping
-          </h3>
+        {showPassive && (
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h3 className="text-lg font-bold text-neutral-900 mb-4">
+              Compartmentation & Fire Stopping
+            </h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -510,12 +542,14 @@ export default function FRA3FireProtectionForm({
               </button>
             )}
           </div>
-        </div>
+          </div>
+        )}
 
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Firefighting Equipment
-          </h3>
+        {showFirefighting && (
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h3 className="text-lg font-bold text-neutral-900 mb-4">
+              Firefighting Equipment
+            </h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -593,7 +627,8 @@ export default function FRA3FireProtectionForm({
               </p>
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg border border-neutral-200 p-6">
           <h3 className="text-lg font-bold text-neutral-900 mb-4">

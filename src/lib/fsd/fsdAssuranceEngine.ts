@@ -1,3 +1,5 @@
+import { runFsdConsistencyChecks, type AssuranceFlag } from './fsdConsistencyEngine';
+
 export type FsdOutcome = 'compliant' | 'minor_def' | 'material_def' | 'info_gap' | 'na';
 
 export interface FsdDeviation {
@@ -23,6 +25,8 @@ export interface FsdComputedSummary {
   topDeviations: FsdDeviationScored[];
   infoGaps: FsdInfoGap[];
   scopeSentence: string;
+  assuranceFlags: AssuranceFlag[];
+  topFlags: AssuranceFlag[];
 }
 
 export interface ModuleForComputation {
@@ -131,6 +135,44 @@ function extractInfoGaps(modules: ModuleForComputation[]): FsdInfoGap[] {
     }));
 }
 
+function adjustOutcomeForFlags(
+  baseOutcome: Exclude<FsdOutcome, 'na'>,
+  flags: AssuranceFlag[]
+): Exclude<FsdOutcome, 'na'> {
+  const hasCritical = flags.some((f) => f.severity === 'critical');
+  const hasMajor = flags.some((f) => f.severity === 'major');
+  const hasInfo = flags.some((f) => f.severity === 'info');
+
+  const outcomeHierarchy: Record<Exclude<FsdOutcome, 'na'>, number> = {
+    material_def: 4,
+    info_gap: 3,
+    minor_def: 2,
+    compliant: 1,
+  };
+
+  const baseSeverity = outcomeHierarchy[baseOutcome];
+
+  if (hasCritical) {
+    const materialSeverity = outcomeHierarchy.material_def;
+    if (baseSeverity < materialSeverity) {
+      return 'material_def';
+    }
+  }
+
+  if (hasMajor) {
+    const minorSeverity = outcomeHierarchy.minor_def;
+    if (baseSeverity < minorSeverity) {
+      return 'minor_def';
+    }
+  }
+
+  if (hasInfo && baseOutcome === 'compliant') {
+    return 'info_gap';
+  }
+
+  return baseOutcome;
+}
+
 function generateScopeSentence(
   outcome: Exclude<FsdOutcome, 'na'>,
   deviationCount: number,
@@ -171,7 +213,10 @@ export function computeFsdSummary(context: {
 }): FsdComputedSummary {
   const { modules } = context;
 
-  const computedOutcome = deriveDocumentOutcome(modules);
+  const { flags } = runFsdConsistencyChecks({ modules });
+
+  const baseOutcome = deriveDocumentOutcome(modules);
+  const computedOutcome = adjustOutcomeForFlags(baseOutcome, flags);
 
   const outcomeCounts: Record<Exclude<FsdOutcome, 'na'>, number> = {
     compliant: 0,
@@ -199,6 +244,8 @@ export function computeFsdSummary(context: {
     infoGaps.length
   );
 
+  const topFlags = flags.slice(0, 5);
+
   return {
     computedOutcome,
     outcomeCounts,
@@ -206,5 +253,7 @@ export function computeFsdSummary(context: {
     topDeviations,
     infoGaps,
     scopeSentence,
+    assuranceFlags: flags,
+    topFlags,
   };
 }

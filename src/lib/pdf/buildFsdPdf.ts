@@ -185,6 +185,11 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
     page = drawDeviationRegister(page, computedSummary.deviations, pdfDoc, isDraft, totalPages, font, fontBold);
   }
 
+  if (computedSummary.assuranceFlags.length > 0) {
+    ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+    page = drawAssuranceChecks(page, computedSummary.assuranceFlags, pdfDoc, isDraft, totalPages, font, fontBold);
+  }
+
   ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
   page = drawPurposeAndScope(page, pdfDoc, isDraft, totalPages, font, fontBold);
 
@@ -1578,6 +1583,75 @@ function drawComputedAssuranceSummary(
     }
   }
 
+  yPosition -= 10;
+
+  if (summary.topFlags.length > 0) {
+    if (yPosition < MARGIN + 120) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText('Assurance Flags:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 22;
+
+    const severityColors: Record<string, ReturnType<typeof rgb>> = {
+      critical: rgb(0.7, 0, 0),
+      major: rgb(0.9, 0.5, 0),
+      info: rgb(0, 0.5, 0.7),
+    };
+
+    const severityLabels: Record<string, string> = {
+      critical: 'CRITICAL',
+      major: 'MAJOR',
+      info: 'INFO',
+    };
+
+    for (const flag of summary.topFlags) {
+      if (yPosition < MARGIN + 70) {
+        ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      const severityLabel = severityLabels[flag.severity] || flag.severity.toUpperCase();
+      const severityColor = severityColors[flag.severity] || rgb(0, 0, 0);
+
+      page.drawText(`[${severityLabel}] ${sanitizePdfText(flag.title)}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font: fontBold,
+        color: severityColor,
+      });
+
+      yPosition -= 16;
+
+      const detailLines = wrapText(sanitizePdfText(flag.detail), CONTENT_WIDTH - 30, 9, font);
+      for (const line of detailLines.slice(0, 2)) {
+        if (yPosition < MARGIN + 50) {
+          ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+        page.drawText(line, {
+          x: MARGIN + 20,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPosition -= 13;
+      }
+
+      yPosition -= 8;
+    }
+  }
+
   return page;
 }
 
@@ -1743,6 +1817,158 @@ function drawDeviationRegister(
     }
 
     yPosition -= 20;
+  }
+
+  return page;
+}
+
+function drawAssuranceChecks(
+  page: PDFPage,
+  flags: Array<{ id: string; severity: string; title: string; detail: string; relatedModules: string[] }>,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): PDFPage {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('ASSURANCE CHECKS', {
+    x: MARGIN,
+    y: yPosition,
+    size: 18,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 25;
+
+  page.drawText('The following consistency checks have been performed across the strategy:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 11,
+    font,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+
+  yPosition -= 30;
+
+  if (flags.length === 0) {
+    page.drawText('All consistency checks passed. No issues identified.', {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.2, 0.6, 0.2),
+    });
+    return page;
+  }
+
+  const severityColors: Record<string, ReturnType<typeof rgb>> = {
+    critical: rgb(0.7, 0, 0),
+    major: rgb(0.9, 0.5, 0),
+    info: rgb(0, 0.5, 0.7),
+  };
+
+  const severityLabels: Record<string, string> = {
+    critical: 'CRITICAL',
+    major: 'MAJOR',
+    info: 'INFO',
+  };
+
+  for (let i = 0; i < flags.length; i++) {
+    const flag = flags[i];
+
+    if (yPosition < MARGIN + 140) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawRectangle({
+      x: MARGIN,
+      y: yPosition - 5,
+      width: CONTENT_WIDTH,
+      height: 1,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+
+    yPosition -= 15;
+
+    const severityLabel = severityLabels[flag.severity] || flag.severity.toUpperCase();
+    const severityColor = severityColors[flag.severity] || rgb(0, 0, 0);
+
+    page.drawRectangle({
+      x: MARGIN,
+      y: yPosition - 3,
+      width: 60,
+      height: 16,
+      color: severityColor,
+    });
+
+    page.drawText(severityLabel, {
+      x: MARGIN + 5,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: rgb(1, 1, 1),
+    });
+
+    page.drawText(sanitizePdfText(flag.title), {
+      x: MARGIN + 70,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 22;
+
+    page.drawText('Check ID:', {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    page.drawText(flag.id, {
+      x: MARGIN + 60,
+      y: yPosition,
+      size: 9,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    yPosition -= 18;
+
+    page.drawText('Detail:', {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    yPosition -= 14;
+
+    const detailText = sanitizePdfText(flag.detail);
+    const detailLines = wrapText(detailText, CONTENT_WIDTH - 30, 9, font);
+    for (const line of detailLines) {
+      if (yPosition < MARGIN + 50) {
+        ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN + 20,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 13;
+    }
+
+    yPosition -= 10;
   }
 
   return page;

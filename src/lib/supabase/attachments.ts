@@ -98,12 +98,18 @@ export async function getAttachment(id: string): Promise<Attachment | null> {
 export async function createAttachmentRow(attachmentData: CreateAttachmentData): Promise<Attachment> {
   const { data: userData } = await supabase.auth.getUser();
 
+  // Ensure file_size_bytes is always an integer (not a decimal)
+  const sanitizedData = {
+    ...attachmentData,
+    file_size_bytes: attachmentData.file_size_bytes !== null && attachmentData.file_size_bytes !== undefined
+      ? Math.trunc(attachmentData.file_size_bytes)
+      : null,
+    uploaded_by: userData?.user?.id || null,
+  };
+
   const { data, error } = await supabase
     .from('attachments')
-    .insert({
-      ...attachmentData,
-      uploaded_by: userData?.user?.id || null,
-    })
+    .insert(sanitizedData)
     .select()
     .single();
 
@@ -337,7 +343,7 @@ export async function uploadEvidenceFile(
     file_path: filePath,
     file_name: file.name,
     file_type: file.type,
-    file_size_bytes: file.size,
+    file_size_bytes: Math.trunc(file.size),
   };
 }
 

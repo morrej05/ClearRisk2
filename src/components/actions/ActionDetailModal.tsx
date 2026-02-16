@@ -295,7 +295,7 @@ export default function ActionDetailModal({
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
-        const filePath = await uploadEvidenceFile(
+        const uploadResult = await uploadEvidenceFile(
           file,
           organisation.id,
           action.document.id
@@ -306,11 +306,10 @@ export default function ActionDetailModal({
           document_id: action.document.id,
           module_instance_id: action.module_instance?.id || null,
           action_id: action.id,
-          file_path: filePath,
-          file_name: file.name,
-          file_type: file.type,
-          file_size_bytes: file.size,
-          uploaded_by: user?.id || null,
+          file_path: uploadResult.file_path,
+          file_name: uploadResult.file_name,
+          file_type: uploadResult.file_type,
+          file_size_bytes: uploadResult.file_size_bytes,
         });
       }
 

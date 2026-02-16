@@ -88,6 +88,169 @@ interface BuildPdfOptions {
   renderMode: 'preview' | 'issued';
 }
 
+function drawModuleSection(
+  page: PDFPage,
+  module: ModuleInstance,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  // Check if we need a new page
+  if (yPosition < 150) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_HEIGHT - MARGIN;
+  }
+
+  // Module heading
+  const moduleName = getModuleName(module.module_key);
+  page.drawText(sanitizePdfText(moduleName), {
+    x: MARGIN,
+    y: yPosition,
+    size: 14,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+  yPosition -= 22;
+
+  // Outcome badge if present
+  if (module.outcome) {
+    const outcomeLabels: Record<string, string> = {
+      satisfactory: 'Satisfactory',
+      adequate: 'Adequate',
+      requires_improvement: 'Requires Improvement',
+      unsatisfactory: 'Unsatisfactory',
+      not_assessed: 'Not Assessed',
+    };
+    const outcomeColors: Record<string, any> = {
+      satisfactory: rgb(0.2, 0.7, 0.3),
+      adequate: rgb(0.4, 0.6, 0.9),
+      requires_improvement: rgb(0.95, 0.7, 0.2),
+      unsatisfactory: rgb(0.9, 0.3, 0.3),
+      not_assessed: rgb(0.6, 0.6, 0.6),
+    };
+
+    const outcomeLabel = outcomeLabels[module.outcome] || module.outcome;
+    const outcomeColor = outcomeColors[module.outcome] || rgb(0.6, 0.6, 0.6);
+
+    page.drawText('Outcome:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    page.drawRectangle({
+      x: MARGIN + 60,
+      y: yPosition - 2,
+      width: 120,
+      height: 16,
+      color: outcomeColor,
+    });
+
+    page.drawText(outcomeLabel, {
+      x: MARGIN + 65,
+      y: yPosition,
+      size: 9,
+      font,
+      color: rgb(1, 1, 1),
+    });
+
+    yPosition -= 20;
+  }
+
+  // Assessor notes if present
+  if (module.assessor_notes && module.assessor_notes.trim()) {
+    page.drawText('Notes:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 14;
+
+    const notesLines = wrapText(module.assessor_notes, CONTENT_WIDTH, 9, font);
+    for (const line of notesLines.slice(0, 5)) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN;
+      }
+      page.drawText(sanitizePdfText(line), {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPosition -= 12;
+    }
+    yPosition -= 5;
+  }
+
+  // Key data summary from module.data
+  if (module.data && Object.keys(module.data).length > 0) {
+    page.drawText('Key Data:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 14;
+
+    let itemCount = 0;
+    for (const [key, value] of Object.entries(module.data)) {
+      if (itemCount >= 8) break; // Limit to 8 items per module
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN;
+      }
+
+      // Format key (convert snake_case to Title Case)
+      const formattedKey = key
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      // Format value
+      let formattedValue = '';
+      if (value === null || value === undefined) {
+        continue; // Skip null/undefined
+      } else if (typeof value === 'boolean') {
+        formattedValue = value ? 'Yes' : 'No';
+      } else if (Array.isArray(value)) {
+        formattedValue = `${value.length} items`;
+      } else if (typeof value === 'object') {
+        formattedValue = 'Complex data';
+      } else {
+        formattedValue = String(value).substring(0, 80);
+      }
+
+      if (formattedValue && formattedValue !== 'Complex data') {
+        page.drawText(sanitizePdfText(`${formattedKey}: ${formattedValue}`), {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 8,
+          font,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        yPosition -= 11;
+        itemCount++;
+      }
+    }
+  }
+
+  yPosition -= 15; // Space between modules
+  return yPosition;
+}
+
 export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promise<Uint8Array> {
   const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
 
@@ -231,8 +394,31 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     totalPages
   );
 
-  // FRA section modules (simplified - add actual FRA rendering here)
-  const fraModules = moduleInstances.filter(m => m.module_key.startsWith('FRA'));
+  // FRA section modules - render in order
+  const FRA_MODULE_ORDER = [
+    'A1_DOC_CONTROL',
+    'A2_BUILDING_PROFILE',
+    'A3_PERSONS_AT_RISK',
+    'FRA_4_SIGNIFICANT_FINDINGS',
+    'FRA_90_SIGNIFICANT_FINDINGS',
+    'FRA_1_HAZARDS',
+    'A4_MANAGEMENT_CONTROLS',
+    'FRA_6_MANAGEMENT_SYSTEMS',
+    'A5_EMERGENCY_ARRANGEMENTS',
+    'FRA_7_EMERGENCY_ARRANGEMENTS',
+    'A7_REVIEW_ASSURANCE',
+    'FRA_2_ESCAPE_ASIS',
+    'FRA_3_ACTIVE_SYSTEMS',
+    'FRA_3_PROTECTION_ASIS',
+    'FRA_4_PASSIVE_PROTECTION',
+    'FRA_8_FIREFIGHTING_EQUIPMENT',
+    'FRA_5_EXTERNAL_FIRE_SPREAD',
+  ];
+
+  const fraModules = moduleInstances.filter(m =>
+    m.module_key.startsWith('FRA') || m.module_key.startsWith('A')
+  );
+
   if (fraModules.length > 0) {
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
     yPosition = PAGE_HEIGHT - MARGIN;
@@ -246,17 +432,42 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     });
     yPosition -= 30;
 
-    page.drawText(sanitizePdfText('(FRA sections would be rendered here using existing FRA helpers)'), {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font: font,
-      color: rgb(0.5, 0.5, 0.5),
+    // Sort modules by FRA order
+    const sortedFraModules = fraModules.sort((a, b) => {
+      const aIndex = FRA_MODULE_ORDER.indexOf(a.module_key);
+      const bIndex = FRA_MODULE_ORDER.indexOf(b.module_key);
+      return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
     });
+
+    // Render each FRA module
+    for (const module of sortedFraModules) {
+      yPosition = drawModuleSection(
+        page,
+        module,
+        font,
+        fontBold,
+        yPosition,
+        pdfDoc,
+        isDraft,
+        totalPages
+      );
+    }
   }
 
-  // DSEAR section modules
+  // DSEAR section modules - render in order
+  const DSEAR_MODULE_ORDER = [
+    'DSEAR_1_DANGEROUS_SUBSTANCES',
+    'DSEAR_2_PROCESS_RELEASES',
+    'DSEAR_3_HAZARDOUS_AREA_CLASSIFICATION',
+    'DSEAR_4_IGNITION_SOURCES',
+    'DSEAR_5_EXPLOSION_PROTECTION',
+    'DSEAR_6_RISK_ASSESSMENT',
+    'DSEAR_10_HIERARCHY_OF_CONTROL',
+    'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE',
+  ];
+
   const dsearModules = moduleInstances.filter(m => m.module_key.startsWith('DSEAR'));
+
   if (dsearModules.length > 0) {
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
     yPosition = PAGE_HEIGHT - MARGIN;
@@ -270,13 +481,26 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     });
     yPosition -= 30;
 
-    page.drawText(sanitizePdfText('(DSEAR sections would be rendered here using existing DSEAR helpers)'), {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font: font,
-      color: rgb(0.5, 0.5, 0.5),
+    // Sort modules by DSEAR order
+    const sortedDsearModules = dsearModules.sort((a, b) => {
+      const aIndex = DSEAR_MODULE_ORDER.indexOf(a.module_key);
+      const bIndex = DSEAR_MODULE_ORDER.indexOf(b.module_key);
+      return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
     });
+
+    // Render each DSEAR module
+    for (const module of sortedDsearModules) {
+      yPosition = drawModuleSection(
+        page,
+        module,
+        font,
+        fontBold,
+        yPosition,
+        pdfDoc,
+        isDraft,
+        totalPages
+      );
+    }
   }
 
   // Combined action register (deduplicated)

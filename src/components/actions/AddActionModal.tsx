@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, AlertTriangle, Upload, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { uploadEvidenceFile, createAttachmentRow } from '../../lib/supabase/attachments';
+import { uploadAttachment } from '../../utils/evidenceManagement';
 import {
   deriveSeverity,
   type FraFindingCategory,
@@ -306,27 +306,45 @@ export default function AddActionModal({
 
     setIsUploadingAttachments(true);
     try {
-      for (const file of Array.from(files)) {
-        const uploadResult = await uploadEvidenceFile(file, organisation.id, documentId);
-        await createAttachmentRow({
-          organisation_id: organisation.id,
-          document_id: documentId,
-          file_path: uploadResult.file_path,
-          file_name: uploadResult.file_name,
-          file_type: uploadResult.file_type,
-          file_size_bytes: uploadResult.file_size_bytes,
-          action_id: createdActionId,
-          module_instance_id: moduleInstanceId,
-        });
+      // Fetch document to get base_document_id
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .select('base_document_id')
+        .eq('id', documentId)
+        .single();
+
+      if (docError || !docData) {
+        throw new Error('Failed to fetch document information');
       }
 
-      setUploadedFilesCount(prev => prev + files.length);
+      // Upload files using the clean uploader (no organisations quota update)
+      let successCount = 0;
+      for (const file of Array.from(files)) {
+        const result = await uploadAttachment(
+          organisation.id,
+          documentId,
+          docData.base_document_id,
+          file,
+          undefined, // caption
+          moduleInstanceId,
+          createdActionId
+        );
+
+        if (result.success) {
+          successCount++;
+        } else {
+          console.error('Upload failed:', result.error);
+          throw new Error(result.error || 'Upload failed');
+        }
+      }
+
+      setUploadedFilesCount(prev => prev + successCount);
 
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
 
-      alert(`${files.length} file(s) attached successfully!`);
+      alert(`${successCount} file(s) attached successfully!`);
     } catch (error) {
       console.error('Error uploading attachments:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

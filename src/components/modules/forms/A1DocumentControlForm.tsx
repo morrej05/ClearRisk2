@@ -130,7 +130,7 @@ export default function A1DocumentControlForm({
     setIsSaving(true);
 
     try {
-      const { error: docError } = await supabase
+      const { error: docError} = await supabase
         .from('documents')
         .update({
           title: documentFields.title || 'Untitled Assessment',
@@ -141,7 +141,7 @@ export default function A1DocumentControlForm({
           scope_description: documentFields.scopeDescription || null,
           limitations_assumptions: documentFields.limitationsAssumptions || null,
           standards_selected: documentFields.standardsSelected,
-          jurisdiction: documentFields.jurisdiction,
+          // jurisdiction is controlled by the header selector, not this form
         })
         .eq('id', document.id);
 
@@ -245,36 +245,21 @@ export default function A1DocumentControlForm({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Assessment Date
-                </label>
-                <input
-                  type="date"
-                  value={documentFields.assessmentDate}
-                  onChange={(e) =>
-                    setDocumentFields({ ...documentFields, assessmentDate: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Jurisdiction
-                </label>
-                <select
-                  value={documentFields.jurisdiction}
-                  onChange={(e) =>
-                    setDocumentFields({ ...documentFields, jurisdiction: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent bg-white"
-                >
-                  <option value="UK">United Kingdom</option>
-                  <option value="IE">Ireland</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Assessment Date
+              </label>
+              <input
+                type="date"
+                value={documentFields.assessmentDate}
+                onChange={(e) =>
+                  setDocumentFields({ ...documentFields, assessmentDate: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              />
+              <p className="mt-1 text-xs text-neutral-500">
+                Jurisdiction is set in the document header (top-right selector)
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

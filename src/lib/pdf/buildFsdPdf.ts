@@ -24,6 +24,7 @@ import {
   drawDraftWatermark,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
+import { computeFsdSummary } from '../fsd/fsdAssuranceEngine';
 
 interface Document {
   id: string;
@@ -172,6 +173,17 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
     document.executive_summary_author,
     { bold: fontBold, regular: font }
   );
+
+  const computedSummary = computeFsdSummary({ modules: moduleInstances });
+  console.log('[FSD PDF] Computed summary:', computedSummary);
+
+  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+  page = drawComputedAssuranceSummary(page, computedSummary, pdfDoc, isDraft, totalPages, font, fontBold);
+
+  if (computedSummary.deviations.length > 0) {
+    ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+    page = drawDeviationRegister(page, computedSummary.deviations, pdfDoc, isDraft, totalPages, font, fontBold);
+  }
 
   ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
   page = drawPurposeAndScope(page, pdfDoc, isDraft, totalPages, font, fontBold);
@@ -1333,7 +1345,7 @@ function drawDocumentLimitations(
 
   const sanitized = sanitizePdfText(limitationsText);
   const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
-  
+
   for (const line of lines) {
     if (yPosition < MARGIN + 50) {
       ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
@@ -1347,6 +1359,390 @@ function drawDocumentLimitations(
       color: rgb(0.1, 0.1, 0.1),
     });
     yPosition -= 16;
+  }
+
+  return page;
+}
+
+function drawComputedAssuranceSummary(
+  page: PDFPage,
+  summary: ReturnType<typeof computeFsdSummary>,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): PDFPage {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('COMPUTED ASSURANCE SUMMARY', {
+    x: MARGIN,
+    y: yPosition,
+    size: 18,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  const outcomeLabels: Record<string, string> = {
+    compliant: 'COMPLIANT WITH DESIGN BASIS',
+    minor_def: 'MINOR ISSUES IDENTIFIED',
+    info_gap: 'INFORMATION GAPS IDENTIFIED',
+    material_def: 'MATERIAL DEVIATIONS IDENTIFIED',
+  };
+
+  const outcomeColors: Record<string, ReturnType<typeof rgb>> = {
+    compliant: rgb(0.2, 0.6, 0.2),
+    minor_def: rgb(0.9, 0.6, 0),
+    info_gap: rgb(0.8, 0.4, 0),
+    material_def: rgb(0.7, 0, 0),
+  };
+
+  const outcomeLabel = outcomeLabels[summary.computedOutcome] || summary.computedOutcome.toUpperCase();
+  const outcomeColor = outcomeColors[summary.computedOutcome] || rgb(0.5, 0.5, 0.5);
+
+  page.drawText('Overall Design Assurance Outcome:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 25;
+  page.drawRectangle({
+    x: MARGIN,
+    y: yPosition - 5,
+    width: Math.min(CONTENT_WIDTH, outcomeLabel.length * 8),
+    height: 30,
+    color: outcomeColor,
+  });
+  page.drawText(outcomeLabel, {
+    x: MARGIN + 10,
+    y: yPosition + 3,
+    size: 14,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
+
+  yPosition -= 40;
+
+  const scopeLines = wrapText(summary.scopeSentence, CONTENT_WIDTH, 11, font);
+  for (const line of scopeLines) {
+    if (yPosition < MARGIN + 50) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 16;
+  }
+
+  yPosition -= 20;
+
+  page.drawText('Module Outcomes Summary:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 22;
+  page.drawText(`Compliant: ${summary.outcomeCounts.compliant}`, {
+    x: MARGIN + 10,
+    y: yPosition,
+    size: 11,
+    font,
+    color: rgb(0.2, 0.6, 0.2),
+  });
+
+  yPosition -= 18;
+  page.drawText(`Minor Deficiencies: ${summary.outcomeCounts.minor_def}`, {
+    x: MARGIN + 10,
+    y: yPosition,
+    size: 11,
+    font,
+    color: rgb(0.9, 0.6, 0),
+  });
+
+  yPosition -= 18;
+  page.drawText(`Information Gaps: ${summary.outcomeCounts.info_gap}`, {
+    x: MARGIN + 10,
+    y: yPosition,
+    size: 11,
+    font,
+    color: rgb(0.8, 0.4, 0),
+  });
+
+  yPosition -= 18;
+  page.drawText(`Material Deficiencies: ${summary.outcomeCounts.material_def}`, {
+    x: MARGIN + 10,
+    y: yPosition,
+    size: 11,
+    font,
+    color: summary.outcomeCounts.material_def > 0 ? rgb(0.7, 0, 0) : rgb(0, 0, 0),
+  });
+
+  yPosition -= 30;
+
+  if (summary.topDeviations.length > 0) {
+    if (yPosition < MARGIN + 150) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText('Key Deviations Requiring Attention:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 22;
+
+    const displayDeviations = summary.topDeviations.slice(0, 3);
+    for (let i = 0; i < displayDeviations.length; i++) {
+      const deviation = displayDeviations[i];
+      const truncatedDeviation = deviation.deviation.length > 80
+        ? deviation.deviation.substring(0, 77) + '...'
+        : deviation.deviation;
+
+      if (yPosition < MARGIN + 80) {
+        ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      const qualityIndicator = deviation.score < 4 ? ' [Incomplete justification]' : '';
+      page.drawText(`${i + 1}. ${deviation.topic || 'Unspecified'}: ${sanitizePdfText(truncatedDeviation)}${qualityIndicator}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: deviation.score < 4 ? rgb(0.7, 0, 0) : rgb(0.1, 0.1, 0.1),
+      });
+
+      yPosition -= 20;
+    }
+  }
+
+  yPosition -= 10;
+
+  if (summary.infoGaps.length > 0) {
+    if (yPosition < MARGIN + 100) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText('Information Gaps:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 22;
+
+    const displayGaps = summary.infoGaps.slice(0, 5);
+    for (const gap of displayGaps) {
+      if (yPosition < MARGIN + 60) {
+        ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      const gapText = gap.note
+        ? `${gap.title}: ${sanitizePdfText(gap.note)}`
+        : gap.title;
+
+      const truncatedGap = gapText.length > 90
+        ? gapText.substring(0, 87) + '...'
+        : gapText;
+
+      page.drawText(`• ${truncatedGap}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.5, 0.3, 0),
+      });
+
+      yPosition -= 18;
+    }
+  }
+
+  return page;
+}
+
+function drawDeviationRegister(
+  page: PDFPage,
+  deviations: Array<{ topic: string; deviation: string; justification: string }>,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  font: any,
+  fontBold: any
+): PDFPage {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('DEVIATION REGISTER', {
+    x: MARGIN,
+    y: yPosition,
+    size: 18,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 25;
+
+  page.drawText('The following deviations from standard guidance have been documented:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 11,
+    font,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+
+  yPosition -= 30;
+
+  if (deviations.length === 0) {
+    page.drawText('No deviations recorded.', {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    return page;
+  }
+
+  for (let i = 0; i < deviations.length; i++) {
+    const deviation = deviations[i];
+
+    if (yPosition < MARGIN + 150) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawRectangle({
+      x: MARGIN,
+      y: yPosition - 5,
+      width: CONTENT_WIDTH,
+      height: 1,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+
+    yPosition -= 15;
+
+    page.drawText(`Deviation ${i + 1}`, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 20;
+
+    page.drawText('Topic:', {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    yPosition -= 15;
+    const topicText = sanitizePdfText(deviation.topic || 'Not specified');
+    const topicLines = wrapText(topicText, CONTENT_WIDTH - 20, 10, font);
+    for (const line of topicLines) {
+      if (yPosition < MARGIN + 50) {
+        ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN + 20,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 5;
+    page.drawText('Deviation:', {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    yPosition -= 15;
+    const deviationText = sanitizePdfText(deviation.deviation || 'Not specified');
+    const deviationLines = wrapText(deviationText, CONTENT_WIDTH - 20, 10, font);
+    for (const line of deviationLines) {
+      if (yPosition < MARGIN + 50) {
+        ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN + 20,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 5;
+    page.drawText('Justification:', {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    yPosition -= 15;
+    if (deviation.justification && deviation.justification.trim().length > 0) {
+      const justificationText = sanitizePdfText(deviation.justification);
+      const justificationLines = wrapText(justificationText, CONTENT_WIDTH - 20, 10, font);
+      for (const line of justificationLines) {
+        if (yPosition < MARGIN + 50) {
+          ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+          yPosition = PAGE_HEIGHT - MARGIN - 20;
+        }
+        page.drawText(line, {
+          x: MARGIN + 20,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 14;
+      }
+    } else {
+      page.drawText('[No justification provided]', {
+        x: MARGIN + 20,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.7, 0, 0),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 20;
   }
 
   return page;

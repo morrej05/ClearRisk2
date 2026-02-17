@@ -222,6 +222,12 @@ export function drawDraftWatermark(page: PDFPage) {
 }
 
 export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PDFPage[]): { page: PDFPage } {
+  // Defensive initialization - prevent crashes if totalPages is undefined
+  if (!totalPages) {
+    console.warn('[PDF] addNewPage: totalPages was undefined, using fallback empty array');
+    totalPages = [];
+  }
+
   const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   totalPages.push(page);
   // Status is shown prominently on cover page - no need for repeated watermark
@@ -285,6 +291,12 @@ export function addExecutiveSummaryPages(
   authorSummary: string | null,
   fonts: { bold: any; regular: any }
 ): number {
+  // Defensive check - ensure totalPages is defined
+  if (!totalPages) {
+    console.warn('[PDF] addExecutiveSummaryPages: totalPages was undefined, cannot render');
+    return 0;
+  }
+
   if (mode === 'none') {
     return 0;
   }
@@ -784,6 +796,12 @@ export function drawActionPlanSnapshot(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
+  // Defensive check - ensure totalPages is defined
+  if (!totalPages) {
+    console.warn('[PDF] drawActionPlanSnapshot: totalPages was undefined, cannot render');
+    return 0;
+  }
+
   // Filter to open actions only (exclude closed, superseded, etc.)
   const openActions = actions.filter(a =>
     a.status === 'open' || a.status === 'in_progress'
@@ -919,6 +937,12 @@ export function drawRecommendationsSection(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
+  // Defensive check - ensure totalPages is defined
+  if (!totalPages) {
+    console.warn('[PDF] drawRecommendationsSection: totalPages was undefined, cannot render');
+    return 0;
+  }
+
   if (actions.length === 0) {
     const { page } = addNewPage(pdfDoc, isDraft, totalPages);
     let yPosition = PAGE_HEIGHT - MARGIN - 20;

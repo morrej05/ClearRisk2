@@ -2,15 +2,22 @@
  * Section Summary Generator for FRA PDF Sections 5-12
  *
  * Generates professional assessor summaries that appear at the top of each technical section
- * Based on module outcomes and specific field data
+ * Based on module outcomes, actions, info gaps, and specific field data
  */
 
 import type { ModuleInstance } from '../supabase/attachments';
+
+interface Action {
+  id: string;
+  priority: number;
+  status: string;
+}
 
 interface SectionContext {
   sectionId: number;
   sectionTitle: string;
   moduleInstances: ModuleInstance[];
+  actions?: Action[];
 }
 
 export interface SectionSummaryWithDrivers {
@@ -20,10 +27,10 @@ export interface SectionSummaryWithDrivers {
 
 /**
  * Generate professional assessor summary for a section with driver bullets
- * Returns summary sentence + up to 3 key points based on section data
+ * Returns context-aware summary + up to 3 key points based on section data
  */
 export function generateSectionSummary(context: SectionContext): SectionSummaryWithDrivers | null {
-  const { sectionId, sectionTitle, moduleInstances } = context;
+  const { sectionId, sectionTitle, moduleInstances, actions = [] } = context;
 
   // Only generate summaries for sections 5-12 (technical assessment sections)
   if (sectionId < 5 || sectionId > 12) return null;
@@ -31,27 +38,237 @@ export function generateSectionSummary(context: SectionContext): SectionSummaryW
   // If no modules in section, no summary needed
   if (moduleInstances.length === 0) return null;
 
-  // Analyze outcomes to get summary sentence
+  // Analyze outcomes
   const hasMaterialDef = moduleInstances.some(m => m.outcome === 'material_def');
   const hasMinorDef = moduleInstances.some(m => m.outcome === 'minor_def');
   const hasInfoGap = moduleInstances.some(m => m.outcome === 'info_gap');
+  const infoGapCount = moduleInstances.filter(m => m.outcome === 'info_gap').length;
+  const allCompliant = !hasMaterialDef && !hasMinorDef && !hasInfoGap;
 
-  // Generate deterministic summary sentence based on worst outcome
-  let summary = '';
-  if (hasMaterialDef) {
-    summary = 'Significant deficiencies were identified in this area which may materially affect life safety.';
-  } else if (hasMinorDef) {
-    summary = 'Minor deficiencies were identified; improvements are recommended.';
-  } else if (hasInfoGap) {
-    summary = 'Certain aspects could not be fully verified at the time of assessment and require follow-up.';
-  } else {
-    summary = 'No significant deficiencies were identified in this area at the time of assessment.';
-  }
+  // Check for priority actions
+  const openActions = actions.filter(a => a.status !== 'closed' && a.status !== 'completed');
+  const hasP1Actions = openActions.some(a => a.priority === 1);
+  const hasP2Actions = openActions.some(a => a.priority === 2);
+  const hasCriticalActions = hasP1Actions || hasP2Actions;
+
+  // Detect if this is a governance section (management/procedures)
+  const isGovernanceSection = sectionId === 11; // Section 11: Fire Safety Management
 
   // Extract section-specific drivers
   const drivers = extractSectionDrivers(sectionId, moduleInstances);
 
+  // Generate context-aware summary
+  let summary = '';
+
+  if (hasMaterialDef) {
+    summary = generateMaterialDefSummary(sectionId, hasCriticalActions, isGovernanceSection, drivers);
+  } else if (hasMinorDef) {
+    summary = generateMinorDefSummary(sectionId, hasCriticalActions, isGovernanceSection, drivers);
+  } else if (hasInfoGap) {
+    summary = generateInfoGapSummary(sectionId, infoGapCount, openActions.length > 0, isGovernanceSection);
+  } else if (allCompliant) {
+    summary = generateCompliantSummary(sectionId, openActions.length > 0, infoGapCount, isGovernanceSection);
+  } else {
+    // Fallback
+    summary = 'This area has been assessed and findings are recorded below.';
+  }
+
   return { summary, drivers };
+}
+
+/**
+ * Generate summary for material deficiency outcome
+ */
+function generateMaterialDefSummary(
+  sectionId: number,
+  hasCriticalActions: boolean,
+  isGovernance: boolean,
+  drivers: string[]
+): string {
+  if (isGovernance) {
+    if (hasCriticalActions) {
+      return 'Significant improvement is required in fire safety management systems. Priority actions have been raised to address material deficiencies.';
+    }
+    return 'Significant improvement is required in fire safety management systems. Material deficiencies were identified which compromise effective fire safety governance.';
+  }
+
+  // Technical sections - describe nature of deficiency using drivers
+  const deficiencyNature = describeDeficiencyNature(sectionId, drivers);
+
+  if (hasCriticalActions) {
+    return `Material deficiencies were identified which may compromise life safety${deficiencyNature}. Priority actions are required to address these deficiencies.`;
+  }
+
+  return `Material deficiencies were identified which may compromise life safety${deficiencyNature}. These deficiencies require urgent remediation.`;
+}
+
+/**
+ * Generate summary for minor deficiency outcome
+ */
+function generateMinorDefSummary(
+  sectionId: number,
+  hasCriticalActions: boolean,
+  isGovernance: boolean,
+  drivers: string[]
+): string {
+  if (isGovernance) {
+    return 'Improvement is recommended in fire safety management systems. Minor deficiencies were identified which should be addressed.';
+  }
+
+  // Technical sections - describe nature of deficiency
+  const deficiencyNature = describeDeficiencyNature(sectionId, drivers);
+
+  if (hasCriticalActions) {
+    return `Minor deficiencies were identified${deficiencyNature}. Actions have been raised to address these improvements.`;
+  }
+
+  return `Minor deficiencies were identified${deficiencyNature}. Improvements are recommended to enhance fire safety standards.`;
+}
+
+/**
+ * Generate summary for info gap outcome
+ */
+function generateInfoGapSummary(
+  sectionId: number,
+  infoGapCount: number,
+  hasActions: boolean,
+  isGovernance: boolean
+): string {
+  const gapsText = infoGapCount > 1 ? 'aspects' : 'an aspect';
+
+  if (hasActions) {
+    return `Certain ${gapsText} could not be fully verified at the time of assessment. Actions have been raised to obtain the required information.`;
+  }
+
+  return `Certain ${gapsText} could not be fully verified at the time of assessment and require follow-up verification.`;
+}
+
+/**
+ * Generate summary for compliant outcome
+ */
+function generateCompliantSummary(
+  sectionId: number,
+  hasActions: boolean,
+  infoGapCount: number,
+  isGovernance: boolean
+): string {
+  if (isGovernance) {
+    if (hasActions) {
+      return 'Fire safety management systems are adequate. Some improvement actions have been raised to enhance governance standards.';
+    }
+    return 'Fire safety management systems are adequate. No significant deficiencies were identified.';
+  }
+
+  if (hasActions) {
+    return 'No significant deficiencies were identified in this area. Some improvement actions have been raised to enhance fire safety standards.';
+  }
+
+  if (infoGapCount > 0) {
+    return 'No significant deficiencies were identified. Some aspects required follow-up verification.';
+  }
+
+  return 'No significant deficiencies were identified in this area at the time of assessment.';
+}
+
+/**
+ * Describe nature of deficiency based on section and key signals from drivers
+ */
+function describeDeficiencyNature(sectionId: number, drivers: string[]): string {
+  if (drivers.length === 0 || drivers[0] === 'No specific issues were recorded in this section.') {
+    return '';
+  }
+
+  const driversText = drivers.join(' ').toLowerCase();
+
+  // Section-specific key signal detection
+  switch (sectionId) {
+    case 5: // Fire Hazards
+      if (driversText.includes('eicr') || driversText.includes('electrical')) {
+        return ' relating to electrical safety';
+      }
+      if (driversText.includes('arson')) {
+        return ' relating to arson risk and security';
+      }
+      if (driversText.includes('housekeeping') || driversText.includes('combustible')) {
+        return ' relating to housekeeping and fire load';
+      }
+      return ' relating to fire hazards and ignition sources';
+
+    case 6: // Means of Escape
+      if (driversText.includes('travel distance')) {
+        return ' relating to travel distances';
+      }
+      if (driversText.includes('obstruction')) {
+        return ' relating to escape route obstructions';
+      }
+      if (driversText.includes('exit')) {
+        return ' relating to final exit provision';
+      }
+      return ' relating to means of escape';
+
+    case 7: // Fire Detection & Alarm
+      if (driversText.includes('no fire') || driversText.includes('not installed')) {
+        return '; no adequate fire detection and alarm system is installed';
+      }
+      if (driversText.includes('testing') || driversText.includes('servicing')) {
+        return ' relating to fire alarm testing and maintenance';
+      }
+      return ' relating to fire detection and alarm systems';
+
+    case 8: // Emergency Lighting
+      if (driversText.includes('no emergency') || driversText.includes('not installed')) {
+        return '; no adequate emergency lighting system is installed';
+      }
+      if (driversText.includes('testing')) {
+        return ' relating to emergency lighting testing and maintenance';
+      }
+      return ' relating to emergency lighting provision';
+
+    case 9: // Compartmentation
+      if (driversText.includes('fire door')) {
+        return ' relating to fire door integrity';
+      }
+      if (driversText.includes('compartmentation') || driversText.includes('breached')) {
+        return ' relating to compartmentation and fire separation';
+      }
+      if (driversText.includes('fire stopping')) {
+        return ' relating to fire stopping';
+      }
+      return ' relating to passive fire protection';
+
+    case 10: // Suppression & Firefighting
+      if (driversText.includes('sprinkler')) {
+        return ' relating to sprinkler system servicing';
+      }
+      if (driversText.includes('extinguisher')) {
+        return ' relating to portable firefighting equipment';
+      }
+      return ' relating to firefighting and suppression systems';
+
+    case 11: // Management
+      if (driversText.includes('policy')) {
+        return ' relating to fire safety policy and procedures';
+      }
+      if (driversText.includes('training')) {
+        return ' relating to staff training and competence';
+      }
+      if (driversText.includes('testing') || driversText.includes('inspection')) {
+        return ' relating to testing and inspection regimes';
+      }
+      return ' relating to fire safety management';
+
+    case 12: // External Fire Spread
+      if (driversText.includes('cladding')) {
+        return ' relating to external wall cladding';
+      }
+      if (driversText.includes('boundary') || driversText.includes('separation')) {
+        return ' relating to boundary separation';
+      }
+      return ' relating to external fire spread risk';
+
+    default:
+      return '';
+  }
 }
 
 /**

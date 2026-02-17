@@ -293,10 +293,21 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
     // Draw assessor summary for technical sections (5-12)
     if (section.id >= 5 && section.id <= 12) {
+      // Get actions related to this section's modules
+      const moduleIds = sectionModules.map(m => m.id);
+      const sectionActions = actions
+        .filter(a => moduleIds.includes(a.module_instance_id))
+        .map(a => ({
+          id: a.id,
+          priority: a.priority_band === 'P1' ? 1 : a.priority_band === 'P2' ? 2 : a.priority_band === 'P3' ? 3 : 4,
+          status: a.status,
+        }));
+
       const summaryWithDrivers = generateSectionSummary({
         sectionId: section.id,
         sectionTitle: section.title,
         moduleInstances: sectionModules,
+        actions: sectionActions,
       });
 
       if (summaryWithDrivers) {

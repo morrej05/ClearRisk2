@@ -645,7 +645,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
         break;
 
       case 11: // Fire Safety Management & Procedures
-        yPosition = renderSection11Management(page, sectionModules, moduleInstances, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
+        yPosition = renderSection11Management(page, sectionModules, moduleInstances, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
         break;
 
       case 13: // Significant Findings, Risk Evaluation & Action Plan

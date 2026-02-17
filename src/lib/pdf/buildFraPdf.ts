@@ -41,6 +41,8 @@ import {
   drawRecommendationsSection,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
+import { FRA_REPORT_STRUCTURE, getSectionTitle } from './fraReportStructure';
+import { getJurisdictionTemplate, getRegulatoryFrameworkText } from './jurisdictionTemplates';
 
 interface Document {
   id: string;
@@ -243,7 +245,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
       const riskSummaryPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       totalPages.push(riskSummaryPage);
-      drawRiskSummaryPage(riskSummaryPage, scoringResult, priorityActions, font, fontBold, document);
+      drawCleanAuditPage1(riskSummaryPage, scoringResult, priorityActions, font, fontBold, document, organisation);
 
       if (isDraft) {
         drawDraftWatermark(riskSummaryPage, fontBold);
@@ -2722,7 +2724,7 @@ function drawLimitations(
 
   const sanitized = sanitizePdfText(limitationsText);
   const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
-  
+
   for (const line of lines) {
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
@@ -2740,4 +2742,277 @@ function drawLimitations(
   }
 
   return yPosition;
+}
+
+/**
+ * Clean Audit Page 1 Layout
+ *
+ * Modern, professional risk summary page with:
+ * - Clear hierarchy
+ * - Generous white space
+ * - No heavy borders or matrices
+ * - Clean typography
+ */
+function drawCleanAuditPage1(
+  page: PDFPage,
+  scoringResult: ScoringResult,
+  priorityActions: Action[],
+  font: any,
+  fontBold: any,
+  document: Document,
+  organisation: Organisation
+): void {
+  const centerX = PAGE_WIDTH / 2;
+  let yPosition = PAGE_HEIGHT - MARGIN - 40;
+
+  // Title Block (Centered)
+  page.drawText('Fire Risk Assessment', {
+    x: centerX - (fontBold.widthOfTextAtSize('Fire Risk Assessment', 24) / 2),
+    y: yPosition,
+    size: 24,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  yPosition -= 40;
+
+  // Site Name (Centered, larger)
+  const siteName = sanitizePdfText(document.title);
+  const siteNameLines = wrapText(siteName, CONTENT_WIDTH - 80, 18, fontBold);
+  for (const line of siteNameLines) {
+    const lineWidth = fontBold.widthOfTextAtSize(line, 18);
+    page.drawText(line, {
+      x: centerX - (lineWidth / 2),
+      y: yPosition,
+      size: 18,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 26;
+  }
+
+  yPosition -= 10;
+
+  // Metadata (Centered, smaller)
+  const clientName = document.responsible_person || organisation.name;
+  const assessmentDate = formatDate(document.assessment_date);
+  const jurisdiction = document.jurisdiction || 'england_wales';
+  const jurisdictionDisplay = jurisdiction === 'england_wales' ? 'England & Wales' :
+    jurisdiction === 'scotland' ? 'Scotland' :
+    jurisdiction === 'northern_ireland' ? 'Northern Ireland' :
+    jurisdiction === 'republic_of_ireland' ? 'Republic of Ireland' : 'England & Wales';
+
+  const metadata = [
+    `Prepared for: ${sanitizePdfText(clientName)}`,
+    `Assessment Date: ${assessmentDate}`,
+    `Jurisdiction: ${jurisdictionDisplay}`
+  ];
+
+  for (const line of metadata) {
+    const lineWidth = font.widthOfTextAtSize(line, 11);
+    page.drawText(line, {
+      x: centerX - (lineWidth / 2),
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+    yPosition -= 18;
+  }
+
+  yPosition -= 40;
+
+  // Risk Summary Panel (Clean bordered box)
+  const panelHeight = 180;
+  const panelY = yPosition - panelHeight + 20;
+
+  page.drawRectangle({
+    x: MARGIN + 20,
+    y: panelY,
+    width: CONTENT_WIDTH - 40,
+    height: panelHeight,
+    borderColor: rgb(0.8, 0.8, 0.8),
+    borderWidth: 1,
+    color: rgb(1, 1, 1),
+  });
+
+  // Risk summary content
+  let panelYPos = yPosition - 25;
+
+  // Likelihood and Consequence (side by side)
+  const colX1 = MARGIN + 40;
+  const colX2 = centerX + 20;
+
+  page.drawText('Likelihood', {
+    x: colX1,
+    y: panelYPos,
+    size: 11,
+    font: fontBold,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+
+  page.drawText('Consequence', {
+    x: colX2,
+    y: panelYPos,
+    size: 11,
+    font: fontBold,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+
+  panelYPos -= 20;
+
+  page.drawText(scoringResult.likelihood, {
+    x: colX1,
+    y: panelYPos,
+    size: 14,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  page.drawText(scoringResult.consequence, {
+    x: colX2,
+    y: panelYPos,
+    size: 14,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  panelYPos -= 35;
+
+  // Overall Risk Category (centered, prominent)
+  const riskColor =
+    scoringResult.overallRisk === 'Intolerable' ? rgb(0.8, 0.1, 0.1) :
+    scoringResult.overallRisk === 'Substantial' ? rgb(0.9, 0.5, 0) :
+    scoringResult.overallRisk === 'Moderate' ? rgb(0.9, 0.7, 0) :
+    scoringResult.overallRisk === 'Tolerable' ? rgb(0.7, 0.7, 0) :
+    rgb(0.2, 0.6, 0.2);
+
+  page.drawText('Overall Risk to Life', {
+    x: colX1,
+    y: panelYPos,
+    size: 11,
+    font: fontBold,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+
+  panelYPos -= 22;
+
+  page.drawText(scoringResult.overallRisk.toUpperCase(), {
+    x: colX1,
+    y: panelYPos,
+    size: 18,
+    font: fontBold,
+    color: riskColor,
+  });
+
+  panelYPos -= 35;
+
+  // Auto narrative (wrapped)
+  const narrativeText = `The likelihood of fire is assessed as ${scoringResult.likelihood} and the potential consequences are assessed as ${scoringResult.consequence}. The overall risk to life is therefore assessed as ${scoringResult.overallRisk}.`;
+  const narrativeLines = wrapText(narrativeText, CONTENT_WIDTH - 80, 10, font);
+  for (const line of narrativeLines) {
+    page.drawText(line, {
+      x: colX1,
+      y: panelYPos,
+      size: 10,
+      font,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+    panelYPos -= 13;
+  }
+
+  yPosition = panelY - 20;
+
+  // Provisional warning (if applicable)
+  if (scoringResult.provisional) {
+    page.drawRectangle({
+      x: MARGIN + 20,
+      y: yPosition - 55,
+      width: CONTENT_WIDTH - 40,
+      height: 60,
+      borderColor: rgb(0.9, 0.7, 0),
+      borderWidth: 1,
+      color: rgb(1, 0.98, 0.9),
+    });
+
+    page.drawText('PROVISIONAL ASSESSMENT', {
+      x: MARGIN + 35,
+      y: yPosition - 25,
+      size: 11,
+      font: fontBold,
+      color: rgb(0.6, 0.4, 0),
+    });
+
+    page.drawText('This assessment is provisional pending resolution of critical information gaps.', {
+      x: MARGIN + 35,
+      y: yPosition - 42,
+      size: 9,
+      font,
+      color: rgb(0.5, 0.3, 0),
+    });
+
+    yPosition -= 75;
+  }
+
+  yPosition -= 30;
+
+  // Priority Summary Strip (minimal, clean)
+  const p1Count = priorityActions.filter(a => a.priority_band === 'P1').length;
+  const p2Count = priorityActions.filter(a => a.priority_band === 'P2').length;
+  const p3Count = priorityActions.filter(a => a.priority_band === 'P3').length;
+  const p4Count = priorityActions.filter(a => a.priority_band === 'P4').length;
+
+  if (p1Count + p2Count + p3Count + p4Count > 0) {
+    page.drawText('Priority Actions Summary', {
+      x: MARGIN + 20,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    yPosition -= 25;
+
+    const boxWidth = 80;
+    const boxHeight = 50;
+    const boxSpacing = 15;
+    const startX = MARGIN + 20;
+
+    const priorities = [
+      { label: 'P1', count: p1Count, color: rgb(0.8, 0.1, 0.1) },
+      { label: 'P2', count: p2Count, color: rgb(0.9, 0.5, 0) },
+      { label: 'P3', count: p3Count, color: rgb(0.9, 0.7, 0) },
+      { label: 'P4', count: p4Count, color: rgb(0.3, 0.6, 0.8) }
+    ];
+
+    priorities.forEach((p, idx) => {
+      const x = startX + (idx * (boxWidth + boxSpacing));
+
+      page.drawRectangle({
+        x,
+        y: yPosition - boxHeight + 10,
+        width: boxWidth,
+        height: boxHeight,
+        borderColor: p.color,
+        borderWidth: 1,
+        color: rgb(1, 1, 1),
+      });
+
+      page.drawText(p.label, {
+        x: x + 10,
+        y: yPosition - 15,
+        size: 12,
+        font: fontBold,
+        color: p.color,
+      });
+
+      page.drawText(p.count.toString(), {
+        x: x + 10,
+        y: yPosition - 35,
+        size: 20,
+        font: fontBold,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+    });
+  }
 }

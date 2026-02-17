@@ -1,16 +1,18 @@
-export type Jurisdiction = 'UK' | 'IE';
+import { Jurisdiction, normalizeJurisdiction as normalizeJurisdictionCore } from '../lib/jurisdictions';
+
+export type { Jurisdiction } from '../lib/jurisdictions';
 
 export function getAssessmentDisplayName(
   assessmentType: string,
   jurisdiction?: Jurisdiction | string | null
 ): string {
-  const normalizedJurisdiction = normalizeJurisdiction(jurisdiction);
+  const normalizedJurisdiction = normalizeJurisdictionCore(jurisdiction);
 
   if (assessmentType === 'DSEAR' || assessmentType === 'dsear') {
-    if (normalizedJurisdiction === 'UK') {
-      return 'DSEAR Risk Assessment';
-    } else {
+    if (normalizedJurisdiction === 'ireland') {
       return 'Explosive Atmospheres Risk Assessment';
+    } else {
+      return 'DSEAR Risk Assessment';
     }
   }
 
@@ -32,13 +34,13 @@ export function getAssessmentShortName(
   assessmentType: string,
   jurisdiction?: Jurisdiction | string | null
 ): string {
-  const normalizedJurisdiction = normalizeJurisdiction(jurisdiction);
+  const normalizedJurisdiction = normalizeJurisdictionCore(jurisdiction);
 
   if (assessmentType === 'DSEAR' || assessmentType === 'dsear') {
-    if (normalizedJurisdiction === 'UK') {
-      return 'DSEAR';
-    } else {
+    if (normalizedJurisdiction === 'ireland') {
       return 'Explosive Atmospheres';
+    } else {
+      return 'DSEAR';
     }
   }
 
@@ -54,16 +56,4 @@ export function getAssessmentShortName(
     default:
       return assessmentType;
   }
-}
-
-function normalizeJurisdiction(jurisdiction?: Jurisdiction | string | null): Jurisdiction {
-  if (!jurisdiction) return 'UK';
-
-  const upper = jurisdiction.toUpperCase();
-
-  if (upper.includes('IE') || upper.includes('IRELAND')) {
-    return 'IE';
-  }
-
-  return 'UK';
 }

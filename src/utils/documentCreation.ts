@@ -15,7 +15,7 @@ export async function createDocument({
   organisationId,
   documentType,
   title,
-  jurisdiction = 'UK',
+  jurisdiction = 'england_wales',
   enabledModules,
 }: CreateDocumentParams): Promise<string> {
   const documentTitle = title || `New ${documentType}`;

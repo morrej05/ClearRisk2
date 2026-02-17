@@ -2,10 +2,10 @@ import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
 import { getModuleName } from '../modules/moduleCatalog';
 import { detectInfoGaps } from '../../utils/infoGapQuickActions';
 import { listAttachments, type Attachment } from '../supabase/attachments';
+import { type Jurisdiction, getJurisdictionConfig, getJurisdictionLabel } from '../jurisdictions';
 import {
   fraRegulatoryFrameworkText,
   fraResponsiblePersonDutiesText,
-  type Jurisdiction,
 } from '../reportText';
 import {
   deriveExecutiveOutcome,
@@ -2409,9 +2409,40 @@ function drawRegulatoryFramework(
 
   yPosition -= 30;
 
-  const jurisdiction = (document.jurisdiction as Jurisdiction) || 'UK';
-  const frameworkText = fraRegulatoryFrameworkText(jurisdiction);
-  const paragraphs = frameworkText.split('\n\n');
+  // Get jurisdiction-specific configuration
+  const jurisdictionConfig = getJurisdictionConfig(document.jurisdiction);
+
+  // Draw primary legislation section
+  page.drawText('Primary Legislation', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+  yPosition -= 18;
+
+  for (const legislation of jurisdictionConfig.primaryLegislation) {
+    if (yPosition < MARGIN + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    page.drawText(`• ${sanitizePdfText(legislation)}`, {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 14;
+  }
+
+  yPosition -= 10;
+
+  // Draw regulatory framework text
+  const paragraphs = jurisdictionConfig.regulatoryFrameworkText.split('\n\n');
   for (const paragraph of paragraphs) {
     if (!paragraph.trim()) continue;
 
@@ -2459,75 +2490,36 @@ function drawResponsiblePersonDuties(
 
   yPosition -= 30;
 
-  const jurisdiction = (document.jurisdiction as Jurisdiction) || 'UK';
-  const dutiesText = fraResponsiblePersonDutiesText(jurisdiction);
-  const paragraphs = dutiesText.split('\n\n');
-  for (const paragraph of paragraphs) {
-    if (!paragraph.trim()) continue;
+  // Get jurisdiction-specific configuration
+  const jurisdictionConfig = getJurisdictionConfig(document.jurisdiction);
 
-    if (paragraph.startsWith('**') && paragraph.includes('**')) {
-      const match = paragraph.match(/\*\*(.+?)\*\*:?\s*(.*)/s);
-      if (match) {
-        const heading = match[1];
-        const content = match[2];
-
-        if (yPosition < MARGIN + 100) {
-          const result = addNewPage(pdfDoc, isDraft, totalPages);
-          page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
-        }
-
-        page.drawText(heading, {
-          x: MARGIN,
-          y: yPosition,
-          size: 11,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
-
-        yPosition -= 18;
-
-        if (content.trim()) {
-          const lines = wrapText(content, CONTENT_WIDTH, 11, font);
-          for (const line of lines) {
-            if (yPosition < MARGIN + 50) {
-              const result = addNewPage(pdfDoc, isDraft, totalPages);
-              page = result.page;
-              yPosition = PAGE_HEIGHT - MARGIN - 20;
-            }
-            page.drawText(line, {
-              x: MARGIN,
-              y: yPosition,
-              size: 11,
-              font,
-              color: rgb(0.1, 0.1, 0.1),
-            });
-            yPosition -= 16;
-          }
-        }
-
-        yPosition -= 8;
-      }
-    } else {
-      const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
-      for (const line of lines) {
-        if (yPosition < MARGIN + 50) {
-          const result = addNewPage(pdfDoc, isDraft, totalPages);
-          page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
-        }
-        page.drawText(line, {
-          x: MARGIN,
-          y: yPosition,
-          size: 11,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        yPosition -= 16;
-      }
-
-      yPosition -= 8;
+  // Draw key duties as bullet points
+  for (const duty of jurisdictionConfig.responsiblePersonDuties) {
+    if (yPosition < MARGIN + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
+
+    const dutyLines = wrapText(`• ${duty}`, CONTENT_WIDTH - 10, 11, font);
+    for (const line of dutyLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      page.drawText(line, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 16;
+    }
+
+    yPosition -= 4;
   }
 
   return yPosition;
@@ -3542,11 +3534,7 @@ function drawCleanAuditPage1(
   // Metadata (Centered, smaller)
   const clientName = document.responsible_person || organisation.name;
   const assessmentDate = formatDate(document.assessment_date);
-  const jurisdiction = document.jurisdiction || 'england_wales';
-  const jurisdictionDisplay = jurisdiction === 'england_wales' ? 'England & Wales' :
-    jurisdiction === 'scotland' ? 'Scotland' :
-    jurisdiction === 'northern_ireland' ? 'Northern Ireland' :
-    jurisdiction === 'republic_of_ireland' ? 'Republic of Ireland' : 'England & Wales';
+  const jurisdictionDisplay = getJurisdictionLabel(document.jurisdiction);
 
   const metadata = [
     `Prepared for: ${sanitizePdfText(clientName)}`,

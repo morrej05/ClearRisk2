@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { Jurisdiction, getAvailableJurisdictions, normalizeJurisdiction } from '../lib/jurisdictions';
 
 interface JurisdictionSelectorProps {
   documentId: string;
-  currentJurisdiction: 'UK' | 'IE';
+  currentJurisdiction: Jurisdiction | string;
   status: 'draft' | 'in_review' | 'approved' | 'issued';
-  onUpdate?: (jurisdiction: 'UK' | 'IE') => void;
+  onUpdate?: (jurisdiction: Jurisdiction) => void;
   className?: string;
 }
 
@@ -18,7 +19,7 @@ export function JurisdictionSelector({
   className = '',
 }: JurisdictionSelectorProps) {
   const { userProfile } = useAuth();
-  const [jurisdiction, setJurisdiction] = useState(currentJurisdiction);
+  const [jurisdiction, setJurisdiction] = useState<Jurisdiction>(normalizeJurisdiction(currentJurisdiction));
   const [saving, setSaving] = useState(false);
 
   const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'org_admin';
@@ -34,7 +35,7 @@ export function JurisdictionSelector({
     ? 'Only admins can change jurisdiction for documents in review or approved status.'
     : '';
 
-  const handleChange = async (newJurisdiction: 'UK' | 'IE') => {
+  const handleChange = async (newJurisdiction: Jurisdiction) => {
     if (isDisabled || newJurisdiction === jurisdiction) return;
 
     setSaving(true);
@@ -56,6 +57,8 @@ export function JurisdictionSelector({
     }
   };
 
+  const availableJurisdictions = getAvailableJurisdictions();
+
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       <label className="text-sm font-medium text-gray-700">
@@ -64,7 +67,7 @@ export function JurisdictionSelector({
       <div className="relative inline-block">
         <select
           value={jurisdiction}
-          onChange={(e) => handleChange(e.target.value as 'UK' | 'IE')}
+          onChange={(e) => handleChange(e.target.value as Jurisdiction)}
           disabled={isDisabled || saving}
           title={tooltipText}
           className={`
@@ -77,8 +80,11 @@ export function JurisdictionSelector({
             border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500
           `}
         >
-          <option value="UK">United Kingdom</option>
-          <option value="IE">Ireland</option>
+          {availableJurisdictions.map(j => (
+            <option key={j.value} value={j.value}>
+              {j.label}
+            </option>
+          ))}
         </select>
         {tooltipText && isDisabled && (
           <div className="mt-1 text-xs text-gray-500">

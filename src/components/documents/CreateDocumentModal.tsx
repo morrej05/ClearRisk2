@@ -90,7 +90,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
     scopeDescription: '',
     limitationsAssumptions: '',
     standardsSelected: [] as string[],
-    jurisdiction: 'UK',
+    jurisdiction: 'england_wales',
   });
 
   const handleTemplateSelect = (template: string) => {
@@ -407,8 +407,10 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent bg-white"
                 required
               >
-                <option value="UK">United Kingdom</option>
-                <option value="IE">Ireland</option>
+                <option value="england_wales">England & Wales</option>
+                <option value="scotland">Scotland</option>
+                <option value="northern_ireland">Northern Ireland</option>
+                <option value="ireland">Republic of Ireland</option>
               </select>
             </div>
           </div>

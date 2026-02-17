@@ -83,6 +83,47 @@ export default function FRA3FireProtectionForm({
     extinguisher_servicing_evidence: moduleInstance.data.extinguisher_servicing_evidence || 'unknown',
     sprinkler_present: moduleInstance.data.sprinkler_present || 'unknown',
     notes: moduleInstance.data.notes || '',
+    firefighting: moduleInstance.data.firefighting || {
+      portable_extinguishers: {
+        present: 'unknown',
+        servicing_status: 'unknown',
+        last_service_date: null,
+        notes: '',
+      },
+      hose_reels: {
+        installed: 'unknown',
+        servicing_status: 'unknown',
+        last_service_date: null,
+        notes: '',
+      },
+      fixed_facilities: {
+        sprinklers: {
+          installed: 'unknown',
+          type: '',
+          coverage: '',
+          servicing_status: 'unknown',
+          notes: '',
+        },
+        dry_riser: {
+          installed: 'unknown',
+          last_test_date: null,
+          notes: '',
+        },
+        wet_riser: {
+          installed: 'unknown',
+          servicing_status: 'unknown',
+          notes: '',
+        },
+        firefighting_shaft: {
+          present: 'unknown',
+          notes: '',
+        },
+        firefighting_lift: {
+          present: 'unknown',
+          notes: '',
+        },
+      },
+    },
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
@@ -546,87 +587,693 @@ export default function FRA3FireProtectionForm({
         )}
 
         {showFirefighting && (
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <h3 className="text-lg font-bold text-neutral-900 mb-4">
-              Firefighting Equipment
-            </h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Fire extinguishers present?
-              </label>
-              <select
-                value={formData.extinguishers_present}
-                onChange={(e) =>
-                  setFormData({ ...formData, extinguishers_present: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="unknown">Unknown</option>
-                <option value="yes">Yes - extinguishers provided</option>
-                <option value="no">No - no extinguishers</option>
-              </select>
-            </div>
-
-            {formData.extinguishers_present === 'yes' && (
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Annual servicing evidence?
-                </label>
-                <select
-                  value={formData.extinguisher_servicing_evidence}
-                  onChange={(e) =>
-                    setFormData({ ...formData, extinguisher_servicing_evidence: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-                >
-                  <option value="unknown">Unknown</option>
-                  <option value="yes">Yes - up to date servicing</option>
-                  <option value="partial">Partial - some serviced</option>
-                  <option value="no">No - no servicing evidence</option>
-                </select>
-              </div>
-            )}
-
-            {(formData.extinguishers_present === 'no' ||
-              formData.extinguisher_servicing_evidence === 'no' ||
-              formData.extinguisher_servicing_evidence === 'unknown') && (
-              <button
-                onClick={() =>
-                  handleQuickAction({
-                    action: 'Provide suitable and sufficient portable fire extinguishers (BS EN 3) at appropriate locations: final exits, high-risk areas, and within travel distance limits. Arrange annual servicing by competent engineer.',
-                    likelihood: 3,
-                    impact: 3,
-                  })
-                }
-                className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                Quick Add: Provide/service extinguishers
-              </button>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Sprinkler system present? (optional context)
-              </label>
-              <select
-                value={formData.sprinkler_present}
-                onChange={(e) =>
-                  setFormData({ ...formData, sprinkler_present: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="unknown">Unknown</option>
-                <option value="yes">Yes - sprinkler system installed</option>
-                <option value="no">No - no sprinklers</option>
-                <option value="na">N/A - not applicable to building type</option>
-              </select>
-              <p className="text-xs text-neutral-500 mt-1">
-                For information only - sprinkler assessment requires dedicated module
+          <div className="space-y-6">
+            {/* Portable Extinguishers */}
+            <div className="bg-white rounded-lg border border-neutral-200 p-6">
+              <h3 className="text-lg font-bold text-neutral-900 mb-2">
+                Portable Fire Extinguishers
+              </h3>
+              <p className="text-sm text-neutral-600 mb-4">
+                First-aid firefighting equipment (affects Likelihood, not Consequence)
               </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Portable extinguishers present?
+                  </label>
+                  <select
+                    value={formData.firefighting.portable_extinguishers.present}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        firefighting: {
+                          ...formData.firefighting,
+                          portable_extinguishers: {
+                            ...formData.firefighting.portable_extinguishers,
+                            present: e.target.value,
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  >
+                    <option value="unknown">Unknown</option>
+                    <option value="yes">Yes - Extinguishers provided</option>
+                    <option value="no">No - No extinguishers</option>
+                  </select>
+                </div>
+
+                {formData.firefighting.portable_extinguishers.present === 'yes' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Servicing status
+                      </label>
+                      <select
+                        value={formData.firefighting.portable_extinguishers.servicing_status}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              portable_extinguishers: {
+                                ...formData.firefighting.portable_extinguishers,
+                                servicing_status: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      >
+                        <option value="unknown">Unknown</option>
+                        <option value="current">Current - All up to date</option>
+                        <option value="partial">Partial - Some overdue</option>
+                        <option value="overdue">Overdue - Servicing required</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Date of last service (optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.firefighting.portable_extinguishers.last_service_date || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              portable_extinguishers: {
+                                ...formData.firefighting.portable_extinguishers,
+                                last_service_date: e.target.value || null,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Notes (types, locations, quantities)
+                      </label>
+                      <textarea
+                        value={formData.firefighting.portable_extinguishers.notes}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              portable_extinguishers: {
+                                ...formData.firefighting.portable_extinguishers,
+                                notes: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        placeholder="e.g., Water, CO2, Powder extinguishers at exits and high-risk areas..."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {(formData.firefighting.portable_extinguishers.present === 'no' ||
+                  formData.firefighting.portable_extinguishers.servicing_status === 'overdue') && (
+                  <button
+                    onClick={() =>
+                      handleQuickAction({
+                        action: 'Provide suitable and sufficient portable fire extinguishers (BS EN 3) at appropriate locations: final exits, high-risk areas, and within travel distance limits. Arrange annual servicing by competent engineer.',
+                        likelihood: 3,
+                        impact: 3,
+                      })
+                    }
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Quick Add: Provide/service extinguishers
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+
+            {/* Hose Reels */}
+            <div className="bg-white rounded-lg border border-neutral-200 p-6">
+              <h3 className="text-lg font-bold text-neutral-900 mb-2">
+                Hose Reels
+              </h3>
+              <p className="text-sm text-neutral-600 mb-4">
+                First-aid firefighting equipment (affects Likelihood, not Consequence)
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Hose reels installed?
+                  </label>
+                  <select
+                    value={formData.firefighting.hose_reels.installed}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        firefighting: {
+                          ...formData.firefighting,
+                          hose_reels: {
+                            ...formData.firefighting.hose_reels,
+                            installed: e.target.value,
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  >
+                    <option value="unknown">Unknown</option>
+                    <option value="yes">Yes - Hose reels installed</option>
+                    <option value="no">No - No hose reels</option>
+                    <option value="na">N/A - Not applicable</option>
+                  </select>
+                </div>
+
+                {formData.firefighting.hose_reels.installed === 'yes' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Servicing status
+                      </label>
+                      <select
+                        value={formData.firefighting.hose_reels.servicing_status}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              hose_reels: {
+                                ...formData.firefighting.hose_reels,
+                                servicing_status: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      >
+                        <option value="unknown">Unknown</option>
+                        <option value="current">Current - Tested and maintained</option>
+                        <option value="overdue">Overdue - Maintenance required</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Date of last service (optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.firefighting.hose_reels.last_service_date || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              hose_reels: {
+                                ...formData.firefighting.hose_reels,
+                                last_service_date: e.target.value || null,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Notes (locations, quantity)
+                      </label>
+                      <textarea
+                        value={formData.firefighting.hose_reels.notes}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              hose_reels: {
+                                ...formData.firefighting.hose_reels,
+                                notes: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        placeholder="e.g., 3 hose reels on each floor near stairs..."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Fixed Firefighting Facilities */}
+            <div className="bg-white rounded-lg border border-neutral-200 p-6">
+              <h3 className="text-lg font-bold text-neutral-900 mb-2">
+                Fixed Firefighting Facilities
+              </h3>
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>Critical Assessment:</strong> Fixed firefighting facilities may be critical to building safety strategy, especially in high-rise buildings or where relied upon for life safety.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {/* Sprinklers */}
+                <div className="border-b border-neutral-200 pb-4">
+                  <h4 className="font-semibold text-neutral-900 mb-3">Automatic Sprinkler System</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Sprinklers installed?
+                      </label>
+                      <select
+                        value={formData.firefighting.fixed_facilities.sprinklers.installed}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              fixed_facilities: {
+                                ...formData.firefighting.fixed_facilities,
+                                sprinklers: {
+                                  ...formData.firefighting.fixed_facilities.sprinklers,
+                                  installed: e.target.value,
+                                },
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      >
+                        <option value="unknown">Unknown</option>
+                        <option value="yes">Yes - Sprinklers installed</option>
+                        <option value="no">No - No sprinkler system</option>
+                      </select>
+                    </div>
+
+                    {formData.firefighting.fixed_facilities.sprinklers.installed === 'yes' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            System type
+                          </label>
+                          <select
+                            value={formData.firefighting.fixed_facilities.sprinklers.type}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                firefighting: {
+                                  ...formData.firefighting,
+                                  fixed_facilities: {
+                                    ...formData.firefighting.fixed_facilities,
+                                    sprinklers: {
+                                      ...formData.firefighting.fixed_facilities.sprinklers,
+                                      type: e.target.value,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                          >
+                            <option value="">Select type</option>
+                            <option value="wet">Wet System</option>
+                            <option value="dry">Dry System</option>
+                            <option value="pre-action">Pre-Action</option>
+                            <option value="deluge">Deluge</option>
+                            <option value="unknown">Unknown</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            Coverage
+                          </label>
+                          <select
+                            value={formData.firefighting.fixed_facilities.sprinklers.coverage}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                firefighting: {
+                                  ...formData.firefighting,
+                                  fixed_facilities: {
+                                    ...formData.firefighting.fixed_facilities,
+                                    sprinklers: {
+                                      ...formData.firefighting.fixed_facilities.sprinklers,
+                                      coverage: e.target.value,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                          >
+                            <option value="">Select coverage</option>
+                            <option value="full">Full Building Coverage</option>
+                            <option value="partial">Partial Coverage</option>
+                            <option value="high-risk-only">High-Risk Areas Only</option>
+                            <option value="unknown">Unknown</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            Servicing status
+                          </label>
+                          <select
+                            value={formData.firefighting.fixed_facilities.sprinklers.servicing_status}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                firefighting: {
+                                  ...formData.firefighting,
+                                  fixed_facilities: {
+                                    ...formData.firefighting.fixed_facilities,
+                                    sprinklers: {
+                                      ...formData.firefighting.fixed_facilities.sprinklers,
+                                      servicing_status: e.target.value,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                          >
+                            <option value="unknown">Unknown</option>
+                            <option value="current">Current - Maintained to BS 9251/9990</option>
+                            <option value="overdue">Overdue - Maintenance required</option>
+                            <option value="defective">Defective - System impaired</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            Notes
+                          </label>
+                          <textarea
+                            value={formData.firefighting.fixed_facilities.sprinklers.notes}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                firefighting: {
+                                  ...formData.firefighting,
+                                  fixed_facilities: {
+                                    ...formData.firefighting.fixed_facilities,
+                                    sprinklers: {
+                                      ...formData.firefighting.fixed_facilities.sprinklers,
+                                      notes: e.target.value,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            placeholder="Details of system specification, coverage, maintenance, or concerns..."
+                            rows={2}
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dry Riser */}
+                <div className="border-b border-neutral-200 pb-4">
+                  <h4 className="font-semibold text-neutral-900 mb-3">Dry Riser</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Dry riser installed?
+                      </label>
+                      <select
+                        value={formData.firefighting.fixed_facilities.dry_riser.installed}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              fixed_facilities: {
+                                ...formData.firefighting.fixed_facilities,
+                                dry_riser: {
+                                  ...formData.firefighting.fixed_facilities.dry_riser,
+                                  installed: e.target.value,
+                                },
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      >
+                        <option value="unknown">Unknown</option>
+                        <option value="yes">Yes - Dry riser present</option>
+                        <option value="no">No - No dry riser</option>
+                        <option value="na">N/A - Not required for building height</option>
+                      </select>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Required for buildings &gt;18m (BS 9990)
+                      </p>
+                    </div>
+
+                    {formData.firefighting.fixed_facilities.dry_riser.installed === 'yes' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            Date of last pressure test (annual)
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.firefighting.fixed_facilities.dry_riser.last_test_date || ''}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                firefighting: {
+                                  ...formData.firefighting,
+                                  fixed_facilities: {
+                                    ...formData.firefighting.fixed_facilities,
+                                    dry_riser: {
+                                      ...formData.firefighting.fixed_facilities.dry_riser,
+                                      last_test_date: e.target.value || null,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            Notes
+                          </label>
+                          <textarea
+                            value={formData.firefighting.fixed_facilities.dry_riser.notes}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                firefighting: {
+                                  ...formData.firefighting,
+                                  fixed_facilities: {
+                                    ...formData.firefighting.fixed_facilities,
+                                    dry_riser: {
+                                      ...formData.firefighting.fixed_facilities.dry_riser,
+                                      notes: e.target.value,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            placeholder="Details of locations, testing, or concerns..."
+                            rows={2}
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Wet Riser */}
+                <div className="border-b border-neutral-200 pb-4">
+                  <h4 className="font-semibold text-neutral-900 mb-3">Wet Riser</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Wet riser installed?
+                      </label>
+                      <select
+                        value={formData.firefighting.fixed_facilities.wet_riser.installed}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              fixed_facilities: {
+                                ...formData.firefighting.fixed_facilities,
+                                wet_riser: {
+                                  ...formData.firefighting.fixed_facilities.wet_riser,
+                                  installed: e.target.value,
+                                },
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      >
+                        <option value="unknown">Unknown</option>
+                        <option value="yes">Yes - Wet riser present</option>
+                        <option value="no">No - No wet riser</option>
+                        <option value="na">N/A - Not required for building height</option>
+                      </select>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Required for buildings &gt;50m (BS 9990)
+                      </p>
+                    </div>
+
+                    {formData.firefighting.fixed_facilities.wet_riser.installed === 'yes' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            Servicing status
+                          </label>
+                          <select
+                            value={formData.firefighting.fixed_facilities.wet_riser.servicing_status}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                firefighting: {
+                                  ...formData.firefighting,
+                                  fixed_facilities: {
+                                    ...formData.firefighting.fixed_facilities,
+                                    wet_riser: {
+                                      ...formData.firefighting.fixed_facilities.wet_riser,
+                                      servicing_status: e.target.value,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                          >
+                            <option value="unknown">Unknown</option>
+                            <option value="current">Current - Maintained to BS 9990</option>
+                            <option value="overdue">Overdue - Maintenance required</option>
+                            <option value="defective">Defective - System impaired</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            Notes
+                          </label>
+                          <textarea
+                            value={formData.firefighting.fixed_facilities.wet_riser.notes}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                firefighting: {
+                                  ...formData.firefighting,
+                                  fixed_facilities: {
+                                    ...formData.firefighting.fixed_facilities,
+                                    wet_riser: {
+                                      ...formData.firefighting.fixed_facilities.wet_riser,
+                                      notes: e.target.value,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            placeholder="Details of system, maintenance, or concerns..."
+                            rows={2}
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Firefighting Shaft/Lift */}
+                <div>
+                  <h4 className="font-semibold text-neutral-900 mb-3">Firefighting Access Facilities</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Firefighting shaft present?
+                      </label>
+                      <select
+                        value={formData.firefighting.fixed_facilities.firefighting_shaft.present}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              fixed_facilities: {
+                                ...formData.firefighting.fixed_facilities,
+                                firefighting_shaft: {
+                                  ...formData.firefighting.fixed_facilities.firefighting_shaft,
+                                  present: e.target.value,
+                                },
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      >
+                        <option value="unknown">Unknown</option>
+                        <option value="yes">Yes - Firefighting shaft present</option>
+                        <option value="no">No - No firefighting shaft</option>
+                        <option value="na">N/A - Not required</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Firefighting lift present?
+                      </label>
+                      <select
+                        value={formData.firefighting.fixed_facilities.firefighting_lift.present}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firefighting: {
+                              ...formData.firefighting,
+                              fixed_facilities: {
+                                ...formData.firefighting.fixed_facilities,
+                                firefighting_lift: {
+                                  ...formData.firefighting.fixed_facilities.firefighting_lift,
+                                  present: e.target.value,
+                                },
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                      >
+                        <option value="unknown">Unknown</option>
+                        <option value="yes">Yes - Firefighting lift present</option>
+                        <option value="no">No - No firefighting lift</option>
+                        <option value="na">N/A - Not required</option>
+                      </select>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Required for buildings &gt;18m (BS 9999)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -653,6 +1300,7 @@ export default function FRA3FireProtectionForm({
         onNotesChange={setAssessorNotes}
         onSave={handleSave}
         isSaving={isSaving}
+        moduleKey={moduleInstance.module_key}
       />
 
       {(() => {

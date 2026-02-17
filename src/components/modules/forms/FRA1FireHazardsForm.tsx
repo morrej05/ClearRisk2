@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Flame, CheckCircle, Plus } from 'lucide-react';
+import { Flame, CheckCircle, Plus, Zap } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import OutcomePanel from '../OutcomePanel';
@@ -90,6 +90,15 @@ export default function FRA1FireHazardsForm({
     housekeeping_fire_load: moduleInstance.data.housekeeping_fire_load || 'unknown',
     lone_working: moduleInstance.data.lone_working || 'unknown',
     notes: moduleInstance.data.notes || '',
+    electrical_safety: moduleInstance.data.electrical_safety || {
+      eicr_last_date: null,
+      eicr_interval_years: '',
+      eicr_satisfactory: 'unknown',
+      eicr_evidence_seen: 'no',
+      eicr_outstanding_c1_c2: 'unknown',
+      eicr_notes: '',
+      pat_in_place: 'unknown',
+    },
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
@@ -559,6 +568,222 @@ export default function FRA1FireHazardsForm({
         </div>
 
         <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-5 h-5 text-amber-600" />
+            <h3 className="text-lg font-bold text-neutral-900">
+              Electrical Installation Safety (Fixed Wiring / EICR)
+            </h3>
+          </div>
+          <p className="text-sm text-neutral-600 mb-4">
+            Assess electrical installation condition and compliance with BS 7671
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Date of Last EICR (Electrical Installation Condition Report)
+              </label>
+              <input
+                type="date"
+                value={formData.electrical_safety.eicr_last_date || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    electrical_safety: {
+                      ...formData.electrical_safety,
+                      eicr_last_date: e.target.value || null,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Recommended Test Interval
+              </label>
+              <select
+                value={formData.electrical_safety.eicr_interval_years}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    electrical_safety: {
+                      ...formData.electrical_safety,
+                      eicr_interval_years: e.target.value,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Select interval</option>
+                <option value="1">Annual</option>
+                <option value="3">Every 3 Years</option>
+                <option value="5">Every 5 Years</option>
+                <option value="other">Other</option>
+              </select>
+              <p className="text-xs text-neutral-500 mt-1">
+                Typical intervals: HMOs/commercial 1-3 years, domestic letting 5 years
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                EICR Result (if available)
+              </label>
+              <select
+                value={formData.electrical_safety.eicr_satisfactory}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    electrical_safety: {
+                      ...formData.electrical_safety,
+                      eicr_satisfactory: e.target.value,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="unknown">Unknown</option>
+                <option value="satisfactory">Satisfactory</option>
+                <option value="unsatisfactory">Unsatisfactory</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                EICR Evidence Seen
+              </label>
+              <select
+                value={formData.electrical_safety.eicr_evidence_seen}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    electrical_safety: {
+                      ...formData.electrical_safety,
+                      eicr_evidence_seen: e.target.value,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="no">No - Evidence not seen</option>
+                <option value="yes">Yes - Evidence seen and reviewed</option>
+              </select>
+              {formData.electrical_safety.eicr_evidence_seen === 'no' && (
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-800">
+                    <strong>Information Gap:</strong> EICR evidence should be requested and reviewed.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Unresolved C1 or C2 Observations
+              </label>
+              <select
+                value={formData.electrical_safety.eicr_outstanding_c1_c2}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    electrical_safety: {
+                      ...formData.electrical_safety,
+                      eicr_outstanding_c1_c2: e.target.value,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="unknown">Unknown</option>
+                <option value="no">No - All observations resolved</option>
+                <option value="yes">Yes - Unresolved C1/C2 observations present</option>
+              </select>
+              <p className="text-xs text-neutral-500 mt-1">
+                C1 = Danger present (immediate risk); C2 = Potentially dangerous (urgent remedial action required)
+              </p>
+              {formData.electrical_safety.eicr_outstanding_c1_c2 === 'yes' && (
+                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">
+                    <strong>Critical:</strong> Unresolved C1/C2 observations represent immediate or potential danger and must be addressed urgently.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Electrical Safety Notes
+              </label>
+              <textarea
+                value={formData.electrical_safety.eicr_notes}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    electrical_safety: {
+                      ...formData.electrical_safety,
+                      eicr_notes: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Details of EICR findings, observations, electrical safety concerns, or remedial works..."
+                rows={3}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                PAT Testing Regime (Optional)
+              </label>
+              <select
+                value={formData.electrical_safety.pat_in_place}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    electrical_safety: {
+                      ...formData.electrical_safety,
+                      pat_in_place: e.target.value,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="unknown">Unknown</option>
+                <option value="yes">Yes - PAT regime in place</option>
+                <option value="no">No PAT regime</option>
+                <option value="na">Not applicable</option>
+              </select>
+              <p className="text-xs text-neutral-500 mt-1">
+                Portable Appliance Testing for user equipment (not part of fixed installation)
+              </p>
+            </div>
+
+            {(formData.electrical_safety.eicr_evidence_seen === 'no' ||
+              formData.electrical_safety.eicr_outstanding_c1_c2 === 'yes') && (
+              <div className="pt-4 border-t border-neutral-200">
+                <button
+                  onClick={() =>
+                    handleQuickAction({
+                      action: formData.electrical_safety.eicr_outstanding_c1_c2 === 'yes'
+                        ? 'Urgent: Rectify unresolved C1/C2 electrical observations identified in EICR. Engage competent electrical contractor to assess and remediate all immediate and potential dangers in accordance with BS 7671.'
+                        : 'Obtain and review current EICR (Electrical Installation Condition Report) to verify electrical installation safety and compliance with BS 7671. Implement any required remedial works.',
+                      likelihood: formData.electrical_safety.eicr_outstanding_c1_c2 === 'yes' ? 5 : 4,
+                      impact: 4,
+                    })
+                  }
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Quick Add: {formData.electrical_safety.eicr_outstanding_c1_c2 === 'yes' ? 'Rectify C1/C2 Observations' : 'Request EICR Evidence'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
           <h3 className="text-lg font-bold text-neutral-900 mb-4">
             Additional Hazard Notes
           </h3>
@@ -581,6 +806,7 @@ export default function FRA1FireHazardsForm({
         onNotesChange={setAssessorNotes}
         onSave={handleSave}
         isSaving={isSaving}
+        moduleKey="FRA_1_HAZARDS"
       />
 
       {document?.id && moduleInstance?.id && (

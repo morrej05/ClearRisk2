@@ -114,42 +114,6 @@ interface BuildPdfOptions {
   renderMode?: 'preview' | 'issued';
 }
 
-const MODULE_ORDER_LEGACY = [
-  'A1_DOC_CONTROL',
-  'A2_BUILDING_PROFILE',
-  'A3_PERSONS_AT_RISK',
-  'FRA_4_SIGNIFICANT_FINDINGS',
-  'FRA_90_SIGNIFICANT_FINDINGS',
-  'FRA_1_HAZARDS',
-  'A4_MANAGEMENT_CONTROLS',
-  'FRA_6_MANAGEMENT_SYSTEMS',
-  'A5_EMERGENCY_ARRANGEMENTS',
-  'FRA_7_EMERGENCY_ARRANGEMENTS',
-  'A7_REVIEW_ASSURANCE',
-  'FRA_2_ESCAPE_ASIS',
-  'FRA_3_PROTECTION_ASIS',
-  'FRA_5_EXTERNAL_FIRE_SPREAD',
-];
-
-const MODULE_ORDER_SPLIT = [
-  'A1_DOC_CONTROL',
-  'A2_BUILDING_PROFILE',
-  'A3_PERSONS_AT_RISK',
-  'FRA_4_SIGNIFICANT_FINDINGS',
-  'FRA_90_SIGNIFICANT_FINDINGS',
-  'FRA_1_HAZARDS',
-  'A4_MANAGEMENT_CONTROLS',
-  'FRA_6_MANAGEMENT_SYSTEMS',
-  'A5_EMERGENCY_ARRANGEMENTS',
-  'FRA_7_EMERGENCY_ARRANGEMENTS',
-  'A7_REVIEW_ASSURANCE',
-  'FRA_2_ESCAPE_ASIS',
-  'FRA_3_ACTIVE_SYSTEMS',
-  'FRA_4_PASSIVE_PROTECTION',
-  'FRA_8_FIREFIGHTING_EQUIPMENT',
-  'FRA_5_EXTERNAL_FIRE_SPREAD',
-];
-
 export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array> {
   console.log('[PDF FRA] Starting FRA PDF build');
   const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
@@ -289,28 +253,81 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     yPosition = drawLimitations(page, document.limitations_assumptions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
-  const sortedModules = sortModules(moduleInstances);
-  const fra4Module = sortedModules.find((m) =>
+  // Section-based rendering using fixed PAS-79 skeleton
+  const fra4Module = moduleInstances.find((m) =>
     m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS' || m.module_key === 'FRA_90_SIGNIFICANT_FINDINGS'
   );
 
-  if (fra4Module) {
+  // Render sections 2-14 using the fixed structure
+  for (const section of FRA_REPORT_STRUCTURE) {
+    // Skip section 1 (cover pages handled separately above)
+    if (section.id === 1) continue;
+
+    // Find modules for this section
+    const sectionModules = moduleInstances.filter(m =>
+      section.moduleKeys.includes(m.module_key)
+    );
+
+    // Skip empty sections (except special sections that have custom logic)
+    if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) continue;
+
+    // Create new page for section
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
     yPosition = PAGE_HEIGHT - MARGIN;
-    yPosition = drawExecutiveSummary(page, fra4Module, actions, actionRatings, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
-    // Add Risk Rating Explanation immediately after Executive Summary
-    yPosition = drawRiskRatingExplanation(page, fra4Module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
-  }
+    // Draw section header
+    yPosition = drawSectionHeader(page, section.id, section.title, font, fontBold, yPosition);
+    yPosition -= 10;
 
-  for (const module of sortedModules) {
-    if (module.module_key === 'FRA_4_SIGNIFICANT_FINDINGS' || module.module_key === 'FRA_90_SIGNIFICANT_FINDINGS') continue;
+    // Section-specific rendering
+    switch (section.id) {
+      case 2: // Premises & General Information
+        yPosition = renderSection2Premises(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        break;
 
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
-    yPosition = drawModuleSummary(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+      case 3: // Occupants & Vulnerability
+        yPosition = renderSection3Occupants(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        break;
+
+      case 4: // Legislation & Duty Holder
+        yPosition = renderSection4Legislation(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        break;
+
+      case 7: // Fire Detection, Alarm & Warning
+        yPosition = renderSection7Detection(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        break;
+
+      case 8: // Emergency Lighting
+        yPosition = renderSection8EmergencyLighting(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        break;
+
+      case 10: // Fixed Fire Suppression & Firefighting Facilities
+        yPosition = renderSection10Suppression(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        break;
+
+      case 11: // Fire Safety Management & Procedures
+        yPosition = renderSection11Management(page, sectionModules, moduleInstances, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        break;
+
+      case 13: // Significant Findings, Risk Evaluation & Action Plan
+        if (fra4Module) {
+          yPosition = drawExecutiveSummary(page, fra4Module, actions, actionRatings, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+          yPosition = drawRiskRatingExplanation(page, fra4Module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        }
+        break;
+
+      case 14: // Review & Reassessment
+        yPosition = renderSection14Review(page, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        break;
+
+      default:
+        // Generic section rendering for standard modules
+        for (const module of sectionModules) {
+          yPosition = drawModuleContent(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        }
+        break;
+    }
   }
 
   if (isIssuedMode && actions.length > 0) {
@@ -380,28 +397,6 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   console.log('[PDF FRA] PDF saved successfully,', pdfBytes.length, 'bytes');
   console.log('[PDF FRA] Build complete');
   return pdfBytes;
-}
-
-function sortModules(moduleInstances: ModuleInstance[]): ModuleInstance[] {
-  const hasLegacyProtection = moduleInstances.some((module) => module.module_key === 'FRA_3_PROTECTION_ASIS');
-  const moduleOrder = hasLegacyProtection ? MODULE_ORDER_LEGACY : MODULE_ORDER_SPLIT;
-
-  return [...moduleInstances]
-    .filter((module) => !(hasLegacyProtection && [
-      'FRA_3_ACTIVE_SYSTEMS',
-      'FRA_4_PASSIVE_PROTECTION',
-      'FRA_8_FIREFIGHTING_EQUIPMENT',
-    ].includes(module.module_key)))
-    .sort((a, b) => {
-      const aIndex = moduleOrder.indexOf(a.module_key);
-      const bIndex = moduleOrder.indexOf(b.module_key);
-
-      if (aIndex === -1 && bIndex === -1) return 0;
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-
-      return aIndex - bIndex;
-    });
 }
 
 function getOrganisationDisplayName(organisation: Organisation): string {
@@ -2753,6 +2748,422 @@ function drawLimitations(
  * - No heavy borders or matrices
  * - Clean typography
  */
+/**
+ * Draw section header with number and title
+ * Replaces module key printing with clean section numbering
+ */
+function drawSectionHeader(
+  page: PDFPage,
+  sectionId: number,
+  sectionTitle: string,
+  font: any,
+  fontBold: any,
+  yPosition: number
+): number {
+  yPosition -= 20;
+
+  const headerText = `${sectionId}. ${sectionTitle}`;
+  page.drawText(headerText, {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  yPosition -= 30;
+  return yPosition;
+}
+
+/**
+ * Draw module content WITHOUT printing the module key/name
+ * This is drawModuleSummary but without the title
+ */
+function drawModuleContent(
+  page: PDFPage,
+  module: ModuleInstance,
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  // Outcome badge
+  if (module.outcome) {
+    const outcomeLabel = getOutcomeLabel(module.outcome);
+    const outcomeColor = getOutcomeColor(module.outcome);
+
+    page.drawText('Outcome:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    page.drawRectangle({
+      x: MARGIN + 70,
+      y: yPosition - 3,
+      width: 140,
+      height: 18,
+      color: outcomeColor,
+    });
+    page.drawText(outcomeLabel, {
+      x: MARGIN + 75,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(1, 1, 1),
+    });
+
+    yPosition -= 25;
+  }
+
+  // Assessor notes
+  if (module.assessor_notes && module.assessor_notes.trim()) {
+    page.drawText('Assessor Notes:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 18;
+    const notesLines = wrapText(module.assessor_notes, CONTENT_WIDTH, 10, font);
+    for (const line of notesLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+    yPosition -= 10;
+  }
+
+  // Module data
+  yPosition = drawModuleKeyDetails(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+  // Info gap quick actions
+  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+  return yPosition;
+}
+
+/**
+ * Section 2: Premises & General Information (A2_BUILDING_PROFILE)
+ */
+function renderSection2Premises(
+  page: PDFPage,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  const a2Module = sectionModules.find(m => m.module_key === 'A2_BUILDING_PROFILE');
+
+  if (a2Module) {
+    yPosition = drawModuleContent(page, a2Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  return yPosition;
+}
+
+/**
+ * Section 3: Occupants & Vulnerability (A3_PERSONS_AT_RISK)
+ */
+function renderSection3Occupants(
+  page: PDFPage,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  const a3Module = sectionModules.find(m => m.module_key === 'A3_PERSONS_AT_RISK');
+
+  if (a3Module) {
+    yPosition = drawModuleContent(page, a3Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  return yPosition;
+}
+
+/**
+ * Section 4: Legislation & Duty Holder (A1_DOC_CONTROL)
+ */
+function renderSection4Legislation(
+  page: PDFPage,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  const a1Module = sectionModules.find(m => m.module_key === 'A1_DOC_CONTROL');
+
+  if (a1Module) {
+    yPosition = drawModuleContent(page, a1Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  return yPosition;
+}
+
+/**
+ * Section 7: Fire Detection, Alarm & Warning
+ * Split from FRA_3_ACTIVE_SYSTEMS (detection fields only)
+ */
+function renderSection7Detection(
+  page: PDFPage,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  const fra3Module = sectionModules.find(m => m.module_key === 'FRA_3_ACTIVE_SYSTEMS');
+
+  if (fra3Module && fra3Module.data) {
+    // Render detection/alarm specific fields
+    const detectionFields = [
+      'detection_system_type',
+      'detection_system_grade',
+      'detection_coverage',
+      'alarm_type',
+      'alarm_audibility',
+      'alarm_testing',
+      'alarm_maintenance'
+    ];
+
+    yPosition = renderFilteredModuleData(page, fra3Module, detectionFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  return yPosition;
+}
+
+/**
+ * Section 8: Emergency Lighting
+ * Split from FRA_3_ACTIVE_SYSTEMS (emergency lighting fields only)
+ */
+function renderSection8EmergencyLighting(
+  page: PDFPage,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  const fra3Module = sectionModules.find(m => m.module_key === 'FRA_3_ACTIVE_SYSTEMS');
+
+  if (fra3Module && fra3Module.data) {
+    // Render emergency lighting specific fields
+    const lightingFields = [
+      'emergency_lighting_type',
+      'emergency_lighting_coverage',
+      'emergency_lighting_duration',
+      'emergency_lighting_testing',
+      'emergency_lighting_maintenance'
+    ];
+
+    yPosition = renderFilteredModuleData(page, fra3Module, lightingFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  return yPosition;
+}
+
+/**
+ * Section 10: Fixed Fire Suppression & Firefighting Facilities
+ * Split from FRA_8 (suppression systems only)
+ */
+function renderSection10Suppression(
+  page: PDFPage,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  const fra8Module = sectionModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
+
+  if (fra8Module && fra8Module.data) {
+    // Render suppression systems (sprinklers, risers, etc.)
+    const suppressionFields = [
+      'sprinkler_system',
+      'sprinkler_type',
+      'sprinkler_coverage',
+      'rising_mains',
+      'dry_riser_type',
+      'wet_riser_type',
+      'firefighting_lift',
+      'firefighting_shaft'
+    ];
+
+    yPosition = renderFilteredModuleData(page, fra8Module, suppressionFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  return yPosition;
+}
+
+/**
+ * Section 11: Fire Safety Management & Procedures
+ * Combines multiple management modules + FRA_8 portable equipment
+ */
+function renderSection11Management(
+  page: PDFPage,
+  sectionModules: ModuleInstance[],
+  allModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  // Render all management modules
+  const managementModules = sectionModules.filter(m =>
+    ['A4_MANAGEMENT_CONTROLS', 'FRA_6_MANAGEMENT_SYSTEMS', 'A5_EMERGENCY_ARRANGEMENTS',
+     'FRA_7_EMERGENCY_ARRANGEMENTS', 'A7_REVIEW_ASSURANCE'].includes(m.module_key)
+  );
+
+  for (const module of managementModules) {
+    yPosition = drawModuleContent(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  // Add portable firefighting equipment from FRA_8
+  const fra8Module = allModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
+  if (fra8Module && fra8Module.data) {
+    const equipmentFields = [
+      'portable_extinguishers',
+      'extinguisher_types',
+      'extinguisher_locations',
+      'hose_reels',
+      'fire_blankets'
+    ];
+
+    yPosition = renderFilteredModuleData(page, fra8Module, equipmentFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  return yPosition;
+}
+
+/**
+ * Section 14: Review & Reassessment
+ */
+function renderSection14Review(
+  page: PDFPage,
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  yPosition -= 10;
+
+  page.drawText('Review Requirements', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  yPosition -= 20;
+
+  const reviewText = `This fire risk assessment should be reviewed and updated:
+
+• When there are significant changes to the building, occupancy, or use
+• Following any fire or near-miss incident
+• When enforcement action is taken by the fire authority
+• As part of the ongoing fire safety management regime
+
+Next formal reassessment recommended: ${document.review_date ? formatDate(document.review_date) : 'To be determined by duty holder'}`;
+
+  const reviewLines = wrapText(reviewText, CONTENT_WIDTH, 11, font);
+  for (const line of reviewLines) {
+    if (yPosition < MARGIN + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 16;
+  }
+
+  return yPosition;
+}
+
+/**
+ * Helper: Render only specific fields from a module
+ */
+function renderFilteredModuleData(
+  page: PDFPage,
+  module: ModuleInstance,
+  fieldKeys: string[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  // Filter module data to only include specified fields
+  const filteredModule = {
+    ...module,
+    data: Object.keys(module.data || {})
+      .filter(key => fieldKeys.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = module.data[key];
+        return obj;
+      }, {} as Record<string, any>)
+  };
+
+  // Only render if there's data
+  if (Object.keys(filteredModule.data).length > 0) {
+    yPosition = drawModuleContent(page, filteredModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  }
+
+  return yPosition;
+}
+
 function drawCleanAuditPage1(
   page: PDFPage,
   scoringResult: ScoringResult,

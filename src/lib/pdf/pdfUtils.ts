@@ -799,37 +799,40 @@ export function drawActionPlanSnapshot(
   const p3Actions = openActions.filter(a => a.priority_band === 'P3');
   const p4Actions = openActions.filter(a => a.priority_band === 'P4');
 
-  const { page } = addNewPage(pdfDoc, isDraft, totalPages);
-  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+  // Use mutable object to track current page and yPosition
+  const context = {
+    page: addNewPage(pdfDoc, isDraft, totalPages).page,
+    yPosition: PAGE_HEIGHT - MARGIN - 20,
+  };
 
   // Section title
-  page.drawText('ACTION PLAN SNAPSHOT', {
+  context.page.drawText('ACTION PLAN SNAPSHOT', {
     x: MARGIN,
-    y: yPosition,
+    y: context.yPosition,
     size: 16,
     font: fonts.bold,
     color: rgb(0, 0, 0),
   });
 
-  yPosition -= 10;
+  context.yPosition -= 10;
 
   // Introductory text
   const intro = 'This section provides a summary of remedial actions required, grouped by priority level. Full details are provided in Section 13 (Recommendations).';
   const introLines = wrapText(intro, CONTENT_WIDTH, 10, fonts.regular);
 
-  yPosition -= 20;
+  context.yPosition -= 20;
   for (const line of introLines) {
-    page.drawText(line, {
+    context.page.drawText(line, {
       x: MARGIN,
-      y: yPosition,
+      y: context.yPosition,
       size: 10,
       font: fonts.regular,
       color: rgb(0.3, 0.3, 0.3),
     });
-    yPosition -= 14;
+    context.yPosition -= 14;
   }
 
-  yPosition -= 10;
+  context.yPosition -= 10;
 
   // Helper function to draw priority group
   const drawPriorityGroup = (
@@ -840,28 +843,28 @@ export function drawActionPlanSnapshot(
     if (priorityActions.length === 0) return;
 
     // Check if we need a new page
-    if (yPosition < MARGIN + 100) {
-      const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    if (context.yPosition < MARGIN + 100) {
+      context.page = addNewPage(pdfDoc, isDraft, totalPages).page;
+      context.yPosition = PAGE_HEIGHT - MARGIN - 20;
     }
 
     // Priority heading
-    page.drawText(`${priorityLabel} (${priorityActions.length})`, {
+    context.page.drawText(`${priorityLabel} (${priorityActions.length})`, {
       x: MARGIN,
-      y: yPosition,
+      y: context.yPosition,
       size: 12,
       font: fonts.bold,
       color,
     });
 
-    yPosition -= 20;
+    context.yPosition -= 20;
 
     // List actions (max 5 per priority to keep snapshot concise)
     const displayActions = priorityActions.slice(0, 5);
     for (const action of displayActions) {
-      if (yPosition < MARGIN + 40) {
-        const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      if (context.yPosition < MARGIN + 40) {
+        context.page = addNewPage(pdfDoc, isDraft, totalPages).page;
+        context.yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
 
       // Action text (truncated if too long)
@@ -874,30 +877,30 @@ export function drawActionPlanSnapshot(
       const ref = action.reference_number || 'R-???';
       const section = action.section_reference || 'TBD';
 
-      page.drawText(`• ${ref} (Section ${section}): ${actionText}`, {
+      context.page.drawText(`• ${ref} (Section ${section}): ${actionText}`, {
         x: MARGIN + 10,
-        y: yPosition,
+        y: context.yPosition,
         size: 9,
         font: fonts.regular,
         color: rgb(0.2, 0.2, 0.2),
       });
 
-      yPosition -= 16;
+      context.yPosition -= 16;
     }
 
     // If more actions than displayed, show count
     if (priorityActions.length > 5) {
-      page.drawText(`  ... and ${priorityActions.length - 5} more ${priorityLabel} action(s)`, {
+      context.page.drawText(`  ... and ${priorityActions.length - 5} more ${priorityLabel} action(s)`, {
         x: MARGIN + 10,
-        y: yPosition,
+        y: context.yPosition,
         size: 9,
         font: fonts.regular,
         color: rgb(0.5, 0.5, 0.5),
       });
-      yPosition -= 16;
+      context.yPosition -= 16;
     }
 
-    yPosition -= 10; // Spacing between priority groups
+    context.yPosition -= 10; // Spacing between priority groups
   };
 
   // Draw each priority group

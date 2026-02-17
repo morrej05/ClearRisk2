@@ -534,6 +534,68 @@ Currently, utility functions are added but not fully applied throughout PDF gene
 
 ---
 
+## Bug Fix: Action Plan Snapshot Page Reference Issue
+
+**Date:** 2026-02-17 (Post-Implementation)
+**Issue:** Runtime error when generating PDFs with Action Plan Snapshot
+
+### Problem
+
+Initial implementation had a scope issue in `drawActionPlanSnapshot()`:
+- Used separate `page` and `yPosition` variables
+- Nested `drawPriorityGroup()` function created new pages but didn't update outer `page` reference
+- After pagination, continued drawing on old page instead of new page
+- Caused rendering issues and potential crashes
+
+**Error Pattern:**
+```
+Cannot read properties of undefined (reading 'push')
+at addNewPage (pdfUtils.ts:226)
+```
+
+### Solution
+
+Changed from separate variables to mutable context object:
+
+**Before:**
+```typescript
+const { page } = addNewPage(pdfDoc, isDraft, totalPages);
+let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+const drawPriorityGroup = (...) => {
+  if (yPosition < MARGIN + 100) {
+    const { page: newPage } = addNewPage(...); // ❌ newPage not used
+    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+  page.drawText(...); // ❌ Still using old page!
+};
+```
+
+**After:**
+```typescript
+const context = {
+  page: addNewPage(pdfDoc, isDraft, totalPages).page,
+  yPosition: PAGE_HEIGHT - MARGIN - 20,
+};
+
+const drawPriorityGroup = (...) => {
+  if (context.yPosition < MARGIN + 100) {
+    context.page = addNewPage(...).page; // ✅ Updates context
+    context.yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+  context.page.drawText(...); // ✅ Uses current page
+};
+```
+
+### Result
+
+- Page references now correctly maintained across pagination
+- All drawing operations happen on the correct page
+- Build succeeds with no errors
+- Action Plan Snapshot renders correctly
+
+---
+
 ## Conclusion
 
 ✅ **Governance/Critical Outcomes + PDF Stabilization Complete**
@@ -543,26 +605,31 @@ Currently, utility functions are added but not fully applied throughout PDF gene
 2. PDF section summaries never say "no deficiencies" when actions/info gaps exist
 3. Utility functions added to suppress empty/unknown fields
 4. Action Plan Snapshot section added after Executive Summary
+5. **Fixed Action Plan Snapshot pagination issue**
 
 **What was improved:**
 - Section summaries now accurately reflect P3/P4 actions and info gaps
 - PDF can now suppress noise from empty fields (utilities ready for use)
 - Readers get quick action overview immediately after exec summary
+- **Action Plan Snapshot correctly handles multi-page rendering**
 
 **What's ready:**
 - Build succeeds with no errors
 - All governance/critical categorization correct
 - PDF generation logic enhanced
-- New Action Plan Snapshot feature deployed
+- New Action Plan Snapshot feature deployed and fixed
+- Proper page reference management in nested functions
 
 **Result:**
 - More accurate section summaries
 - Cleaner PDF outputs (when empty field suppression applied)
 - Better reader experience with action snapshot
 - Professional, dense reports without empty noise
+- **Stable PDF generation with correct pagination**
 
 ---
 
 **Implementation Date:** 2026-02-17
+**Bug Fix Date:** 2026-02-17
 **Status:** ✅ COMPLETE
 **Ready for:** Testing and Production

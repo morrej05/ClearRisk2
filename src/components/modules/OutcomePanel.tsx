@@ -13,6 +13,11 @@ interface OutcomePanelProps {
   onSave: () => void;
   isSaving?: boolean;
   moduleKey: string;
+  scoringData?: {
+    extent?: string;
+    gapType?: string;
+  };
+  onScoringChange?: (scoring: { extent?: string; gapType?: string }) => void;
 }
 
 export default function OutcomePanel({
@@ -23,6 +28,8 @@ export default function OutcomePanel({
   onSave,
   isSaving = false,
   moduleKey,
+  scoringData = {},
+  onScoringChange,
 }: OutcomePanelProps) {
   const outcomeCategory = getModuleOutcomeCategory(moduleKey);
   const isCritical = outcomeCategory === 'critical';
@@ -35,6 +42,10 @@ export default function OutcomePanel({
   const helperText = isCritical
     ? 'Use "Material Deficiency" only where life safety is significantly compromised.'
     : 'Use this to record adequacy of management arrangements; these do not directly determine Consequence.';
+
+  const normalizedOutcome = outcome?.toLowerCase().replace(/[^a-z_]/g, '_') || '';
+  const isMaterialDef = normalizedOutcome.includes('material') || normalizedOutcome.includes('significant');
+  const isInfoGap = normalizedOutcome.includes('info') || normalizedOutcome.includes('gap');
 
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-6 mt-6">
@@ -63,6 +74,47 @@ export default function OutcomePanel({
             {helperText}
           </p>
         </div>
+
+        {isMaterialDef && onScoringChange && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <label className="block text-sm font-medium text-amber-900 mb-2">
+              Extent of Material Deficiency
+            </label>
+            <select
+              value={scoringData.extent || ''}
+              onChange={(e) => onScoringChange({ ...scoringData, extent: e.target.value })}
+              className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+            >
+              <option value="">— Select extent —</option>
+              <option value="localised">Localised</option>
+              <option value="repeated">Repeated</option>
+              <option value="systemic">Systemic</option>
+            </select>
+            <p className="text-xs text-amber-700 mt-1">
+              Systemic or repeated deficiencies may escalate Consequence. Localised issues typically affect Likelihood only.
+            </p>
+          </div>
+        )}
+
+        {isInfoGap && onScoringChange && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <label className="block text-sm font-medium text-blue-900 mb-2">
+              Information Gap Type
+            </label>
+            <select
+              value={scoringData.gapType || ''}
+              onChange={(e) => onScoringChange({ ...scoringData, gapType: e.target.value })}
+              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="">— Select gap type —</option>
+              <option value="non_critical">Non-critical</option>
+              <option value="critical">Critical</option>
+            </select>
+            <p className="text-xs text-blue-700 mt-1">
+              Critical information gaps block Low/Trivial risk ratings and set assessment to provisional.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-2">

@@ -103,6 +103,7 @@ export default function FRA1FireHazardsForm({
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
   const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+  const [scoringData, setScoringData] = useState(moduleInstance.data.scoring || {});
 
   const toggleMultiSelect = (field: 'ignition_sources' | 'fuel_sources' | 'high_risk_activities', value: string) => {
     const current = formData[field] as string[];
@@ -183,7 +184,7 @@ export default function FRA1FireHazardsForm({
       const payload = sanitizeModuleInstancePayload({
         outcome,
         assessor_notes: assessorNotes,
-        data: formData,
+        data: { ...formData, scoring: scoringData },
         completed_at: completedAt,
       });
 
@@ -807,6 +808,8 @@ export default function FRA1FireHazardsForm({
         onSave={handleSave}
         isSaving={isSaving}
         moduleKey="FRA_1_HAZARDS"
+        scoringData={scoringData}
+        onScoringChange={setScoringData}
       />
 
       {document?.id && moduleInstance?.id && (

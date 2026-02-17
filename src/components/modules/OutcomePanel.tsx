@@ -1,4 +1,9 @@
 import { Save } from 'lucide-react';
+import {
+  getModuleOutcomeCategory,
+  CRITICAL_OUTCOME_OPTIONS,
+  GOVERNANCE_OUTCOME_OPTIONS,
+} from '../../lib/modules/moduleCatalog';
 
 interface OutcomePanelProps {
   outcome: string | null;
@@ -7,6 +12,7 @@ interface OutcomePanelProps {
   onNotesChange: (notes: string) => void;
   onSave: () => void;
   isSaving?: boolean;
+  moduleKey: string;
 }
 
 export default function OutcomePanel({
@@ -16,30 +22,45 @@ export default function OutcomePanel({
   onNotesChange,
   onSave,
   isSaving = false,
+  moduleKey,
 }: OutcomePanelProps) {
+  const outcomeCategory = getModuleOutcomeCategory(moduleKey);
+  const isCritical = outcomeCategory === 'critical';
+  const options = isCritical ? CRITICAL_OUTCOME_OPTIONS : GOVERNANCE_OUTCOME_OPTIONS;
+
+  const labelText = isCritical
+    ? 'Outcome (life safety impact)'
+    : 'Assessment (management & governance)';
+
+  const helperText = isCritical
+    ? 'Use "Material Deficiency" only where life safety is significantly compromised.'
+    : 'Use this to record adequacy of management arrangements; these do not directly determine Consequence.';
+
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-6 mt-6">
-      <h3 className="text-lg font-bold text-neutral-900 mb-4">Module Outcome</h3>
+      <h3 className="text-lg font-bold text-neutral-900 mb-4">
+        {isCritical ? 'Module Outcome' : 'Module Assessment'}
+      </h3>
 
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-2">
-            Outcome Assessment
+            {labelText}
           </label>
           <select
             value={outcome || ''}
             onChange={(e) => onOutcomeChange(e.target.value)}
             className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
           >
-            <option value="">— Select Outcome —</option>
-            <option value="compliant">Compliant</option>
-            <option value="minor_def">Minor Deficiency</option>
-            <option value="material_def">Material Deficiency</option>
-            <option value="info_gap">Information Gap</option>
-            <option value="na">Not Applicable</option>
+            <option value="">— Select {isCritical ? 'Outcome' : 'Assessment'} —</option>
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
           <p className="text-xs text-neutral-500 mt-1">
-            Select the overall assessment outcome for this module
+            {helperText}
           </p>
         </div>
 

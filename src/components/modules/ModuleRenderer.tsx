@@ -689,6 +689,7 @@ function PlaceholderModuleForm({
         onNotesChange={setAssessorNotes}
         onSave={handleSave}
         isSaving={isSaving}
+        moduleKey={moduleInstance.module_key}
       />
 
       {document?.id && moduleInstance?.id && (

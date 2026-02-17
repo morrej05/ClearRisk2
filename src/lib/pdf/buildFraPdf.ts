@@ -52,7 +52,6 @@ import { drawKeyPointsBlock } from './keyPoints/drawKeyPointsBlock';
 import {
   validateReportQuality,
   standardizeOutcomeLabel,
-  generateActionReferenceId,
   getDisplayableOwner,
 } from './reportQualityGates';
 import { drawUsingThisReportSection, drawAssuranceGapsBlock } from './usingThisReportGuide';
@@ -277,12 +276,54 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     assuranceGaps: qualityResult.assuranceGaps.length,
   });
 
+  // Sort actions for deterministic PDF display order (priority, then created_at, then action text)
+  const sortedActions = [...actions].sort((a, b) => {
+    // Priority order: P1 > P2 > P3 > P4
+    const priorityMap: Record<string, number> = { P1: 1, P2: 2, P3: 3, P4: 4 };
+    const aPriority = priorityMap[a.priority_band] || 99;
+    const bPriority = priorityMap[b.priority_band] || 99;
+
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
+    // Then by created_at (oldest first)
+    const aDate = new Date(a.created_at).getTime();
+    const bDate = new Date(b.created_at).getTime();
+
+    if (aDate !== bDate) {
+      return aDate - bDate;
+    }
+
+    // Finally by recommended_action text (alphabetical)
+    return (a.recommended_action || '').localeCompare(b.recommended_action || '');
+  });
+
+  // Build module_instance_id -> FRA section mapping
+  const moduleToSectionMap = new Map<string, number>();
+  for (const section of FRA_REPORT_STRUCTURE) {
+    for (const moduleKey of section.moduleKeys) {
+      const module = moduleInstances.find(m => m.module_key === moduleKey);
+      if (module) {
+        moduleToSectionMap.set(module.id, section.id);
+      }
+    }
+  }
+
   // Generate stable action reference IDs for actions that don't have them
-  const actionsWithRefs = actions.map((action, index) => ({
-    ...action,
-    reference_number: action.reference_number || generateActionReferenceId(document.id, index + 1, 'FRA'),
-    owner_display_name: getDisplayableOwner(action.owner_display_name),
-  }));
+  // Use deterministic display refs (R-01, R-02...) based on sorted order
+  const actionsWithRefs = sortedActions.map((action, index) => {
+    const displayRef = action.reference_number || `R-${String(index + 1).padStart(2, '0')}`;
+    const sectionId = moduleToSectionMap.get(action.module_instance_id);
+    const sectionRef = sectionId ? `Section ${sectionId}` : null;
+
+    return {
+      ...action,
+      reference_number: displayRef,
+      section_reference: sectionRef,
+      owner_display_name: getDisplayableOwner(action.owner_display_name),
+    };
+  });
 
   console.log('[PDF FRA] Creating PDF document and embedding fonts');
   const pdfDoc = await PDFDocument.create();
@@ -415,14 +456,14 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   }
 
   // Add Action Plan Snapshot (after exec summary / assurance gaps)
-  // Convert actions to ActionForPdf format with stable reference numbers
+  // Convert actions to ActionForPdf format with stable reference numbers and section refs
   const actionsForPdf: ActionForPdf[] = actionsWithRefs.map(a => ({
     id: a.id,
-    reference_number: a.reference_number, // Stable reference ID from quality gates
+    reference_number: a.reference_number, // Deterministic display ref (R-01, R-02...) or DB value
     recommended_action: a.recommended_action,
     priority_band: a.priority_band,
     status: a.status,
-    section_reference: null, // Will be derived from module instance
+    section_reference: a.section_reference, // Derived from FRA_REPORT_STRUCTURE
     module_instance_id: a.module_instance_id,
     first_raised_in_version: null,
     closed_at: null,

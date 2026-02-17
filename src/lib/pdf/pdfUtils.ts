@@ -891,14 +891,14 @@ export function drawActionPlanSnapshot(
         actionText = actionText.substring(0, 97) + '...';
       }
 
-      // Reference and section - only show section if it's a valid reference
-      const ref = action.reference_number || 'R-???';
+      // Reference and section - reference_number is always present from PDF processing
+      const ref = action.reference_number;
       const section = action.section_reference;
 
       // Build display text: only include section if it exists and isn't a placeholder
       let displayText = `• ${ref}`;
       if (section && section !== 'TBD' && section !== 'unknown' && section !== '') {
-        displayText += ` (Section ${section})`;
+        displayText += ` (${section})`;
       }
       displayText += `: ${actionText}`;
 
@@ -1017,7 +1017,8 @@ export function drawRecommendationsSection(
       pagesAdded++;
     }
 
-    const refNum = action.reference_number || 'R-??';
+    // Reference number is always present from PDF processing
+    const refNum = action.reference_number;
     page.drawText(refNum, {
       x: MARGIN,
       y: yPosition,

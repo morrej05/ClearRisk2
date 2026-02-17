@@ -240,6 +240,11 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     { bold: fontBold, regular: font }
   );
 
+  // Add Action Plan Snapshot (after exec summary)
+  if (actions.length > 0) {
+    drawActionPlanSnapshot(pdfDoc, actions, moduleInstances, font, fontBold, isDraft, totalPages);
+  }
+
   const regFrameworkResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = regFrameworkResult.page;
   yPosition = PAGE_HEIGHT - MARGIN;
@@ -1864,10 +1869,25 @@ function drawModuleKeyDetails(
   }
 
   if (keyDetails.length === 0) {
-    // Skip empty message - will be handled in appendix
-    // Just add minimal space
-    yPosition -= 10;
-    return yPosition - 20;
+    // Show "No information recorded" for empty subsections
+    page.drawText('Key Details:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 18;
+
+    page.drawText('No information recorded.', {
+      x: MARGIN + 5,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    yPosition -= 25;
+    return yPosition;
   }
 
   page.drawText('Key Details:', {
@@ -2817,6 +2837,192 @@ function mapModuleKeyToSectionName(moduleKey: string): string {
 
   // Fallback for legacy or unmapped modules
   return 'General Evidence';
+}
+
+/**
+ * Draw Action Plan Snapshot
+ * Appears after executive summary - provides high-level view of all actions grouped by priority
+ * Shows: Priority, Action, Section ref, Target date, Why (trigger reason)
+ */
+function drawActionPlanSnapshot(
+  pdfDoc: PDFDocument,
+  actions: Action[],
+  moduleInstances: ModuleInstance[],
+  font: any,
+  fontBold: any,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): void {
+  const result = addNewPage(pdfDoc, isDraft, totalPages);
+  let page = result.page;
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  // Title
+  page.drawText('Action Plan Snapshot', {
+    x: MARGIN,
+    y: yPosition,
+    size: 18,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+  yPosition -= 15;
+
+  page.drawText('Summary of identified actions grouped by priority', {
+    x: MARGIN,
+    y: yPosition,
+    size: 10,
+    font,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+  yPosition -= 35;
+
+  // Group actions by priority band
+  const priorityMap: Record<string, Action[]> = {
+    'P1': [],
+    'P2': [],
+    'P3': [],
+    'P4': []
+  };
+
+  for (const action of actions) {
+    const band = action.priority_band || 'P4';
+    if (priorityMap[band]) {
+      priorityMap[band].push(action);
+    }
+  }
+
+  // Render each priority group
+  for (const priorityBand of ['P1', 'P2', 'P3', 'P4']) {
+    const groupActions = priorityMap[priorityBand];
+    if (groupActions.length === 0) continue;
+
+    // Check if we need a new page
+    if (yPosition < MARGIN + 150) {
+      const newPageResult = addNewPage(pdfDoc, isDraft, totalPages);
+      page = newPageResult.page;
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    // Priority band header
+    const priorityColor = getPriorityColor(priorityBand);
+    page.drawRectangle({
+      x: MARGIN,
+      y: yPosition - 3,
+      width: 50,
+      height: 18,
+      color: priorityColor,
+    });
+    page.drawText(priorityBand, {
+      x: MARGIN + 15,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(1, 1, 1),
+    });
+
+    page.drawText(`(${groupActions.length} action${groupActions.length > 1 ? 's' : ''})`, {
+      x: MARGIN + 60,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    yPosition -= 25;
+
+    // Render each action in group
+    for (const action of groupActions) {
+      // Check page space
+      if (yPosition < MARGIN + 80) {
+        const newPageResult = addNewPage(pdfDoc, isDraft, totalPages);
+        page = newPageResult.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      // Section reference
+      const moduleKey = action.module_instance_id;
+      const module = moduleInstances.find(m => m.id === action.module_instance_id);
+      const sectionName = module ? mapModuleKeyToSectionName(module.module_key) : 'General';
+
+      page.drawText(`Section: ${sectionName}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+      yPosition -= 14;
+
+      // Action text (wrap if needed)
+      const actionText = sanitizePdfText(action.recommended_action);
+      const actionLines = wrapText(actionText, CONTENT_WIDTH - 20, 10, font);
+      const maxLines = 2; // Limit to 2 lines for snapshot view
+      const displayLines = actionLines.slice(0, maxLines);
+
+      for (let i = 0; i < displayLines.length; i++) {
+        const line = displayLines[i];
+        const suffix = (i === maxLines - 1 && actionLines.length > maxLines) ? '...' : '';
+        page.drawText(line + suffix, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font: fontBold,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 14;
+      }
+
+      // Why (trigger reason) - if available
+      if (action.trigger_text) {
+        const triggerText = sanitizePdfText(action.trigger_text);
+        const triggerLines = wrapText(`Why: ${triggerText}`, CONTENT_WIDTH - 20, 9, font);
+        const displayTriggerLines = triggerLines.slice(0, 1); // Show only first line
+
+        for (const line of displayTriggerLines) {
+          page.drawText(line, {
+            x: MARGIN + 10,
+            y: yPosition,
+            size: 9,
+            font,
+            color: rgb(0.3, 0.3, 0.3),
+          });
+          yPosition -= 13;
+        }
+      }
+
+      // Target date
+      if (action.target_date) {
+        page.drawText(`Target: ${formatDate(action.target_date)}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        yPosition -= 13;
+      }
+
+      yPosition -= 10; // Space between actions
+    }
+
+    yPosition -= 15; // Space between priority groups
+  }
+
+  // Footer note
+  if (yPosition < MARGIN + 50) {
+    const newPageResult = addNewPage(pdfDoc, isDraft, totalPages);
+    page = newPageResult.page;
+    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+
+  yPosition -= 20;
+  page.drawText('See Action Register (Section 14) for complete action details.', {
+    x: MARGIN,
+    y: yPosition,
+    size: 9,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
 }
 
 /**

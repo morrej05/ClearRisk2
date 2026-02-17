@@ -385,11 +385,8 @@ export function filterDeprecatedModuleKeysForNavigation(
  * Regression guard: A1 modules must always resolve to 'governance'
  */
 export function getModuleOutcomeCategory(moduleKey: string): 'critical' | 'governance' {
-  // Guard against undefined/invalid input
+  // Guard against undefined/invalid input - default to governance (safe fallback)
   if (!moduleKey || typeof moduleKey !== 'string') {
-    if (import.meta.env.DEV) {
-      console.warn('⚠️ getModuleOutcomeCategory: invalid moduleKey', moduleKey);
-    }
     return 'governance';
   }
 

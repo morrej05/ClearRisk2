@@ -16,6 +16,7 @@ interface Document {
 
 interface ModuleInstance {
   id: string;
+  module_key: string;
   outcome: string | null;
   assessor_notes: string;
   data: Record<string, any>;
@@ -490,6 +491,7 @@ export default function A5EmergencyArrangementsForm({
         onNotesChange={setAssessorNotes}
         onSave={handleSave}
         isSaving={isSaving}
+        moduleKey={moduleInstance.module_key}
       />
 
       {(() => {

@@ -42,11 +42,6 @@ export default function OutcomePanel({
   // Guard against undefined/empty moduleKey to prevent crashes
   const moduleKeySafe = typeof moduleKey === 'string' && moduleKey.length > 0 ? moduleKey : '';
 
-  // If no valid moduleKey, default to governance (safer fallback)
-  if (!moduleKeySafe) {
-    console.warn('⚠️ OutcomePanel: moduleKey is undefined or empty, defaulting to governance');
-  }
-
   const outcomeCategory = getModuleOutcomeCategory(moduleKeySafe);
   const isCritical = outcomeCategory === 'critical';
 

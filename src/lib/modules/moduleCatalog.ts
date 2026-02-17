@@ -380,11 +380,23 @@ export function filterDeprecatedModuleKeysForNavigation(
 
 /**
  * Get the outcome category for a module (critical vs governance)
- * Defaults to 'critical' if not specified for backward compatibility
+ * Defaults to 'governance' if not found (safer than defaulting to critical)
+ *
+ * Regression guard: A1 modules must always resolve to 'governance'
  */
 export function getModuleOutcomeCategory(moduleKey: string): 'critical' | 'governance' {
   const resolvedKey = resolveModuleKey(moduleKey);
-  return MODULE_CATALOG[resolvedKey]?.outcomeCategory || 'critical';
+  const category = MODULE_CATALOG[resolvedKey]?.outcomeCategory || 'governance';
+
+  // DEV GUARD: A1 must always be governance
+  if (import.meta.env.DEV && resolvedKey.startsWith('A1_') && category !== 'governance') {
+    console.warn(
+      '⚠️ REGRESSION: A1 module should have outcomeCategory: "governance"',
+      { moduleKey, resolvedKey, category }
+    );
+  }
+
+  return category;
 }
 
 /**

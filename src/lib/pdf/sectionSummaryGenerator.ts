@@ -96,57 +96,57 @@ export function generateSectionSummary(context: SectionContext): SectionSummaryW
 
 /**
  * Priority 1: P1 action OR material deficiency
- * "Significant deficiencies were identified in this area and urgent remedial action is required."
+ * "Significant deficiencies identified; urgent remedial action required."
  */
 function generateP1OrMaterialDefSummary(isGovernance: boolean): string {
   if (isGovernance) {
-    return 'Significant deficiencies were identified in fire safety management systems and urgent remedial action is required.';
+    return 'Significant deficiencies identified in fire safety management systems; urgent remedial action required.';
   }
-  return 'Significant deficiencies were identified in this area and urgent remedial action is required.';
+  return 'Significant deficiencies identified in this area; urgent remedial action required.';
 }
 
 /**
  * Priority 2: P2 action exists
- * "Deficiencies and/or information gaps were identified; actions are required to address these matters."
+ * "Deficiencies and/or information gaps identified; actions required to address these matters."
  */
 function generateP2ActionSummary(isGovernance: boolean): string {
   if (isGovernance) {
-    return 'Deficiencies and/or information gaps were identified in fire safety management systems; actions are required to address these matters.';
+    return 'Deficiencies and/or information gaps identified in fire safety management systems; actions required to address these matters.';
   }
-  return 'Deficiencies and/or information gaps were identified; actions are required to address these matters.';
+  return 'Deficiencies and/or information gaps identified; actions required to address these matters.';
 }
 
 /**
  * Priority 3: Info gap (even if outcome is compliant)
- * "No material deficiencies were identified; however key aspects could not be verified at the time of assessment."
+ * "No material deficiencies identified; however key aspects could not be verified at time of assessment."
  */
 function generateInfoGapSummary(isGovernance: boolean): string {
   if (isGovernance) {
-    return 'No material deficiencies were identified in fire safety management systems; however key aspects could not be verified at the time of assessment.';
+    return 'No material deficiencies identified in fire safety management systems; however key aspects could not be verified at time of assessment.';
   }
-  return 'No material deficiencies were identified; however key aspects could not be verified at the time of assessment.';
+  return 'No material deficiencies identified; however key aspects could not be verified at time of assessment.';
 }
 
 /**
  * Priority 4: Minor deficiency
- * "Minor deficiencies were identified; improvements are recommended."
+ * "Minor deficiencies identified; improvements recommended."
  */
 function generateMinorDefSummary(isGovernance: boolean): string {
   if (isGovernance) {
-    return 'Minor deficiencies were identified in fire safety management systems; improvements are recommended.';
+    return 'Minor deficiencies identified in fire safety management systems; improvements recommended.';
   }
-  return 'Minor deficiencies were identified; improvements are recommended.';
+  return 'Minor deficiencies identified; improvements recommended.';
 }
 
 /**
  * Priority 5: No significant deficiencies
- * "No significant deficiencies were identified in this area at the time of assessment."
+ * "No significant deficiencies identified in this area at time of assessment."
  */
 function generateCompliantSummary(isGovernance: boolean): string {
   if (isGovernance) {
-    return 'No significant deficiencies were identified in fire safety management systems at the time of assessment.';
+    return 'No significant deficiencies identified in fire safety management systems at time of assessment.';
   }
-  return 'No significant deficiencies were identified in this area at the time of assessment.';
+  return 'No significant deficiencies identified in this area at time of assessment.';
 }
 
 /**

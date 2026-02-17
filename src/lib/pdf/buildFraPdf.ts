@@ -775,8 +775,8 @@ function drawCoverPage(
   const valueSize = 11;
   const rowHeight = 24;
 
-  // Get jurisdiction display name
-  const jurisdictionName = document.jurisdiction === 'UK' ? 'United Kingdom' : document.jurisdiction === 'IE' ? 'Ireland' : document.jurisdiction || 'Not specified';
+  // Get jurisdiction display name using centralized function
+  const jurisdictionName = getJurisdictionLabel(document.jurisdiction);
 
   const leftColumn = [
     ['Assessment Date:', formatDate(document.assessment_date)],

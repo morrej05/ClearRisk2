@@ -891,11 +891,18 @@ export function drawActionPlanSnapshot(
         actionText = actionText.substring(0, 97) + '...';
       }
 
-      // Reference and section
+      // Reference and section - only show section if it's a valid reference
       const ref = action.reference_number || 'R-???';
-      const section = action.section_reference || 'TBD';
+      const section = action.section_reference;
 
-      context.page.drawText(`• ${ref} (Section ${section}): ${actionText}`, {
+      // Build display text: only include section if it exists and isn't a placeholder
+      let displayText = `• ${ref}`;
+      if (section && section !== 'TBD' && section !== 'unknown' && section !== '') {
+        displayText += ` (Section ${section})`;
+      }
+      displayText += `: ${actionText}`;
+
+      context.page.drawText(displayText, {
         x: MARGIN + 10,
         y: context.yPosition,
         size: 9,

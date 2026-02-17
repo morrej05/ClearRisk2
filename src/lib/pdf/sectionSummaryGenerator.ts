@@ -54,6 +54,8 @@ export function generateSectionSummary(context: SectionContext): SectionSummaryW
   const openActions = actions.filter(a => a.status !== 'closed' && a.status !== 'completed');
   const hasP1Actions = openActions.some(a => a.priority === 1);
   const hasP2Actions = openActions.some(a => a.priority === 2);
+  const hasP3P4Actions = openActions.some(a => a.priority === 3 || a.priority === 4);
+  const hasAnyOpenActions = openActions.length > 0;
 
   // Detect if this is a governance section (management/procedures)
   const isGovernanceSection = sectionId === 11; // Section 11: Fire Safety Management
@@ -76,13 +78,17 @@ export function generateSectionSummary(context: SectionContext): SectionSummaryW
   else if (hasInfoGap) {
     summary = generateInfoGapSummary(isGovernanceSection);
   }
-  // Priority 4: Minor deficiency
-  else if (hasMinorDef) {
+  // Priority 4: Minor deficiency OR P3/P4 actions exist
+  else if (hasMinorDef || hasP3P4Actions) {
     summary = generateMinorDefSummary(isGovernanceSection);
   }
-  // Priority 5: No significant deficiencies
-  else {
+  // Priority 5: No significant deficiencies (only if NO open actions and NO info gaps)
+  else if (!hasAnyOpenActions) {
     summary = generateCompliantSummary(isGovernanceSection);
+  }
+  // Fallback: If actions exist but don't fit above categories, treat as minor
+  else {
+    summary = generateMinorDefSummary(isGovernanceSection);
   }
 
   return { summary, drivers };

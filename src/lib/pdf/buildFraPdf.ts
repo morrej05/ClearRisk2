@@ -40,7 +40,9 @@ import {
   drawFooter,
   addSupersededWatermark,
   addExecutiveSummaryPages,
+  drawActionPlanSnapshot,
   drawRecommendationsSection,
+  type ActionForPdf,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { FRA_REPORT_STRUCTURE, getSectionTitle } from './fraReportStructure';
@@ -241,9 +243,28 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   );
 
   // Add Action Plan Snapshot (after exec summary)
-  if (actions.length > 0) {
-    drawActionPlanSnapshot(pdfDoc, actions, moduleInstances, font, fontBold, isDraft, totalPages);
-  }
+  // Convert actions to ActionForPdf format
+  const actionsForPdf: ActionForPdf[] = actions.map(a => ({
+    id: a.id,
+    reference_number: null, // Will be populated from action register if available
+    recommended_action: a.recommended_action,
+    priority_band: a.priority_band,
+    status: a.status,
+    section_reference: null, // Will be derived from module instance
+    module_instance_id: a.module_instance_id,
+    first_raised_in_version: null,
+    closed_at: null,
+    superseded_by_action_id: null,
+    superseded_at: null,
+  }));
+
+  drawActionPlanSnapshot(
+    pdfDoc,
+    actionsForPdf,
+    { bold: fontBold, regular: font },
+    isDraft,
+    totalPages
+  );
 
   const regFrameworkResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = regFrameworkResult.page;

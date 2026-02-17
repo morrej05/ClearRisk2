@@ -89,6 +89,60 @@ export function formatAddress(addr?: any): string {
   return parts.join(', ');
 }
 
+/**
+ * Format field value for PDF, suppressing empty/unknown values
+ * Returns formatted value or empty string if value should be suppressed
+ * Use this to avoid rendering "unknown", "N/A", "-", empty strings, etc.
+ *
+ * @param value - The field value to format
+ * @param defaultText - Optional custom text for empty values (default: empty string)
+ * @returns Formatted value or empty string if value is empty/unknown
+ */
+export function formatFieldValue(value: unknown, defaultText: string = ''): string {
+  // Null/undefined check
+  if (value === null || value === undefined) return defaultText;
+
+  // Convert to string
+  const str = String(value).trim().toLowerCase();
+
+  // Empty string check
+  if (str === '') return defaultText;
+
+  // Common "unknown" or "not applicable" values to suppress
+  const suppressValues = [
+    'unknown',
+    'n/a',
+    'na',
+    'not applicable',
+    'none',
+    '-',
+    '--',
+    'not specified',
+    'not recorded',
+    'no information',
+  ];
+
+  if (suppressValues.includes(str)) return defaultText;
+
+  // Value is valid, return it
+  return String(value).trim();
+}
+
+/**
+ * Check if a subsection has any meaningful content
+ * Used to determine whether to render subsection or show "No information recorded."
+ *
+ * @param data - Object with field values
+ * @param fields - Array of field keys to check
+ * @returns true if at least one field has meaningful content
+ */
+export function hasSubsectionContent(data: Record<string, any>, fields: string[]): boolean {
+  return fields.some(field => {
+    const value = data[field];
+    return formatFieldValue(value) !== '';
+  });
+}
+
 export function getRatingColor(rating: string): { r: number; g: number; b: number } {
   switch (rating.toLowerCase()) {
     case 'low':
@@ -704,16 +758,155 @@ export async function drawDocumentControlPage(
   });
 }
 
-interface ActionForPdf {
+export interface ActionForPdf {
   id: string;
   reference_number: string | null;
   recommended_action: string;
   priority_band: string;
   status: string;
+  section_reference?: string | null;
+  module_instance_id?: string;
   first_raised_in_version: number | null;
   closed_at: string | null;
   superseded_by_action_id: string | null;
   superseded_at: string | null;
+}
+
+/**
+ * Draw Action Plan Snapshot section after Executive Summary
+ * Shows actions grouped by priority (P1-P4) with section references
+ * Provides a quick overview of remedial actions required
+ */
+export function drawActionPlanSnapshot(
+  pdfDoc: PDFDocument,
+  actions: ActionForPdf[],
+  fonts: { bold: any; regular: any },
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): number {
+  // Filter to open actions only (exclude closed, superseded, etc.)
+  const openActions = actions.filter(a =>
+    a.status === 'open' || a.status === 'in_progress'
+  );
+
+  if (openActions.length === 0) {
+    return 0; // Don't add page if no open actions
+  }
+
+  // Group actions by priority
+  const p1Actions = openActions.filter(a => a.priority_band === 'P1');
+  const p2Actions = openActions.filter(a => a.priority_band === 'P2');
+  const p3Actions = openActions.filter(a => a.priority_band === 'P3');
+  const p4Actions = openActions.filter(a => a.priority_band === 'P4');
+
+  const { page } = addNewPage(pdfDoc, isDraft, totalPages);
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  // Section title
+  page.drawText('ACTION PLAN SNAPSHOT', {
+    x: MARGIN,
+    y: yPosition,
+    size: 16,
+    font: fonts.bold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPosition -= 10;
+
+  // Introductory text
+  const intro = 'This section provides a summary of remedial actions required, grouped by priority level. Full details are provided in Section 13 (Recommendations).';
+  const introLines = wrapText(intro, CONTENT_WIDTH, 10, fonts.regular);
+
+  yPosition -= 20;
+  for (const line of introLines) {
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fonts.regular,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPosition -= 14;
+  }
+
+  yPosition -= 10;
+
+  // Helper function to draw priority group
+  const drawPriorityGroup = (
+    priorityLabel: string,
+    priorityActions: ActionForPdf[],
+    color: { r: number; g: number; b: number }
+  ): void => {
+    if (priorityActions.length === 0) return;
+
+    // Check if we need a new page
+    if (yPosition < MARGIN + 100) {
+      const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    // Priority heading
+    page.drawText(`${priorityLabel} (${priorityActions.length})`, {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fonts.bold,
+      color,
+    });
+
+    yPosition -= 20;
+
+    // List actions (max 5 per priority to keep snapshot concise)
+    const displayActions = priorityActions.slice(0, 5);
+    for (const action of displayActions) {
+      if (yPosition < MARGIN + 40) {
+        const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      // Action text (truncated if too long)
+      let actionText = sanitizePdfText(action.recommended_action);
+      if (actionText.length > 100) {
+        actionText = actionText.substring(0, 97) + '...';
+      }
+
+      // Reference and section
+      const ref = action.reference_number || 'R-???';
+      const section = action.section_reference || 'TBD';
+
+      page.drawText(`• ${ref} (Section ${section}): ${actionText}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 9,
+        font: fonts.regular,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+
+      yPosition -= 16;
+    }
+
+    // If more actions than displayed, show count
+    if (priorityActions.length > 5) {
+      page.drawText(`  ... and ${priorityActions.length - 5} more ${priorityLabel} action(s)`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 9,
+        font: fonts.regular,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      yPosition -= 16;
+    }
+
+    yPosition -= 10; // Spacing between priority groups
+  };
+
+  // Draw each priority group
+  drawPriorityGroup('P1 - Immediate Action Required', p1Actions, rgb(0.8, 0.1, 0.1));
+  drawPriorityGroup('P2 - Urgent Action Required', p2Actions, rgb(0.9, 0.5, 0.1));
+  drawPriorityGroup('P3 - Action Required', p3Actions, rgb(0.9, 0.7, 0.1));
+  drawPriorityGroup('P4 - Improvement Recommended', p4Actions, rgb(0.2, 0.5, 0.8));
+
+  return 1; // One page added (may span multiple if many actions)
 }
 
 export function drawRecommendationsSection(

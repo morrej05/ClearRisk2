@@ -3986,7 +3986,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, emergencyArrangementsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
+    yPosition = drawModuleContent(page, emergencyArrangementsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
     yPosition -= 15;
   }
 
@@ -4008,7 +4008,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, reviewAssuranceModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
+    yPosition = drawModuleContent(page, reviewAssuranceModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
     yPosition -= 15;
   }
 

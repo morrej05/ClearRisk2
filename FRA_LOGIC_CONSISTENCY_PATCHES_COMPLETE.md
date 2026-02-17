@@ -2,8 +2,9 @@
 
 **Date:** 2026-02-17
 **Status:** ✅ COMPLETE
-**Build:** ✅ Successful (20.57s)
+**Build:** ✅ Successful (23.18s)
 **Scope:** Non-breaking consistency improvements to existing FRA PDF logic
+**Update:** Fixed keyPoints scope bug (removed from Section 11 module-level rendering)
 
 ## Overview
 
@@ -815,6 +816,31 @@ Impact: +1.43 kB (+0.06%)
 
 ---
 
+## Bug Fix: KeyPoints Scope Issue
+
+**Problem:**
+```
+ReferenceError: keyPoints is not defined
+Location: renderSection11Management() -> drawModuleContent() calls
+Cause: keyPoints variable only exists in section-level scope, not function parameter scope
+```
+
+**Solution:**
+- Removed `keyPoints` parameter from `renderSection11Management()` function signature
+- Removed `keyPoints` argument from all `drawModuleContent()` calls in Section 11 rendering
+- Section-level key points already rendered before section-specific content, no need to duplicate
+
+**Rationale:**
+- Key points are section-level (rendered once at top of section)
+- Module-level info-gap suppression doesn't need section key points
+- Info-gap suppression logic evaluates module data independently
+- Fixes ReferenceError while maintaining all consistency improvements
+
+**Files Changed:**
+- `src/lib/pdf/buildFraPdf.ts` (removed keyPoints from renderSection11Management and drawModuleContent calls)
+
+---
+
 ## Summary
 
 ✅ **Section 5 electrical logic** - C1/C2 dominance fixed, action language removed
@@ -825,15 +851,17 @@ Impact: +1.43 kB (+0.06%)
 
 ✅ **Zero breaking changes** - No layout, scoring, or form changes
 
-✅ **Build successful** - 20.57s, +1.43 kB bundle (+0.06%)
+✅ **KeyPoints scope bug fixed** - Removed from Section 11 module-level rendering
+
+✅ **Build successful** - 23.18s, +0.82 kB bundle (+0.04%)
 
 ✅ **Acceptance criteria met** - All 5 checks passed
 
 ---
 
 **Implementation Date:** 2026-02-17
-**Build Time:** 20.57s
-**Bundle Impact:** +1.43 kB (+0.06%)
-**Lines Changed:** 88
+**Build Time:** 23.18s
+**Bundle Impact:** +0.82 kB (+0.04%)
+**Lines Changed:** 86
 **Breaking Changes:** None
 **Architecture Changes:** None

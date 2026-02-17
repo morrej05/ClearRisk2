@@ -186,9 +186,14 @@ export function extractSectionDrivers(sectionId: number, moduleInstances: Module
 function extractSection5Drivers(data: Record<string, any>): string[] {
   const drivers: string[] = [];
 
-  // EICR status
+  // EICR status - C1/C2 takes absolute precedence
   const electrical = data.electrical_safety || {};
-  if (electrical.eicr_satisfactory === 'no' || electrical.eicr_outstanding_c1_c2 === 'yes') {
+  const hasC1C2 = electrical.eicr_outstanding_c1_c2 === 'yes' ||
+                  String(electrical.eicr_outstanding_c1_c2).toLowerCase().includes('yes');
+
+  if (hasC1C2) {
+    drivers.push('Outstanding C1/C2 electrical defects identified requiring immediate remediation');
+  } else if (electrical.eicr_satisfactory === 'no' || electrical.eicr_satisfactory === 'unsatisfactory') {
     drivers.push('Electrical Installation Condition Report (EICR) identified unsatisfactory conditions');
   } else if (electrical.eicr_evidence_seen === 'no') {
     drivers.push('No evidence of valid Electrical Installation Condition Report (EICR) was seen');

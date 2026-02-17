@@ -645,7 +645,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
         break;
 
       case 11: // Fire Safety Management & Procedures
-        yPosition = renderSection11Management(page, sectionModules, moduleInstances, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        yPosition = renderSection11Management(page, sectionModules, moduleInstances, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
         break;
 
       case 13: // Significant Findings, Risk Evaluation & Action Plan
@@ -2373,7 +2373,8 @@ function drawInfoGapQuickActions(
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  keyPoints?: string[]
 ): number {
   const detection = detectInfoGaps(
     module.module_key,
@@ -2387,6 +2388,55 @@ function drawInfoGapQuickActions(
 
   if (!detection.hasInfoGap) {
     return yPosition;
+  }
+
+  // For management/governance modules (A4/A5/A7/FRA_6), suppress the full info-gap box
+  // if Key Points already include assurance gap bullets and all reasons are unknowns
+  const isManagementModule = ['A4_MANAGEMENT_CONTROLS', 'A5_EMERGENCY_ARRANGEMENTS', 'A7_REVIEW_ASSURANCE', 'FRA_6_MANAGEMENT_SYSTEMS'].includes(module.module_key);
+
+  if (isManagementModule && keyPoints && keyPoints.length > 0) {
+    const hasAssuranceGapKeyPoint = keyPoints.some(kp =>
+      kp.toLowerCase().includes('not been evidenced') ||
+      kp.toLowerCase().includes('not been verified') ||
+      kp.toLowerCase().includes('records have not')
+    );
+
+    const allReasonsAreUnknowns = detection.reasons.every(r =>
+      r.toLowerCase().includes('unknown') ||
+      r.toLowerCase().includes('not known') ||
+      r.toLowerCase().includes('not recorded') ||
+      r.toLowerCase().includes('not provided')
+    );
+
+    if (hasAssuranceGapKeyPoint && allReasonsAreUnknowns) {
+      // Render compact reference instead of full box
+      if (yPosition < MARGIN + 100) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      }
+
+      yPosition -= 20;
+
+      page.drawText(sanitizePdfText('i'), {
+        x: MARGIN + 8,
+        y: yPosition,
+        size: 9,
+        font: fontBold,
+        color: rgb(0.6, 0.6, 0.6),
+      });
+
+      page.drawText(sanitizePdfText('Information gaps noted (see Key Points above)'), {
+        x: MARGIN + 22,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+
+      yPosition -= 20;
+      return yPosition;
+    }
   }
 
   // Check if we need a new page
@@ -3424,7 +3474,8 @@ function drawModuleContent(
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  keyPoints?: string[]
 ): number {
   // Outcome badge
   if (module.outcome) {
@@ -3491,7 +3542,7 @@ function drawModuleContent(
   yPosition = drawModuleKeyDetails(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // Info gap quick actions
-  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
 
   return yPosition;
 }
@@ -3885,7 +3936,8 @@ function renderSection11Management(
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  keyPoints?: string[]
 ): number {
   // 11.1 Management Systems
   const managementSystemsModule = sectionModules.find(m =>
@@ -3901,7 +3953,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, managementSystemsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, managementSystemsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
     yPosition -= 15;
   }
 
@@ -3925,7 +3977,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, emergencyArrangementsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, emergencyArrangementsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
     yPosition -= 15;
   }
 
@@ -3947,7 +3999,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, reviewAssuranceModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, reviewAssuranceModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
     yPosition -= 15;
   }
 

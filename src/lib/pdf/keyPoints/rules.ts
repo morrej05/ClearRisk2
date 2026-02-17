@@ -72,24 +72,25 @@ function includesAny(arr: any, keywords: string[]): boolean {
  */
 export const section5Rules: KeyPointRule[] = [
   {
-    id: 'eicr_unsatisfactory',
+    id: 'eicr_c1_c2_outstanding',
     type: 'weakness',
     weight: 100,
     when: (data) => {
       const eicr = safeGet(data, 'electrical_safety', {});
-      return safeGet(eicr, 'eicr_satisfactory') === 'unsatisfactory';
+      return isYes(safeGet(eicr, 'eicr_outstanding_c1_c2'));
     },
-    text: (data) => 'EICR assessment rated as unsatisfactory',
+    text: (data) => 'Outstanding C1/C2 electrical defects identified',
   },
   {
-    id: 'eicr_c1_c2_outstanding',
+    id: 'eicr_unsatisfactory',
     type: 'weakness',
     weight: 95,
     when: (data) => {
       const eicr = safeGet(data, 'electrical_safety', {});
-      return isYes(safeGet(eicr, 'eicr_outstanding_c1_c2'));
+      const c1c2 = isYes(safeGet(eicr, 'eicr_outstanding_c1_c2'));
+      return safeGet(eicr, 'eicr_satisfactory') === 'unsatisfactory' && !c1c2;
     },
-    text: (data) => 'Outstanding C1/C2 electrical defects require immediate action',
+    text: (data) => 'EICR assessment rated as unsatisfactory',
   },
   {
     id: 'high_risk_lithium',
@@ -157,7 +158,7 @@ export const section6Rules: KeyPointRule[] = [
     type: 'weakness',
     weight: 85,
     when: (data) => isYes(safeGet(data, 'escape_route_obstructions')),
-    text: (data) => 'Obstructions identified in escape routes requiring removal',
+    text: (data) => 'Obstructions identified in escape routes',
   },
   {
     id: 'final_exits_inadequate',
@@ -416,16 +417,39 @@ export const section10Rules: KeyPointRule[] = [
  */
 export const section11Rules: KeyPointRule[] = [
   {
-    id: 'fire_policy_missing',
+    id: 'testing_records_not_evidenced',
     type: 'weakness',
     weight: 80,
+    when: (data) => {
+      const records = safeGet(data, 'testing_records');
+      return isUnknown(records) || !hasValue(records);
+    },
+    text: (data) => 'Fire safety testing and inspection records have not been evidenced',
+  },
+  {
+    id: 'policy_training_not_verified',
+    type: 'weakness',
+    weight: 78,
+    when: (data) => {
+      const policy = safeGet(data, 'fire_safety_policy');
+      const training = safeGet(data, 'training_induction');
+      const drills = safeGet(data, 'drill_frequency');
+      const unknownCount = [policy, training, drills].filter(v => isUnknown(v) || !hasValue(v)).length;
+      return unknownCount >= 2;
+    },
+    text: (data) => 'Training and fire safety policy records have not been verified',
+  },
+  {
+    id: 'fire_policy_missing',
+    type: 'weakness',
+    weight: 75,
     when: (data) => isNo(safeGet(data, 'fire_safety_policy')),
     text: (data) => 'Fire safety policy not documented',
   },
   {
     id: 'testing_records_missing',
     type: 'weakness',
-    weight: 75,
+    weight: 70,
     when: (data) => isNo(safeGet(data, 'testing_records')),
     text: (data) => 'Testing and maintenance records not available',
   },

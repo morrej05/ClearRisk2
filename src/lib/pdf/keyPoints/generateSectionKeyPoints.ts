@@ -6,6 +6,8 @@
  */
 
 import { getRulesForSection, type KeyPoint, type KeyPointRule } from './rules';
+import { getCanonicalKeysForModule } from '../../fra/schema/moduleFieldSchema';
+import { getField } from '../../fra/schema/getField';
 
 interface ModuleInstance {
   id: string;
@@ -125,13 +127,29 @@ function deduplicateKeyPoints(points: KeyPoint[]): KeyPoint[] {
 /**
  * Merge module data from multiple modules in a section
  * For composite sections (e.g., section 11 with multiple modules)
+ *
+ * IMPORTANT: Hydrates canonical field names using schema aliases
+ * so rules can evaluate against consistent field names regardless
+ * of which variant the form/info-gap/summary logic used.
  */
 function mergeModuleData(modules: ModuleInstance[]): Record<string, any> {
   const merged: Record<string, any> = {};
 
   for (const module of modules) {
     if (module.data) {
+      // First: copy raw data
       Object.assign(merged, module.data);
+
+      // Second: hydrate canonical fields using schema aliases
+      // This ensures rules using canonical names will find values
+      // even if original data used alias field names
+      const canonicalKeys = getCanonicalKeysForModule(module.module_key);
+      for (const canonicalKey of canonicalKeys) {
+        const value = getField(module.data, module.module_key, canonicalKey);
+        if (value !== undefined) {
+          merged[canonicalKey] = value;
+        }
+      }
     }
   }
 

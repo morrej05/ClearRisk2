@@ -190,6 +190,12 @@ export default function FRA3FireProtectionForm({
         outcome,
         assessor_notes: assessorNotes,
         updated_at: new Date().toISOString(),
+      }, moduleInstance.module_key);
+
+      console.log('[FRA3 Save] Payload being sent to Supabase:', {
+        moduleKey: moduleInstance.module_key,
+        outcome: payload.outcome,
+        originalOutcome: outcome,
       });
 
       const { error } = await supabase

@@ -186,6 +186,12 @@ export default function FRA1FireHazardsForm({
         assessor_notes: assessorNotes,
         data: { ...formData, scoring: scoringData },
         completed_at: completedAt,
+      }, moduleInstance.module_key);
+
+      console.log('[FRA1 Save] Payload being sent to Supabase:', {
+        moduleKey: moduleInstance.module_key,
+        outcome: payload.outcome,
+        originalOutcome: outcome,
       });
 
       const { error } = await supabase

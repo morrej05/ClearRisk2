@@ -101,7 +101,7 @@ export default function DSEAR2ProcessReleasesForm({
         outcome,
         assessor_notes: assessorNotes,
         updated_at: new Date().toISOString(),
-      });
+      }, moduleInstance.module_key);
 
       const { error } = await supabase
         .from('module_instances')

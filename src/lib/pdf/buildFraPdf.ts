@@ -14,6 +14,7 @@ import {
   type FraExecutiveOutcome,
 } from '../modules/fra/severityEngine';
 import { drawCleanAuditSection13 } from './fraSection13CleanAudit';
+import { generateSectionSummary } from './sectionSummaryGenerator';
 import {
   calculateSCS,
   deriveFireProtectionReliance,
@@ -289,6 +290,21 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     // Draw section header
     yPosition = drawSectionHeader(page, section.id, section.title, font, fontBold, yPosition);
     yPosition -= 10;
+
+    // Draw assessor summary for technical sections (5-12)
+    if (section.id >= 5 && section.id <= 12) {
+      const summaryText = generateSectionSummary({
+        sectionId: section.id,
+        sectionTitle: section.title,
+        moduleInstances: sectionModules,
+      });
+
+      if (summaryText) {
+        const summaryResult = drawAssessorSummary(page, summaryText, font, yPosition, pdfDoc, isDraft, totalPages);
+        page = summaryResult.page;
+        yPosition = summaryResult.yPosition;
+      }
+    }
 
     // Section-specific rendering
     switch (section.id) {
@@ -2852,6 +2868,76 @@ function drawSectionHeader(
 
   yPosition -= 30;
   return yPosition;
+}
+
+/**
+ * Draw assessor summary paragraph for technical sections (5-12)
+ * Displays professional narrative based on module outcomes
+ */
+function drawAssessorSummary(
+  page: PDFPage,
+  summaryText: string,
+  font: any,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): { page: PDFPage; yPosition: number } {
+  // Wrap text to fit in content width with padding
+  const summaryLines = wrapText(summaryText, CONTENT_WIDTH - 40, 11, font);
+
+  // Calculate box height needed
+  const lineHeight = 16;
+  const boxPadding = 15;
+  const boxHeight = (summaryLines.length * lineHeight) + (boxPadding * 2);
+
+  // Check if we need a new page
+  if (yPosition - boxHeight < MARGIN + 50) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  }
+
+  // Draw light background box
+  const boxY = yPosition - boxHeight + boxPadding;
+  page.drawRectangle({
+    x: MARGIN,
+    y: boxY,
+    width: CONTENT_WIDTH,
+    height: boxHeight,
+    color: rgb(0.96, 0.97, 0.98),
+    borderColor: rgb(0.85, 0.87, 0.89),
+    borderWidth: 1,
+  });
+
+  // Draw "Assessor Summary" label in smaller bold text
+  yPosition -= boxPadding + 2;
+  page.drawText('Assessor Summary:', {
+    x: MARGIN + 15,
+    y: yPosition,
+    size: 9,
+    font,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+
+  yPosition -= 16;
+
+  // Draw summary text lines
+  for (const line of summaryLines) {
+    page.drawText(line, {
+      x: MARGIN + 15,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.15, 0.15, 0.15),
+    });
+    yPosition -= lineHeight;
+  }
+
+  yPosition -= boxPadding;
+  yPosition -= 10; // Extra space after summary box
+
+  return { page, yPosition };
 }
 
 /**

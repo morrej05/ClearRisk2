@@ -219,6 +219,14 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     }
   }
 
+  // Add Table of Contents
+  const tocPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  totalPages.push(tocPage);
+  drawTableOfContents(tocPage, font, fontBold);
+  if (isDraft) {
+    drawDraftWatermark(tocPage, fontBold);
+  }
+
   addExecutiveSummaryPages(
     pdfDoc,
     isDraft,
@@ -2603,7 +2611,7 @@ function drawAttachmentsIndex(
     if (attachment.module_instance_id) {
       const module = moduleInstances.find((m) => m.id === attachment.module_instance_id);
       if (module) {
-        linkedTo.push(`Module: ${getModuleName(module.module_key)}`);
+        linkedTo.push(`Section: ${mapModuleKeyToSectionName(module.module_key)}`);
       }
     }
 
@@ -2749,6 +2757,73 @@ function drawLimitations(
  * - Clean typography
  */
 /**
+ * Map module key to section name for Evidence Index
+ * Replaces "FRA-1: Fire Hazards" with "5. Fire Hazards & Ignition Sources"
+ */
+function mapModuleKeyToSectionName(moduleKey: string): string {
+  // Find the section that contains this module key
+  for (const section of FRA_REPORT_STRUCTURE) {
+    if (section.moduleKeys.includes(moduleKey)) {
+      // Special handling for split sections
+      if (section.id === 7 && moduleKey === 'FRA_3_ACTIVE_SYSTEMS') {
+        return '7/8. Active Fire Safety Systems';
+      }
+      if (section.id === 10 && moduleKey === 'FRA_8_FIREFIGHTING_EQUIPMENT') {
+        return '10/11. Firefighting Facilities & Equipment';
+      }
+      return `${section.id}. ${section.title}`;
+    }
+  }
+
+  // Fallback for legacy or unmapped modules
+  return 'General Evidence';
+}
+
+/**
+ * Draw Table of Contents
+ */
+function drawTableOfContents(
+  page: PDFPage,
+  font: any,
+  fontBold: any
+): void {
+  let yPosition = PAGE_HEIGHT - MARGIN - 40;
+
+  // Title
+  page.drawText('Contents', {
+    x: MARGIN,
+    y: yPosition,
+    size: 20,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  yPosition -= 40;
+
+  // List all sections from FRA_REPORT_STRUCTURE
+  for (const section of FRA_REPORT_STRUCTURE) {
+    const sectionText = `${section.id}. ${section.title}`;
+
+    page.drawText(sectionText, {
+      x: MARGIN + 20,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    yPosition -= 18;
+
+    // Check if we need a new page
+    if (yPosition < MARGIN + 50) {
+      // For simplicity, we'll just stop at one page of TOC
+      // If more sections are added, this could be extended
+      break;
+    }
+  }
+}
+
+/**
  * Draw section header with number and title
  * Replaces module key printing with clean section numbering
  */
@@ -2876,7 +2951,102 @@ function renderSection2Premises(
 ): number {
   const a2Module = sectionModules.find(m => m.module_key === 'A2_BUILDING_PROFILE');
 
-  if (a2Module) {
+  if (a2Module && a2Module.data) {
+    const data = a2Module.data;
+
+    // Building name and address
+    if (data.building_name || data.site_address) {
+      page.drawText('Premises Details', {
+        x: MARGIN,
+        y: yPosition,
+        size: 12,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 18;
+
+      if (data.building_name) {
+        page.drawText(`Building Name: ${sanitizePdfText(data.building_name)}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
+
+      if (data.site_address) {
+        page.drawText(`Address: ${sanitizePdfText(data.site_address)}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
+
+      yPosition -= 10;
+    }
+
+    // Building characteristics
+    page.drawText('Building Characteristics', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 18;
+
+    if (data.building_use) {
+      page.drawText(`Use: ${sanitizePdfText(data.building_use)}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    if (data.number_of_storeys) {
+      page.drawText(`Number of Storeys: ${data.number_of_storeys}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    if (data.building_height_m) {
+      page.drawText(`Building Height: ${data.building_height_m} metres`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    if (data.gross_internal_area_sqm) {
+      page.drawText(`Gross Internal Area: ${data.gross_internal_area_sqm} m²`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 10;
+
+    // Render full module content (includes outcome, assessor notes, other fields)
     yPosition = drawModuleContent(page, a2Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
@@ -2899,7 +3069,103 @@ function renderSection3Occupants(
 ): number {
   const a3Module = sectionModules.find(m => m.module_key === 'A3_PERSONS_AT_RISK');
 
-  if (a3Module) {
+  if (a3Module && a3Module.data) {
+    const data = a3Module.data;
+
+    // Occupancy profile
+    page.drawText('Occupancy Profile', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 18;
+
+    if (data.typical_occupancy_number) {
+      page.drawText(`Typical Number of Occupants: ${data.typical_occupancy_number}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    if (data.max_occupancy_number) {
+      page.drawText(`Maximum Number of Occupants: ${data.max_occupancy_number}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    if (data.occupancy_type) {
+      page.drawText(`Occupancy Type: ${sanitizePdfText(data.occupancy_type)}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 10;
+
+    // Vulnerability factors
+    page.drawText('Vulnerability & Special Considerations', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 18;
+
+    if (data.vulnerable_persons_present !== undefined) {
+      const vulnerableText = data.vulnerable_persons_present ? 'Yes' : 'No';
+      page.drawText(`Vulnerable Persons Present: ${vulnerableText}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    if (data.sleeping_accommodation !== undefined) {
+      const sleepingText = data.sleeping_accommodation ? 'Yes' : 'No';
+      page.drawText(`Sleeping Accommodation: ${sleepingText}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    if (data.lone_working !== undefined) {
+      const loneText = data.lone_working ? 'Yes' : 'No';
+      page.drawText(`Lone Working: ${loneText}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 14;
+    }
+
+    yPosition -= 10;
+
+    // Render full module content (includes outcome, assessor notes, other fields)
     yPosition = drawModuleContent(page, a3Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
@@ -3049,19 +3315,88 @@ function renderSection11Management(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
-  // Render all management modules
-  const managementModules = sectionModules.filter(m =>
-    ['A4_MANAGEMENT_CONTROLS', 'FRA_6_MANAGEMENT_SYSTEMS', 'A5_EMERGENCY_ARRANGEMENTS',
-     'FRA_7_EMERGENCY_ARRANGEMENTS', 'A7_REVIEW_ASSURANCE'].includes(m.module_key)
+  // 11.1 Management Systems
+  const managementSystemsModule = sectionModules.find(m =>
+    m.module_key === 'A4_MANAGEMENT_CONTROLS' || m.module_key === 'FRA_6_MANAGEMENT_SYSTEMS'
   );
+  if (managementSystemsModule) {
+    page.drawText('11.1 Management Systems', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 20;
 
-  for (const module of managementModules) {
-    yPosition = drawModuleContent(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, managementSystemsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition -= 15;
   }
 
-  // Add portable firefighting equipment from FRA_8
+  // 11.2 Emergency Arrangements
+  const emergencyArrangementsModule = sectionModules.find(m =>
+    m.module_key === 'A5_EMERGENCY_ARRANGEMENTS' || m.module_key === 'FRA_7_EMERGENCY_ARRANGEMENTS'
+  );
+  if (emergencyArrangementsModule) {
+    if (yPosition < MARGIN + 100) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN;
+    }
+
+    page.drawText('11.2 Emergency Arrangements', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 20;
+
+    yPosition = drawModuleContent(page, emergencyArrangementsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition -= 15;
+  }
+
+  // 11.3 Review & Assurance
+  const reviewAssuranceModule = sectionModules.find(m => m.module_key === 'A7_REVIEW_ASSURANCE');
+  if (reviewAssuranceModule) {
+    if (yPosition < MARGIN + 100) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN;
+    }
+
+    page.drawText('11.3 Review & Assurance', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 20;
+
+    yPosition = drawModuleContent(page, reviewAssuranceModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition -= 15;
+  }
+
+  // 11.4 Portable Firefighting Equipment
   const fra8Module = allModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
   if (fra8Module && fra8Module.data) {
+    if (yPosition < MARGIN + 100) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN;
+    }
+
+    page.drawText('11.4 Portable Firefighting Equipment', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPosition -= 20;
+
     const equipmentFields = [
       'portable_extinguishers',
       'extinguisher_types',

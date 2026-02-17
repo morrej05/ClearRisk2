@@ -3248,24 +3248,12 @@ function drawAssessorSummary(
   // Wrap summary text
   const summaryLines = wrapText(summaryText, CONTENT_WIDTH - 40, 11, font);
 
-  // Calculate box height needed for summary + drivers
+  // Calculate box height needed for summary only
   const lineHeight = 16;
   const boxPadding = 15;
 
-  // Height for summary text
-  let totalHeight = (summaryLines.length * lineHeight);
-
-  // Height for "Key points:" label + bullets
-  if (drivers.length > 0) {
-    totalHeight += 20; // Space before "Key points:"
-    totalHeight += 14; // "Key points:" label
-    // Each driver bullet (with wrapping)
-    for (const driver of drivers) {
-      const driverLines = wrapText(driver, CONTENT_WIDTH - 70, 10, font);
-      totalHeight += (driverLines.length * 14) + 2; // Line height for bullets + small gap
-    }
-  }
-
+  // Height for summary text only
+  const totalHeight = summaryLines.length * lineHeight;
   const boxHeight = totalHeight + (boxPadding * 2);
 
   // Check if we need a new page
@@ -3309,61 +3297,6 @@ function drawAssessorSummary(
       color: rgb(0.15, 0.15, 0.15),
     });
     yPosition -= lineHeight;
-  }
-
-  // Draw driver bullets if present
-  if (drivers.length > 0) {
-    yPosition -= 20; // Space before "Key points:"
-
-    // Draw "Key points:" label
-    page.drawText('Key points:', {
-      x: MARGIN + 15,
-      y: yPosition,
-      size: 10,
-      font,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-
-    yPosition -= 14;
-
-    // Draw each driver bullet
-    for (const driver of drivers) {
-      const driverLines = wrapText(driver, CONTENT_WIDTH - 70, 10, font);
-
-      // Draw bullet point
-      page.drawText('•', {
-        x: MARGIN + 25,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-
-      // Draw first line of driver text
-      page.drawText(driverLines[0], {
-        x: MARGIN + 35,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-
-      yPosition -= 14;
-
-      // Draw wrapped lines (if any)
-      for (let i = 1; i < driverLines.length; i++) {
-        page.drawText(driverLines[i], {
-          x: MARGIN + 35,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
-      }
-
-      yPosition -= 2; // Small gap between bullets
-    }
   }
 
   yPosition -= boxPadding;

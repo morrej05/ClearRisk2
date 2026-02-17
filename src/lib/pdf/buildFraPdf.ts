@@ -118,6 +118,112 @@ interface BuildPdfOptions {
   renderMode?: 'preview' | 'issued';
 }
 
+/**
+ * Section Density Scoring Configuration
+ * Critical fields that must be checked for info_gap/information_incomplete outcomes
+ */
+const CRITICAL_FIELDS: Record<number, string[]> = {
+  5: ['eicr_evidence_seen', 'housekeeping_fire_load', 'arson_risk'],
+  6: ['travel_distances_compliant', 'escape_route_obstructions', 'final_exits_adequate'],
+  7: ['fire_alarm_present', 'alarm_testing_evidence', 'alarm_zoning_adequacy'],
+  8: ['emergency_lighting_present', 'emergency_lighting_testing_evidence', 'emergency_lighting_coverage'],
+  9: ['fire_doors_condition', 'compartmentation_condition', 'fire_stopping_confidence'],
+  10: ['sprinkler_present', 'extinguishers_present', 'hydrant_access'],
+  11: ['fire_safety_policy_exists', 'training_induction_provided', 'inspection_alarm_weekly_test'],
+  12: ['boundary_distances_adequate', 'external_wall_fire_resistance', 'cladding_concerns'],
+};
+
+/**
+ * Helper: Ensure enough space on current page, or create new page
+ */
+function ensureSpace(
+  requiredHeight: number,
+  currentPage: PDFPage,
+  currentY: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): { page: PDFPage; yPosition: number } {
+  if (currentY - requiredHeight < MARGIN + 50) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    return { page: result.page, yPosition: PAGE_HEIGHT - MARGIN };
+  }
+  return { page: currentPage, yPosition: currentY };
+}
+
+/**
+ * Calculate section content density score
+ * Returns score 0-100 indicating how substantial the section content is
+ */
+function calculateSectionDensity(
+  sectionModules: ModuleInstance[],
+  sectionActions: any[],
+  sectionId: number
+): number {
+  let score = 0;
+
+  // 1. Assessor summary presence (10 points)
+  const hasNotes = sectionModules.some(m => m.assessor_notes && m.assessor_notes.trim().length > 20);
+  if (hasNotes) score += 10;
+
+  // 2. Count meaningful data fields (up to 30 points)
+  let meaningfulFields = 0;
+  for (const module of sectionModules) {
+    const data = module.data || {};
+    for (const [key, value] of Object.entries(data)) {
+      // Skip empty, unknown, default noise
+      if (!value) continue;
+      if (value === 'unknown' || value === 'not_applicable' || value === 'n/a') continue;
+      if (value === 'no' || value === false) continue; // Default "no" values
+      if (Array.isArray(value) && value.length === 0) continue;
+      meaningfulFields++;
+    }
+  }
+  score += Math.min(meaningfulFields * 2, 30);
+
+  // 3. Actions count (up to 40 points)
+  const actionCount = sectionActions.filter(a => a.status !== 'closed' && a.status !== 'completed').length;
+  score += Math.min(actionCount * 10, 40);
+
+  // 4. Outcome severity (20 points)
+  const hasNonCompliant = sectionModules.some(m =>
+    m.outcome && !['compliant', 'n/a', 'not_applicable'].includes(m.outcome)
+  );
+  if (hasNonCompliant) score += 20;
+
+  return Math.min(score, 100);
+}
+
+/**
+ * Check if field value is meaningful (not default/unknown/empty noise)
+ */
+function isMeaningfulValue(value: any, fieldKey: string, outcome: string | null): boolean {
+  // Always exclude these noise values
+  if (!value) return false;
+  if (value === 'unknown' || value === 'not_known') return false;
+  if (value === 'not_applicable' || value === 'n/a') return false;
+  if (Array.isArray(value) && value.length === 0) return false;
+
+  // If outcome is info_gap, show unknowns ONLY for critical fields
+  if (outcome === 'info_gap' || outcome === 'information_incomplete') {
+    if (value === 'unknown' || value === 'not_known') {
+      // This will be checked by caller using CRITICAL_FIELDS
+      return false;
+    }
+  }
+
+  // Exclude default "no" answers unless they're significant
+  if (value === 'no' || value === false) {
+    // Keep "no" if it's for presence questions (indicates something is missing)
+    if (fieldKey.includes('_present') || fieldKey.includes('_exists') || fieldKey.includes('_provided')) {
+      return true;
+    }
+    return false;
+  }
+
+  return true;
+}
+
 export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array> {
   console.log('[PDF FRA] Starting FRA PDF build');
   const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
@@ -295,7 +401,10 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS' || m.module_key === 'FRA_90_SIGNIFICANT_FINDINGS'
   );
 
-  // Render sections 2-14 using the fixed structure
+  // Collect low-density sections for compact rendering
+  const lowDensitySections: Array<{ section: any; modules: ModuleInstance[]; actions: any[]; density: number }> = [];
+
+  // Render sections 2-14 using the fixed structure with flowing layout
   for (const section of FRA_REPORT_STRUCTURE) {
     // Skip section 1 (cover pages handled separately above)
     if (section.id === 1) continue;
@@ -308,10 +417,47 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     // Skip empty sections (except special sections that have custom logic)
     if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) continue;
 
-    // Create new page for section
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    // Get actions related to this section
+    const moduleIds = sectionModules.map(m => m.id);
+    const sectionActions = actions
+      .filter(a => moduleIds.includes(a.module_instance_id))
+      .map(a => ({
+        id: a.id,
+        priority: a.priority_band === 'P1' ? 1 : a.priority_band === 'P2' ? 2 : a.priority_band === 'P3' ? 3 : 4,
+        status: a.status,
+        recommended_action: a.recommended_action,
+        priority_band: a.priority_band,
+      }));
+
+    // Calculate section density for sections 5-12 (technical sections)
+    let densityScore = 100; // Default: full rendering
+    if (section.id >= 5 && section.id <= 12) {
+      densityScore = calculateSectionDensity(sectionModules, sectionActions, section.id);
+
+      // If density is too low (< 25), defer to compact rendering
+      if (densityScore < 25) {
+        lowDensitySections.push({
+          section,
+          modules: sectionModules,
+          actions: sectionActions,
+          density: densityScore,
+        });
+        continue; // Skip full rendering
+      }
+    }
+
+    // Hard page breaks only for key sections
+    const needsHardPageBreak = section.id === 2 || section.id === 13 || section.id === 14;
+    if (needsHardPageBreak) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN;
+    } else {
+      // Flowing layout: ensure space for section header + summary
+      const spaceResult = ensureSpace(120, page, yPosition, pdfDoc, isDraft, totalPages);
+      page = spaceResult.page;
+      yPosition = spaceResult.yPosition;
+    }
 
     // Draw section header
     yPosition = drawSectionHeader(page, section.id, section.title, font, fontBold, yPosition);
@@ -319,16 +465,6 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
     // Draw assessor summary for technical sections (5-12)
     if (section.id >= 5 && section.id <= 12) {
-      // Get actions related to this section's modules
-      const moduleIds = sectionModules.map(m => m.id);
-      const sectionActions = actions
-        .filter(a => moduleIds.includes(a.module_instance_id))
-        .map(a => ({
-          id: a.id,
-          priority: a.priority_band === 'P1' ? 1 : a.priority_band === 'P2' ? 2 : a.priority_band === 'P3' ? 3 : 4,
-          status: a.status,
-        }));
-
       const summaryWithDrivers = generateSectionSummary({
         sectionId: section.id,
         sectionTitle: section.title,
@@ -409,6 +545,89 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
           yPosition = drawModuleContent(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
         }
         break;
+    }
+  }
+
+  // Render low-density sections in compact format
+  if (lowDensitySections.length > 0) {
+    // Ensure space for compact section header
+    const spaceResult = ensureSpace(100, page, yPosition, pdfDoc, isDraft, totalPages);
+    page = spaceResult.page;
+    yPosition = spaceResult.yPosition;
+
+    // Title for compact sections block
+    yPosition -= 20;
+    page.drawText('Additional Assessment Areas (No Significant Findings)', {
+      x: MARGIN,
+      y: yPosition,
+      size: 14,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 10;
+
+    page.drawText('The following areas were assessed with no material deficiencies or actions identified:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+    yPosition -= 25;
+
+    // Render each low-density section compactly
+    for (const { section, modules, actions: sectionActions } of lowDensitySections) {
+      // Check if we need a new page
+      const compactResult = ensureSpace(40, page, yPosition, pdfDoc, isDraft, totalPages);
+      page = compactResult.page;
+      yPosition = compactResult.yPosition;
+
+      // Section number and title
+      page.drawText(`${section.id}. ${section.title}`, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 11,
+        font: fontBold,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 16;
+
+      // Outcome badge if available
+      const outcome = modules[0]?.outcome;
+      if (outcome) {
+        const outcomeLabel = getOutcomeLabel(outcome);
+        page.drawText(`  • Outcome: ${outcomeLabel}`, {
+          x: MARGIN + 20,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+        yPosition -= 14;
+      }
+
+      // Brief note if assessor notes exist
+      const notes = modules[0]?.assessor_notes;
+      if (notes && notes.trim().length > 0) {
+        const briefNote = notes.length > 80 ? notes.substring(0, 77) + '...' : notes;
+        const noteLines = wrapText(`  • ${briefNote}`, CONTENT_WIDTH - 20, 9, font);
+        for (const line of noteLines) {
+          const noteResult = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages);
+          page = noteResult.page;
+          yPosition = noteResult.yPosition;
+
+          page.drawText(sanitizePdfText(line), {
+            x: MARGIN + 20,
+            y: yPosition,
+            size: 9,
+            font,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+          yPosition -= 14;
+        }
+      }
+
+      yPosition -= 8;
     }
   }
 
@@ -1911,6 +2130,63 @@ function drawModuleKeyDetails(
     return yPosition;
   }
 
+  // Filter out unknown/default noise values
+  const filteredDetails = keyDetails.filter(([label, value]) => {
+    // Always keep section headers (empty values used for visual separation)
+    if (value === '' && label.startsWith('---')) return true;
+
+    // Filter out meaningless values
+    if (!value || value.trim() === '') return false;
+    if (value.toLowerCase() === 'unknown' || value.toLowerCase() === 'not known') {
+      // Only show unknown if outcome is info_gap AND this is a critical field
+      const outcome = module.outcome;
+      if (outcome === 'info_gap' || outcome === 'information_incomplete') {
+        // Check if this field is critical - for now, exclude all unknowns
+        // Can be enhanced with CRITICAL_FIELDS lookup if needed
+        return false;
+      }
+      return false;
+    }
+    if (value.toLowerCase() === 'not applicable' || value.toLowerCase() === 'n/a') return false;
+    if (value.toLowerCase() === 'no') {
+      // Keep "no" for presence/exists/provided questions (indicates deficiency)
+      if (label.toLowerCase().includes('exists') ||
+          label.toLowerCase().includes('present') ||
+          label.toLowerCase().includes('provided') ||
+          label.toLowerCase().includes('available') ||
+          label.toLowerCase().includes('in place') ||
+          label.toLowerCase().includes('evidence seen') ||
+          label.toLowerCase().includes('satisfactory')) {
+        return true;
+      }
+      return false;
+    }
+
+    return true;
+  });
+
+  // If all details were filtered out, show brief message
+  if (filteredDetails.length === 0) {
+    page.drawText('Key Details:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 18;
+
+    page.drawText('No significant details recorded.', {
+      x: MARGIN + 5,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    yPosition -= 25;
+    return yPosition;
+  }
+
   page.drawText('Key Details:', {
     x: MARGIN,
     y: yPosition,
@@ -1920,7 +2196,7 @@ function drawModuleKeyDetails(
   });
   yPosition -= 18;
 
-  for (const [label, value] of keyDetails) {
+  for (const [label, value] of filteredDetails) {
     if (yPosition < MARGIN + 80) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;

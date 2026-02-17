@@ -293,14 +293,23 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
     // Draw assessor summary for technical sections (5-12)
     if (section.id >= 5 && section.id <= 12) {
-      const summaryText = generateSectionSummary({
+      const summaryWithDrivers = generateSectionSummary({
         sectionId: section.id,
         sectionTitle: section.title,
         moduleInstances: sectionModules,
       });
 
-      if (summaryText) {
-        const summaryResult = drawAssessorSummary(page, summaryText, font, yPosition, pdfDoc, isDraft, totalPages);
+      if (summaryWithDrivers) {
+        const summaryResult = drawAssessorSummary(
+          page,
+          summaryWithDrivers.summary,
+          summaryWithDrivers.drivers,
+          font,
+          yPosition,
+          pdfDoc,
+          isDraft,
+          totalPages
+        );
         page = summaryResult.page;
         yPosition = summaryResult.yPosition;
       }
@@ -2871,25 +2880,41 @@ function drawSectionHeader(
 }
 
 /**
- * Draw assessor summary paragraph for technical sections (5-12)
- * Displays professional narrative based on module outcomes
+ * Draw assessor summary paragraph with driver bullets for technical sections (5-12)
+ * Displays summary sentence + key points based on section data
  */
 function drawAssessorSummary(
   page: PDFPage,
   summaryText: string,
+  drivers: string[],
   font: any,
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  // Wrap text to fit in content width with padding
+  // Wrap summary text
   const summaryLines = wrapText(summaryText, CONTENT_WIDTH - 40, 11, font);
 
-  // Calculate box height needed
+  // Calculate box height needed for summary + drivers
   const lineHeight = 16;
   const boxPadding = 15;
-  const boxHeight = (summaryLines.length * lineHeight) + (boxPadding * 2);
+
+  // Height for summary text
+  let totalHeight = (summaryLines.length * lineHeight);
+
+  // Height for "Key points:" label + bullets
+  if (drivers.length > 0) {
+    totalHeight += 20; // Space before "Key points:"
+    totalHeight += 14; // "Key points:" label
+    // Each driver bullet (with wrapping)
+    for (const driver of drivers) {
+      const driverLines = wrapText(driver, CONTENT_WIDTH - 70, 10, font);
+      totalHeight += (driverLines.length * 14) + 2; // Line height for bullets + small gap
+    }
+  }
+
+  const boxHeight = totalHeight + (boxPadding * 2);
 
   // Check if we need a new page
   if (yPosition - boxHeight < MARGIN + 50) {
@@ -2932,6 +2957,61 @@ function drawAssessorSummary(
       color: rgb(0.15, 0.15, 0.15),
     });
     yPosition -= lineHeight;
+  }
+
+  // Draw driver bullets if present
+  if (drivers.length > 0) {
+    yPosition -= 20; // Space before "Key points:"
+
+    // Draw "Key points:" label
+    page.drawText('Key points:', {
+      x: MARGIN + 15,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    yPosition -= 14;
+
+    // Draw each driver bullet
+    for (const driver of drivers) {
+      const driverLines = wrapText(driver, CONTENT_WIDTH - 70, 10, font);
+
+      // Draw bullet point
+      page.drawText('•', {
+        x: MARGIN + 25,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+
+      // Draw first line of driver text
+      page.drawText(driverLines[0], {
+        x: MARGIN + 35,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+
+      yPosition -= 14;
+
+      // Draw wrapped lines (if any)
+      for (let i = 1; i < driverLines.length; i++) {
+        page.drawText(driverLines[i], {
+          x: MARGIN + 35,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
+
+      yPosition -= 2; // Small gap between bullets
+    }
   }
 
   yPosition -= boxPadding;

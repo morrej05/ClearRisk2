@@ -2,7 +2,7 @@
  * Section Summary Generator for FRA PDF Sections 5-12
  *
  * Generates professional assessor summaries that appear at the top of each technical section
- * Based on module outcomes and info gaps
+ * Based on module outcomes and specific field data
  */
 
 import type { ModuleInstance } from '../supabase/attachments';
@@ -13,11 +13,16 @@ interface SectionContext {
   moduleInstances: ModuleInstance[];
 }
 
+export interface SectionSummaryWithDrivers {
+  summary: string;
+  drivers: string[];
+}
+
 /**
- * Generate professional assessor summary for a section
- * Returns 2-4 line narrative based on module outcomes
+ * Generate professional assessor summary for a section with driver bullets
+ * Returns summary sentence + up to 3 key points based on section data
  */
-export function generateSectionSummary(context: SectionContext): string | null {
+export function generateSectionSummary(context: SectionContext): SectionSummaryWithDrivers | null {
   const { sectionId, sectionTitle, moduleInstances } = context;
 
   // Only generate summaries for sections 5-12 (technical assessment sections)
@@ -26,126 +31,361 @@ export function generateSectionSummary(context: SectionContext): string | null {
   // If no modules in section, no summary needed
   if (moduleInstances.length === 0) return null;
 
-  // Analyze outcomes
+  // Analyze outcomes to get summary sentence
   const hasMaterialDef = moduleInstances.some(m => m.outcome === 'material_def');
   const hasMinorDef = moduleInstances.some(m => m.outcome === 'minor_def');
   const hasInfoGap = moduleInstances.some(m => m.outcome === 'info_gap');
-  const allCompliant = moduleInstances.every(m => m.outcome === 'compliant' || !m.outcome);
 
-  // Count info gaps
-  const infoGapCount = moduleInstances.filter(m => m.outcome === 'info_gap').length;
-
-  // Generate context-aware narrative based on section and outcomes
+  // Generate deterministic summary sentence based on worst outcome
   let summary = '';
-
   if (hasMaterialDef) {
-    summary = generateMaterialDefSummary(sectionId, sectionTitle, hasInfoGap);
+    summary = 'Significant deficiencies were identified in this area which may materially affect life safety.';
   } else if (hasMinorDef) {
-    summary = generateMinorDefSummary(sectionId, sectionTitle, hasInfoGap);
+    summary = 'Minor deficiencies were identified; improvements are recommended.';
   } else if (hasInfoGap) {
-    summary = generateInfoGapSummary(sectionId, sectionTitle, infoGapCount);
-  } else if (allCompliant) {
-    summary = generateCompliantSummary(sectionId, sectionTitle);
+    summary = 'Certain aspects could not be fully verified at the time of assessment and require follow-up.';
   } else {
-    // Fallback for modules without explicit outcomes
-    summary = generateNeutralSummary(sectionId, sectionTitle);
+    summary = 'No significant deficiencies were identified in this area at the time of assessment.';
   }
 
-  return summary;
+  // Extract section-specific drivers
+  const drivers = extractSectionDrivers(sectionId, moduleInstances);
+
+  return { summary, drivers };
 }
 
-function generateMaterialDefSummary(sectionId: number, sectionTitle: string, hasInfoGap: boolean): string {
-  const summaries: Record<number, string> = {
-    5: `Significant fire hazards requiring urgent attention have been identified. ${hasInfoGap ? 'Certain areas could not be fully assessed due to access restrictions.' : 'Immediate action is required to reduce ignition sources and manage combustible materials.'}`,
+/**
+ * Extract up to 3 key driver bullets based on section-specific field data
+ * These are concrete evidence points that support the summary
+ */
+export function extractSectionDrivers(sectionId: number, moduleInstances: ModuleInstance[]): string[] {
+  const drivers: string[] = [];
 
-    6: `Significant deficiencies in means of escape have been identified which could compromise safe evacuation. ${hasInfoGap ? 'Some escape routes could not be fully verified.' : 'These deficiencies require urgent remediation to ensure occupant safety.'}`,
+  // Combine data from all modules in the section
+  const allData = moduleInstances.reduce((acc, m) => {
+    return { ...acc, ...(m.data || {}) };
+  }, {} as Record<string, any>);
 
-    7: `Material deficiencies in fire detection and alarm systems have been identified. ${hasInfoGap ? 'Certain detection zones could not be fully assessed.' : 'The current provision does not provide adequate early warning of fire.'}`,
-
-    8: `Emergency lighting provision has significant deficiencies which could compromise safe evacuation in emergency conditions. ${hasInfoGap ? 'Some areas could not be fully assessed.' : 'Urgent improvements are required to meet regulatory standards.'}`,
-
-    9: `Significant breaches in compartmentation and fire separation have been identified. ${hasInfoGap ? 'Certain concealed spaces could not be accessed for full assessment.' : 'These deficiencies compromise the building\'s ability to contain fire spread and must be addressed urgently.'}`,
-
-    10: `Fixed fire suppression and firefighting equipment have material deficiencies. ${hasInfoGap ? 'Some systems could not be fully tested.' : 'Current provision may not be adequate for the fire risk present.'}`,
-
-    11: `Significant gaps in fire safety management systems have been identified. ${hasInfoGap ? 'Certain management records could not be fully reviewed.' : 'Immediate improvements to procedures, training, and record-keeping are required.'}`,
-
-    12: `Significant risks of external fire spread have been identified. ${hasInfoGap ? 'Certain aspects of external boundaries could not be fully assessed.' : 'These risks require urgent attention to prevent fire spread to or from adjacent properties.'}`,
-  };
-
-  return summaries[sectionId] || 'Significant deficiencies requiring urgent attention have been identified in this area.';
+  switch (sectionId) {
+    case 5: // Fire Hazards & Ignition Sources
+      return extractSection5Drivers(allData);
+    case 6: // Means of Escape
+      return extractSection6Drivers(allData);
+    case 7: // Fire Detection, Alarm & Warning
+      return extractSection7Drivers(allData);
+    case 8: // Emergency Lighting
+      return extractSection8Drivers(allData);
+    case 9: // Passive Fire Protection (Compartmentation)
+      return extractSection9Drivers(allData);
+    case 10: // Fixed Fire Suppression & Firefighting
+      return extractSection10Drivers(allData);
+    case 11: // Fire Safety Management & Procedures
+      return extractSection11Drivers(allData);
+    case 12: // External Fire Spread
+      return extractSection12Drivers(allData);
+    default:
+      return ['No specific issues were recorded in this section.'];
+  }
 }
 
-function generateMinorDefSummary(sectionId: number, sectionTitle: string, hasInfoGap: boolean): string {
-  const summaries: Record<number, string> = {
-    5: `Minor deficiencies in fire hazard management have been identified. ${hasInfoGap ? 'Some areas could not be fully assessed. ' : ''}Improvements are recommended to further reduce fire risk.`,
+function extractSection5Drivers(data: Record<string, any>): string[] {
+  const drivers: string[] = [];
 
-    6: `Means of escape provision is generally adequate with minor improvements required. ${hasInfoGap ? 'Certain routes could not be fully verified. ' : ''}The identified deficiencies should be addressed to enhance safety.`,
+  // EICR status
+  const electrical = data.electrical_safety || {};
+  if (electrical.eicr_satisfactory === 'no' || electrical.eicr_outstanding_c1_c2 === 'yes') {
+    drivers.push('Electrical Installation Condition Report (EICR) identified unsatisfactory conditions');
+  } else if (electrical.eicr_evidence_seen === 'no') {
+    drivers.push('No evidence of valid Electrical Installation Condition Report (EICR) was seen');
+  }
 
-    7: `Fire detection and alarm systems are generally adequate with minor improvements required. ${hasInfoGap ? 'Some detection zones could not be fully assessed. ' : ''}The system provides reasonable early warning with scope for enhancement.`,
+  // Arson risk
+  if (data.arson_risk === 'high') {
+    drivers.push('Elevated arson risk due to inadequate security or previous incidents');
+  }
 
-    8: `Emergency lighting is generally provided with minor deficiencies identified. ${hasInfoGap ? 'Some areas could not be fully assessed. ' : ''}Improvements are recommended to ensure full compliance.`,
+  // Housekeeping/fire load
+  if (data.housekeeping_fire_load === 'high' || data.housekeeping_fire_load === 'excessive') {
+    drivers.push('Excessive combustible materials or poor housekeeping standards observed');
+  }
 
-    9: `Compartmentation is generally adequate with minor improvements required. ${hasInfoGap ? 'Some concealed spaces could not be accessed. ' : ''}The identified deficiencies should be addressed to maintain fire separation integrity.`,
+  // High-risk activities
+  if (Array.isArray(data.high_risk_activities) && data.high_risk_activities.length > 0) {
+    const activities = data.high_risk_activities.join(', ').replace(/_/g, ' ');
+    drivers.push(`High-risk activities present: ${activities}`);
+  }
 
-    10: `Fixed fire suppression and firefighting equipment are generally adequate with minor improvements required. ${hasInfoGap ? 'Some systems could not be fully tested. ' : ''}The provision is reasonable for the fire risk present.`,
+  // Oxygen enrichment
+  if (data.oxygen_enrichment === 'known') {
+    drivers.push('Oxygen enrichment sources identified, increasing fire severity risk');
+  }
 
-    11: `Fire safety management systems are generally adequate with minor improvements recommended. ${hasInfoGap ? 'Certain records could not be fully reviewed. ' : ''}Enhanced procedures and training would further improve fire safety standards.`,
+  if (drivers.length === 0) {
+    return ['No specific issues were recorded in this section.'];
+  }
 
-    12: `External fire spread risks are generally managed with minor improvements required. ${hasInfoGap ? 'Some external boundaries could not be fully assessed. ' : ''}The identified measures should be enhanced to minimize fire spread potential.`,
-  };
-
-  return summaries[sectionId] || 'Minor deficiencies have been identified. Improvements are recommended to enhance fire safety standards.';
+  return drivers.slice(0, 3);
 }
 
-function generateInfoGapSummary(sectionId: number, sectionTitle: string, infoGapCount: number): string {
-  const areaWord = infoGapCount > 1 ? 'areas' : 'an area';
-  const couldWord = infoGapCount > 1 ? 'areas could' : 'this area could';
+function extractSection6Drivers(data: Record<string, any>): string[] {
+  const drivers: string[] = [];
 
-  const summaries: Record<number, string> = {
-    5: `Fire hazards were generally controlled where assessed. However, ${areaWord} could not be fully evaluated due to access restrictions or missing information. The overall assessment is provisional pending complete access.`,
+  // Travel distances
+  if (data.travel_distances_compliant === 'no') {
+    drivers.push('Travel distances exceed regulatory guidance limits');
+  }
 
-    6: `Means of escape provision appears adequate in accessible areas. However, ${couldWord} not be fully verified due to restricted access or incomplete information. Travel distances and exit routes should be confirmed when full access is available.`,
+  // Escape route obstructions
+  if (data.escape_route_obstructions === 'yes') {
+    drivers.push('Obstructions identified in escape routes that impede safe evacuation');
+  }
 
-    7: `Fire detection and alarm provision appears adequate where assessed. However, ${couldWord} not be fully verified due to access restrictions or incomplete system documentation. Full verification is required.`,
+  // Final exits
+  if (data.final_exits_adequate === 'no') {
+    drivers.push('Final exit arrangements are inadequate for the occupancy');
+  }
 
-    8: `Emergency lighting appears adequate where observed. However, ${couldWord} not be fully assessed due to access restrictions or testing limitations. Comprehensive testing should be conducted when full access is available.`,
+  // Exit signage
+  if (data.exit_signage_adequacy === 'inadequate') {
+    drivers.push('Emergency exit signage is inadequate or missing');
+  }
 
-    9: `Compartmentation appears adequate where accessible. However, ${couldWord} not be fully assessed due to restricted access to concealed spaces or incomplete documentation. Full assessment should be completed when access permits.`,
+  // Stair protection
+  if (data.stair_protection_status === 'inadequate') {
+    drivers.push('Protected stairways have inadequate fire resistance or integrity');
+  }
 
-    10: `Fixed firefighting equipment appears adequate where inspected. However, ${couldWord} not be fully verified due to access restrictions or incomplete testing. Full verification should be conducted.`,
+  // Disabled egress
+  if (data.disabled_egress_arrangements === 'inadequate') {
+    drivers.push('Provision for disabled persons in emergency egress is inadequate');
+  }
 
-    11: `Fire safety management systems appear adequate based on available evidence. However, ${couldWord} not be fully evaluated due to incomplete records or unavailable personnel. Full review should be completed when all documentation is available.`,
+  if (drivers.length === 0) {
+    return ['No specific issues were recorded in this section.'];
+  }
 
-    12: `External fire spread risks appear managed where assessed. However, ${couldWord} not be fully evaluated due to restricted access to boundaries or incomplete information. Full assessment should be completed when access permits.`,
-  };
-
-  return summaries[sectionId] || `Certain aspects could not be fully verified due to missing information or restricted access. The assessment in this area is provisional.`;
+  return drivers.slice(0, 3);
 }
 
-function generateCompliantSummary(sectionId: number, sectionTitle: string): string {
-  const summaries: Record<number, string> = {
-    5: 'Fire hazards are appropriately controlled and managed. No significant deficiencies were identified in the assessment of ignition sources and combustible materials.',
+function extractSection7Drivers(data: Record<string, any>): string[] {
+  const drivers: string[] = [];
 
-    6: 'Means of escape provision is adequate for the occupancy. Escape routes, travel distances, signage, and emergency lighting meet regulatory requirements.',
+  // Alarm system presence
+  if (data.fire_alarm_present === 'no') {
+    drivers.push('No fire detection and alarm system installed');
+  } else if (data.fire_alarm_present === 'yes') {
+    // Alarm category
+    if (data.fire_alarm_category && data.fire_alarm_category !== 'unknown') {
+      drivers.push(`Fire alarm system category: ${data.fire_alarm_category}`);
+    }
 
-    7: 'Fire detection and alarm systems are adequate for the occupancy and fire risk. The system provides appropriate early warning of fire and is properly maintained.',
+    // Testing evidence
+    if (data.alarm_testing_evidence === 'no' || data.alarm_testing_evidence === 'unknown') {
+      drivers.push('No evidence of regular fire alarm testing and servicing');
+    }
+  }
 
-    8: 'Emergency lighting provision is adequate and meets regulatory standards. Lighting is appropriately positioned to facilitate safe evacuation in emergency conditions.',
+  // Zoning adequacy
+  if (data.alarm_zoning_adequacy === 'inadequate') {
+    drivers.push('Fire alarm zoning is inadequate for building layout');
+  }
 
-    9: 'Compartmentation and passive fire protection measures are adequate. Fire doors, fire stopping, and structural fire resistance meet regulatory requirements.',
+  // False alarm frequency
+  if (data.false_alarm_frequency === 'excessive') {
+    drivers.push('Excessive false alarm activations reducing system credibility');
+  }
 
-    10: 'Fixed fire suppression and firefighting equipment are adequate for the occupancy and fire risk. Equipment is appropriately maintained and accessible.',
+  if (drivers.length === 0) {
+    return ['No specific issues were recorded in this section.'];
+  }
 
-    11: 'Fire safety management systems are adequate. Appropriate procedures, training, and maintenance regimes are in place and effectively implemented.',
-
-    12: 'External fire spread risks are appropriately managed. Adequate separation distances and fire resistance are provided to prevent fire spread to or from adjacent properties.',
-  };
-
-  return summaries[sectionId] || 'No significant deficiencies were identified in this area. Provisions meet regulatory requirements.';
+  return drivers.slice(0, 3);
 }
 
-function generateNeutralSummary(sectionId: number, sectionTitle: string): string {
-  // Fallback for modules without explicit outcomes
-  return 'This section has been assessed in accordance with regulatory requirements. Detailed findings are provided below.';
+function extractSection8Drivers(data: Record<string, any>): string[] {
+  const drivers: string[] = [];
+
+  // Emergency lighting presence
+  if (data.emergency_lighting_present === 'no') {
+    drivers.push('No emergency lighting system installed');
+  } else if (data.emergency_lighting_present === 'yes') {
+    // Testing evidence
+    if (data.emergency_lighting_testing_evidence === 'no' || data.emergency_lighting_testing_evidence === 'unknown') {
+      drivers.push('No evidence of regular emergency lighting testing (monthly functional, annual duration)');
+    }
+  }
+
+  // Coverage gaps
+  if (data.emergency_lighting_coverage === 'inadequate') {
+    drivers.push('Emergency lighting coverage is inadequate for escape routes and open areas');
+  }
+
+  // System type
+  if (data.emergency_lighting_system_type && data.emergency_lighting_system_type !== 'unknown') {
+    drivers.push(`Emergency lighting type: ${data.emergency_lighting_system_type.replace(/_/g, ' ')}`);
+  }
+
+  if (drivers.length === 0) {
+    return ['No specific issues were recorded in this section.'];
+  }
+
+  return drivers.slice(0, 3);
+}
+
+function extractSection9Drivers(data: Record<string, any>): string[] {
+  const drivers: string[] = [];
+
+  // Fire doors condition
+  if (data.fire_doors_condition === 'poor' || data.fire_doors_condition === 'inadequate') {
+    drivers.push('Fire doors are in poor condition with integrity compromised');
+  }
+
+  // Fire door inspection regime
+  if (data.fire_doors_inspection_regime === 'no' || data.fire_doors_inspection_regime === 'unknown') {
+    drivers.push('No evidence of regular fire door inspection regime');
+  }
+
+  // Compartmentation condition
+  if (data.compartmentation_condition === 'poor' || data.compartmentation_condition === 'breached') {
+    drivers.push('Compartmentation has been breached, compromising fire containment');
+  }
+
+  // Fire stopping confidence
+  if (data.fire_stopping_confidence === 'low' || data.fire_stopping_confidence === 'very_low') {
+    drivers.push('Low confidence in fire stopping effectiveness due to visible breaches or lack of access');
+  }
+
+  // Cavity barriers
+  if (data.cavity_barriers_adequate === 'no') {
+    drivers.push('Cavity barriers are inadequate or missing in concealed spaces');
+  }
+
+  if (drivers.length === 0) {
+    return ['No specific issues were recorded in this section.'];
+  }
+
+  return drivers.slice(0, 3);
+}
+
+function extractSection10Drivers(data: Record<string, any>): string[] {
+  const drivers: string[] = [];
+
+  // Sprinkler system
+  if (data.sprinkler_present === 'yes') {
+    const firefighting = data.firefighting || {};
+    const sprinklers = firefighting.fixed_facilities?.sprinklers || {};
+
+    if (sprinklers.servicing_status === 'overdue' || sprinklers.servicing_status === 'unknown') {
+      drivers.push('Sprinkler system servicing is overdue or not evidenced');
+    } else if (sprinklers.servicing_status === 'current') {
+      drivers.push('Sprinkler system is installed and servicing is current');
+    }
+  }
+
+  // Portable extinguishers
+  if (data.extinguishers_present === 'yes') {
+    if (data.extinguisher_servicing_evidence === 'no' || data.extinguisher_servicing_evidence === 'unknown') {
+      drivers.push('Portable fire extinguishers lack evidence of annual servicing');
+    }
+  } else if (data.extinguishers_present === 'no') {
+    drivers.push('No portable fire extinguishers provided');
+  }
+
+  // Hose reels
+  const firefighting = data.firefighting || {};
+  const hoseReels = firefighting.hose_reels || {};
+  if (hoseReels.installed === 'yes' && (hoseReels.servicing_status === 'overdue' || hoseReels.servicing_status === 'unknown')) {
+    drivers.push('Hose reel servicing is overdue or not evidenced');
+  }
+
+  // Hydrant access
+  if (data.hydrant_access === 'inadequate' || data.hydrant_access === 'none') {
+    drivers.push('Fire hydrant access is inadequate for firefighting operations');
+  }
+
+  if (drivers.length === 0) {
+    return ['No specific issues were recorded in this section.'];
+  }
+
+  return drivers.slice(0, 3);
+}
+
+function extractSection11Drivers(data: Record<string, any>): string[] {
+  const drivers: string[] = [];
+
+  // Fire safety policy
+  if (data.fire_safety_policy_exists === 'no') {
+    drivers.push('No documented fire safety policy in place');
+  }
+
+  // Training provision
+  if (data.training_induction_provided === 'no') {
+    drivers.push('Staff fire safety induction training is not provided');
+  }
+
+  // Fire drills
+  if (data.training_fire_drill_frequency === 'never' || data.training_fire_drill_frequency === 'ad_hoc') {
+    drivers.push('Fire drills are not conducted at appropriate intervals');
+  }
+
+  // Alarm testing
+  if (data.inspection_alarm_weekly_test === 'no') {
+    drivers.push('Weekly fire alarm testing is not being conducted');
+  }
+
+  // Hot work permit
+  if (data.ptw_hot_work === 'no' && data.contractor_supervision === 'no') {
+    drivers.push('No hot work permit system in place despite contractor activities');
+  }
+
+  // Emergency lighting testing
+  if (data.inspection_emergency_lighting_monthly === 'no') {
+    drivers.push('Monthly emergency lighting functional tests are not being conducted');
+  }
+
+  // Inspection records
+  if (data.inspection_records_available === 'no') {
+    drivers.push('Fire safety inspection records are not available or not maintained');
+  }
+
+  if (drivers.length === 0) {
+    return ['No specific issues were recorded in this section.'];
+  }
+
+  return drivers.slice(0, 3);
+}
+
+function extractSection12Drivers(data: Record<string, any>): string[] {
+  const drivers: string[] = [];
+
+  // Boundary distances
+  if (data.boundary_distances_adequate === 'no') {
+    drivers.push('Separation distances to boundaries are inadequate');
+  }
+
+  // External wall construction
+  if (data.external_wall_fire_resistance === 'inadequate' || data.external_wall_fire_resistance === 'unknown') {
+    drivers.push('External wall fire resistance is inadequate or not verified');
+  }
+
+  // Cladding concerns
+  if (data.cladding_concerns === 'yes') {
+    drivers.push('Concerns identified regarding external cladding materials');
+  }
+
+  // External storage
+  if (data.external_storage_risk === 'high') {
+    drivers.push('External storage of combustibles presents elevated fire spread risk');
+  }
+
+  // Neighbouring premises
+  if (data.neighbouring_premises_risk === 'high') {
+    drivers.push('Adjacent premises present significant fire spread risk');
+  }
+
+  if (drivers.length === 0) {
+    return ['No specific issues were recorded in this section.'];
+  }
+
+  return drivers.slice(0, 3);
 }

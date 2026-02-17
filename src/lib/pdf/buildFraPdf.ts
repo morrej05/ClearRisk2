@@ -47,6 +47,8 @@ import {
 import { addIssuedReportPages } from './issuedPdfPages';
 import { FRA_REPORT_STRUCTURE, getSectionTitle } from './fraReportStructure';
 import { getJurisdictionTemplate, getRegulatoryFrameworkText } from './jurisdictionTemplates';
+import { generateSectionKeyPoints } from './keyPoints/generateSectionKeyPoints';
+import { drawKeyPointsBlock } from './keyPoints/drawKeyPointsBlock';
 
 interface Document {
   id: string;
@@ -485,6 +487,28 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
         );
         page = summaryResult.page;
         yPosition = summaryResult.yPosition;
+      }
+
+      // Generate and draw Key Points (deterministic, rule-based observations)
+      const keyPoints = generateSectionKeyPoints({
+        sectionId: section.id,
+        moduleInstances: sectionModules,
+        actions: sectionActions,
+      });
+
+      if (keyPoints.length > 0) {
+        const keyPointsResult = drawKeyPointsBlock({
+          page,
+          keyPoints,
+          font,
+          fontBold,
+          yPosition,
+          pdfDoc,
+          isDraft,
+          totalPages,
+        });
+        page = keyPointsResult.page;
+        yPosition = keyPointsResult.yPosition;
       }
     }
 

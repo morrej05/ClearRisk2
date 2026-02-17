@@ -20,6 +20,7 @@ import {
   type FraBuildingComplexityInput,
   type FireProtectionModuleData,
 } from '../modules/fra/complexityEngine';
+import { scoreFraDocument, type ScoringResult } from '../fra/scoring/scoringEngine';
 import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
@@ -223,6 +224,35 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   });
   totalPages.push(coverPage, docControlPage);
 
+  const buildingProfileModule = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
+  if (buildingProfileModule) {
+    try {
+      const scoringResult = scoreFraDocument({
+        jurisdiction: (document.jurisdiction || 'england_wales') as any,
+        buildingProfile: buildingProfileModule.data,
+        moduleInstances,
+      });
+
+      const priorityActions = actions
+        .filter((a) => ['P1', 'P2', 'P3'].includes(a.priority_band) && (a.status === 'open' || a.status === 'in_progress'))
+        .sort((a, b) => {
+          const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4 };
+          return (priorityOrder[a.priority_band as keyof typeof priorityOrder] || 99) -
+                 (priorityOrder[b.priority_band as keyof typeof priorityOrder] || 99);
+        });
+
+      const riskSummaryPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      totalPages.push(riskSummaryPage);
+      drawRiskSummaryPage(riskSummaryPage, scoringResult, priorityActions, font, fontBold, document);
+
+      if (isDraft) {
+        drawDraftWatermark(riskSummaryPage, fontBold);
+      }
+    } catch (error) {
+      console.warn('[PDF FRA] Failed to generate risk summary page:', error);
+    }
+  }
+
   addExecutiveSummaryPages(
     pdfDoc,
     isDraft,
@@ -382,6 +412,196 @@ function getOrganisationDisplayName(organisation: Organisation): string {
   }
 
   return organisation.name;
+}
+
+function drawRiskSummaryPage(
+  page: PDFPage,
+  scoringResult: ScoringResult,
+  priorityActions: Action[],
+  font: any,
+  fontBold: any,
+  document: Document
+): void {
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+
+  page.drawText('Overall Risk to Life Assessment', {
+    x: MARGIN,
+    y: yPosition,
+    size: 20,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  yPosition -= 50;
+
+  const riskColor =
+    scoringResult.overallRisk === 'Intolerable' ? rgb(0.8, 0.1, 0.1) :
+    scoringResult.overallRisk === 'Substantial' ? rgb(0.9, 0.5, 0) :
+    scoringResult.overallRisk === 'Moderate' ? rgb(0.9, 0.7, 0) :
+    scoringResult.overallRisk === 'Tolerable' ? rgb(0.7, 0.7, 0) :
+    rgb(0.2, 0.6, 0.2);
+
+  page.drawRectangle({
+    x: MARGIN,
+    y: yPosition - 35,
+    width: CONTENT_WIDTH,
+    height: 50,
+    borderColor: riskColor,
+    borderWidth: 2,
+    color: rgb(1, 1, 1),
+  });
+
+  page.drawText(scoringResult.overallRisk.toUpperCase(), {
+    x: MARGIN + 20,
+    y: yPosition - 15,
+    size: 24,
+    font: fontBold,
+    color: riskColor,
+  });
+
+  yPosition -= 60;
+
+  if (scoringResult.provisional) {
+    page.drawRectangle({
+      x: MARGIN,
+      y: yPosition - 40,
+      width: CONTENT_WIDTH,
+      height: 60 + (scoringResult.provisionalReasons.length * 15),
+      borderColor: rgb(0.9, 0.7, 0),
+      borderWidth: 1.5,
+      color: rgb(1, 0.98, 0.9),
+    });
+
+    page.drawText('PROVISIONAL ASSESSMENT', {
+      x: MARGIN + 10,
+      y: yPosition - 15,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.6, 0.4, 0),
+    });
+
+    yPosition -= 30;
+
+    for (const reason of scoringResult.provisionalReasons) {
+      const reasonText = sanitizePdfText(reason);
+      page.drawText(`- ${reasonText}`, {
+        x: MARGIN + 15,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.4, 0.3, 0),
+      });
+      yPosition -= 15;
+    }
+
+    yPosition -= 25;
+  }
+
+  yPosition -= 20;
+
+  page.drawText('Risk Determination', {
+    x: MARGIN,
+    y: yPosition,
+    size: 14,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  yPosition -= 25;
+
+  const likelihoodText = `Likelihood: ${scoringResult.likelihood} - The assessment of how likely harm is to occur based on identified hazards, management controls, and information completeness.`;
+  const likelihoodLines = wrapText(likelihoodText, CONTENT_WIDTH, 10, font);
+  for (const line of likelihoodLines) {
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPosition -= 14;
+  }
+
+  yPosition -= 10;
+
+  const consequenceText = `Consequence: ${scoringResult.consequence} - The potential severity of harm determined by building profile factors including occupancy, vulnerability, height, and evacuation complexity.`;
+  const consequenceLines = wrapText(consequenceText, CONTENT_WIDTH, 10, font);
+  for (const line of consequenceLines) {
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPosition -= 14;
+  }
+
+  yPosition -= 10;
+
+  const determinationText = `Determination: The overall risk to life is assessed as ${scoringResult.overallRisk} based on the combination of ${scoringResult.likelihood} likelihood and ${scoringResult.consequence} consequence. ${scoringResult.provisional ? 'This assessment is provisional pending resolution of critical information gaps.' : 'This assessment is based on complete information gathered during the survey.'}`;
+  const determinationLines = wrapText(determinationText, CONTENT_WIDTH, 10, fontBold);
+  for (const line of determinationLines) {
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= 14;
+  }
+
+  if (priorityActions.length > 0) {
+    yPosition -= 30;
+
+    page.drawText('Priority Actions Snapshot', {
+      x: MARGIN,
+      y: yPosition,
+      size: 14,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    yPosition -= 25;
+
+    for (const action of priorityActions.slice(0, 5)) {
+      const priorityColor =
+        action.priority_band === 'P1' ? rgb(0.8, 0.1, 0.1) :
+        action.priority_band === 'P2' ? rgb(0.9, 0.5, 0) :
+        action.priority_band === 'P3' ? rgb(0.9, 0.7, 0) :
+        rgb(0.3, 0.6, 0.8);
+
+      page.drawRectangle({
+        x: MARGIN,
+        y: yPosition - 4,
+        width: 30,
+        height: 16,
+        borderColor: priorityColor,
+        borderWidth: 1,
+        color: rgb(1, 1, 1),
+      });
+
+      page.drawText(action.priority_band || '', {
+        x: MARGIN + 6,
+        y: yPosition,
+        size: 9,
+        font: fontBold,
+        color: priorityColor,
+      });
+
+      const actionText = sanitizePdfText(action.recommended_action).substring(0, 80);
+      page.drawText(actionText, {
+        x: MARGIN + 40,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+
+      yPosition -= 22;
+    }
+  }
 }
 
 function drawCoverPage(
@@ -1461,6 +1681,17 @@ function drawModuleKeyDetails(
       }
       if (data.arson_risk) keyDetails.push(['Arson Risk', data.arson_risk]);
       if (data.housekeeping_fire_load) keyDetails.push(['Housekeeping Fire Load', data.housekeeping_fire_load]);
+
+      if (data.electrical_safety) {
+        const eicr = data.electrical_safety;
+        keyDetails.push(['--- Electrical Installation (EICR) ---', '']);
+        if (eicr.eicr_evidence_seen) keyDetails.push(['EICR Evidence Seen', eicr.eicr_evidence_seen === 'yes' ? 'Yes' : 'No']);
+        if (eicr.eicr_date_of_test) keyDetails.push(['EICR Test Date', eicr.eicr_date_of_test]);
+        if (eicr.eicr_next_test_due) keyDetails.push(['EICR Next Test Due', eicr.eicr_next_test_due]);
+        if (eicr.eicr_satisfactory) keyDetails.push(['EICR Satisfactory', eicr.eicr_satisfactory === 'satisfactory' ? 'Satisfactory' : eicr.eicr_satisfactory === 'unsatisfactory' ? 'UNSATISFACTORY' : eicr.eicr_satisfactory]);
+        if (eicr.eicr_outstanding_c1_c2) keyDetails.push(['Outstanding C1/C2 Defects', eicr.eicr_outstanding_c1_c2 === 'yes' ? 'YES - IMMEDIATE ACTION REQUIRED' : 'No']);
+        if (eicr.pat_in_place) keyDetails.push(['PAT Testing in Place', eicr.pat_in_place]);
+      }
       break;
 
     case 'FRA_2_ESCAPE_ASIS':
@@ -1488,8 +1719,53 @@ function drawModuleKeyDetails(
       break;
 
     case 'FRA_8_FIREFIGHTING_EQUIPMENT':
-      if (data.extinguishers_present) keyDetails.push(['Extinguishers Present', data.extinguishers_present]);
-      if (data.extinguishers_servicing) keyDetails.push(['Extinguishers Servicing', data.extinguishers_servicing]);
+      if (data.firefighting) {
+        const ff = data.firefighting;
+
+        if (ff.portable_extinguishers) {
+          keyDetails.push(['--- Portable Fire Extinguishers ---', '']);
+          if (ff.portable_extinguishers.present) keyDetails.push(['Extinguishers Present', ff.portable_extinguishers.present]);
+          if (ff.portable_extinguishers.distribution) keyDetails.push(['Distribution', ff.portable_extinguishers.distribution]);
+          if (ff.portable_extinguishers.servicing_status) keyDetails.push(['Servicing Status', ff.portable_extinguishers.servicing_status]);
+          if (ff.portable_extinguishers.last_service_date) keyDetails.push(['Last Service', ff.portable_extinguishers.last_service_date]);
+        }
+
+        if (ff.hose_reels) {
+          keyDetails.push(['--- Hose Reels ---', '']);
+          if (ff.hose_reels.installed) keyDetails.push(['Hose Reels Installed', ff.hose_reels.installed]);
+          if (ff.hose_reels.servicing_status) keyDetails.push(['Servicing Status', ff.hose_reels.servicing_status]);
+          if (ff.hose_reels.last_test_date) keyDetails.push(['Last Test', ff.hose_reels.last_test_date]);
+        }
+
+        if (ff.fixed_facilities) {
+          keyDetails.push(['--- Fixed Firefighting Facilities ---', '']);
+
+          if (ff.fixed_facilities.sprinklers?.installed) {
+            const spk = ff.fixed_facilities.sprinklers;
+            keyDetails.push(['Sprinkler System', spk.installed === 'yes' ? 'Installed' : 'Not Installed']);
+            if (spk.servicing_status) keyDetails.push(['Sprinkler Servicing', spk.servicing_status === 'defective' ? 'DEFECTIVE - CRITICAL ISSUE' : spk.servicing_status]);
+          }
+
+          if (ff.fixed_facilities.dry_riser?.installed) {
+            const dr = ff.fixed_facilities.dry_riser;
+            keyDetails.push(['Dry Riser', dr.installed === 'yes' ? 'Installed' : dr.installed === 'no' ? 'NOT INSTALLED' : dr.installed]);
+            if (dr.servicing_status) keyDetails.push(['Dry Riser Servicing', dr.servicing_status]);
+          }
+
+          if (ff.fixed_facilities.wet_riser?.installed) {
+            const wr = ff.fixed_facilities.wet_riser;
+            keyDetails.push(['Wet Riser', wr.installed === 'yes' ? 'Installed' : wr.installed === 'no' ? 'NOT INSTALLED' : wr.installed]);
+            if (wr.servicing_status) keyDetails.push(['Wet Riser Servicing', wr.servicing_status === 'defective' ? 'DEFECTIVE - CRITICAL ISSUE' : wr.servicing_status]);
+          }
+
+          if (ff.fixed_facilities.firefighting_lift?.present) {
+            keyDetails.push(['Firefighting Lift', ff.fixed_facilities.firefighting_lift.present === 'yes' ? 'Present' : ff.fixed_facilities.firefighting_lift.present === 'no' ? 'NOT PRESENT' : ff.fixed_facilities.firefighting_lift.present]);
+          }
+        }
+      } else {
+        if (data.extinguishers_present) keyDetails.push(['Extinguishers Present', data.extinguishers_present]);
+        if (data.extinguishers_servicing) keyDetails.push(['Extinguishers Servicing', data.extinguishers_servicing]);
+      }
       break;
 
     case 'FRA_5_EXTERNAL_FIRE_SPREAD':

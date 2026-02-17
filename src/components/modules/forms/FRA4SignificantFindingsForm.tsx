@@ -6,6 +6,7 @@ import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanit
 import { computeFraSummary, type FraComputedSummary } from '../../../lib/modules/fra/significantFindingsEngine';
 import { deriveStoreysForScoring, type FraComplexityBand } from '../../../lib/modules/fra/complexityEngine';
 import type { FraContext, FraPriority, FraFindingCategory } from '../../../lib/modules/fra/severityEngine';
+import { scoreFraDocument, type ScoringResult } from '../../../lib/fra/scoring/scoringEngine';
 
 interface Document {
   id: string;
@@ -46,6 +47,7 @@ export default function FRA4SignificantFindingsForm({
   const [isLoadingActions, setIsLoadingActions] = useState(true);
   const [actions, setActions] = useState<Action[]>([]);
   const [buildingProfile, setBuildingProfile] = useState<any>(null);
+  const [allModuleInstances, setAllModuleInstances] = useState<any[]>([]);
 
   const [overrideEnabled, setOverrideEnabled] = useState(
     moduleInstance.data.override?.enabled || false
@@ -76,10 +78,12 @@ export default function FRA4SignificantFindingsForm({
     try {
       const { data: moduleInstances, error: moduleError } = await supabase
         .from('module_instances')
-        .select('id, module_key, data')
+        .select('id, module_key, data, outcome')
         .eq('document_id', document.id);
 
       if (moduleError) throw moduleError;
+
+      setAllModuleInstances(moduleInstances || []);
 
       const buildingProfileModule = moduleInstances?.find(
         (m) => m.module_key === 'A2_BUILDING_PROFILE'
@@ -130,6 +134,21 @@ export default function FRA4SignificantFindingsForm({
       fraContext,
     });
   }, [actions, buildingProfile, document.scs_band, isLoadingActions]);
+
+  const scoringResult: ScoringResult | null = useMemo(() => {
+    if (isLoadingActions || !buildingProfile || allModuleInstances.length === 0) return null;
+
+    try {
+      return scoreFraDocument({
+        jurisdiction: (document as any).jurisdiction || 'england_wales',
+        buildingProfile: buildingProfile.data,
+        moduleInstances: allModuleInstances,
+      });
+    } catch (error) {
+      console.error('Error computing scoring:', error);
+      return null;
+    }
+  }, [buildingProfile, allModuleInstances, document, isLoadingActions]);
 
   const handleSave = async () => {
     if (overrideEnabled && !overrideReason.trim()) {
@@ -278,6 +297,57 @@ export default function FRA4SignificantFindingsForm({
               Computed Summary (Auto-generated)
             </h3>
           </div>
+
+          {scoringResult && (
+            <div className="mb-6 p-4 bg-neutral-50 border-2 border-neutral-300 rounded-lg">
+              <h4 className="font-bold text-neutral-900 mb-3">
+                Overall Risk to Life Assessment
+              </h4>
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-xs font-medium text-neutral-600 mb-1">Overall Risk</div>
+                    <div className={`px-3 py-2 rounded border font-bold text-center ${
+                      scoringResult.overallRisk === 'Intolerable' ? 'bg-red-50 border-red-300 text-red-900' :
+                      scoringResult.overallRisk === 'Substantial' ? 'bg-orange-50 border-orange-300 text-orange-900' :
+                      scoringResult.overallRisk === 'Moderate' ? 'bg-amber-50 border-amber-300 text-amber-900' :
+                      scoringResult.overallRisk === 'Tolerable' ? 'bg-yellow-50 border-yellow-300 text-yellow-900' :
+                      'bg-green-50 border-green-300 text-green-900'
+                    }`}>
+                      {scoringResult.overallRisk}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-neutral-600 mb-1">Likelihood</div>
+                    <div className="px-3 py-2 rounded border bg-white border-neutral-300 text-neutral-900 font-semibold text-center">
+                      {scoringResult.likelihood}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-neutral-600 mb-1">Consequence</div>
+                    <div className="px-3 py-2 rounded border bg-white border-neutral-300 text-neutral-900 font-semibold text-center">
+                      {scoringResult.consequence}
+                    </div>
+                  </div>
+                </div>
+                {scoringResult.provisional && (
+                  <div className="p-3 bg-amber-50 border border-amber-300 rounded">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <div className="font-bold text-amber-900 text-sm mb-1">⚠️ Assessment Provisional</div>
+                        <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside">
+                          {scoringResult.provisionalReasons.map((reason, idx) => (
+                            <li key={idx}>{reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className={`p-4 border rounded-lg flex items-start gap-3 ${getOutcomeColor(displayOutcome)}`}>

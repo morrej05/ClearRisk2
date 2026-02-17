@@ -49,6 +49,13 @@ import { FRA_REPORT_STRUCTURE, getSectionTitle } from './fraReportStructure';
 import { getJurisdictionTemplate, getRegulatoryFrameworkText } from './jurisdictionTemplates';
 import { generateSectionKeyPoints } from './keyPoints/generateSectionKeyPoints';
 import { drawKeyPointsBlock } from './keyPoints/drawKeyPointsBlock';
+import {
+  validateReportQuality,
+  standardizeOutcomeLabel,
+  generateActionReferenceId,
+  getDisplayableOwner,
+} from './reportQualityGates';
+import { drawUsingThisReportSection, drawAssuranceGapsBlock } from './usingThisReportGuide';
 
 interface Document {
   id: string;
@@ -260,6 +267,23 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     console.warn('[PDF FRA] Failed to fetch attachments:', error);
   }
 
+  // Run quality gate validation
+  console.log('[PDF FRA] Running quality gate validation...');
+  const qualityResult = validateReportQuality(moduleInstances, actions);
+  console.log('[PDF FRA] Quality validation:', {
+    passed: qualityResult.passed,
+    blockingIssues: qualityResult.blockingIssues.length,
+    warnings: qualityResult.warnings.length,
+    assuranceGaps: qualityResult.assuranceGaps.length,
+  });
+
+  // Generate stable action reference IDs for actions that don't have them
+  const actionsWithRefs = actions.map((action, index) => ({
+    ...action,
+    reference_number: action.reference_number || generateActionReferenceId(document.id, index + 1, 'FRA'),
+    owner_display_name: getDisplayableOwner(action.owner_display_name),
+  }));
+
   console.log('[PDF FRA] Creating PDF document and embedding fonts');
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -340,6 +364,9 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     drawDraftWatermark(tocPage, fontBold);
   }
 
+  // Add "Using This Report" guide section (after TOC, before exec summary)
+  drawUsingThisReportSection(pdfDoc, font, fontBold, isDraft, totalPages);
+
   addExecutiveSummaryPages(
     pdfDoc,
     isDraft,
@@ -350,11 +377,48 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     { bold: fontBold, regular: font }
   );
 
-  // Add Action Plan Snapshot (after exec summary)
-  // Convert actions to ActionForPdf format
-  const actionsForPdf: ActionForPdf[] = actions.map(a => ({
+  // Add Assurance Gaps block if quality issues detected (after exec summary)
+  if (qualityResult.assuranceGaps.length > 0) {
+    const gapsResult = addNewPage(pdfDoc, isDraft, totalPages);
+    let gapsPage = gapsResult.page;
+    let gapsY = PAGE_HEIGHT - MARGIN - 20;
+
+    // Title
+    gapsPage.drawText('Assessment Completeness', {
+      x: MARGIN,
+      y: gapsY,
+      size: 16,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    gapsY -= 30;
+
+    // Note
+    const noteText = 'The following areas require additional information to complete the assessment:';
+    const noteLines = wrapText(noteText, CONTENT_WIDTH, 11, font);
+    for (const line of noteLines) {
+      gapsPage.drawText(line, {
+        x: MARGIN,
+        y: gapsY,
+        size: 11,
+        font,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      gapsY -= 16;
+    }
+
+    gapsY -= 10;
+
+    // Draw assurance gaps
+    gapsY = drawAssuranceGapsBlock(gapsPage, qualityResult.assuranceGaps, font, fontBold, gapsY);
+  }
+
+  // Add Action Plan Snapshot (after exec summary / assurance gaps)
+  // Convert actions to ActionForPdf format with stable reference numbers
+  const actionsForPdf: ActionForPdf[] = actionsWithRefs.map(a => ({
     id: a.id,
-    reference_number: null, // Will be populated from action register if available
+    reference_number: a.reference_number, // Stable reference ID from quality gates
     recommended_action: a.recommended_action,
     priority_band: a.priority_band,
     status: a.status,
@@ -419,12 +483,13 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     // Skip empty sections (except special sections that have custom logic)
     if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) continue;
 
-    // Get actions related to this section
+    // Get actions related to this section (use actionsWithRefs for stable IDs)
     const moduleIds = sectionModules.map(m => m.id);
-    const sectionActions = actions
+    const sectionActions = actionsWithRefs
       .filter(a => moduleIds.includes(a.module_instance_id))
       .map(a => ({
         id: a.id,
+        reference_number: a.reference_number,
         priority: a.priority_band === 'P1' ? 1 : a.priority_band === 'P2' ? 2 : a.priority_band === 'P3' ? 3 : 4,
         status: a.status,
         recommended_action: a.recommended_action,

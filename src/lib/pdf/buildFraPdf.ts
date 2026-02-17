@@ -3936,8 +3936,7 @@ function renderSection11Management(
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[],
-  keyPoints?: string[]
+  totalPages: PDFPage[]
 ): number {
   // 11.1 Management Systems
   const managementSystemsModule = sectionModules.find(m =>
@@ -3953,7 +3952,17 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, managementSystemsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
+    yPosition = drawModuleContent(
+  page,
+  managementSystemsModule,
+  document,
+  font,
+  fontBold,
+  yPosition,
+  pdfDoc,
+  isDraft,
+  totalPages
+);
     yPosition -= 15;
   }
 

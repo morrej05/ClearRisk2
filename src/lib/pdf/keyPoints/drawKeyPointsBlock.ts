@@ -54,74 +54,87 @@ function ensureSpace(
 export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPointsBlockResult {
   let { page, keyPoints, font, fontBold, yPosition, pdfDoc, isDraft, totalPages } = input;
 
-  // Nothing to render if no key points
-  if (!keyPoints || keyPoints.length === 0) {
-    return { page, yPosition };
-  }
+  if (!keyPoints?.length) return { page, yPosition };
 
-  // Ensure space for heading + at least first bullet
-  const spaceResult = ensureSpace(80, page, yPosition, pdfDoc, isDraft, totalPages);
-  page = spaceResult.page;
-  yPosition = spaceResult.yPosition;
+  // Typography + spacing constants (tuned for compact, premium feel)
+  const headingSize = 10.5;
+  const bulletSize = 10;
+  const lineGap = 13;          // line height
+  const blockTopGap = 10;      // space before heading
+  const headingGap = 8;        // space after heading
+  const bulletGap = 3;         // space between bullets
 
-  // Draw "Key Points" subheading
-  yPosition -= 20;
-  page.drawText('Key Points:', {
+  const bulletIndentX = MARGIN + 8;
+  const textIndentX = MARGIN + 20;
+  const maxWidth = CONTENT_WIDTH - (textIndentX - MARGIN);
+
+  // Ensure space for heading + at least 1–2 lines of bullets
+  ({ page, yPosition } = ensureSpace(55, page, yPosition, pdfDoc, isDraft, totalPages));
+
+  // Top gap (small, consistent with other blocks)
+  yPosition -= blockTopGap;
+
+  // Heading (no colon)
+  page.drawText('Key Points', {
     x: MARGIN,
     y: yPosition,
-    size: 11,
+    size: headingSize,
     font: fontBold,
-    color: rgb(0.1, 0.1, 0.1),
+    color: rgb(0.12, 0.12, 0.12),
   });
 
-  yPosition -= 18;
+  yPosition -= headingGap;
 
-  // Draw each bullet
-  for (const point of keyPoints) {
-    // Ensure space for this bullet (estimate ~3 lines max per bullet)
-    const bulletResult = ensureSpace(50, page, yPosition, pdfDoc, isDraft, totalPages);
-    page = bulletResult.page;
-    yPosition = bulletResult.yPosition;
+  // Bullets
+  for (const rawPoint of keyPoints) {
+    const point = (rawPoint ?? '').trim();
+    if (!point) continue;
 
-    // Wrap text for bullet
-    const wrappedLines = wrapText(point, CONTENT_WIDTH - 20, 10, font);
+    // Wrap to available width; keep wrap params consistent with font size
+    const wrappedLines = wrapText(point, maxWidth, bulletSize, font);
 
-    // Draw first line with bullet
-    if (wrappedLines.length > 0) {
-      const firstLine = sanitizePdfText('• ' + wrappedLines[0]);
-      page.drawText(firstLine, {
-        x: MARGIN + 5,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 14;
-    }
+    // Estimate height needed for this bullet (lines + small gap)
+    const needed = Math.max(1, wrappedLines.length) * lineGap + bulletGap;
+    ({ page, yPosition } = ensureSpace(needed + 8, page, yPosition, pdfDoc, isDraft, totalPages));
 
-    // Draw subsequent wrapped lines (indented, no bullet)
+    // First line with bullet glyph
+    const first = sanitizePdfText(wrappedLines[0] ?? point);
+    page.drawText(sanitizePdfText('•'), {
+      x: bulletIndentX,
+      y: yPosition,
+      size: bulletSize,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    page.drawText(first, {
+      x: textIndentX,
+      y: yPosition,
+      size: bulletSize,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPosition -= lineGap;
+
+    // Continuation lines
     for (let i = 1; i < wrappedLines.length; i++) {
-      const lineResult = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages);
-      page = lineResult.page;
-      yPosition = lineResult.yPosition;
-
+      ({ page, yPosition } = ensureSpace(lineGap + 4, page, yPosition, pdfDoc, isDraft, totalPages));
       const line = sanitizePdfText(wrappedLines[i]);
       page.drawText(line, {
-        x: MARGIN + 15, // Indent continuation lines
+        x: textIndentX,
         y: yPosition,
-        size: 10,
+        size: bulletSize,
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      yPosition -= 14;
+      yPosition -= lineGap;
     }
 
     // Small spacing between bullets
-    yPosition -= 4;
+    yPosition -= bulletGap;
   }
 
-  // Add spacing after Key Points block (before next section content)
-  yPosition -= 10;
+  // Small spacing after block (keep compact)
+  yPosition -= 6;
 
   return { page, yPosition };
 }

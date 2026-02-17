@@ -13,6 +13,7 @@ import {
   type FraContext,
   type FraExecutiveOutcome,
 } from '../modules/fra/severityEngine';
+import { drawCleanAuditSection13 } from './fraSection13CleanAudit';
 import {
   calculateSCS,
   deriveFireProtectionReliance,
@@ -191,6 +192,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   totalPages.push(coverPage, docControlPage);
 
   const buildingProfileModule = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
+  const documentControlModule = moduleInstances.find((m) => m.module_key === 'A1_DOC_CONTROL');
   if (buildingProfileModule) {
     try {
       const scoringResult = scoreFraDocument({
@@ -209,7 +211,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
       const riskSummaryPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       totalPages.push(riskSummaryPage);
-      drawCleanAuditPage1(riskSummaryPage, scoringResult, priorityActions, font, fontBold, document, organisation);
+      drawCleanAuditPage1(riskSummaryPage, scoringResult, priorityActions, font, fontBold, document, organisation, documentControlModule);
 
       if (isDraft) {
         drawDraftWatermark(riskSummaryPage, fontBold);
@@ -320,8 +322,18 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
       case 13: // Significant Findings, Risk Evaluation & Action Plan
         if (fra4Module) {
-          yPosition = drawExecutiveSummary(page, fra4Module, actions, actionRatings, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
-          yPosition = drawRiskRatingExplanation(page, fra4Module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+          yPosition = drawCleanAuditSection13({
+            page,
+            fra4Module,
+            actions,
+            moduleInstances,
+            font,
+            fontBold,
+            yPosition,
+            pdfDoc,
+            isDraft,
+            totalPages,
+          });
         }
         break;
 
@@ -2946,9 +2958,10 @@ function renderSection2Premises(
   if (a2Module && a2Module.data) {
     const data = a2Module.data;
 
-    // Building name and address
-    if (data.building_name || data.site_address) {
-      page.drawText('Premises Details', {
+    // Building-specific identity (only if differs from site)
+    const showBuildingDetails = data.building_name || data.has_building_address;
+    if (showBuildingDetails) {
+      page.drawText('Building Details', {
         x: MARGIN,
         y: yPosition,
         size: 12,
@@ -2968,15 +2981,25 @@ function renderSection2Premises(
         yPosition -= 14;
       }
 
-      if (data.site_address) {
-        page.drawText(`Address: ${sanitizePdfText(data.site_address)}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
+      // Only show building address if it differs from site address (toggle is checked)
+      if (data.has_building_address) {
+        const buildingAddressParts = [];
+        if (data.building_address_line1) buildingAddressParts.push(data.building_address_line1);
+        if (data.building_address_line2) buildingAddressParts.push(data.building_address_line2);
+        if (data.building_address_city) buildingAddressParts.push(data.building_address_city);
+        if (data.building_address_postcode) buildingAddressParts.push(data.building_address_postcode);
+
+        if (buildingAddressParts.length > 0) {
+          const buildingAddress = sanitizePdfText(buildingAddressParts.join(', '));
+          page.drawText(`Building Address: ${buildingAddress}`, {
+            x: MARGIN + 10,
+            y: yPosition,
+            size: 10,
+            font,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+          yPosition -= 14;
+        }
       }
 
       yPosition -= 10;
@@ -3498,10 +3521,24 @@ function drawCleanAuditPage1(
   font: any,
   fontBold: any,
   document: Document,
-  organisation: Organisation
+  organisation: Organisation,
+  a1Module?: ModuleInstance
 ): void {
   const centerX = PAGE_WIDTH / 2;
   let yPosition = PAGE_HEIGHT - MARGIN - 40;
+
+  // Extract site identity from A1 module (single source of truth)
+  const a1Data = a1Module?.data || {};
+  const siteName = sanitizePdfText(a1Data.site?.name || document.title);
+  const clientName = sanitizePdfText(a1Data.client?.name || document.responsible_person || organisation.name);
+
+  // Build site address from A1
+  const siteAddressParts = [];
+  if (a1Data.site?.address?.line1) siteAddressParts.push(a1Data.site.address.line1);
+  if (a1Data.site?.address?.line2) siteAddressParts.push(a1Data.site.address.line2);
+  if (a1Data.site?.address?.city) siteAddressParts.push(a1Data.site.address.city);
+  if (a1Data.site?.address?.postcode) siteAddressParts.push(a1Data.site.address.postcode);
+  const siteAddress = sanitizePdfText(siteAddressParts.join(', '));
 
   // Title Block (Centered)
   page.drawText('Fire Risk Assessment', {
@@ -3515,7 +3552,6 @@ function drawCleanAuditPage1(
   yPosition -= 40;
 
   // Site Name (Centered, larger)
-  const siteName = sanitizePdfText(document.title);
   const siteNameLines = wrapText(siteName, CONTENT_WIDTH - 80, 18, fontBold);
   for (const line of siteNameLines) {
     const lineWidth = fontBold.widthOfTextAtSize(line, 18);
@@ -3529,15 +3565,31 @@ function drawCleanAuditPage1(
     yPosition -= 26;
   }
 
+  // Site Address (if available)
+  if (siteAddress) {
+    yPosition -= 5;
+    const addressLines = wrapText(siteAddress, CONTENT_WIDTH - 80, 11, font);
+    for (const line of addressLines) {
+      const lineWidth = font.widthOfTextAtSize(line, 11);
+      page.drawText(line, {
+        x: centerX - (lineWidth / 2),
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+      yPosition -= 16;
+    }
+  }
+
   yPosition -= 10;
 
   // Metadata (Centered, smaller)
-  const clientName = document.responsible_person || organisation.name;
   const assessmentDate = formatDate(document.assessment_date);
   const jurisdictionDisplay = getJurisdictionLabel(document.jurisdiction);
 
   const metadata = [
-    `Prepared for: ${sanitizePdfText(clientName)}`,
+    `Prepared for: ${clientName}`,
     `Assessment Date: ${assessmentDate}`,
     `Jurisdiction: ${jurisdictionDisplay}`
   ];

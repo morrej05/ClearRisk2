@@ -618,7 +618,7 @@ const fetchModules = async () => {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden max-w-[1800px] mx-auto w-full relative">
+      <div className="flex flex-1 max-w-[1800px] mx-auto w-full relative">
         <ModuleSidebar
           modules={modules}
           selectedModuleId={selectedModuleId}
@@ -628,7 +628,7 @@ const fetchModules = async () => {
           documentId={document?.id}
         />
 
-        <div className="flex-1 min-w-0 overflow-y-auto bg-neutral-50">
+        <div className="flex-1 min-w-0 overflow-y-auto bg-neutral-50 h-screen">
           <div className="w-full p-4 sm:p-6">
             {['FRA', 'DSEAR', 'FSD'].includes(document.document_type) && organisation?.id && (
               <ExecutiveSummaryPanel

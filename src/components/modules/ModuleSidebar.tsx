@@ -261,7 +261,7 @@ export default function ModuleSidebar({
       <div className={`
         bg-white border-r border-neutral-200 overflow-y-auto transition-all duration-300
         ${isMobileMenuOpen ? 'fixed inset-y-0 left-0 z-50 w-80' : 'hidden'}
-        md:block md:relative md:w-16
+        md:block md:sticky md:top-0 md:h-screen md:w-16
         lg:w-64
       `}>
         <div className="p-4 border-b border-neutral-200 bg-neutral-50 md:p-2 lg:p-4">

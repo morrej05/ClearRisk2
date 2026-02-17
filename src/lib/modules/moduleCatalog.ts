@@ -385,11 +385,24 @@ export function filterDeprecatedModuleKeysForNavigation(
  * Regression guard: A1 modules must always resolve to 'governance'
  */
 export function getModuleOutcomeCategory(moduleKey: string): 'critical' | 'governance' {
+  // Guard against undefined/invalid input
+  if (!moduleKey || typeof moduleKey !== 'string') {
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ getModuleOutcomeCategory: invalid moduleKey', moduleKey);
+    }
+    return 'governance';
+  }
+
   const resolvedKey = resolveModuleKey(moduleKey);
   const category = MODULE_CATALOG[resolvedKey]?.outcomeCategory || 'governance';
 
-  // DEV GUARD: A1 must always be governance
-  if (import.meta.env.DEV && resolvedKey.startsWith('A1_') && category !== 'governance') {
+  // DEV GUARD: A1 must always be governance (safe check for string)
+  if (
+    import.meta.env.DEV &&
+    typeof resolvedKey === 'string' &&
+    resolvedKey.startsWith('A1_') &&
+    category !== 'governance'
+  ) {
     console.warn(
       '⚠️ REGRESSION: A1 module should have outcomeCategory: "governance"',
       { moduleKey, resolvedKey, category }

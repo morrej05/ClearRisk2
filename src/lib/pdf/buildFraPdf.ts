@@ -705,8 +705,9 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
       default:
         // Generic section rendering for standard modules
+        // Pass section.moduleKeys to prevent cross-section info gap bleed
         for (const module of sectionModules) {
-          yPosition = drawModuleContent(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+          yPosition = drawModuleContent(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, section.moduleKeys);
         }
         break;
     }
@@ -2374,8 +2375,16 @@ function drawInfoGapQuickActions(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
-  keyPoints?: string[]
+  keyPoints?: string[],
+  expectedModuleKeys?: string[]
 ): number {
+  // DEFENSIVE GUARD: Skip if module doesn't belong to expected section
+  // This prevents cross-section info gap bleed
+  if (expectedModuleKeys && !expectedModuleKeys.includes(module.module_key)) {
+    console.warn(`[PDF] Skipping info gap for ${module.module_key} - not in expected section keys:`, expectedModuleKeys);
+    return yPosition;
+  }
+
   const detection = detectInfoGaps(
     module.module_key,
     module.data,
@@ -3479,7 +3488,8 @@ function drawModuleContent(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
-  keyPoints?: string[]
+  keyPoints?: string[],
+  expectedModuleKeys?: string[]
 ): number {
   // Outcome badge
   if (module.outcome) {
@@ -3546,7 +3556,7 @@ function drawModuleContent(
   yPosition = drawModuleKeyDetails(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // Info gap quick actions
-  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints);
+  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints, expectedModuleKeys);
 
   return yPosition;
 }
@@ -3674,7 +3684,7 @@ function renderSection2Premises(
     yPosition -= 10;
 
     // Render full module content (includes outcome, assessor notes, other fields)
-    yPosition = drawModuleContent(page, a2Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, a2Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A2_BUILDING_PROFILE']);
   }
 
   return yPosition;
@@ -3793,7 +3803,7 @@ function renderSection3Occupants(
     yPosition -= 10;
 
     // Render full module content (includes outcome, assessor notes, other fields)
-    yPosition = drawModuleContent(page, a3Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, a3Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A3_PERSONS_AT_RISK']);
   }
 
   return yPosition;
@@ -3816,7 +3826,7 @@ function renderSection4Legislation(
   const a1Module = sectionModules.find(m => m.module_key === 'A1_DOC_CONTROL');
 
   if (a1Module) {
-    yPosition = drawModuleContent(page, a1Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, a1Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A1_DOC_CONTROL']);
   }
 
   return yPosition;
@@ -3851,7 +3861,7 @@ function renderSection7Detection(
       'alarm_maintenance'
     ];
 
-    yPosition = renderFilteredModuleData(page, fra3Module, detectionFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = renderFilteredModuleData(page, fra3Module, detectionFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, ['FRA_3_ACTIVE_SYSTEMS']);
   }
 
   return yPosition;
@@ -3884,7 +3894,7 @@ function renderSection8EmergencyLighting(
       'emergency_lighting_maintenance'
     ];
 
-    yPosition = renderFilteredModuleData(page, fra3Module, lightingFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = renderFilteredModuleData(page, fra3Module, lightingFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, ['FRA_3_ACTIVE_SYSTEMS']);
   }
 
   return yPosition;
@@ -3920,7 +3930,7 @@ function renderSection10Suppression(
       'firefighting_shaft'
     ];
 
-    yPosition = renderFilteredModuleData(page, fra8Module, suppressionFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = renderFilteredModuleData(page, fra8Module, suppressionFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, ['FRA_8_FIREFIGHTING_EQUIPMENT']);
   }
 
   return yPosition;
@@ -3965,7 +3975,9 @@ function renderSection11Management(
   yPosition,
   pdfDoc,
   isDraft,
-  totalPages
+  totalPages,
+  undefined,
+  ['A4_MANAGEMENT_CONTROLS', 'FRA_6_MANAGEMENT_SYSTEMS']
 );
     yPosition -= 15;
   }
@@ -3990,7 +4002,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, emergencyArrangementsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, emergencyArrangementsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A5_EMERGENCY_ARRANGEMENTS', 'FRA_7_EMERGENCY_ARRANGEMENTS']);
     yPosition -= 15;
   }
 
@@ -4012,7 +4024,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, reviewAssuranceModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, reviewAssuranceModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A7_REVIEW_ASSURANCE']);
     yPosition -= 15;
   }
 
@@ -4042,7 +4054,7 @@ function renderSection11Management(
       'fire_blankets'
     ];
 
-    yPosition = renderFilteredModuleData(page, fra8Module, equipmentFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = renderFilteredModuleData(page, fra8Module, equipmentFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, ['FRA_8_FIREFIGHTING_EQUIPMENT']);
   }
 
   return yPosition;
@@ -4115,7 +4127,8 @@ function renderFilteredModuleData(
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  expectedModuleKeys?: string[]
 ): number {
   // Filter module data to only include specified fields
   const filteredModule = {
@@ -4130,7 +4143,7 @@ function renderFilteredModuleData(
 
   // Only render if there's data
   if (Object.keys(filteredModule.data).length > 0) {
-    yPosition = drawModuleContent(page, filteredModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    yPosition = drawModuleContent(page, filteredModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, expectedModuleKeys);
   }
 
   return yPosition;

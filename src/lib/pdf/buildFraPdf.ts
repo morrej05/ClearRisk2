@@ -762,19 +762,19 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
         break;
 
       case 7: // Fire Detection, Alarm & Warning
-        yPosition = renderSection7Detection(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = renderSection7Detection({ page, yPosition }, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages));
         break;
 
       case 8: // Emergency Lighting
-        yPosition = renderSection8EmergencyLighting(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = renderSection8EmergencyLighting({ page, yPosition }, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages));
         break;
 
       case 10: // Fixed Fire Suppression & Firefighting Facilities
-        yPosition = renderSection10Suppression(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = renderSection10Suppression({ page, yPosition }, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages));
         break;
 
       case 11: // Fire Safety Management & Procedures
-        yPosition = renderSection11Management(page, sectionModules, moduleInstances, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = renderSection11Management({ page, yPosition }, sectionModules, moduleInstances, document, font, fontBold, pdfDoc, isDraft, totalPages));
         break;
 
       case 13: // Significant Findings, Risk Evaluation & Action Plan
@@ -2147,6 +2147,7 @@ function drawModuleSummary(
     pdfDoc,
     isDraft,
     totalPages,
+    callerContext: 'drawModuleSummaryWithoutTitle',
   });
   page = infoGapResult.page;
   yPosition = infoGapResult.yPosition;

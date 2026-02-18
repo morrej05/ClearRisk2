@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle, Circle } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle, Circle, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName, getModuleNavigationPath as getModulePath, getReModulesForDocument } from '../../lib/modules/moduleCatalog';
 import { buildModuleSections, getModuleCode, getModuleDisplayName, isDerivedModule } from '../../lib/modules/moduleDisplay';
@@ -38,6 +38,8 @@ import {
   type DefencePack,
 } from '../../utils/defencePack';
 import { Button, Badge, Card, Callout, PageHeader } from '../../components/ui/DesignSystem';
+import { getActionRegisterSiteLevel, type ActionRegisterEntry } from '../../utils/actionRegister';
+import ActionDetailModal from '../../components/actions/ActionDetailModal';
 
 interface Document {
   id: string;
@@ -108,6 +110,12 @@ export default function DocumentOverview() {
   const [isBuildingDefencePack, setIsBuildingDefencePack] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [actions, setActions] = useState<ActionRegisterEntry[]>([]);
+  const [filteredActions, setFilteredActions] = useState<ActionRegisterEntry[]>([]);
+  const [actionStatusFilter, setActionStatusFilter] = useState<'open' | 'all'>('open');
+  const [actionPriorityFilter, setActionPriorityFilter] = useState<string[]>([]);
+  const [selectedAction, setSelectedAction] = useState<ActionRegisterEntry | null>(null);
+  const [isLoadingActions, setIsLoadingActions] = useState(false);
 
   const returnToPath = (location.state as any)?.returnTo || null;
 
@@ -142,8 +150,13 @@ export default function DocumentOverview() {
       fetchActionCounts();
       fetchEvidenceCount();
       fetchDefencePack();
+      fetchActions();
     }
   }, [id, organisation?.id]);
+
+  useEffect(() => {
+    applyActionFilters();
+  }, [actions, actionStatusFilter, actionPriorityFilter]);
 
   useEffect(() => {
     if (!document || modules.length === 0) return;
@@ -290,6 +303,44 @@ export default function DocumentOverview() {
     }
   };
 
+  const fetchActions = async () => {
+    if (!id) return;
+
+    setIsLoadingActions(true);
+    try {
+      const actionEntries = await getActionRegisterSiteLevel(id);
+      setActions(actionEntries);
+    } catch (error) {
+      console.error('Error fetching actions:', error);
+    } finally {
+      setIsLoadingActions(false);
+    }
+  };
+
+  const applyActionFilters = () => {
+    let filtered = [...actions];
+
+    // Status filter
+    if (actionStatusFilter === 'open') {
+      filtered = filtered.filter(a => a.status === 'open' || a.status === 'in_progress');
+    }
+
+    // Priority filter
+    if (actionPriorityFilter.length > 0) {
+      filtered = filtered.filter(a => actionPriorityFilter.includes(a.priority_band));
+    }
+
+    setFilteredActions(filtered);
+  };
+
+  const togglePriorityFilter = (priority: string) => {
+    setActionPriorityFilter(prev =>
+      prev.includes(priority)
+        ? prev.filter(p => p !== priority)
+        : [...prev, priority]
+    );
+  };
+
   const handleBuildDefencePack = async () => {
     if (!id) return;
 
@@ -382,6 +433,34 @@ const handleDownloadDefencePack = async () => {
         return 'warning';
       default:
         return 'neutral';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'P1':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'P2':
+        return 'bg-orange-100 text-orange-800 border-orange-300';
+      case 'P3':
+        return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'P4':
+        return 'bg-neutral-100 text-neutral-700 border-neutral-300';
+      default:
+        return 'bg-neutral-100 text-neutral-600 border-neutral-200';
+    }
+  };
+
+  const getActionStatusBadge = (status: string) => {
+    switch (status) {
+      case 'open':
+        return <Badge variant="warning">Open</Badge>;
+      case 'in_progress':
+        return <Badge variant="info">In Progress</Badge>;
+      case 'closed':
+        return <Badge variant="success">Closed</Badge>;
+      default:
+        return <Badge variant="neutral">{status}</Badge>;
     }
   };
 
@@ -1164,6 +1243,188 @@ try {
           </Card>
         </div>
 
+        {/* Actions Panel */}
+        <Card className="mb-6">
+          <div className="px-6 py-4 border-b border-neutral-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-neutral-900">Actions</h2>
+                <p className="text-sm text-neutral-600 mt-1">
+                  Manage and track actions from this document
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => navigate(`/dashboard/actions?document=${id}`)}
+              >
+                <List className="w-4 h-4 mr-2" />
+                Full Register
+              </Button>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="px-6 py-3 border-b border-neutral-200 bg-neutral-50">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-neutral-500" />
+                <span className="text-sm font-medium text-neutral-700">Status:</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setActionStatusFilter('open')}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                      actionStatusFilter === 'open'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-300'
+                    }`}
+                  >
+                    Open
+                  </button>
+                  <button
+                    onClick={() => setActionStatusFilter('all')}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                      actionStatusFilter === 'all'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-300'
+                    }`}
+                  >
+                    All
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-neutral-700">Priority:</span>
+                <div className="flex gap-2">
+                  {['P1', 'P2', 'P3', 'P4'].map(priority => (
+                    <button
+                      key={priority}
+                      onClick={() => togglePriorityFilter(priority)}
+                      className={`px-2 py-1 text-xs font-semibold rounded border transition-colors ${
+                        actionPriorityFilter.includes(priority)
+                          ? getPriorityColor(priority)
+                          : 'bg-white text-neutral-500 hover:bg-neutral-100 border-neutral-300'
+                      }`}
+                    >
+                      {priority}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(actionPriorityFilter.length > 0) && (
+                <button
+                  onClick={() => setActionPriorityFilter([])}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Actions Table */}
+          <div className="overflow-x-auto">
+            {isLoadingActions ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-4 border-neutral-200 border-t-blue-600"></div>
+              </div>
+            ) : filteredActions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+                <CheckCircle className="w-12 h-12 text-neutral-300 mb-3" />
+                <p className="text-neutral-600 font-medium">No actions found</p>
+                <p className="text-sm text-neutral-500 mt-1">
+                  {actionStatusFilter === 'open' ? 'All actions are complete' : 'No actions have been created yet'}
+                </p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-neutral-50 border-b border-neutral-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                      Ref
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                      Section
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                      Action
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                      Owner
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                      Target Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200">
+                  {filteredActions.slice(0, 10).map((action, index) => {
+                    // Generate a simple display reference based on priority and index
+                    const refNumber = `${action.priority_band}-${(index + 1).toString().padStart(2, '0')}`;
+
+                    return (
+                      <tr
+                        key={action.id}
+                        onClick={() => setSelectedAction(action)}
+                        className="hover:bg-neutral-50 cursor-pointer transition-colors"
+                      >
+                        <td className="px-4 py-3 text-sm font-mono text-neutral-900">
+                          {refNumber}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded border ${getPriorityColor(action.priority_band)}`}>
+                            {action.priority_band}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {getActionStatusBadge(action.status)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-neutral-600">
+                          {action.module_key ? getModuleName(action.module_key) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-neutral-900 max-w-md">
+                          <div className="truncate">
+                            {action.recommended_action || '—'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-neutral-600">
+                          {action.owner_name || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-neutral-600">
+                          {action.target_date ? formatDate(action.target_date) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Show more indicator */}
+          {filteredActions.length > 10 && (
+            <div className="px-6 py-3 border-t border-neutral-200 bg-neutral-50 text-center">
+              <p className="text-sm text-neutral-600">
+                Showing 10 of {filteredActions.length} actions.{' '}
+                <button
+                  onClick={() => navigate(`/dashboard/actions?document=${id}`)}
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  View all in register
+                </button>
+              </p>
+            </div>
+          )}
+        </Card>
+
         {/* Modules List */}
         <Card className="overflow-hidden">
           <div className="px-6 py-4 border-b border-neutral-200">
@@ -1325,6 +1586,19 @@ try {
           currentDocumentId={id!}
           onClose={() => setShowVersionHistoryModal(false)}
           onNavigateToVersion={handleNavigateToVersion}
+        />
+      )}
+
+      {selectedAction && user?.id && organisation?.id && (
+        <ActionDetailModal
+          actionId={selectedAction.id}
+          userId={user.id}
+          organisationId={organisation.id}
+          onClose={() => {
+            setSelectedAction(null);
+            fetchActions();
+            fetchActionCounts();
+          }}
         />
       )}
 

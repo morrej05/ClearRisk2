@@ -2052,16 +2052,16 @@ function drawLikelihoodConsequenceExplanation(
 }
 
 function drawModuleSummary(
-  page: PDFPage,
+  cursor: Cursor,
   module: ModuleInstance,
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
+): Cursor {
+  let { page, yPosition } = cursor;
   const moduleName = getModuleName(module.module_key);
 
   yPosition -= 20;
@@ -2120,7 +2120,7 @@ function drawModuleSummary(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -2134,12 +2134,12 @@ function drawModuleSummary(
     yPosition -= 10;
   }
 
-  yPosition = drawModuleKeyDetails(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages));
 
   // Draw info gap quick actions if detected
-  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  ({ page, yPosition } = drawInfoGapQuickActions({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages));
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 function safeArray(value: any): string[] {

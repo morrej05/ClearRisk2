@@ -2243,24 +2243,7 @@ function drawModuleKeyDetails(
   }
 
   if (keyDetails.length === 0) {
-    // Show "No information recorded" for empty subsections
-    page.drawText('Key Details:', {
-      x: MARGIN,
-      y: yPosition,
-      size: 11,
-      font: fontBold,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 18;
-
-    page.drawText('No information recorded.', {
-      x: MARGIN + 5,
-      y: yPosition,
-      size: 10,
-      font,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-    yPosition -= 25;
+    // COLLAPSE: No Key Details section at all if no meaningful data
     return yPosition;
   }
 
@@ -2299,25 +2282,8 @@ function drawModuleKeyDetails(
     return true;
   });
 
-  // If all details were filtered out, show brief message
+  // If all details were filtered out, COLLAPSE completely
   if (filteredDetails.length === 0) {
-    page.drawText('Key Details:', {
-      x: MARGIN,
-      y: yPosition,
-      size: 11,
-      font: fontBold,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 18;
-
-    page.drawText('No significant details recorded.', {
-      x: MARGIN + 5,
-      y: yPosition,
-      size: 10,
-      font,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-    yPosition -= 25;
     return yPosition;
   }
 
@@ -2394,22 +2360,26 @@ function drawInfoGapQuickActions(
     return yPosition;
   }
 
-  // For management/governance modules (A4/A5/A7/FRA_6), suppress the full info-gap box
-  // if Key Points already include assurance gap bullets and all reasons are unknowns
-  const isManagementModule = ['A4_MANAGEMENT_CONTROLS', 'A5_EMERGENCY_ARRANGEMENTS', 'A7_REVIEW_ASSURANCE', 'FRA_6_MANAGEMENT_SYSTEMS'].includes(module.module_key);
-
-  if (isManagementModule && keyPoints && keyPoints.length > 0) {
+  // GLOBAL SUPPRESSION RULE: For ALL FRA sections, suppress the full info-gap box
+  // if Key Points already include assurance gap sentences and all reasons are unknowns
+  if (keyPoints && keyPoints.length > 0) {
     const hasAssuranceGapKeyPoint = keyPoints.some(kp =>
       kp.toLowerCase().includes('not been evidenced') ||
       kp.toLowerCase().includes('not been verified') ||
-      kp.toLowerCase().includes('records have not')
+      kp.toLowerCase().includes('records have not') ||
+      kp.toLowerCase().includes('information gap') ||
+      kp.toLowerCase().includes('incomplete information') ||
+      kp.toLowerCase().includes('not provided') ||
+      kp.toLowerCase().includes('not recorded')
     );
 
     const allReasonsAreUnknowns = detection.reasons.every(r =>
       r.toLowerCase().includes('unknown') ||
       r.toLowerCase().includes('not known') ||
       r.toLowerCase().includes('not recorded') ||
-      r.toLowerCase().includes('not provided')
+      r.toLowerCase().includes('not provided') ||
+      r.toLowerCase().includes('no record') ||
+      r.toLowerCase().includes('no information')
     );
 
     if (hasAssuranceGapKeyPoint && allReasonsAreUnknowns) {
@@ -2430,7 +2400,7 @@ function drawInfoGapQuickActions(
         color: rgb(0.6, 0.6, 0.6),
       });
 
-      page.drawText(sanitizePdfText('Information gaps noted (see Key Points above)'), {
+      page.drawText(sanitizePdfText('Information gaps noted (see Key Points)'), {
         x: MARGIN + 22,
         y: yPosition,
         size: 9,

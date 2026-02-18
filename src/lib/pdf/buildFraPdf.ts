@@ -369,9 +369,12 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
   const buildingProfileModule = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
   const documentControlModule = moduleInstances.find((m) => m.module_key === 'A1_DOC_CONTROL');
+
+  // Compute scoring result once for use in both Page 1 and Section 13
+  let scoringResult: ScoringResult | null = null;
   if (buildingProfileModule) {
     try {
-      const scoringResult = scoreFraDocument({
+      scoringResult = scoreFraDocument({
         jurisdiction: (document.jurisdiction || 'england_wales') as any,
         buildingProfile: buildingProfileModule.data,
         moduleInstances,
@@ -661,6 +664,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
             pdfDoc,
             isDraft,
             totalPages,
+            scoringResult,
           });
         }
         break;

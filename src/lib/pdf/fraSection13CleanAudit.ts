@@ -26,6 +26,7 @@ import {
   deriveStoreysForScoring,
   type FraBuildingComplexityInput,
 } from '../modules/fra/complexityEngine';
+import type { ScoringResult } from '../fra/scoring/scoringEngine';
 
 interface CleanAuditOptions {
   page: PDFPage;
@@ -38,6 +39,7 @@ interface CleanAuditOptions {
   pdfDoc: PDFDocument;
   isDraft: boolean;
   totalPages: PDFPage[];
+  scoringResult: ScoringResult | null;
 }
 
 function getPriorityColor(priority: string): ReturnType<typeof rgb> {
@@ -54,7 +56,7 @@ function getPriorityColor(priority: string): ReturnType<typeof rgb> {
 }
 
 export function drawCleanAuditSection13(options: CleanAuditOptions): number {
-  let { page, fra4Module, actions, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages } = options;
+  let { page, fra4Module, actions, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, scoringResult } = options;
 
   // Build context for severity engine
   const buildingProfile = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
@@ -201,9 +203,33 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): number {
 
   yPosition -= 20;
 
-  // Use FRA-4 stored likelihood/consequence if available
-  const likelihood = fra4Module.data.likelihood || 'Medium';
-  const consequence = fra4Module.data.consequence || 'Medium';
+  // Check for assessor override
+  const hasLikelihoodOverride = fra4Module.data.override_likelihood !== undefined && fra4Module.data.override_likelihood !== null;
+  const hasConsequenceOverride = fra4Module.data.override_consequence !== undefined && fra4Module.data.override_consequence !== null;
+
+  // Use override values if present, otherwise use computed values from scoringResult
+  const likelihood = hasLikelihoodOverride
+    ? fra4Module.data.override_likelihood
+    : (scoringResult?.likelihood || 'Medium');
+  const consequence = hasConsequenceOverride
+    ? fra4Module.data.override_consequence
+    : (scoringResult?.consequence || 'Moderate');
+
+  const overallRisk = (hasLikelihoodOverride || hasConsequenceOverride)
+    ? (fra4Module.data.override_overall_risk || 'Moderate')
+    : (scoringResult?.overallRisk || 'Moderate');
+
+  // Show override notice if applicable
+  if (hasLikelihoodOverride || hasConsequenceOverride) {
+    page.drawText('Assessor override applied', {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 9,
+      font,
+      color: rgb(0.6, 0.4, 0),
+    });
+    yPosition -= 16;
+  }
 
   page.drawText(`Likelihood of Fire: ${likelihood}`, {
     x: MARGIN + 10,
@@ -215,6 +241,15 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): number {
 
   yPosition -= 18;
   page.drawText(`Consequence to Life if Fire Occurs: ${consequence}`, {
+    x: MARGIN + 10,
+    y: yPosition,
+    size: 11,
+    font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  yPosition -= 18;
+  page.drawText(`Overall Risk: ${overallRisk}`, {
     x: MARGIN + 10,
     y: yPosition,
     size: 11,
@@ -298,7 +333,8 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): number {
   // ========================================================
   // 4. PROVISIONAL STATEMENT (If Info Gaps Present)
   // ========================================================
-  if (infoGapCount > 0) {
+  const isProvisional = scoringResult?.provisional || infoGapCount > 0;
+  if (isProvisional) {
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
@@ -315,7 +351,13 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): number {
 
     yPosition -= 20;
 
-    const provisionalText = `This assessment is provisional in ${infoGapCount} area${infoGapCount > 1 ? 's' : ''} due to missing information or restricted access. The overall risk rating may change once complete information is obtained and these areas are fully assessed.`;
+    // Use specific reasons from scoring engine if available, otherwise generic text
+    let provisionalText: string;
+    if (scoringResult?.provisionalReasons && scoringResult.provisionalReasons.length > 0) {
+      provisionalText = `This assessment is provisional due to: ${scoringResult.provisionalReasons.join('; ')}. The overall risk rating may change once complete information is obtained and these areas are fully assessed.`;
+    } else {
+      provisionalText = `This assessment is provisional in ${infoGapCount} area${infoGapCount > 1 ? 's' : ''} due to missing information or restricted access. The overall risk rating may change once complete information is obtained and these areas are fully assessed.`;
+    }
 
     const provisionalLines = wrapText(provisionalText, CONTENT_WIDTH, 11, font);
     for (const line of provisionalLines) {

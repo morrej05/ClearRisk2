@@ -3479,30 +3479,7 @@ function drawTableOfContents(
 
   yPosition -= 40;
 
-  // List all sections from FRA_REPORT_STRUCTURE
-  for (const section of FRA_REPORT_STRUCTURE) {
-    const sectionText = `${section.id}. ${section.title}`;
-
-    page.drawText(sectionText, {
-      x: MARGIN + 20,
-      y: yPosition,
-      size: 11,
-      font,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    yPosition -= 18;
-
-    // Check if we need a new page
-    if (yPosition < MARGIN + 50) {
-      // For simplicity, we'll just stop at one page of TOC
-      // If more sections are added, this could be extended
-      break;
-    }
-  }
-}
-
-/**
+  /**
  * Draw section header with number and title
  * Replaces module key printing with clean section numbering
  */

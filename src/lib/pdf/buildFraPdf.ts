@@ -805,9 +805,21 @@ if (!page) {
       default:
         // Generic section rendering for standard modules
         // Pass section.moduleKeys to prevent cross-section info gap bleed
-        for (const module of sectionModules) {
-          ({ page, yPosition } = drawModuleContent({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, section.moduleKeys));
-        }
+for (const module of sectionModules) {
+  ({ page, yPosition } = drawModuleContent(
+    { page, yPosition },
+    module,
+    document,
+    font,
+    fontBold,
+    pdfDoc,
+    isDraft,
+    totalPages,
+    keyPoints,
+    section.moduleKeys
+  ));
+}
+
         break;
     }
   }

@@ -60,8 +60,9 @@ import { drawUsingThisReportSection, drawAssuranceGapsBlock } from './usingThisR
  * Cursor type for tracking current page and Y position during PDF layout.
  * This ensures page ownership propagates correctly through layout functions,
  * preventing overlapping content when addNewPage() is called internally.
+ * Page can be undefined before initialization - section renderers must guard.
  */
-type Cursor = { page: PDFPage; yPosition: number };
+type Cursor = { page: PDFPage | undefined; yPosition: number | undefined };
 
 /**
  * Consistent Y position for page-top resets after addNewPage().
@@ -3763,7 +3764,7 @@ function drawModuleContent(
  * Section 2: Premises & General Information (A2_BUILDING_PROFILE)
  */
 function renderSection2Premises(
-  page: PDFPage,
+  page: PDFPage | undefined,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
@@ -3773,6 +3774,16 @@ function renderSection2Premises(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
+  // ✅ Hard guarantee: always have a page before any drawText in this renderer
+  if (!page) {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+  if (typeof yPosition !== 'number') {
+    yPosition = PAGE_TOP_Y;
+  }
+
   const a2Module = sectionModules.find(m => m.module_key === 'A2_BUILDING_PROFILE');
 
   if (a2Module && a2Module.data) {
@@ -3897,7 +3908,7 @@ function renderSection2Premises(
  * Section 3: Occupants & Vulnerability (A3_PERSONS_AT_RISK)
  */
 function renderSection3Occupants(
-  page: PDFPage,
+  page: PDFPage | undefined,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
@@ -3907,6 +3918,16 @@ function renderSection3Occupants(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
+  // ✅ Hard guarantee: always have a page before any drawText in this renderer
+  if (!page) {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+  if (typeof yPosition !== 'number') {
+    yPosition = PAGE_TOP_Y;
+  }
+
   const a3Module = sectionModules.find(m => m.module_key === 'A3_PERSONS_AT_RISK');
 
   if (a3Module && a3Module.data) {
@@ -4026,7 +4047,7 @@ function renderSection3Occupants(
  * Section 4: Legislation & Duty Holder (A1_DOC_CONTROL)
  */
 function renderSection4Legislation(
-  page: PDFPage,
+  page: PDFPage | undefined,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
@@ -4036,6 +4057,16 @@ function renderSection4Legislation(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
+  // ✅ Hard guarantee: always have a page before any operations
+  if (!page) {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+  if (typeof yPosition !== 'number') {
+    yPosition = PAGE_TOP_Y;
+  }
+
   const a1Module = sectionModules.find(m => m.module_key === 'A1_DOC_CONTROL');
 
   if (a1Module) {
@@ -4050,7 +4081,7 @@ function renderSection4Legislation(
  * Split from FRA_3_ACTIVE_SYSTEMS (detection fields only)
  */
 function renderSection7Detection(
-  page: PDFPage,
+  page: PDFPage | undefined,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
@@ -4060,6 +4091,16 @@ function renderSection7Detection(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
+  // ✅ Hard guarantee: always have a page before any operations
+  if (!page) {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+  if (typeof yPosition !== 'number') {
+    yPosition = PAGE_TOP_Y;
+  }
+
   const fra3Module = sectionModules.find(m => m.module_key === 'FRA_3_ACTIVE_SYSTEMS');
 
   if (fra3Module && fra3Module.data) {
@@ -4085,7 +4126,7 @@ function renderSection7Detection(
  * Split from FRA_3_ACTIVE_SYSTEMS (emergency lighting fields only)
  */
 function renderSection8EmergencyLighting(
-  page: PDFPage,
+  page: PDFPage | undefined,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
@@ -4095,6 +4136,16 @@ function renderSection8EmergencyLighting(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
+  // ✅ Hard guarantee: always have a page before any operations
+  if (!page) {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+  if (typeof yPosition !== 'number') {
+    yPosition = PAGE_TOP_Y;
+  }
+
   const fra3Module = sectionModules.find(m => m.module_key === 'FRA_3_ACTIVE_SYSTEMS');
 
   if (fra3Module && fra3Module.data) {
@@ -4118,7 +4169,7 @@ function renderSection8EmergencyLighting(
  * Split from FRA_8 (suppression systems only)
  */
 function renderSection10Suppression(
-  page: PDFPage,
+  page: PDFPage | undefined,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
@@ -4128,6 +4179,16 @@ function renderSection10Suppression(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): number {
+  // ✅ Hard guarantee: always have a page before any operations
+  if (!page) {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+  if (typeof yPosition !== 'number') {
+    yPosition = PAGE_TOP_Y;
+  }
+
   const fra8Module = sectionModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
 
   if (fra8Module && fra8Module.data) {
@@ -4165,6 +4226,19 @@ function renderSection11Management(
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
   let { page, yPosition } = cursor;
+
+  // ✅ Hard guarantee: always have a page before any drawText in this renderer
+  if (!page) {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+
+  // (optional but safe) also normalise yPosition
+  if (typeof yPosition !== 'number') {
+    yPosition = PAGE_TOP_Y;
+  }
+
   // 11.1 Management Systems
   const managementSystemsModule = sectionModules.find(m =>
     m.module_key === 'A4_MANAGEMENT_CONTROLS' || m.module_key === 'FRA_6_MANAGEMENT_SYSTEMS'
@@ -4285,6 +4359,16 @@ function renderSection14Review(
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
   let { page, yPosition } = cursor;
+
+  // ✅ Hard guarantee: always have a page before any operations
+  if (!page) {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+  if (typeof yPosition !== 'number') {
+    yPosition = PAGE_TOP_Y;
+  }
   yPosition -= 10;
 
   page.drawText('Review Requirements', {

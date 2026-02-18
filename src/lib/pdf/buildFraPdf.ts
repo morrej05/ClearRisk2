@@ -241,13 +241,21 @@ const CRITICAL_FIELDS: Record<number, string[]> = {
 /**
  * Helper: Ensure enough space on current page, or create new page
  */
-  // 🔒 If we don't yet have a page, create one
+function ensureSpace(
+  requiredHeight: number,
+  currentPage: PDFPage | undefined,
+  currentY: number | undefined,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): { page: PDFPage; yPosition: number } {
+  // If we don't yet have a page, create one
   if (!currentPage || typeof currentY !== 'number') {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     return { page: result.page, yPosition: PAGE_TOP_Y };
   }
 
-  // 🔒 Normal page overflow check
+  // Normal page overflow check
   if (currentY - requiredHeight < MARGIN + 50) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     return { page: result.page, yPosition: PAGE_TOP_Y };
@@ -255,10 +263,11 @@ const CRITICAL_FIELDS: Record<number, string[]> = {
 
   return { page: currentPage, yPosition: currentY };
 }
+
 /**
  * Calculate section content density score
- * Returns score 0-100 indicating how substantial the section content is
  */
+
 function calculateSectionDensity(
   sectionModules: ModuleInstance[],
   sectionActions: any[],

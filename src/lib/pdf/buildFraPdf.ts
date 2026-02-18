@@ -254,7 +254,7 @@ const CRITICAL_FIELDS: Record<number, string[]> = {
   }
 
   return { page: currentPage, yPosition: currentY };
-}
+
 /**
  * Calculate section content density score
  * Returns score 0-100 indicating how substantial the section content is

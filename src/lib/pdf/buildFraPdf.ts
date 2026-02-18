@@ -405,19 +405,6 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
   // Build module_instance_id -> FRA section mapping
   const moduleToSectionMap = new Map<string, number>();
-  // ✅ Ensure we have a working cursor before section rendering begins
-if (!page) {
-  // Prefer the last page that already exists (cover/doc control/summary/TOC/etc)
-  const last = totalPages[totalPages.length - 1];
-  if (last) {
-    page = last;
-    yPosition = PAGE_TOP_Y;
-  } else {
-    const init = addNewPage(pdfDoc, isDraft, totalPages);
-    page = init.page;
-    yPosition = PAGE_TOP_Y;
-  }
-}
   for (const section of FRA_REPORT_STRUCTURE) {
     for (const moduleKey of section.moduleKeys) {
       const module = moduleInstances.find(m => m.module_key === moduleKey);
@@ -452,8 +439,9 @@ if (!page) {
   const isDraft = !isIssuedMode;
   const totalPages: PDFPage[] = [];
 
-  let page: PDFPage;
-  let yPosition: number;
+  // A) DECLARE CURSOR EARLY (TDZ FIX)
+  let page: PDFPage | undefined;
+  let yPosition: number | undefined;
 
   console.log('[PDF FRA] Render mode:', isIssuedMode ? 'ISSUED' : 'DRAFT');
 
@@ -486,6 +474,20 @@ if (!page) {
 
   const buildingProfileModule = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
   const documentControlModule = moduleInstances.find((m) => m.module_key === 'A1_DOC_CONTROL');
+
+  // B) INITIALISE CURSOR ONCE, BEFORE ANY USE
+  // ✅ Ensure we have a working cursor before any rendering logic
+  if (!page || typeof yPosition !== 'number') {
+    const last = totalPages[totalPages.length - 1];
+    if (last) {
+      page = last;
+      yPosition = PAGE_TOP_Y;
+    } else {
+      const init = addNewPage(pdfDoc, isDraft, totalPages);
+      page = init.page;
+      yPosition = PAGE_TOP_Y;
+    }
+  }
 
   // Compute scoring result once for use in both Page 1 and Section 13
   let scoringResult: ScoringResult | null = null;
@@ -695,11 +697,9 @@ let keyPoints: string[] = [];
       page = spaceResult.page;
       yPosition = spaceResult.yPosition;
     }
-if (!page) {
-  throw new Error(`[PDF FRA] page is undefined before drawSectionHeader (section=${section.id} ${section.title})`);
-}
 
-    // Draw section header
+    // D) FIX PAGE/YPOSITION TYPES THROUGHOUT THE LOOP
+    // Draw section header - ensure space first
     ({ page, yPosition } = ensureSpace(
   120,
   page,

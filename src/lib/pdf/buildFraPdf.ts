@@ -2137,7 +2137,19 @@ function drawModuleSummary(
   ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages));
 
   // Draw info gap quick actions if detected
-  ({ page, yPosition } = drawInfoGapQuickActions({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages));
+  const infoGapResult = drawInfoGapQuickActions({
+    page,
+    module,
+    document,
+    font,
+    fontBold,
+    yPosition,
+    pdfDoc,
+    isDraft,
+    totalPages,
+  });
+  page = infoGapResult.page;
+  yPosition = infoGapResult.yPosition;
 
   return { page, yPosition };
 }
@@ -2461,19 +2473,23 @@ function drawModuleKeyDetails(
   return { page, yPosition };
 }
 
-function drawInfoGapQuickActions(
-  cursor: Cursor,
-  module: ModuleInstance,
-  document: Document,
-  font: any,
-  fontBold: any,
-  pdfDoc: PDFDocument,
-  isDraft: boolean,
-  totalPages: PDFPage[],
-  keyPoints?: string[],
-  expectedModuleKeys?: string[]
-): Cursor {
-  let { page, yPosition } = cursor;
+function drawInfoGapQuickActions(input: {
+  page: PDFPage;
+  module: ModuleInstance;
+  document: Document;
+  font: any;
+  fontBold: any;
+  yPosition: number;
+  pdfDoc: PDFDocument;
+  isDraft: boolean;
+  totalPages: PDFPage[];
+  keyPoints?: string[];
+  expectedModuleKeys?: string[];
+}): { page: PDFPage; yPosition: number } {
+  let { page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints, expectedModuleKeys } = input;
+
+  // TEMP SAFETY (keep): if page is missing, bail so preview doesn't hard-crash
+  if (!page) return { page: input.page as any, yPosition };
 
   // DEFENSIVE GUARD: Skip if module doesn't belong to expected section
   // This prevents cross-section info gap bleed
@@ -3669,7 +3685,21 @@ function drawModuleContent(
   ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages));
 
   // Info gap quick actions
-  ({ page, yPosition } = drawInfoGapQuickActions({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages, keyPoints, expectedModuleKeys));
+  const infoGapResult = drawInfoGapQuickActions({
+    page,
+    module,
+    document,
+    font,
+    fontBold,
+    yPosition,
+    pdfDoc,
+    isDraft,
+    totalPages,
+    keyPoints,
+    expectedModuleKeys,
+  });
+  page = infoGapResult.page;
+  yPosition = infoGapResult.yPosition;
 
   return { page, yPosition };
 }

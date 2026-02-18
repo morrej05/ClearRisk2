@@ -88,6 +88,90 @@ interface ModuleInstance {
   updated_at: string;
 }
 
+/**
+ * Determines whether a section should be rendered in full based on content density.
+ * Returns true if the section has meaningful content worth rendering.
+ *
+ * @param sectionId - The section number (2-14)
+ * @param sectionModules - Module instances for this section
+ * @param sectionActions - Actions for this section
+ * @param document - The document being rendered
+ * @returns true if section should be rendered in full, false if it should go to compact rollup
+ */
+function shouldRenderSection(
+  sectionId: number,
+  sectionModules: ModuleInstance[],
+  sectionActions: any[],
+  document: Document
+): boolean {
+  // Section 1 (cover) is always rendered separately
+  if (sectionId === 1) return true;
+
+  // Section 13 (significant findings) and 14 (review) are always rendered
+  if (sectionId === 13 || sectionId === 14) return true;
+
+  // If no modules, skip
+  if (sectionModules.length === 0) return false;
+
+  // Check 1: Are there any open actions?
+  const hasOpenActions = sectionActions.some(a =>
+    a.status !== 'closed' && a.status !== 'completed'
+  );
+  if (hasOpenActions) return true;
+
+  // Check 2: Does any module have a non-trivial outcome?
+  const hasSignificantOutcome = sectionModules.some(m =>
+    m.outcome &&
+    m.outcome !== 'unknown' &&
+    m.outcome !== 'na' &&
+    m.outcome !== 'not_applicable'
+  );
+  if (hasSignificantOutcome) return true;
+
+  // Check 3: Does any module have info gaps that need attention?
+  for (const module of sectionModules) {
+    const detection = detectInfoGaps(
+      module.module_key,
+      module.data,
+      module.outcome,
+      {
+        responsible_person: document.responsible_person || undefined,
+        standards_selected: document.standards_selected || []
+      }
+    );
+    if (detection.hasInfoGap) return true;
+  }
+
+  // Check 4: Does any module have meaningful data?
+  for (const module of sectionModules) {
+    const data = module.data || {};
+    let meaningfulFieldCount = 0;
+
+    for (const [key, value] of Object.entries(data)) {
+      // Skip empty, unknown, default noise
+      if (!value) continue;
+      if (value === 'unknown' || value === 'not_applicable' || value === 'n/a') continue;
+      if (value === 'no' || value === false) continue;
+      if (Array.isArray(value) && value.length === 0) continue;
+      if (typeof value === 'string' && value.trim().length === 0) continue;
+
+      meaningfulFieldCount++;
+
+      // If we have 3+ meaningful fields, consider it worth rendering
+      if (meaningfulFieldCount >= 3) return true;
+    }
+  }
+
+  // Check 5: Does any module have assessor notes?
+  const hasSubstantialNotes = sectionModules.some(m =>
+    m.assessor_notes && m.assessor_notes.trim().length > 20
+  );
+  if (hasSubstantialNotes) return true;
+
+  // If none of the above, this section is too sparse to render
+  return false;
+}
+
 interface Action {
   id: string;
   recommended_action: string;
@@ -512,7 +596,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   );
 
   // Collect low-density sections for compact rendering
-  const lowDensitySections: Array<{ section: any; modules: ModuleInstance[]; actions: any[]; density: number }> = [];
+  const lowDensitySections: Array<{ section: any; modules: ModuleInstance[]; actions: any[] }> = [];
 
   // Render sections 2-14 using the fixed structure with flowing layout
   for (const section of FRA_REPORT_STRUCTURE) {
@@ -540,18 +624,17 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
         priority_band: a.priority_band,
       }));
 
-    // Calculate section density for sections 5-12 (technical sections)
-    let densityScore = 100; // Default: full rendering
-    if (section.id >= 5 && section.id <= 12) {
-      densityScore = calculateSectionDensity(sectionModules, sectionActions, section.id);
+    // HOLISTIC BLANK SECTION POLICY: Use shouldRenderSection for ALL sections 2-12
+    // Sections 13 (significant findings) and 14 (review) are always rendered
+    if (section.id >= 2 && section.id <= 12) {
+      const shouldRender = shouldRenderSection(section.id, sectionModules, sectionActions, document);
 
-      // If density is too low (< 25), defer to compact rendering
-      if (densityScore < 25) {
+      if (!shouldRender) {
+        // Defer to compact rendering
         lowDensitySections.push({
           section,
           modules: sectionModules,
           actions: sectionActions,
-          density: densityScore,
         });
         continue; // Skip full rendering
       }
@@ -3627,61 +3710,66 @@ function renderSection2Premises(
       yPosition -= 10;
     }
 
-    // Building characteristics
-    page.drawText('Building Characteristics', {
-      x: MARGIN,
-      y: yPosition,
-      size: 12,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-    yPosition -= 18;
+    // Building characteristics - only render header if we have content
+    const hasCharacteristics = data.building_use || data.number_of_storeys ||
+                                data.building_height_m || data.gross_internal_area_sqm;
 
-    if (data.building_use) {
-      page.drawText(`Use: ${sanitizePdfText(data.building_use)}`, {
-        x: MARGIN + 10,
+    if (hasCharacteristics) {
+      page.drawText('Building Characteristics', {
+        x: MARGIN,
         y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
+        size: 12,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
       });
-      yPosition -= 14;
-    }
+      yPosition -= 18;
 
-    if (data.number_of_storeys) {
-      page.drawText(`Number of Storeys: ${data.number_of_storeys}`, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 14;
-    }
+      if (data.building_use) {
+        page.drawText(`Use: ${sanitizePdfText(data.building_use)}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
 
-    if (data.building_height_m) {
-      page.drawText(`Building Height: ${data.building_height_m} metres`, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 14;
-    }
+      if (data.number_of_storeys) {
+        page.drawText(`Number of Storeys: ${data.number_of_storeys}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
 
-    if (data.gross_internal_area_sqm) {
-      page.drawText(`Gross Internal Area: ${data.gross_internal_area_sqm} m²`, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 14;
-    }
+      if (data.building_height_m) {
+        page.drawText(`Building Height: ${data.building_height_m} metres`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
 
-    yPosition -= 10;
+      if (data.gross_internal_area_sqm) {
+        page.drawText(`Gross Internal Area: ${data.gross_internal_area_sqm} m²`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
+
+      yPosition -= 10;
+    }
 
     // Render full module content (includes outcome, assessor notes, other fields)
     yPosition = drawModuleContent(page, a2Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A2_BUILDING_PROFILE']);
@@ -3709,60 +3797,69 @@ function renderSection3Occupants(
   if (a3Module && a3Module.data) {
     const data = a3Module.data;
 
-    // Occupancy profile
-    page.drawText('Occupancy Profile', {
-      x: MARGIN,
-      y: yPosition,
-      size: 12,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-    yPosition -= 18;
+    // Occupancy profile - only render header if we have content
+    const hasOccupancyData = data.typical_occupancy_number || data.max_occupancy_number || data.occupancy_type;
 
-    if (data.typical_occupancy_number) {
-      page.drawText(`Typical Number of Occupants: ${data.typical_occupancy_number}`, {
-        x: MARGIN + 10,
+    if (hasOccupancyData) {
+      page.drawText('Occupancy Profile', {
+        x: MARGIN,
         y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
+        size: 12,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
       });
-      yPosition -= 14;
+      yPosition -= 18;
+
+      if (data.typical_occupancy_number) {
+        page.drawText(`Typical Number of Occupants: ${data.typical_occupancy_number}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
+
+      if (data.max_occupancy_number) {
+        page.drawText(`Maximum Number of Occupants: ${data.max_occupancy_number}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
+
+      if (data.occupancy_type) {
+        page.drawText(`Occupancy Type: ${sanitizePdfText(data.occupancy_type)}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
+
+      yPosition -= 10;
     }
 
-    if (data.max_occupancy_number) {
-      page.drawText(`Maximum Number of Occupants: ${data.max_occupancy_number}`, {
-        x: MARGIN + 10,
+    // Vulnerability factors - only render header if we have content
+    const hasVulnerabilityData = data.vulnerable_persons_present !== undefined ||
+                                  data.sleeping_accommodation !== undefined ||
+                                  data.lone_working !== undefined;
+
+    if (hasVulnerabilityData) {
+      page.drawText('Vulnerability & Special Considerations', {
+        x: MARGIN,
         y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
+        size: 12,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
       });
-      yPosition -= 14;
-    }
-
-    if (data.occupancy_type) {
-      page.drawText(`Occupancy Type: ${sanitizePdfText(data.occupancy_type)}`, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 14;
-    }
-
-    yPosition -= 10;
-
-    // Vulnerability factors
-    page.drawText('Vulnerability & Special Considerations', {
-      x: MARGIN,
-      y: yPosition,
-      size: 12,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-    yPosition -= 18;
+      yPosition -= 18;
 
     if (data.vulnerable_persons_present !== undefined) {
       const vulnerableText = data.vulnerable_persons_present ? 'Yes' : 'No';
@@ -3788,19 +3885,20 @@ function renderSection3Occupants(
       yPosition -= 14;
     }
 
-    if (data.lone_working !== undefined) {
-      const loneText = data.lone_working ? 'Yes' : 'No';
-      page.drawText(`Lone Working: ${loneText}`, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 14;
-    }
+      if (data.lone_working !== undefined) {
+        const loneText = data.lone_working ? 'Yes' : 'No';
+        page.drawText(`Lone Working: ${loneText}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 14;
+      }
 
-    yPosition -= 10;
+      yPosition -= 10;
+    }
 
     // Render full module content (includes outcome, assessor notes, other fields)
     yPosition = drawModuleContent(page, a3Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A3_PERSONS_AT_RISK']);

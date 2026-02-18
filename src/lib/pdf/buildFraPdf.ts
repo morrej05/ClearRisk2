@@ -3496,7 +3496,7 @@ function drawTableOfContents(
     break;
   }
 }
-
+}
   /**
  * Draw section header with number and title
  * Replaces module key printing with clean section numbering

@@ -56,6 +56,19 @@ import {
 } from './reportQualityGates';
 import { drawUsingThisReportSection, drawAssuranceGapsBlock } from './usingThisReportGuide';
 
+/**
+ * Cursor type for tracking current page and Y position during PDF layout.
+ * This ensures page ownership propagates correctly through layout functions,
+ * preventing overlapping content when addNewPage() is called internally.
+ */
+type Cursor = { page: PDFPage; yPosition: number };
+
+/**
+ * Consistent Y position for page-top resets after addNewPage().
+ * Provides standard top margin + small offset for first content.
+ */
+const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN - 20;
+
 interface Document {
   id: string;
   document_type: string;
@@ -790,7 +803,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
         // Generic section rendering for standard modules
         // Pass section.moduleKeys to prevent cross-section info gap bleed
         for (const module of sectionModules) {
-          yPosition = drawModuleContent(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, section.moduleKeys);
+          ({ page, yPosition } = drawModuleContent({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, section.moduleKeys));
         }
         break;
     }
@@ -2136,16 +2149,16 @@ function safeArray(value: any): string[] {
 }
 
 function drawModuleKeyDetails(
-  page: PDFPage,
+  cursor: Cursor,
   module: ModuleInstance,
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
+): Cursor {
+  let { page, yPosition } = cursor;
   const data = module.data || {};
   const keyDetails: Array<[string, string]> = [];
 
@@ -2431,7 +2444,7 @@ function drawModuleKeyDetails(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN + 15,
@@ -2445,27 +2458,28 @@ function drawModuleKeyDetails(
     yPosition -= 5;
   }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 function drawInfoGapQuickActions(
-  page: PDFPage,
+  cursor: Cursor,
   module: ModuleInstance,
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
   keyPoints?: string[],
   expectedModuleKeys?: string[]
-): number {
+): Cursor {
+  let { page, yPosition } = cursor;
+
   // DEFENSIVE GUARD: Skip if module doesn't belong to expected section
   // This prevents cross-section info gap bleed
   if (expectedModuleKeys && !expectedModuleKeys.includes(module.module_key)) {
     console.warn(`[PDF] Skipping info gap for ${module.module_key} - not in expected section keys:`, expectedModuleKeys);
-    return yPosition;
+    return { page, yPosition };
   }
 
   const detection = detectInfoGaps(
@@ -2479,7 +2493,7 @@ function drawInfoGapQuickActions(
   );
 
   if (!detection.hasInfoGap) {
-    return yPosition;
+    return { page, yPosition };
   }
 
   // GLOBAL SUPPRESSION RULE: For ALL FRA sections, suppress the full info-gap box
@@ -2509,7 +2523,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 100) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
 
       yPosition -= 20;
@@ -2531,27 +2545,42 @@ function drawInfoGapQuickActions(
       });
 
       yPosition -= 20;
-      return yPosition;
+      return { page, yPosition };
     }
   }
 
+  // Precompute total line count for wrapped reasons to calculate accurate box height
+  let totalReasonLines = 0;
+  for (const reason of detection.reasons) {
+    const wrappedLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
+    totalReasonLines += wrappedLines.length;
+  }
+
+  // Calculate box height based on actual wrapped content
+  const lineHeight = 13;
+  const headingHeight = 30;
+  const paddingTop = 10;
+  const paddingBottom = 15;
+  const quickActionsHeight = detection.quickActions.length > 0 ? 30 + (detection.quickActions.length * 18) : 0;
+  const boxHeight = headingHeight + (totalReasonLines * lineHeight) + quickActionsHeight + paddingTop + paddingBottom;
+
   // Check if we need a new page
-  if (yPosition < MARGIN + 200) {
+  if (yPosition < MARGIN + boxHeight + 50) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN - 20;
+    yPosition = PAGE_TOP_Y;
   }
 
   yPosition -= 20;
 
   // Neutral callout - light border instead of warning banner
-  // Draw subtle border box
+  // Draw subtle border box with correct height
   const boxStartY = yPosition + 5;
   page.drawRectangle({
     x: MARGIN,
-    y: yPosition - (detection.reasons.length * 18) - 45,
+    y: yPosition - boxHeight + 10,
     width: CONTENT_WIDTH,
-    height: (detection.reasons.length * 18) + 55,
+    height: boxHeight,
     borderColor: rgb(0.7, 0.7, 0.7),
     borderWidth: 1,
     color: rgb(0.98, 0.98, 0.98),
@@ -2584,7 +2613,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
 
       page.drawText(sanitizePdfText('•'), {
@@ -2600,7 +2629,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 18,
@@ -2620,7 +2649,7 @@ function drawInfoGapQuickActions(
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText('Recommended actions:', {
@@ -2637,7 +2666,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 100) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
 
       // Priority badge
@@ -2665,7 +2694,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 15,
@@ -2684,7 +2713,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 15,
@@ -2707,7 +2736,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN + 10,
@@ -2721,7 +2750,7 @@ function drawInfoGapQuickActions(
   }
 
   yPosition -= 15;
-  return yPosition;
+  return { page, yPosition };
 }
 
 function drawActionRegister(
@@ -3562,18 +3591,19 @@ function drawAssessorSummary(
  * This is drawModuleSummary but without the title
  */
 function drawModuleContent(
-  page: PDFPage,
+  cursor: Cursor,
   module: ModuleInstance,
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
   keyPoints?: string[],
   expectedModuleKeys?: string[]
-): number {
+): Cursor {
+  let { page, yPosition } = cursor;
+
   // Outcome badge
   if (module.outcome) {
     const outcomeLabel = getOutcomeLabel(module.outcome);
@@ -3621,7 +3651,7 @@ function drawModuleContent(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -3636,12 +3666,12 @@ function drawModuleContent(
   }
 
   // Module data
-  yPosition = drawModuleKeyDetails(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages));
 
   // Info gap quick actions
-  yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints, expectedModuleKeys);
+  ({ page, yPosition } = drawInfoGapQuickActions({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages, keyPoints, expectedModuleKeys));
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 /**
@@ -3772,7 +3802,7 @@ function renderSection2Premises(
     }
 
     // Render full module content (includes outcome, assessor notes, other fields)
-    yPosition = drawModuleContent(page, a2Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A2_BUILDING_PROFILE']);
+    ({ page, yPosition } = drawModuleContent({ page, yPosition }, a2Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A2_BUILDING_PROFILE']));
   }
 
   return yPosition;
@@ -3901,7 +3931,7 @@ function renderSection3Occupants(
     }
 
     // Render full module content (includes outcome, assessor notes, other fields)
-    yPosition = drawModuleContent(page, a3Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A3_PERSONS_AT_RISK']);
+    ({ page, yPosition } = drawModuleContent({ page, yPosition }, a3Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A3_PERSONS_AT_RISK']));
   }
 
   return yPosition;
@@ -3924,7 +3954,7 @@ function renderSection4Legislation(
   const a1Module = sectionModules.find(m => m.module_key === 'A1_DOC_CONTROL');
 
   if (a1Module) {
-    yPosition = drawModuleContent(page, a1Module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A1_DOC_CONTROL']);
+    ({ page, yPosition } = drawModuleContent({ page, yPosition }, a1Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A1_DOC_CONTROL']));
   }
 
   return yPosition;
@@ -4064,19 +4094,18 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(
-  page,
-  managementSystemsModule,
-  document,
-  font,
-  fontBold,
-  yPosition,
-  pdfDoc,
-  isDraft,
-  totalPages,
-  undefined,
-  ['A4_MANAGEMENT_CONTROLS', 'FRA_6_MANAGEMENT_SYSTEMS']
-);
+    ({ page, yPosition } = drawModuleContent(
+      { page, yPosition },
+      managementSystemsModule,
+      document,
+      font,
+      fontBold,
+      pdfDoc,
+      isDraft,
+      totalPages,
+      undefined,
+      ['A4_MANAGEMENT_CONTROLS', 'FRA_6_MANAGEMENT_SYSTEMS']
+    ));
     yPosition -= 15;
   }
 
@@ -4100,7 +4129,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, emergencyArrangementsModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A5_EMERGENCY_ARRANGEMENTS', 'FRA_7_EMERGENCY_ARRANGEMENTS']);
+    ({ page, yPosition } = drawModuleContent({ page, yPosition }, emergencyArrangementsModule, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A5_EMERGENCY_ARRANGEMENTS', 'FRA_7_EMERGENCY_ARRANGEMENTS']));
     yPosition -= 15;
   }
 
@@ -4122,7 +4151,7 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    yPosition = drawModuleContent(page, reviewAssuranceModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, ['A7_REVIEW_ASSURANCE']);
+    ({ page, yPosition } = drawModuleContent({ page, yPosition }, reviewAssuranceModule, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A7_REVIEW_ASSURANCE']));
     yPosition -= 15;
   }
 
@@ -4241,7 +4270,7 @@ function renderFilteredModuleData(
 
   // Only render if there's data
   if (Object.keys(filteredModule.data).length > 0) {
-    yPosition = drawModuleContent(page, filteredModule, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, undefined, expectedModuleKeys);
+    ({ page, yPosition } = drawModuleContent({ page, yPosition }, filteredModule, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, expectedModuleKeys));
   }
 
   return yPosition;

@@ -509,8 +509,10 @@ drawCleanAuditPage1(
   }
 
   // Add Table of Contents
-  const { page: tocPage } = addNewPage(pdfDoc, isDraft, totalPages);
-drawTableOfContents(tocPage, font, fontBold);
+  const r = addNewPage(pdfDoc, isDraft, totalPages);
+page = r.page;
+yPosition = PAGE_TOP_Y;
+drawTableOfContents(page, font, fontBold);
 
   // Add "Using This Report" guide section (after TOC, before exec summary)
   drawUsingThisReportSection(pdfDoc, font, fontBold, isDraft, totalPages);

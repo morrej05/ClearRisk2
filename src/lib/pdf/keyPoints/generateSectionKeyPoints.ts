@@ -8,6 +8,8 @@
 import { getRulesForSection, type KeyPoint, type KeyPointRule } from './rules';
 import { getCanonicalKeysForModule } from '../../fra/schema/moduleFieldSchema';
 import { getField } from '../../fra/schema/getField';
+import { type FiredSentence, type SectionEvaluation, type EvaluationContext } from './types';
+import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
 
 interface ModuleInstance {
   id: string;
@@ -109,15 +111,15 @@ function levenshteinDistance(s1: string, s2: string): number {
 }
 
 /**
- * Deduplicate key points
+ * Deduplicate fired sentences
  */
-function deduplicateKeyPoints(points: KeyPoint[]): KeyPoint[] {
-  const unique: KeyPoint[] = [];
+function deduplicateFiredSentences(sentences: FiredSentence[]): FiredSentence[] {
+  const unique: FiredSentence[] = [];
 
-  for (const point of points) {
-    const isDupe = unique.some(existing => isNearDuplicate(existing.text, point.text));
+  for (const sentence of sentences) {
+    const isDupe = unique.some(existing => isNearDuplicate(existing.text, sentence.text));
     if (!isDupe) {
-      unique.push(point);
+      unique.push(sentence);
     }
   }
 
@@ -157,9 +159,10 @@ function mergeModuleData(modules: ModuleInstance[]): Record<string, any> {
 }
 
 /**
- * Generate Key Points for a section
+ * Generate FiredSentence array (new deterministic output)
+ * INTERNAL: Returns structured output with evidence trails
  */
-export function generateSectionKeyPoints(input: GenerateKeyPointsInput): string[] {
+export function generateFiredSentences(input: GenerateKeyPointsInput): FiredSentence[] {
   const { sectionId, moduleInstances, actions = [] } = input;
 
   // Only generate for sections 5-12
@@ -176,8 +179,8 @@ export function generateSectionKeyPoints(input: GenerateKeyPointsInput): string[
   // Merge data from all modules in this section
   const mergedData = mergeModuleData(moduleInstances);
 
-  // Evaluate all rules
-  const points: KeyPoint[] = [];
+  // Evaluate all rules and collect fired sentences
+  const fired: FiredSentence[] = [];
 
   for (const rule of rules) {
     try {
@@ -196,10 +199,15 @@ export function generateSectionKeyPoints(input: GenerateKeyPointsInput): string[
           continue;
         }
 
-        points.push({
+        // Extract evidence
+        const evidence = rule.evidence(mergedData);
+
+        fired.push({
+          ruleId: rule.id,
           type: rule.type,
           weight: rule.weight,
           text: text.trim(),
+          evidence,
         });
       }
     } catch (error) {
@@ -208,13 +216,13 @@ export function generateSectionKeyPoints(input: GenerateKeyPointsInput): string[
     }
   }
 
-  // If no points generated, return empty
-  if (points.length === 0) {
+  // If no sentences fired, return empty
+  if (fired.length === 0) {
     return [];
   }
 
   // Sort by priority: weaknesses first, then by weight descending
-  points.sort((a, b) => {
+  fired.sort((a, b) => {
     // Weaknesses always come first
     if (a.type === 'weakness' && b.type !== 'weakness') return -1;
     if (a.type !== 'weakness' && b.type === 'weakness') return 1;
@@ -224,11 +232,76 @@ export function generateSectionKeyPoints(input: GenerateKeyPointsInput): string[
   });
 
   // Deduplicate
-  const uniquePoints = deduplicateKeyPoints(points);
+  const uniqueFired = deduplicateFiredSentences(fired);
 
-  // Take top 4 maximum
-  const finalPoints = uniquePoints.slice(0, 4);
+  // Take top 4 maximum (limit for Key Points)
+  const finalFired = uniqueFired.slice(0, 4);
 
-  // Return just the text strings
-  return finalPoints.map(p => p.text);
+  return finalFired;
+}
+
+/**
+ * Generate Section Evaluation (complete structured output)
+ * INTERNAL: Returns full evaluation with summary, provisional flag, and info gaps
+ */
+export function generateSectionEvaluation(input: GenerateKeyPointsInput): SectionEvaluation {
+  const { sectionId, moduleInstances, actions = [] } = input;
+
+  // Generate fired sentences
+  const fired = generateFiredSentences(input);
+
+  // Generate summary line
+  const weaknessCount = fired.filter(s => s.type === 'weakness').length;
+  const strengthCount = fired.filter(s => s.type === 'strength').length;
+  const infoCount = fired.filter(s => s.type === 'info').length;
+
+  let summary = '';
+  const parts: string[] = [];
+  if (weaknessCount > 0) parts.push(`${weaknessCount} weakness${weaknessCount !== 1 ? 'es' : ''}`);
+  if (strengthCount > 0) parts.push(`${strengthCount} strength${strengthCount !== 1 ? 's' : ''}`);
+  if (infoCount > 0) parts.push(`${infoCount} observation${infoCount !== 1 ? 's' : ''}`);
+
+  if (parts.length > 0) {
+    summary = parts.join(', ') + ' identified';
+  } else {
+    summary = 'No significant observations';
+  }
+
+  // Check for info gaps (provisional status)
+  const mergedData = mergeModuleData(moduleInstances);
+  const infoGapReasons: string[] = [];
+  let provisional = false;
+
+  // Check each module for info gaps
+  for (const module of moduleInstances) {
+    const detection = detectInfoGaps(
+      module.module_key,
+      module.data,
+      module.outcome,
+      {}
+    );
+
+    if (detection.hasInfoGap) {
+      provisional = true;
+      infoGapReasons.push(...detection.reasons);
+    }
+  }
+
+  return {
+    sectionId,
+    summary,
+    fired,
+    provisional,
+    infoGapReasons,
+  };
+}
+
+/**
+ * Generate Key Points for a section (BACKWARD COMPATIBLE)
+ * PUBLIC: Returns string[] for existing callers
+ */
+export function generateSectionKeyPoints(input: GenerateKeyPointsInput): string[] {
+  // Use new function internally, then project to string[]
+  const fired = generateFiredSentences(input);
+  return fired.map(s => s.text);
 }

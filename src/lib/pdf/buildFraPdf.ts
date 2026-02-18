@@ -47,7 +47,7 @@ import {
 import { addIssuedReportPages } from './issuedPdfPages';
 import { FRA_REPORT_STRUCTURE, getSectionTitle } from './fraReportStructure';
 import { getJurisdictionTemplate, getRegulatoryFrameworkText } from './jurisdictionTemplates';
-import { generateSectionKeyPoints } from './keyPoints/generateSectionKeyPoints';
+import { generateSectionKeyPoints, generateFiredSentences, generateSectionEvaluation } from './keyPoints/generateSectionKeyPoints';
 import { drawKeyPointsBlock } from './keyPoints/drawKeyPointsBlock';
 import {
   validateReportQuality,
@@ -599,6 +599,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
       }
 
       // Generate and draw Key Points (deterministic, rule-based observations)
+      // For sections 5-12: show summary line + fired sentences (authored, deterministic)
       const keyPoints = generateSectionKeyPoints({
         sectionId: section.id,
         moduleInstances: sectionModules,
@@ -606,6 +607,35 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
       });
 
       if (keyPoints.length > 0) {
+        // For sections 5-12, add summary line above key points
+        if (section.id >= 5 && section.id <= 12) {
+          const evaluation = generateSectionEvaluation({
+            sectionId: section.id,
+            moduleInstances: sectionModules,
+            actions: sectionActions,
+          });
+
+          // Ensure space for summary line
+          if (yPosition < MARGIN + 80) {
+            const result = addNewPage(pdfDoc, isDraft, totalPages);
+            page = result.page;
+            yPosition = PAGE_HEIGHT - MARGIN - 20;
+          }
+
+          yPosition -= 15;
+
+          // Draw summary line in italics
+          page.drawText(sanitizePdfText(evaluation.summary), {
+            x: MARGIN,
+            y: yPosition,
+            size: 10,
+            font,
+            color: rgb(0.3, 0.3, 0.3),
+          });
+
+          yPosition -= 20;
+        }
+
         const keyPointsResult = drawKeyPointsBlock({
           page,
           keyPoints,

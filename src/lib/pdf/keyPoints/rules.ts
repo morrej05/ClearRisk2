@@ -18,6 +18,8 @@ export interface KeyPointRule {
   weight: number; // Higher = more important
   when: (data: any) => boolean;
   text: (data: any) => string;
+  /** Evidence extraction: returns field paths and values that triggered this rule */
+  evidence: (data: any) => Array<{ field: string; value: any }>;
 }
 
 export interface KeyPoint {
@@ -80,6 +82,7 @@ export const section5Rules: KeyPointRule[] = [
       return isYes(safeGet(eicr, 'eicr_outstanding_c1_c2'));
     },
     text: (data) => 'Outstanding C1/C2 electrical defects identified',
+    evidence: (data) => [{ field: 'electrical_safety.eicr_outstanding_c1_c2', value: safeGet(data, 'electrical_safety.eicr_outstanding_c1_c2') }],
   },
   {
     id: 'eicr_unsatisfactory',
@@ -91,6 +94,7 @@ export const section5Rules: KeyPointRule[] = [
       return safeGet(eicr, 'eicr_satisfactory') === 'unsatisfactory' && !c1c2;
     },
     text: (data) => 'EICR assessment rated as unsatisfactory',
+    evidence: (data) => [{ field: 'electrical_safety.eicr_satisfactory', value: safeGet(data, 'electrical_safety.eicr_satisfactory') }],
   },
   {
     id: 'high_risk_lithium',
@@ -98,6 +102,7 @@ export const section5Rules: KeyPointRule[] = [
     weight: 85,
     when: (data) => includesAny(safeGet(data, 'high_risk_activities', []), ['lithium', 'battery', 'e-bike', 'e-scooter']),
     text: (data) => 'Lithium-ion battery charging activities present elevated fire risk',
+    evidence: (data) => [{ field: 'high_risk_activities', value: safeGet(data, 'high_risk_activities') }],
   },
   {
     id: 'high_risk_kitchen',
@@ -105,6 +110,7 @@ export const section5Rules: KeyPointRule[] = [
     weight: 80,
     when: (data) => includesAny(safeGet(data, 'high_risk_activities', []), ['kitchen', 'cooking', 'deep fat']),
     text: (data) => 'Commercial cooking operations identified as significant ignition source',
+    evidence: (data) => [{ field: 'high_risk_activities', value: safeGet(data, 'high_risk_activities') }],
   },
   {
     id: 'housekeeping_high',
@@ -115,6 +121,7 @@ export const section5Rules: KeyPointRule[] = [
       return val === 'high' || val === 'very_high';
     },
     text: (data) => 'Housekeeping standards poor; excessive combustible materials present',
+    evidence: (data) => [{ field: 'housekeeping_fire_load', value: safeGet(data, 'housekeeping_fire_load') }],
   },
   {
     id: 'housekeeping_medium',
@@ -122,6 +129,7 @@ export const section5Rules: KeyPointRule[] = [
     weight: 60,
     when: (data) => safeGet(data, 'housekeeping_fire_load') === 'medium',
     text: (data) => 'Housekeeping requires improvement to reduce fire load',
+    evidence: (data) => [{ field: 'housekeeping_fire_load', value: safeGet(data, 'housekeeping_fire_load') }],
   },
   {
     id: 'arson_risk_high',
@@ -132,6 +140,7 @@ export const section5Rules: KeyPointRule[] = [
       return val === 'high' || val === 'very_high';
     },
     text: (data) => 'Site vulnerable to arson; additional security measures recommended',
+    evidence: (data) => [{ field: 'arson_risk', value: safeGet(data, 'arson_risk') }],
   },
   {
     id: 'arson_risk_low',
@@ -139,6 +148,7 @@ export const section5Rules: KeyPointRule[] = [
     weight: 40,
     when: (data) => safeGet(data, 'arson_risk') === 'low',
     text: (data) => 'Arson risk well-controlled through security measures',
+    evidence: (data) => [{ field: 'arson_risk', value: safeGet(data, 'arson_risk') }],
   },
 ];
 
@@ -152,6 +162,7 @@ export const section6Rules: KeyPointRule[] = [
     weight: 90,
     when: (data) => isNo(safeGet(data, 'travel_distances_compliant')),
     text: (data) => 'Travel distances exceed regulatory guidance limits',
+    evidence: (data) => [{ field: 'travel_distances_compliant', value: safeGet(data, 'travel_distances_compliant') }],
   },
   {
     id: 'escape_route_obstructions',
@@ -159,6 +170,7 @@ export const section6Rules: KeyPointRule[] = [
     weight: 85,
     when: (data) => isYes(safeGet(data, 'escape_route_obstructions')),
     text: (data) => 'Obstructions identified in escape routes',
+    evidence: (data) => [{ field: 'escape_route_obstructions', value: safeGet(data, 'escape_route_obstructions') }],
   },
   {
     id: 'final_exits_inadequate',
@@ -166,6 +178,7 @@ export const section6Rules: KeyPointRule[] = [
     weight: 88,
     when: (data) => isNo(safeGet(data, 'final_exits_adequate')),
     text: (data) => 'Final exits inadequate for occupant capacity',
+    evidence: (data) => [{ field: 'final_exits_adequate', value: safeGet(data, 'final_exits_adequate') }],
   },
   {
     id: 'stair_protection_inadequate',
@@ -176,6 +189,7 @@ export const section6Rules: KeyPointRule[] = [
       return val === 'inadequate' || val === 'non_compliant';
     },
     text: (data) => 'Stair protection does not meet required fire resistance standards',
+    evidence: (data) => [{ field: 'stair_protection_status', value: safeGet(data, 'stair_protection_status') }],
   },
   {
     id: 'exit_signage_inadequate',
@@ -186,6 +200,7 @@ export const section6Rules: KeyPointRule[] = [
       return val === 'inadequate' || val === 'missing';
     },
     text: (data) => 'Exit signage is inadequate or missing',
+    evidence: (data) => [{ field: 'exit_signage_adequacy', value: safeGet(data, 'exit_signage_adequacy') }],
   },
   {
     id: 'disabled_egress_inadequate',
@@ -196,6 +211,7 @@ export const section6Rules: KeyPointRule[] = [
       return val === 'inadequate' || val === 'missing';
     },
     text: (data) => 'Disabled egress arrangements require improvement',
+    evidence: (data) => [{ field: 'disabled_egress_arrangements', value: safeGet(data, 'disabled_egress_arrangements') }],
   },
   {
     id: 'travel_distances_compliant',
@@ -203,6 +219,7 @@ export const section6Rules: KeyPointRule[] = [
     weight: 35,
     when: (data) => isYes(safeGet(data, 'travel_distances_compliant')),
     text: (data) => 'Travel distances comply with regulatory guidance',
+    evidence: (data) => [{ field: 'travel_distances_compliant', value: safeGet(data, 'travel_distances_compliant') }],
   },
 ];
 
@@ -216,6 +233,7 @@ export const section7Rules: KeyPointRule[] = [
     weight: 95,
     when: (data) => isNo(safeGet(data, 'fire_alarm_present')),
     text: (data) => 'No fire alarm system present; installation required',
+    evidence: (data) => [{ field: 'fire_alarm_present', value: safeGet(data, 'fire_alarm_present') }],
   },
   {
     id: 'alarm_testing_missing',
@@ -227,6 +245,10 @@ export const section7Rules: KeyPointRule[] = [
       return isYes(present) && isNo(evidence);
     },
     text: (data) => 'Fire alarm testing records not available',
+    evidence: (data) => [
+      { field: 'fire_alarm_present', value: safeGet(data, 'fire_alarm_present') },
+      { field: 'alarm_testing_evidence', value: safeGet(data, 'alarm_testing_evidence') }
+    ],
   },
   {
     id: 'alarm_zoning_inadequate',
@@ -237,6 +259,7 @@ export const section7Rules: KeyPointRule[] = [
       return val === 'inadequate' || val === 'poor';
     },
     text: (data) => 'Fire alarm zoning arrangements inadequate for building complexity',
+    evidence: (data) => [{ field: 'alarm_zoning_adequacy', value: safeGet(data, 'alarm_zoning_adequacy') }],
   },
   {
     id: 'alarm_category_l1',
@@ -247,6 +270,7 @@ export const section7Rules: KeyPointRule[] = [
       return cat === 'L1' || cat === 'L1_FULL_COVERAGE';
     },
     text: (data) => 'L1 fire alarm system provides comprehensive coverage',
+    evidence: (data) => [{ field: 'fire_alarm_category', value: safeGet(data, 'fire_alarm_category') }],
   },
   {
     id: 'alarm_category_adequate',
@@ -260,6 +284,7 @@ export const section7Rules: KeyPointRule[] = [
       const cat = String(safeGet(data, 'fire_alarm_category', '')).toUpperCase();
       return `${cat} fire alarm system installed`;
     },
+    evidence: (data) => [{ field: 'fire_alarm_category', value: safeGet(data, 'fire_alarm_category') }],
   },
 ];
 
@@ -273,6 +298,7 @@ export const section8Rules: KeyPointRule[] = [
     weight: 90,
     when: (data) => isNo(safeGet(data, 'emergency_lighting_present')),
     text: (data) => 'Emergency lighting not present; installation required',
+    evidence: (data) => [{ field: 'emergency_lighting_present', value: safeGet(data, 'emergency_lighting_present') }],
   },
   {
     id: 'el_testing_missing',
@@ -284,6 +310,10 @@ export const section8Rules: KeyPointRule[] = [
       return isYes(present) && isNo(evidence);
     },
     text: (data) => 'Emergency lighting testing records not available',
+    evidence: (data) => [
+      { field: 'emergency_lighting_present', value: safeGet(data, 'emergency_lighting_present') },
+      { field: 'emergency_lighting_testing_evidence', value: safeGet(data, 'emergency_lighting_testing_evidence') }
+    ],
   },
   {
     id: 'el_coverage_inadequate',
@@ -294,6 +324,7 @@ export const section8Rules: KeyPointRule[] = [
       return val === 'inadequate' || val === 'partial';
     },
     text: (data) => 'Emergency lighting coverage inadequate along escape routes',
+    evidence: (data) => [{ field: 'emergency_lighting_coverage', value: safeGet(data, 'emergency_lighting_coverage') }],
   },
   {
     id: 'el_adequate',
@@ -305,6 +336,10 @@ export const section8Rules: KeyPointRule[] = [
       return present && evidence;
     },
     text: (data) => 'Emergency lighting system present with testing evidence',
+    evidence: (data) => [
+      { field: 'emergency_lighting_present', value: safeGet(data, 'emergency_lighting_present') },
+      { field: 'emergency_lighting_testing_evidence', value: safeGet(data, 'emergency_lighting_testing_evidence') }
+    ],
   },
 ];
 
@@ -321,6 +356,7 @@ export const section9Rules: KeyPointRule[] = [
       return val === 'inadequate' || val === 'poor' || val === 'non_compliant';
     },
     text: (data) => 'Fire doors in inadequate condition; repairs or replacement required',
+    evidence: (data) => [{ field: 'fire_doors_condition', value: safeGet(data, 'fire_doors_condition') }],
   },
   {
     id: 'compartmentation_inadequate',
@@ -331,6 +367,7 @@ export const section9Rules: KeyPointRule[] = [
       return val === 'inadequate' || val === 'poor' || val === 'breached';
     },
     text: (data) => 'Compartmentation breached or inadequate; fire-stopping works required',
+    evidence: (data) => [{ field: 'compartmentation_condition', value: safeGet(data, 'compartmentation_condition') }],
   },
   {
     id: 'fire_stopping_unknown',
@@ -341,6 +378,7 @@ export const section9Rules: KeyPointRule[] = [
       return val === 'unknown' || val === 'low' || val === 'poor';
     },
     text: (data) => 'Low confidence in fire-stopping effectiveness; intrusive survey recommended',
+    evidence: (data) => [{ field: 'fire_stopping_confidence', value: safeGet(data, 'fire_stopping_confidence') }],
   },
   {
     id: 'cavity_barriers_missing',
@@ -351,6 +389,7 @@ export const section9Rules: KeyPointRule[] = [
       return isNo(val) || val === 'missing' || val === 'inadequate';
     },
     text: (data) => 'Cavity barriers inadequate or missing in concealed spaces',
+    evidence: (data) => [{ field: 'cavity_barriers_adequate', value: safeGet(data, 'cavity_barriers_adequate') }],
   },
   {
     id: 'fire_doors_adequate',
@@ -358,6 +397,7 @@ export const section9Rules: KeyPointRule[] = [
     weight: 35,
     when: (data) => safeGet(data, 'fire_doors_condition') === 'adequate',
     text: (data) => 'Fire doors generally in adequate condition',
+    evidence: (data) => [{ field: 'fire_doors_condition', value: safeGet(data, 'fire_doors_condition') }],
   },
 ];
 
@@ -374,6 +414,7 @@ export const section10Rules: KeyPointRule[] = [
       return isNo(safeGet(data, 'sprinkler_present'));
     },
     text: (data) => 'No sprinkler system present',
+    evidence: (data) => [{ field: 'sprinkler_present', value: safeGet(data, 'sprinkler_present') }],
   },
   {
     id: 'extinguishers_absent',
@@ -381,6 +422,7 @@ export const section10Rules: KeyPointRule[] = [
     weight: 90,
     when: (data) => isNo(safeGet(data, 'extinguishers_present')),
     text: (data) => 'Fire extinguishers not present; provision required',
+    evidence: (data) => [{ field: 'extinguishers_present', value: safeGet(data, 'extinguishers_present') }],
   },
   {
     id: 'extinguisher_servicing_missing',
@@ -392,6 +434,10 @@ export const section10Rules: KeyPointRule[] = [
       return isYes(present) && isNo(servicing);
     },
     text: (data) => 'Fire extinguisher servicing evidence not available',
+    evidence: (data) => [
+      { field: 'extinguishers_present', value: safeGet(data, 'extinguishers_present') },
+      { field: 'extinguisher_servicing_evidence', value: safeGet(data, 'extinguisher_servicing_evidence') }
+    ],
   },
   {
     id: 'hydrant_access_poor',
@@ -402,6 +448,7 @@ export const section10Rules: KeyPointRule[] = [
       return val === 'poor' || val === 'inadequate' || val === 'limited';
     },
     text: (data) => 'Fire service hydrant access limited or inadequate',
+    evidence: (data) => [{ field: 'hydrant_access', value: safeGet(data, 'hydrant_access') }],
   },
   {
     id: 'sprinkler_present',
@@ -409,6 +456,7 @@ export const section10Rules: KeyPointRule[] = [
     weight: 50,
     when: (data) => isYes(safeGet(data, 'sprinkler_present')),
     text: (data) => 'Automatic sprinkler system installed',
+    evidence: (data) => [{ field: 'sprinkler_present', value: safeGet(data, 'sprinkler_present') }],
   },
 ];
 
@@ -425,6 +473,7 @@ export const section11Rules: KeyPointRule[] = [
       return isUnknown(records) || !hasValue(records);
     },
     text: (data) => 'Fire safety testing and inspection records have not been evidenced',
+    evidence: (data) => [{ field: 'testing_records', value: safeGet(data, 'testing_records') }],
   },
   {
     id: 'policy_training_not_verified',
@@ -438,6 +487,11 @@ export const section11Rules: KeyPointRule[] = [
       return unknownCount >= 2;
     },
     text: (data) => 'Training and fire safety policy records have not been verified',
+    evidence: (data) => [
+      { field: 'fire_safety_policy', value: safeGet(data, 'fire_safety_policy') },
+      { field: 'training_induction', value: safeGet(data, 'training_induction') },
+      { field: 'drill_frequency', value: safeGet(data, 'drill_frequency') }
+    ],
   },
   {
     id: 'fire_policy_missing',
@@ -445,6 +499,7 @@ export const section11Rules: KeyPointRule[] = [
     weight: 75,
     when: (data) => isNo(safeGet(data, 'fire_safety_policy')),
     text: (data) => 'Fire safety policy not documented',
+    evidence: (data) => [{ field: 'fire_safety_policy', value: safeGet(data, 'fire_safety_policy') }],
   },
   {
     id: 'testing_records_missing',
@@ -452,6 +507,7 @@ export const section11Rules: KeyPointRule[] = [
     weight: 70,
     when: (data) => isNo(safeGet(data, 'testing_records')),
     text: (data) => 'Testing and maintenance records not available',
+    evidence: (data) => [{ field: 'testing_records', value: safeGet(data, 'testing_records') }],
   },
   {
     id: 'training_missing',
@@ -462,6 +518,7 @@ export const section11Rules: KeyPointRule[] = [
       return isNo(induction) || induction === 'inadequate';
     },
     text: (data) => 'Fire safety training and induction inadequate',
+    evidence: (data) => [{ field: 'training_induction', value: safeGet(data, 'training_induction') }],
   },
   {
     id: 'ptw_hot_work_missing',
@@ -469,6 +526,7 @@ export const section11Rules: KeyPointRule[] = [
     weight: 70,
     when: (data) => isNo(safeGet(data, 'ptw_hot_work')),
     text: (data) => 'Permit to work system not in place for hot work activities',
+    evidence: (data) => [{ field: 'ptw_hot_work', value: safeGet(data, 'ptw_hot_work') }],
   },
   {
     id: 'emergency_plan_missing',
@@ -476,6 +534,7 @@ export const section11Rules: KeyPointRule[] = [
     weight: 88,
     when: (data) => isNo(safeGet(data, 'emergency_plan_exists')),
     text: (data) => 'Emergency evacuation plan not documented',
+    evidence: (data) => [{ field: 'emergency_plan_exists', value: safeGet(data, 'emergency_plan_exists') }],
   },
   {
     id: 'peeps_missing',
@@ -483,6 +542,7 @@ export const section11Rules: KeyPointRule[] = [
     weight: 82,
     when: (data) => isNo(safeGet(data, 'peeps_in_place')),
     text: (data) => 'Personal Emergency Evacuation Plans (PEEPs) not in place',
+    evidence: (data) => [{ field: 'peeps_in_place', value: safeGet(data, 'peeps_in_place') }],
   },
   {
     id: 'responsibilities_defined',
@@ -490,6 +550,7 @@ export const section11Rules: KeyPointRule[] = [
     weight: 45,
     when: (data) => isYes(safeGet(data, 'responsibilities_defined')),
     text: (data) => 'Fire safety responsibilities clearly defined and communicated',
+    evidence: (data) => [{ field: 'responsibilities_defined', value: safeGet(data, 'responsibilities_defined') }],
   },
   {
     id: 'emergency_arrangements_good',
@@ -501,6 +562,10 @@ export const section11Rules: KeyPointRule[] = [
       return plan && peeps;
     },
     text: (data) => 'Emergency arrangements documented with PEEPs in place',
+    evidence: (data) => [
+      { field: 'emergency_plan_exists', value: safeGet(data, 'emergency_plan_exists') },
+      { field: 'peeps_in_place', value: safeGet(data, 'peeps_in_place') }
+    ],
   },
 ];
 
@@ -518,6 +583,10 @@ export const section12Rules: KeyPointRule[] = [
       return present && (isUnknown(known) || isNo(known));
     },
     text: (data) => 'Cladding present but combustibility classification unknown; assessment required',
+    evidence: (data) => [
+      { field: 'cladding_present', value: safeGet(data, 'cladding_present') },
+      { field: 'insulation_combustibility_known', value: safeGet(data, 'insulation_combustibility_known') }
+    ],
   },
   {
     id: 'cladding_concerns',
@@ -528,6 +597,7 @@ export const section12Rules: KeyPointRule[] = [
       return isYes(val) || val === 'significant';
     },
     text: (data) => 'Significant concerns identified regarding external wall construction',
+    evidence: (data) => [{ field: 'cladding_concerns', value: safeGet(data, 'cladding_concerns') }],
   },
   {
     id: 'pas9980_missing',
@@ -539,6 +609,10 @@ export const section12Rules: KeyPointRule[] = [
       return present && (isNo(appraisal) || isUnknown(appraisal));
     },
     text: (data) => 'PAS 9980 or equivalent appraisal not undertaken for external walls',
+    evidence: (data) => [
+      { field: 'cladding_present', value: safeGet(data, 'cladding_present') },
+      { field: 'pas9980_or_equivalent_appraisal', value: safeGet(data, 'pas9980_or_equivalent_appraisal') }
+    ],
   },
   {
     id: 'interim_measures',
@@ -549,6 +623,7 @@ export const section12Rules: KeyPointRule[] = [
       return hasValue(val) && val !== 'none';
     },
     text: (data) => 'Interim fire safety measures implemented pending remediation',
+    evidence: (data) => [{ field: 'interim_measures', value: safeGet(data, 'interim_measures') }],
   },
   {
     id: 'boundary_distances_adequate',
@@ -556,6 +631,7 @@ export const section12Rules: KeyPointRule[] = [
     weight: 35,
     when: (data) => isYes(safeGet(data, 'boundary_distances_adequate')),
     text: (data) => 'Boundary separation distances adequate',
+    evidence: (data) => [{ field: 'boundary_distances_adequate', value: safeGet(data, 'boundary_distances_adequate') }],
   },
 ];
 

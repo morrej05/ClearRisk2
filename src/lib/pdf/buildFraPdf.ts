@@ -809,7 +809,7 @@ if (!page) {
         break;
 
       case 14: // Review & Reassessment
-        yPosition = renderSection14Review(page, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = renderSection14Review({ page, yPosition }, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
         break;
 
       default:
@@ -1373,18 +1373,18 @@ function computeFallbackRating(actions: Action[], actionRatings: ActionRating[],
 }
 
 function drawExecutiveSummary(
-  page: PDFPage,
+  cursor: Cursor,
   fra4Module: ModuleInstance,
   actions: Action[],
   actionRatings: ActionRating[],
   moduleInstances: ModuleInstance[],
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
+): { page: PDFPage; yPosition: number } {
+  let { page, yPosition } = cursor;
   yPosition -= 20;
   page.drawText('EXECUTIVE SUMMARY', {
     x: MARGIN,
@@ -4045,7 +4045,7 @@ function renderSection7Detection(
       'alarm_maintenance'
     ];
 
-    yPosition = renderFilteredModuleData(page, fra3Module, detectionFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, ['FRA_3_ACTIVE_SYSTEMS']);
+    ({ page, yPosition } = renderFilteredModuleData({ page, yPosition }, fra3Module, detectionFields, document, font, fontBold, pdfDoc, isDraft, totalPages, ['FRA_3_ACTIVE_SYSTEMS']));
   }
 
   return yPosition;
@@ -4078,7 +4078,7 @@ function renderSection8EmergencyLighting(
       'emergency_lighting_maintenance'
     ];
 
-    yPosition = renderFilteredModuleData(page, fra3Module, lightingFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, ['FRA_3_ACTIVE_SYSTEMS']);
+    ({ page, yPosition } = renderFilteredModuleData({ page, yPosition }, fra3Module, lightingFields, document, font, fontBold, pdfDoc, isDraft, totalPages, ['FRA_3_ACTIVE_SYSTEMS']));
   }
 
   return yPosition;
@@ -4114,7 +4114,7 @@ function renderSection10Suppression(
       'firefighting_shaft'
     ];
 
-    yPosition = renderFilteredModuleData(page, fra8Module, suppressionFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, ['FRA_8_FIREFIGHTING_EQUIPMENT']);
+    ({ page, yPosition } = renderFilteredModuleData({ page, yPosition }, fra8Module, suppressionFields, document, font, fontBold, pdfDoc, isDraft, totalPages, ['FRA_8_FIREFIGHTING_EQUIPMENT']));
   }
 
   return yPosition;
@@ -4125,17 +4125,17 @@ function renderSection10Suppression(
  * Combines multiple management modules + FRA_8 portable equipment
  */
 function renderSection11Management(
-  page: PDFPage,
+  cursor: Cursor,
   sectionModules: ModuleInstance[],
   allModules: ModuleInstance[],
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
+): { page: PDFPage; yPosition: number } {
+  let { page, yPosition } = cursor;
   // 11.1 Management Systems
   const managementSystemsModule = sectionModules.find(m =>
     m.module_key === 'A4_MANAGEMENT_CONTROLS' || m.module_key === 'FRA_6_MANAGEMENT_SYSTEMS'
@@ -4237,25 +4237,25 @@ function renderSection11Management(
       'fire_blankets'
     ];
 
-    yPosition = renderFilteredModuleData(page, fra8Module, equipmentFields, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, ['FRA_8_FIREFIGHTING_EQUIPMENT']);
+    ({ page, yPosition } = renderFilteredModuleData({ page, yPosition }, fra8Module, equipmentFields, document, font, fontBold, pdfDoc, isDraft, totalPages, ['FRA_8_FIREFIGHTING_EQUIPMENT']));
   }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 /**
  * Section 14: Review & Reassessment
  */
 function renderSection14Review(
-  page: PDFPage,
+  cursor: Cursor,
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
+): { page: PDFPage; yPosition: number } {
+  let { page, yPosition } = cursor;
   yPosition -= 10;
 
   page.drawText('Review Requirements', {
@@ -4294,25 +4294,25 @@ Next formal reassessment recommended: ${document.review_date ? formatDate(docume
     yPosition -= 16;
   }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 /**
  * Helper: Render only specific fields from a module
  */
 function renderFilteredModuleData(
-  page: PDFPage,
+  cursor: Cursor,
   module: ModuleInstance,
   fieldKeys: string[],
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
   expectedModuleKeys?: string[]
-): number {
+): { page: PDFPage; yPosition: number } {
+  let { page, yPosition } = cursor;
   // Filter module data to only include specified fields
   const filteredModule = {
     ...module,
@@ -4329,7 +4329,7 @@ function renderFilteredModuleData(
     ({ page, yPosition } = drawModuleContent({ page, yPosition }, filteredModule, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, expectedModuleKeys));
   }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 function drawCleanAuditPage1(

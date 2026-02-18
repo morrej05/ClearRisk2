@@ -3479,6 +3479,24 @@ function drawTableOfContents(
 
   yPosition -= 40;
 
+  for (const section of FRA_REPORT_STRUCTURE) {
+  const sectionText = `${section.id}. ${section.title}`;
+
+  page.drawText(sectionText, {
+    x: MARGIN + 20,
+    y: yPosition,
+    size: 11,
+    font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  yPosition -= 18;
+
+  if (yPosition < MARGIN + 50) {
+    break;
+  }
+}
+
   /**
  * Draw section header with number and title
  * Replaces module key printing with clean section numbering

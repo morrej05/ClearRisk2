@@ -267,7 +267,6 @@ function ensureSpace(
 /**
  * Calculate section content density score
  */
-
 function calculateSectionDensity(
   sectionModules: ModuleInstance[],
   sectionActions: any[],
@@ -701,6 +700,15 @@ if (!page) {
 }
 
     // Draw section header
+    ({ page, yPosition } = ensureSpace(
+  120,
+  page,
+  yPosition,
+  pdfDoc,
+  isDraft,
+  totalPages
+));
+    
     ({ page, yPosition } = drawSectionHeader({ page, yPosition }, section.id, section.title, font, fontBold));
     yPosition -= 10;
 

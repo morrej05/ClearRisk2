@@ -491,17 +491,19 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
                  (priorityOrder[b.priority_band as keyof typeof priorityOrder] || 99);
         });
 
-      const { page: riskSummaryPage } = addNewPage(pdfDoc, isDraft, totalPages);
-drawCleanAuditPage1(
-  riskSummaryPage,
-  scoringResult,
-  priorityActions,
-  font,
-  fontBold,
-  document,
-  organisation,
-  documentControlModule
-);
+      const riskSummaryResult = addNewPage(pdfDoc, isDraft, totalPages);
+      page = riskSummaryResult.page;
+      yPosition = PAGE_TOP_Y;
+      drawCleanAuditPage1(
+        page,
+        scoringResult,
+        priorityActions,
+        font,
+        fontBold,
+        document,
+        organisation,
+        documentControlModule
+      );
 
     } catch (error) {
       console.warn('[PDF FRA] Failed to generate risk summary page:', error);
@@ -530,38 +532,38 @@ drawTableOfContents(page, font, fontBold);
   // Add Assurance Gaps block if quality issues detected (after exec summary)
   if (qualityResult.assuranceGaps.length > 0) {
     const gapsResult = addNewPage(pdfDoc, isDraft, totalPages);
-    let gapsPage = gapsResult.page;
-    let gapsY = PAGE_TOP_Y;
+    page = gapsResult.page;
+    yPosition = PAGE_TOP_Y;
 
     // Title
-    gapsPage.drawText('Assessment Completeness', {
+    page.drawText('Assessment Completeness', {
       x: MARGIN,
-      y: gapsY,
+      y: yPosition,
       size: 16,
       font: fontBold,
       color: rgb(0.2, 0.2, 0.2),
     });
 
-    gapsY -= 30;
+    yPosition -= 30;
 
     // Note
     const noteText = 'The following areas require additional information to complete the assessment:';
     const noteLines = wrapText(noteText, CONTENT_WIDTH, 11, font);
     for (const line of noteLines) {
-      gapsPage.drawText(line, {
+      page.drawText(line, {
         x: MARGIN,
-        y: gapsY,
+        y: yPosition,
         size: 11,
         font,
         color: rgb(0.3, 0.3, 0.3),
       });
-      gapsY -= 16;
+      yPosition -= 16;
     }
 
-    gapsY -= 10;
+    yPosition -= 10;
 
     // Draw assurance gaps
-    gapsY = drawAssuranceGapsBlock(gapsPage, qualityResult.assuranceGaps, font, fontBold, gapsY);
+    yPosition = drawAssuranceGapsBlock(page, qualityResult.assuranceGaps, font, fontBold, yPosition);
   }
 
   // Add Action Plan Snapshot (after exec summary / assurance gaps)
@@ -620,14 +622,10 @@ drawTableOfContents(page, font, fontBold);
   // Collect low-density sections for compact rendering
   const lowDensitySections: Array<{ section: any; modules: ModuleInstance[]; actions: any[] }> = [];
 
-  // Ensure deterministic starting cursor for section rendering
-  if (!page) {
-    const start = addNewPage(pdfDoc, isDraft, totalPages);
-    page = start.page;
-  }
-  if (!yPosition || Number.isNaN(yPosition)) {
-    yPosition = PAGE_TOP_Y;
-  }
+  // Guaranteed fresh page before section rendering (prevents undefined page errors)
+  const sectionStartResult = addNewPage(pdfDoc, isDraft, totalPages);
+  page = sectionStartResult.page;
+  yPosition = PAGE_TOP_Y;
 
   // Render sections 2-14 using the fixed structure with flowing layout
   for (const section of FRA_REPORT_STRUCTURE) {

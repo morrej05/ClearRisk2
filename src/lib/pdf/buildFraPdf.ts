@@ -636,7 +636,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
         recommended_action: a.recommended_action,
         priority_band: a.priority_band,
       }));
-
+let keyPoints: string[] = [];
     // HOLISTIC BLANK SECTION POLICY: Use shouldRenderSection for ALL sections 2-12
     // Sections 13 (significant findings) and 14 (review) are always rendered
     if (section.id >= 2 && section.id <= 12) {

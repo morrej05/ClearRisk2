@@ -241,18 +241,18 @@ const CRITICAL_FIELDS: Record<number, string[]> = {
 /**
  * Helper: Ensure enough space on current page, or create new page
  */
-function ensureSpace(
-  requiredHeight: number,
-  currentPage: PDFPage,
-  currentY: number,
-  pdfDoc: PDFDocument,
-  isDraft: boolean,
-  totalPages: PDFPage[]
-): { page: PDFPage; yPosition: number } {
+  // 🔒 If we don't yet have a page, create one
+  if (!currentPage || typeof currentY !== 'number') {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    return { page: result.page, yPosition: PAGE_TOP_Y };
+  }
+
+  // 🔒 Normal page overflow check
   if (currentY - requiredHeight < MARGIN + 50) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     return { page: result.page, yPosition: PAGE_TOP_Y };
   }
+
   return { page: currentPage, yPosition: currentY };
 }
 

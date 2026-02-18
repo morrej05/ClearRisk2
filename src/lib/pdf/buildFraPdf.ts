@@ -398,6 +398,19 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
   // Build module_instance_id -> FRA section mapping
   const moduleToSectionMap = new Map<string, number>();
+  // ✅ Ensure we have a working cursor before section rendering begins
+if (!page) {
+  // Prefer the last page that already exists (cover/doc control/summary/TOC/etc)
+  const last = totalPages[totalPages.length - 1];
+  if (last) {
+    page = last;
+    yPosition = PAGE_TOP_Y;
+  } else {
+    const init = addNewPage(pdfDoc, isDraft, totalPages);
+    page = init.page;
+    yPosition = PAGE_TOP_Y;
+  }
+}
   for (const section of FRA_REPORT_STRUCTURE) {
     for (const moduleKey of section.moduleKeys) {
       const module = moduleInstances.find(m => m.module_key === moduleKey);

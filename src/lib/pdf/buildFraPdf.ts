@@ -699,7 +699,7 @@ if (!page) {
 
       // Generate and draw Key Points (deterministic, rule-based observations)
       // For sections 5-12: show summary line + fired sentences (authored, deterministic)
-      const keyPoints = generateSectionKeyPoints({
+      keyPoints = generateSectionKeyPoints({
         sectionId: section.id,
         moduleInstances: sectionModules,
         actions: sectionActions,

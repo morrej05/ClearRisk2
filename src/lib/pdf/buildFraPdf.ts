@@ -67,7 +67,7 @@ type Cursor = { page: PDFPage; yPosition: number };
  * Consistent Y position for page-top resets after addNewPage().
  * Provides standard top margin + small offset for first content.
  */
-const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN - 20;
+const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN;
 
 interface Document {
   id: string;
@@ -485,25 +485,26 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
                  (priorityOrder[b.priority_band as keyof typeof priorityOrder] || 99);
         });
 
-      const riskSummaryPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      totalPages.push(riskSummaryPage);
-      drawCleanAuditPage1(riskSummaryPage, scoringResult, priorityActions, font, fontBold, document, organisation, documentControlModule);
+      const { page: riskSummaryPage } = addNewPage(pdfDoc, isDraft, totalPages);
+drawCleanAuditPage1(
+  riskSummaryPage,
+  scoringResult,
+  priorityActions,
+  font,
+  fontBold,
+  document,
+  organisation,
+  documentControlModule
+);
 
-      if (isDraft) {
-        drawDraftWatermark(riskSummaryPage, fontBold);
-      }
     } catch (error) {
       console.warn('[PDF FRA] Failed to generate risk summary page:', error);
     }
   }
 
   // Add Table of Contents
-  const tocPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  totalPages.push(tocPage);
-  drawTableOfContents(tocPage, font, fontBold);
-  if (isDraft) {
-    drawDraftWatermark(tocPage, fontBold);
-  }
+  const { page: tocPage } = addNewPage(pdfDoc, isDraft, totalPages);
+drawTableOfContents(tocPage, font, fontBold);
 
   // Add "Using This Report" guide section (after TOC, before exec summary)
   drawUsingThisReportSection(pdfDoc, font, fontBold, isDraft, totalPages);
@@ -522,7 +523,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   if (qualityResult.assuranceGaps.length > 0) {
     const gapsResult = addNewPage(pdfDoc, isDraft, totalPages);
     let gapsPage = gapsResult.page;
-    let gapsY = PAGE_HEIGHT - MARGIN - 20;
+    let gapsY = PAGE_HEIGHT - MARGIN;
 
     // Title
     gapsPage.drawText('Assessment Completeness', {
@@ -718,7 +719,7 @@ if (!page) {
           if (yPosition < MARGIN + 80) {
             const result = addNewPage(pdfDoc, isDraft, totalPages);
             page = result.page;
-            yPosition = PAGE_HEIGHT - MARGIN - 20;
+            yPosition = PAGE_HEIGHT - MARGIN;
           }
 
           yPosition -= 15;
@@ -996,7 +997,7 @@ function drawRiskSummaryPage(
   fontBold: any,
   document: Document
 ): void {
-  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+  let yPosition = PAGE_HEIGHT - MARGIN;
 
   page.drawText('Overall Risk to Life Assessment', {
     x: MARGIN,
@@ -1456,7 +1457,7 @@ function drawExecutiveSummary(
     if (yPosition < MARGIN + 80) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText('ASSESSOR OVERRIDE APPLIED', {
@@ -1473,7 +1474,7 @@ function drawExecutiveSummary(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -1493,7 +1494,7 @@ function drawExecutiveSummary(
     if (yPosition < MARGIN + 80) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     const warningText = 'Material fire safety deficiencies have been identified which require urgent attention.';
@@ -1579,7 +1580,7 @@ function drawExecutiveSummary(
     if (yPosition < MARGIN + 150) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText('Key Issues Requiring Attention:', {
@@ -1623,7 +1624,7 @@ function drawExecutiveSummary(
       if (yPosition < MARGIN + 80) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
 
       const priorityColor = getPriorityColor(action.priority_band);
@@ -1661,7 +1662,7 @@ function drawExecutiveSummary(
         if (yPosition < MARGIN + 60) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_HEIGHT - MARGIN;
         }
 
         page.drawText(`(${truncatedReason})`, {
@@ -1715,7 +1716,7 @@ function drawExecutiveSummary(
   if (yPosition < MARGIN + 100) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN - 20;
+    yPosition = PAGE_HEIGHT - MARGIN;
   }
 
   // Derive fire protection reliance from modules
@@ -1779,7 +1780,7 @@ function drawExecutiveSummary(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -1798,7 +1799,7 @@ function drawExecutiveSummary(
     if (yPosition < 200) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText('Assessor Commentary:', {
@@ -1815,7 +1816,7 @@ function drawExecutiveSummary(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -1835,7 +1836,7 @@ function drawExecutiveSummary(
     if (yPosition < 200) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText('Limitations and Assumptions:', {
@@ -1852,7 +1853,7 @@ function drawExecutiveSummary(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -1871,7 +1872,7 @@ function drawExecutiveSummary(
     if (yPosition < 200) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText('Summary:', {
@@ -1888,7 +1889,7 @@ function drawExecutiveSummary(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -1907,7 +1908,7 @@ function drawExecutiveSummary(
     if (yPosition < 200) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText('Review Recommendation:', {
@@ -1924,7 +1925,7 @@ function drawExecutiveSummary(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -1958,7 +1959,7 @@ function drawRiskRatingExplanation(
   if (yPosition < MARGIN + 250) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN - 20;
+    yPosition = PAGE_HEIGHT - MARGIN;
   }
 
   page.drawText('How the Overall Risk Rating Is Determined', {
@@ -1982,7 +1983,7 @@ function drawRiskRatingExplanation(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -2006,7 +2007,7 @@ function drawRiskRatingExplanation(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     const lines = wrapText(ratingLine, CONTENT_WIDTH - 15, 10, font);
@@ -2014,7 +2015,7 @@ function drawRiskRatingExplanation(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(sanitizePdfText('• ' + line), {
         x: MARGIN + 5,
@@ -2038,7 +2039,7 @@ function drawRiskRatingExplanation(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -2455,7 +2456,7 @@ function drawModuleKeyDetails(
     if (yPosition < MARGIN + 80) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText(`${label}:`, {
@@ -2862,7 +2863,7 @@ function drawActionRegister(
     if (yPosition < MARGIN + 120) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     const priorityBand = action.priority_band || 'P4';
@@ -2890,7 +2891,7 @@ function drawActionRegister(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN + 5,
@@ -2908,7 +2909,7 @@ function drawActionRegister(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(`Reason: ${sanitizePdfText(action.trigger_text)}`, {
         x: MARGIN + 5,
@@ -3003,7 +3004,7 @@ function drawAssumptionsAndLimitations(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -3021,7 +3022,7 @@ function drawAssumptionsAndLimitations(
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText('Key Assumptions:', {
@@ -3038,7 +3039,7 @@ function drawAssumptionsAndLimitations(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -3057,7 +3058,7 @@ function drawAssumptionsAndLimitations(
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText('Scope:', {
@@ -3074,7 +3075,7 @@ function drawAssumptionsAndLimitations(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -3128,7 +3129,7 @@ function drawRegulatoryFramework(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     page.drawText(`• ${sanitizePdfText(legislation)}`, {
@@ -3153,7 +3154,7 @@ function drawRegulatoryFramework(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -3200,7 +3201,7 @@ function drawResponsiblePersonDuties(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     const dutyLines = wrapText(`• ${duty}`, CONTENT_WIDTH - 10, 11, font);
@@ -3208,7 +3209,7 @@ function drawResponsiblePersonDuties(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_HEIGHT - MARGIN;
       }
 
       page.drawText(line, {
@@ -3267,7 +3268,7 @@ function drawAttachmentsIndex(
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
 
     const refNum = `E-${String(i + 1).padStart(3, '0')}`;
@@ -3287,7 +3288,7 @@ function drawAttachmentsIndex(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_HEIGHT - MARGIN;
         }
         page.drawText(line, {
           x: MARGIN + 10,
@@ -3383,7 +3384,7 @@ function drawScope(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -3426,7 +3427,7 @@ function drawLimitations(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -3572,7 +3573,7 @@ function drawAssessorSummary(
   if (yPosition - boxHeight < MARGIN + 50) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN - 20;
+    yPosition = PAGE_HEIGHT - MARGIN;
   }
 
   // Draw light background box
@@ -4271,7 +4272,7 @@ Next formal reassessment recommended: ${document.review_date ? formatDate(docume
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_HEIGHT - MARGIN;
     }
     page.drawText(line, {
       x: MARGIN,

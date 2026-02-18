@@ -665,6 +665,9 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
       page = spaceResult.page;
       yPosition = spaceResult.yPosition;
     }
+if (!page) {
+  throw new Error(`[PDF FRA] page is undefined before drawSectionHeader (section=${section.id} ${section.title})`);
+}
 
     // Draw section header
     yPosition = drawSectionHeader(page, section.id, section.title, font, fontBold, yPosition);

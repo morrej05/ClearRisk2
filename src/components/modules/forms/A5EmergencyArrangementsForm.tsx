@@ -495,12 +495,12 @@ export default function A5EmergencyArrangementsForm({
       />
 
       {(() => {
-        const infoGapDetection = detectInfoGaps('A5_EMERGENCY_ARRANGEMENTS', formData, outcome);
+        const infoGapDetection = detectInfoGaps(moduleInstance.module_key, formData, outcome);
         return infoGapDetection.hasInfoGap ? (
           <div className="mt-6">
             <InfoGapQuickActions
               detection={infoGapDetection}
-              moduleKey="A5_EMERGENCY_ARRANGEMENTS"
+              moduleKey={moduleInstance.module_key}
               onCreateAction={(actionText, defaultL, defaultI) => {
                 setQuickActionTemplate({
                   action: actionText,

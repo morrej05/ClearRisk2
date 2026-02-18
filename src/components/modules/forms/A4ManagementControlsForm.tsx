@@ -736,12 +736,12 @@ export default function A4ManagementControlsForm({
       />
 
       {(() => {
-        const infoGapDetection = detectInfoGaps('A4_MANAGEMENT_CONTROLS', formData, outcome);
+        const infoGapDetection = detectInfoGaps(moduleInstance.module_key, formData, outcome);
         return infoGapDetection.hasInfoGap ? (
           <div className="mt-6">
             <InfoGapQuickActions
               detection={infoGapDetection}
-              moduleKey="A4_MANAGEMENT_CONTROLS"
+              moduleKey={moduleInstance.module_key}
               onCreateAction={(actionText, defaultL, defaultI) => {
                 setQuickActionTemplate({
                   action: actionText,

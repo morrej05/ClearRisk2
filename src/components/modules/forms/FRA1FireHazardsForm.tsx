@@ -163,7 +163,7 @@ export default function FRA1FireHazardsForm({
   const suggestedOutcome = getSuggestedOutcome();
 
   // Detect info gaps
-  const infoGapDetection = detectInfoGaps('FRA_1_HAZARDS', formData, outcome);
+  const infoGapDetection = detectInfoGaps(moduleInstance.module_key, formData, outcome);
 
   const handleCreateQuickAction = (actionText: string, priority: 'P2' | 'P3') => {
     setQuickActionTemplate({
@@ -256,7 +256,7 @@ export default function FRA1FireHazardsForm({
       <div className="mb-6">
         <InfoGapQuickActions
           detection={infoGapDetection}
-          moduleKey="FRA_1_HAZARDS"
+          moduleKey={moduleInstance.module_key}
           onCreateAction={handleCreateQuickAction}
           showCreateButtons={true}
         />
@@ -813,7 +813,7 @@ export default function FRA1FireHazardsForm({
         onNotesChange={setAssessorNotes}
         onSave={handleSave}
         isSaving={isSaving}
-        moduleKey="FRA_1_HAZARDS"
+        moduleKey={moduleInstance.module_key}
         scoringData={scoringData}
         onScoringChange={setScoringData}
       />

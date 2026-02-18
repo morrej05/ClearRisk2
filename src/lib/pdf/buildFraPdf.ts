@@ -3505,13 +3505,18 @@ function drawTableOfContents(
  * Replaces module key printing with clean section numbering
  */
 function drawSectionHeader(
-  page: PDFPage,
+  cursor: Cursor,
   sectionId: number,
   sectionTitle: string,
   font: any,
-  fontBold: any,
-  yPosition: number
-): number {
+  fontBold: any
+): Cursor {
+  let { page, yPosition } = cursor;
+
+  if (!page) {
+    throw new Error(`[PDF] drawSectionHeader received missing page (section=${sectionId} ${sectionTitle})`);
+  }
+
   yPosition -= 20;
 
   const headerText = `${sectionId}. ${sectionTitle}`;
@@ -3524,9 +3529,8 @@ function drawSectionHeader(
   });
 
   yPosition -= 30;
-  return yPosition;
+  return { page, yPosition };
 }
-
 /**
  * Draw assessor summary paragraph with driver bullets for technical sections (5-12)
  * Displays summary sentence + key points based on section data

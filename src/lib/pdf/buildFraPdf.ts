@@ -670,7 +670,7 @@ if (!page) {
 }
 
     // Draw section header
-    yPosition = drawSectionHeader(page, section.id, section.title, font, fontBold, yPosition);
+    ({ page, yPosition } = drawSectionHeader({ page, yPosition }, section.id, section.title, font, fontBold));
     yPosition -= 10;
 
     // Draw assessor summary for technical sections (5-12)

@@ -610,13 +610,14 @@ export function renderSection11Management(
  */
 export function renderSection14Review(
   cursor: Cursor,
+  _sectionModules: ModuleInstance[],
   document: Document,
   font: any,
   fontBold: any,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): { page: PDFPage; yPosition: number } {
+): Cursor {
   let { page, yPosition } = cursor;
 
   // ✅ Hard guarantee: always have a page before any operations

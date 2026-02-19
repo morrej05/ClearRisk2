@@ -4186,12 +4186,20 @@ function renderSection11Management(
 ): Cursor {
   let { page, yPosition } = cursor;
 
-  // ✅ Hard guarantee: always have a page before any drawText in this renderer
+  // HARD GUARD: ensure we always have a valid page in this section
   if (!page) {
-    const init = addNewPage(pdfDoc, isDraft, totalPages);
-    page = init.page;
-    yPosition = PAGE_TOP_Y;
+    const last = totalPages[totalPages.length - 1];
+    if (last) {
+      page = last;
+      yPosition = PAGE_TOP_Y;
+    } else {
+      const init = addNewPage(pdfDoc, isDraft, totalPages);
+      page = init.page;
+      yPosition = PAGE_TOP_Y;
+    }
   }
+
+  if (!page) throw new Error('[PDF FRA] renderSection11Management: page is still undefined after guard');
 
   // (optional but safe) also normalise yPosition
   if (typeof yPosition !== 'number') {
@@ -4203,8 +4211,6 @@ function renderSection11Management(
     m.module_key === 'A4_MANAGEMENT_CONTROLS' || m.module_key === 'FRA_6_MANAGEMENT_SYSTEMS'
   );
   if (managementSystemsModule) {
-    // Defensive guard before first drawText
-    if (!page) throw new Error('[PDF FRA] renderSection11Management: page is undefined at section 11.1');
 
     page.drawText('11.1 Management Systems', {
       x: MARGIN,

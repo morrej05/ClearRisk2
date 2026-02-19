@@ -405,6 +405,18 @@ drawTableOfContents(page, font, fontBold);
   page = sectionStartResult.page;
   yPosition = PAGE_TOP_Y;
 
+  // Section renderer map for explicit delegation
+  const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[]) => Cursor> = {
+    2: renderSection2Premises,
+    3: renderSection3Occupants,
+    4: renderSection4Legislation,
+    7: renderSection7Detection,
+    8: renderSection8EmergencyLighting,
+    10: renderSection10Suppression,
+    11: (cursor, modules, doc, f, fb, pdf, draft, pages) => renderSection11Management(cursor, modules, moduleInstances, doc, f, fb, pdf, draft, pages),
+    14: renderSection14Review,
+  };
+
   // Render sections 2-14 using the fixed structure with flowing layout
   for (const section of FRA_REPORT_STRUCTURE) {
     // Skip section 1 (cover pages handled separately above)
@@ -555,80 +567,49 @@ let keyPoints: string[] = [];
     // Ensure cursor is valid before section renderers
     let cursor = ensureCursor({ page, yPosition }, pdfDoc, isDraft, totalPages);
 
-    switch (section.id) {
-      case 2: // Premises & General Information
-        cursor = renderSection2Premises(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages);
+    // Special case: Section 13 (Significant Findings)
+    if (section.id === 13) {
+      if (fra4Module) {
+        yPosition = drawCleanAuditSection13({
+          page: cursor.page,
+          fra4Module,
+          actions,
+          moduleInstances,
+          font,
+          fontBold,
+          yPosition: cursor.yPosition,
+          pdfDoc,
+          isDraft,
+          totalPages,
+          scoringResult,
+        });
+        page = cursor.page;
+      }
+    } else {
+      // Use section renderer if available, otherwise fallback to generic rendering
+      const renderer = SECTION_RENDERERS[section.id];
+
+      if (renderer) {
+        cursor = renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages);
         ({ page, yPosition } = cursor);
-        break;
-
-      case 3: // Occupants & Vulnerability
-        cursor = renderSection3Occupants(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages);
-        ({ page, yPosition } = cursor);
-        break;
-
-      case 4: // Legislation & Duty Holder
-        cursor = renderSection4Legislation(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages);
-        ({ page, yPosition } = cursor);
-        break;
-
-      case 7: // Fire Detection, Alarm & Warning
-        ({ page, yPosition } = renderSection7Detection({ page, yPosition }, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages));
-        break;
-
-      case 8: // Emergency Lighting
-        ({ page, yPosition } = renderSection8EmergencyLighting({ page, yPosition }, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages));
-        break;
-
-      case 10: // Fixed Fire Suppression & Firefighting Facilities
-        ({ page, yPosition } = renderSection10Suppression({ page, yPosition }, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages));
-        break;
-
-      case 11: // Fire Safety Management & Procedures
-        cursor = renderSection11Management(cursor, sectionModules, moduleInstances, document, font, fontBold, pdfDoc, isDraft, totalPages);
-        ({ page, yPosition } = cursor);
-        break;
-
-      case 13: // Significant Findings, Risk Evaluation & Action Plan
-        if (fra4Module) {
-          yPosition = drawCleanAuditSection13({
-            page,
-            fra4Module,
-            actions,
-            moduleInstances,
+      } else {
+        // Generic section rendering for standard modules
+        // Pass section.moduleKeys to prevent cross-section info gap bleed
+        for (const module of sectionModules) {
+          ({ page, yPosition } = drawModuleContent(
+            { page, yPosition },
+            module,
+            document,
             font,
             fontBold,
-            yPosition,
             pdfDoc,
             isDraft,
             totalPages,
-            scoringResult,
-          });
+            keyPoints,
+            section.moduleKeys
+          ));
         }
-        break;
-
-      case 14: // Review & Reassessment
-        ({ page, yPosition } = renderSection14Review({ page, yPosition }, document, font, fontBold, pdfDoc, isDraft, totalPages));
-        break;
-
-      default:
-        // Generic section rendering for standard modules
-        // Pass section.moduleKeys to prevent cross-section info gap bleed
-for (const module of sectionModules) {
-  ({ page, yPosition } = drawModuleContent(
-    { page, yPosition },
-    module,
-    document,
-    font,
-    fontBold,
-    pdfDoc,
-    isDraft,
-    totalPages,
-    keyPoints,
-    section.moduleKeys
-  ));
-}
-
-        break;
+      }
     }
   }
 

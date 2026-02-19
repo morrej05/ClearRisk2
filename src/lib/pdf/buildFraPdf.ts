@@ -443,6 +443,13 @@ drawTableOfContents(page, font, fontBold);
         recommended_action: a.recommended_action,
         priority_band: a.priority_band,
       }));
+
+    // Force Section 2 (Scope) to always render compactly
+    if (section.id === 2) {
+      lowDensitySections.push({ section, modules: sectionModules, actions: sectionActions });
+      continue;
+    }
+
 let keyPoints: string[] = [];
     // HOLISTIC BLANK SECTION POLICY: Use shouldRenderSection for ALL sections 2-12
     // Sections 13 (significant findings) and 14 (review) are always rendered
@@ -645,6 +652,26 @@ let keyPoints: string[] = [];
 
     // Render each low-density section compactly
     for (const { section, modules, actions: sectionActions } of lowDensitySections) {
+      // Special case: Section 2 (Scope) renders as single compact line
+      if (section.id === 2) {
+        // Check if we need a new page
+        const compactResult = ensureSpace(20, page, yPosition, pdfDoc, isDraft, totalPages);
+        page = compactResult.page;
+        yPosition = compactResult.yPosition;
+
+        // Single compact line for Scope
+        const scopeText = modules[0]?.assessor_notes?.trim() || 'No building description provided.';
+        page.drawText(`2. Scope: ${scopeText}`, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 11,
+          font: fontBold,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        yPosition -= 16;
+        continue;
+      }
+
       // Check if we need a new page
       const compactResult = ensureSpace(40, page, yPosition, pdfDoc, isDraft, totalPages);
       page = compactResult.page;

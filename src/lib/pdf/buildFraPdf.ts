@@ -56,6 +56,7 @@ import {
 import { drawUsingThisReportSection, drawAssuranceGapsBlock } from './usingThisReportGuide';
 import { Cursor, ensureCursor, ensureSpace as ensureSpaceCursor, PAGE_TOP_Y } from './pdfCursor';
 import { drawSectionHeader as drawSectionHeaderCommon } from './fra/fraDrawCommon';
+import { PDF_STYLES } from './pdfStyles';
 
 // Import from refactored FRA modules
 import type { Document, ModuleInstance, Action, ActionRating, Organisation, BuildPdfOptions } from './fra/fraTypes';
@@ -467,14 +468,18 @@ let keyPoints: string[] = [];
       yPosition = PAGE_TOP_Y;
     } else {
       // Flowing layout: ensure space for section header + summary
-      const spaceResult = ensureSpace(120, page, yPosition, pdfDoc, isDraft, totalPages);
+      const isTechnical = section.id >= 5 && section.id <= 12;
+      const requiredHeight = isTechnical
+        ? PDF_STYLES.blocks.sectionHeaderWithSummary
+        : PDF_STYLES.blocks.sectionHeader;
+
+      const spaceResult = ensureSpace(requiredHeight, page, yPosition, pdfDoc, isDraft, totalPages);
       page = spaceResult.page;
       yPosition = spaceResult.yPosition;
     }
 
     // Draw section header
     ({ page, yPosition } = drawSectionHeader({ page, yPosition }, section.id, section.title, font, fontBold));
-    yPosition -= 10;
 
     // Draw assessor summary for technical sections (5-12)
     if (section.id >= 5 && section.id <= 12) {

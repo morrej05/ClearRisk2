@@ -461,7 +461,7 @@ let keyPoints: string[] = [];
     }
 
     // Hard page breaks only for key sections
-    const needsHardPageBreak = section.id === 2 || section.id === 13 || section.id === 14;
+    const needsHardPageBreak = section.id === 13 || section.id === 14;
     if (needsHardPageBreak) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;

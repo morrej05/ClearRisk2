@@ -802,7 +802,8 @@ let keyPoints: string[] = [];
         break;
 
       case 11: // Fire Safety Management & Procedures
-        ({ page, yPosition } = renderSection11Management({ page, yPosition }, sectionModules, moduleInstances, document, font, fontBold, pdfDoc, isDraft, totalPages));
+        cursor = renderSection11Management(cursor, sectionModules, moduleInstances, document, font, fontBold, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = cursor);
         break;
 
       case 13: // Significant Findings, Risk Evaluation & Action Plan
@@ -4182,7 +4183,7 @@ function renderSection11Management(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): { page: PDFPage; yPosition: number } {
+): Cursor {
   let { page, yPosition } = cursor;
 
   // ✅ Hard guarantee: always have a page before any drawText in this renderer
@@ -4202,6 +4203,9 @@ function renderSection11Management(
     m.module_key === 'A4_MANAGEMENT_CONTROLS' || m.module_key === 'FRA_6_MANAGEMENT_SYSTEMS'
   );
   if (managementSystemsModule) {
+    // Defensive guard before first drawText
+    if (!page) throw new Error('[PDF FRA] renderSection11Management: page is undefined at section 11.1');
+
     page.drawText('11.1 Management Systems', {
       x: MARGIN,
       y: yPosition,

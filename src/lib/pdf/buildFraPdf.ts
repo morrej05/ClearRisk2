@@ -472,17 +472,7 @@ let keyPoints: string[] = [];
       yPosition = spaceResult.yPosition;
     }
 
-    // D) FIX PAGE/YPOSITION TYPES THROUGHOUT THE LOOP
-    // Draw section header - ensure space first
-    ({ page, yPosition } = ensureSpace(
-  120,
-  page,
-  yPosition,
-  pdfDoc,
-  isDraft,
-  totalPages
-));
-    
+    // Draw section header
     ({ page, yPosition } = drawSectionHeader({ page, yPosition }, section.id, section.title, font, fontBold));
     yPosition -= 10;
 

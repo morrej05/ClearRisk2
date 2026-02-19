@@ -825,7 +825,7 @@ let keyPoints: string[] = [];
         break;
 
       case 14: // Review & Reassessment
-        ({ page, yPosition } = renderSection14Review({ page, yPosition }, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+        ({ page, yPosition } = renderSection14Review({ page, yPosition }, document, font, fontBold, pdfDoc, isDraft, totalPages));
         break;
 
       default:
@@ -4186,7 +4186,7 @@ function renderSection11Management(
 ): Cursor {
   let { page, yPosition } = cursor;
 
-  // HARD GUARD: ensure we always have a valid page in this section
+  // HARD GUARD: never allow undefined page into this renderer
   if (!page) {
     const last = totalPages[totalPages.length - 1];
     if (last) {
@@ -4199,18 +4199,13 @@ function renderSection11Management(
     }
   }
 
-  if (!page) throw new Error('[PDF FRA] renderSection11Management: page is still undefined after guard');
-
-  // (optional but safe) also normalise yPosition
-  if (typeof yPosition !== 'number') {
-    yPosition = PAGE_TOP_Y;
-  }
-
   // 11.1 Management Systems
-  const managementSystemsModule = sectionModules.find(m =>
-    m.module_key === 'A4_MANAGEMENT_CONTROLS' || m.module_key === 'FRA_6_MANAGEMENT_SYSTEMS'
+  const managementSystemsModule = sectionModules.find(
+    (m) => m.module_key === 'A4_MANAGEMENT_CONTROLS' || m.module_key === 'FRA_6_MANAGEMENT_SYSTEMS'
   );
+
   if (managementSystemsModule) {
+    ({ page, yPosition } = ensureSpace(80, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText('11.1 Management Systems', {
       x: MARGIN,
@@ -4233,19 +4228,17 @@ function renderSection11Management(
       undefined,
       ['A4_MANAGEMENT_CONTROLS', 'FRA_6_MANAGEMENT_SYSTEMS']
     ));
+
     yPosition -= 15;
   }
 
   // 11.2 Emergency Arrangements
-  const emergencyArrangementsModule = sectionModules.find(m =>
-    m.module_key === 'A5_EMERGENCY_ARRANGEMENTS' || m.module_key === 'FRA_7_EMERGENCY_ARRANGEMENTS'
+  const emergencyArrangementsModule = sectionModules.find(
+    (m) => m.module_key === 'A5_EMERGENCY_ARRANGEMENTS' || m.module_key === 'FRA_7_EMERGENCY_ARRANGEMENTS'
   );
+
   if (emergencyArrangementsModule) {
-    if (yPosition < MARGIN + 100) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
+    ({ page, yPosition } = ensureSpace(100, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText('11.2 Emergency Arrangements', {
       x: MARGIN,
@@ -4256,18 +4249,27 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    ({ page, yPosition } = drawModuleContent({ page, yPosition }, emergencyArrangementsModule, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A5_EMERGENCY_ARRANGEMENTS', 'FRA_7_EMERGENCY_ARRANGEMENTS']));
+    ({ page, yPosition } = drawModuleContent(
+      { page, yPosition },
+      emergencyArrangementsModule,
+      document,
+      font,
+      fontBold,
+      pdfDoc,
+      isDraft,
+      totalPages,
+      undefined,
+      ['A5_EMERGENCY_ARRANGEMENTS', 'FRA_7_EMERGENCY_ARRANGEMENTS']
+    ));
+
     yPosition -= 15;
   }
 
   // 11.3 Review & Assurance
-  const reviewAssuranceModule = sectionModules.find(m => m.module_key === 'A7_REVIEW_ASSURANCE');
+  const reviewAssuranceModule = sectionModules.find((m) => m.module_key === 'A7_REVIEW_ASSURANCE');
+
   if (reviewAssuranceModule) {
-    if (yPosition < MARGIN + 100) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
+    ({ page, yPosition } = ensureSpace(100, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText('11.3 Review & Assurance', {
       x: MARGIN,
@@ -4278,18 +4280,27 @@ function renderSection11Management(
     });
     yPosition -= 20;
 
-    ({ page, yPosition } = drawModuleContent({ page, yPosition }, reviewAssuranceModule, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A7_REVIEW_ASSURANCE']));
+    ({ page, yPosition } = drawModuleContent(
+      { page, yPosition },
+      reviewAssuranceModule,
+      document,
+      font,
+      fontBold,
+      pdfDoc,
+      isDraft,
+      totalPages,
+      undefined,
+      ['A7_REVIEW_ASSURANCE']
+    ));
+
     yPosition -= 15;
   }
 
-  // 11.4 Portable Firefighting Equipment
-  const fra8Module = allModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
+  // 11.4 Portable Firefighting Equipment (from FRA_8)
+  const fra8Module = allModules.find((m) => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
+
   if (fra8Module && fra8Module.data) {
-    if (yPosition < MARGIN + 100) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
+    ({ page, yPosition } = ensureSpace(120, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText('11.4 Portable Firefighting Equipment', {
       x: MARGIN,
@@ -4305,10 +4316,21 @@ function renderSection11Management(
       'extinguisher_types',
       'extinguisher_locations',
       'hose_reels',
-      'fire_blankets'
+      'fire_blankets',
     ];
 
-    ({ page, yPosition } = renderFilteredModuleData({ page, yPosition }, fra8Module, equipmentFields, document, font, fontBold, pdfDoc, isDraft, totalPages, ['FRA_8_FIREFIGHTING_EQUIPMENT']));
+    ({ page, yPosition } = renderFilteredModuleData(
+      { page, yPosition },
+      fra8Module,
+      equipmentFields,
+      document,
+      font,
+      fontBold,
+      pdfDoc,
+      isDraft,
+      totalPages,
+      ['FRA_8_FIREFIGHTING_EQUIPMENT']
+    ));
   }
 
   return { page, yPosition };

@@ -460,6 +460,10 @@ let keyPoints: string[] = [];
       }
     }
 
+    // Skip sections that will be rendered later in the compact low-density block
+    const isLowDensity = lowDensitySections.some(s => s.section.id === section.id);
+    if (isLowDensity) continue;
+
     // Hard page breaks only for key sections
     const needsHardPageBreak = section.id === 13 || section.id === 14;
     if (needsHardPageBreak) {
@@ -469,11 +473,15 @@ let keyPoints: string[] = [];
     } else {
       // Flowing layout: ensure space for section header + summary
       const isTechnical = section.id >= 5 && section.id <= 12;
-      const requiredHeight = isTechnical
+      let requiredHeight = isTechnical
         ? PDF_STYLES.blocks.sectionHeaderWithSummary
         : PDF_STYLES.blocks.sectionHeader;
 
-      const spaceResult = ensureSpace(requiredHeight, page, yPosition, pdfDoc, isDraft, totalPages);
+      // Tighten blank-page threshold before Section 13 (which forces a hard page break)
+      // This prevents nearly-empty trailing pages before the significant findings section
+      const required = (section.id === 11 || section.id === 12) ? 160 : requiredHeight;
+
+      const spaceResult = ensureSpace(required, page, yPosition, pdfDoc, isDraft, totalPages);
       page = spaceResult.page;
       yPosition = spaceResult.yPosition;
     }

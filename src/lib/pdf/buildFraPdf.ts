@@ -398,8 +398,50 @@ drawTableOfContents(page, font, fontBold);
     m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS' || m.module_key === 'FRA_90_SIGNIFICANT_FINDINGS'
   );
 
-  // Collect low-density sections for compact rendering
+  // PRE-PASS: Decide which sections will be rendered compactly later
+  const compactSectionIds = new Set<number>();
   const lowDensitySections: Array<{ section: any; modules: ModuleInstance[]; actions: any[] }> = [];
+
+  for (const section of FRA_REPORT_STRUCTURE) {
+    // Skip cover pages
+    if (section.id === 1) continue;
+
+    const sectionModules = moduleInstances.filter(m =>
+      section.moduleKeys.includes(m.module_key)
+    );
+
+    // Skip empty sections
+    if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) continue;
+
+    const moduleIds = sectionModules.map(m => m.id);
+    const sectionActions = actionsWithRefs
+      .filter(a => moduleIds.includes(a.module_instance_id))
+      .map(a => ({
+        id: a.id,
+        reference_number: a.reference_number,
+        priority: a.priority_band === 'P1' ? 1 : a.priority_band === 'P2' ? 2 : a.priority_band === 'P3' ? 3 : 4,
+        status: a.status,
+        recommended_action: a.recommended_action,
+        priority_band: a.priority_band,
+      }));
+
+    // Force Scope (Section 2) to compact ALWAYS
+    if (section.id === 2) {
+      compactSectionIds.add(2);
+      lowDensitySections.push({ section, modules: sectionModules, actions: sectionActions });
+      continue;
+    }
+
+    // Check if this section should be rendered compactly
+    if (section.id >= 2 && section.id <= 12) {
+      const shouldRender = shouldRenderSection(section.id, sectionModules, sectionActions, document);
+
+      if (!shouldRender) {
+        compactSectionIds.add(section.id);
+        lowDensitySections.push({ section, modules: sectionModules, actions: sectionActions });
+      }
+    }
+  }
 
   // Guaranteed fresh page before section rendering (prevents undefined page errors)
   const sectionStartResult = addNewPage(pdfDoc, isDraft, totalPages);
@@ -423,6 +465,11 @@ drawTableOfContents(page, font, fontBold);
     // Skip section 1 (cover pages handled separately above)
     if (section.id === 1) continue;
 
+    // Skip sections that will be rendered compactly
+    if (compactSectionIds.has(section.id)) {
+      continue;
+    }
+
     // Find modules for this section
     const sectionModules = moduleInstances.filter(m =>
       section.moduleKeys.includes(m.module_key)
@@ -444,34 +491,9 @@ drawTableOfContents(page, font, fontBold);
         priority_band: a.priority_band,
       }));
 
-    // Force Section 2 (Scope) to always render compactly
-    if (section.id === 2) {
-      lowDensitySections.push({ section, modules: sectionModules, actions: sectionActions });
-      continue;
-    }
+    let keyPoints: string[] = [];
 
-let keyPoints: string[] = [];
-    // HOLISTIC BLANK SECTION POLICY: Use shouldRenderSection for ALL sections 2-12
-    // Sections 13 (significant findings) and 14 (review) are always rendered
-    if (section.id >= 2 && section.id <= 12) {
-      const shouldRender = shouldRenderSection(section.id, sectionModules, sectionActions, document);
-
-      if (!shouldRender) {
-        // Defer to compact rendering
-        lowDensitySections.push({
-          section,
-          modules: sectionModules,
-          actions: sectionActions,
-        });
-        continue; // Skip full rendering
-      }
-    }
-
-    // Skip sections that will be rendered later in the compact low-density block
-    const isLowDensity = lowDensitySections.some(s => s.section.id === section.id);
-    if (isLowDensity) continue;
-
-    // Hard page breaks only for key sections
+    // Hard page breaks only for sections 13 and 14
     const needsHardPageBreak = section.id === 13 || section.id === 14;
     if (needsHardPageBreak) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);

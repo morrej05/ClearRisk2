@@ -44,24 +44,37 @@ export function wrapText(text: unknown, maxWidth: number, fontSize: number, font
     return [''];
   }
 
-  const words = safe.split(' ');
+  // Split by newlines first to preserve paragraph structure
+  const paragraphs = safe.split('\n');
   const lines: string[] = [];
-  let currentLine = '';
 
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const width = font.widthOfTextAtSize(testLine, fontSize);
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.trim();
 
-    if (width > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
+    // Empty line means paragraph break
+    if (trimmed === '') {
+      lines.push('');
+      continue;
     }
-  }
 
-  if (currentLine) {
-    lines.push(currentLine);
+    const words = trimmed.split(' ');
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const width = font.widthOfTextAtSize(testLine, fontSize);
+
+      if (width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
   }
 
   return lines;
@@ -167,8 +180,10 @@ export function getOutcomeColor(outcome: string): { r: number; g: number; b: num
     case 'material_def':
       return rgb(0.8, 0.13, 0.13);
     case 'info_gap':
+    case 'information_incomplete':
       return rgb(0.2, 0.5, 0.8);
     case 'na':
+    case 'not_applicable':
       return rgb(0.6, 0.6, 0.6);
     default:
       return rgb(0.7, 0.7, 0.7);
@@ -184,8 +199,10 @@ export function getOutcomeLabel(outcome: string): string {
     case 'material_def':
       return 'Material Deficiency';
     case 'info_gap':
+    case 'information_incomplete':
       return 'Information Gap';
     case 'na':
+    case 'not_applicable':
       return 'Not Applicable';
     default:
       return 'Pending';

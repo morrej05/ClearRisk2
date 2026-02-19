@@ -1361,7 +1361,27 @@ export function drawAttachmentsIndex(
 
   yPosition -= 30;
 
-  if (attachments.length === 0) {
+  // Filter out AppleDouble files (._*) and deduplicate by unique key
+  const seenKeys = new Set<string>();
+  const filteredAttachments = attachments.filter(att => {
+    // Filter out AppleDouble resource fork files
+    if (att.file_name?.startsWith('._')) {
+      return false;
+    }
+
+    // Create unique key: prefer storage_path, fallback to file_name + size + date
+    const uniqueKey = att.storage_path ||
+      `${att.file_name}_${att.file_size_bytes}_${att.created_at}`;
+
+    if (seenKeys.has(uniqueKey)) {
+      return false;
+    }
+
+    seenKeys.add(uniqueKey);
+    return true;
+  });
+
+  if (filteredAttachments.length === 0) {
     page.drawText('No attachments recorded.', {
       x: MARGIN,
       y: yPosition,
@@ -1372,8 +1392,8 @@ export function drawAttachmentsIndex(
     return { page, yPosition: yPosition - 20 };
   }
 
-  for (let i = 0; i < attachments.length; i++) {
-    const attachment = attachments[i];
+  for (let i = 0; i < filteredAttachments.length; i++) {
+    const attachment = filteredAttachments[i];
 
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);

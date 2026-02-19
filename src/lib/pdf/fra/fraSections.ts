@@ -569,6 +569,19 @@ export function renderSection11Management(
   const fra8Module = allModules.find((m) => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
 
   if (fra8Module && fra8Module.data) {
+    const equipmentFields = [
+      'portable_extinguishers',
+      'extinguisher_types',
+      'extinguisher_locations',
+      'hose_reels',
+      'fire_blankets',
+    ];
+
+    // Check if there's any actual data in the equipment fields
+    const hasEquipmentData = equipmentFields.some(
+      field => fra8Module.data[field] && fra8Module.data[field].toString().trim() !== ''
+    );
+
     ({ page, yPosition } = ensureSpace(120, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText('11.4 Portable Firefighting Equipment', {
@@ -580,26 +593,29 @@ export function renderSection11Management(
     });
     yPosition -= 20;
 
-    const equipmentFields = [
-      'portable_extinguishers',
-      'extinguisher_types',
-      'extinguisher_locations',
-      'hose_reels',
-      'fire_blankets',
-    ];
-
-    ({ page, yPosition } = renderFilteredModuleData(
-      { page, yPosition },
-      fra8Module,
-      equipmentFields,
-      document,
-      font,
-      fontBold,
-      pdfDoc,
-      isDraft,
-      totalPages,
-      ['FRA_8_FIREFIGHTING_EQUIPMENT']
-    ));
+    if (hasEquipmentData) {
+      ({ page, yPosition } = renderFilteredModuleData(
+        { page, yPosition },
+        fra8Module,
+        equipmentFields,
+        document,
+        font,
+        fontBold,
+        pdfDoc,
+        isDraft,
+        totalPages,
+        ['FRA_8_FIREFIGHTING_EQUIPMENT']
+      ));
+    } else {
+      page.drawText('No portable firefighting equipment data recorded.', {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      yPosition -= 20;
+    }
   }
 
   return { page, yPosition };

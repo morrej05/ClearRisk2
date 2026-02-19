@@ -55,20 +55,9 @@ import {
   getDisplayableOwner,
 } from './reportQualityGates';
 import { drawUsingThisReportSection, drawAssuranceGapsBlock } from './usingThisReportGuide';
-
-/**
- * Cursor type for tracking current page and Y position during PDF layout.
- * This ensures page ownership propagates correctly through layout functions,
- * preventing overlapping content when addNewPage() is called internally.
- * Page can be undefined before initialization - section renderers must guard.
- */
-type Cursor = { page: PDFPage | undefined; yPosition: number | undefined };
-
-/**
- * Consistent Y position for page-top resets after addNewPage().
- * Provides standard top margin + small offset for first content.
- */
-const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN;
+import { Cursor, ensureCursor, ensureSpace as ensureSpaceCursor, PAGE_TOP_Y } from './pdfCursor';
+import { CRITICAL_FIELDS } from './fra/fraConstants';
+import { drawSectionHeader as drawSectionHeaderCommon } from './fra/fraDrawCommon';
 
 interface Document {
   id: string;
@@ -228,19 +217,9 @@ interface BuildPdfOptions {
  * Section Density Scoring Configuration
  * Critical fields that must be checked for info_gap/information_incomplete outcomes
  */
-const CRITICAL_FIELDS: Record<number, string[]> = {
-  5: ['eicr_evidence_seen', 'housekeeping_fire_load', 'arson_risk'],
-  6: ['travel_distances_compliant', 'escape_route_obstructions', 'final_exits_adequate'],
-  7: ['fire_alarm_present', 'alarm_testing_evidence', 'alarm_zoning_adequacy'],
-  8: ['emergency_lighting_present', 'emergency_lighting_testing_evidence', 'emergency_lighting_coverage'],
-  9: ['fire_doors_condition', 'compartmentation_condition', 'fire_stopping_confidence'],
-  10: ['sprinkler_present', 'extinguishers_present', 'hydrant_access'],
-  11: ['fire_safety_policy_exists', 'training_induction_provided', 'inspection_alarm_weekly_test'],
-  12: ['boundary_distances_adequate', 'external_wall_fire_resistance', 'cladding_concerns'],
-};
-
 /**
  * Helper: Ensure enough space on current page, or create new page
+ * Legacy version - kept for compatibility with existing code
  */
 function ensureSpace(
   requiredHeight: number,
@@ -791,17 +770,23 @@ let keyPoints: string[] = [];
     }
 
     // Section-specific rendering
+    // Ensure cursor is valid before section renderers
+    let cursor = ensureCursor({ page, yPosition }, pdfDoc, isDraft, totalPages);
+
     switch (section.id) {
       case 2: // Premises & General Information
-        yPosition = renderSection2Premises(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        cursor = renderSection2Premises(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = cursor);
         break;
 
       case 3: // Occupants & Vulnerability
-        yPosition = renderSection3Occupants(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        cursor = renderSection3Occupants(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = cursor);
         break;
 
       case 4: // Legislation & Duty Holder
-        yPosition = renderSection4Legislation(page, sectionModules, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+        cursor = renderSection4Legislation(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages);
+        ({ page, yPosition } = cursor);
         break;
 
       case 7: // Fire Detection, Alarm & Warning
@@ -3764,25 +3749,16 @@ function drawModuleContent(
  * Section 2: Premises & General Information (A2_BUILDING_PROFILE)
  */
 function renderSection2Premises(
-  page: PDFPage | undefined,
+  cursor: Cursor,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
-  // ✅ Hard guarantee: always have a page before any drawText in this renderer
-  if (!page) {
-    const init = addNewPage(pdfDoc, isDraft, totalPages);
-    page = init.page;
-    yPosition = PAGE_TOP_Y;
-  }
-  if (typeof yPosition !== 'number') {
-    yPosition = PAGE_TOP_Y;
-  }
+): Cursor {
+  let { page, yPosition } = cursor;
 
   const a2Module = sectionModules.find(m => m.module_key === 'A2_BUILDING_PROFILE');
 
@@ -3901,32 +3877,23 @@ function renderSection2Premises(
     ({ page, yPosition } = drawModuleContent({ page, yPosition }, a2Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A2_BUILDING_PROFILE']));
   }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 /**
  * Section 3: Occupants & Vulnerability (A3_PERSONS_AT_RISK)
  */
 function renderSection3Occupants(
-  page: PDFPage | undefined,
+  cursor: Cursor,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
-  // ✅ Hard guarantee: always have a page before any drawText in this renderer
-  if (!page) {
-    const init = addNewPage(pdfDoc, isDraft, totalPages);
-    page = init.page;
-    yPosition = PAGE_TOP_Y;
-  }
-  if (typeof yPosition !== 'number') {
-    yPosition = PAGE_TOP_Y;
-  }
+): Cursor {
+  let { page, yPosition } = cursor;
 
   const a3Module = sectionModules.find(m => m.module_key === 'A3_PERSONS_AT_RISK');
 
@@ -4040,32 +4007,23 @@ function renderSection3Occupants(
     ({ page, yPosition } = drawModuleContent({ page, yPosition }, a3Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A3_PERSONS_AT_RISK']));
   }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 /**
  * Section 4: Legislation & Duty Holder (A1_DOC_CONTROL)
  */
 function renderSection4Legislation(
-  page: PDFPage | undefined,
+  cursor: Cursor,
   sectionModules: ModuleInstance[],
   document: Document,
   font: any,
   fontBold: any,
-  yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
-  // ✅ Hard guarantee: always have a page before any operations
-  if (!page) {
-    const init = addNewPage(pdfDoc, isDraft, totalPages);
-    page = init.page;
-    yPosition = PAGE_TOP_Y;
-  }
-  if (typeof yPosition !== 'number') {
-    yPosition = PAGE_TOP_Y;
-  }
+): Cursor {
+  let { page, yPosition } = cursor;
 
   const a1Module = sectionModules.find(m => m.module_key === 'A1_DOC_CONTROL');
 
@@ -4073,7 +4031,7 @@ function renderSection4Legislation(
     ({ page, yPosition } = drawModuleContent({ page, yPosition }, a1Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A1_DOC_CONTROL']));
   }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 /**

@@ -107,10 +107,14 @@ Replaced generic `drawModuleContent` call with custom renderer that shows **ONLY
 
 The renderer:
 - ✅ Skips empty fields automatically
-- ✅ Wraps long text properly
+- ✅ Wraps long text properly with correct width calculation (CONTENT_WIDTH - 150)
 - ✅ Uses consistent fact list layout (label: value)
+- ✅ Consistent VALUE_X = MARGIN + 150 positioning for all values
 - ✅ Includes introductory paragraph about regulatory framework
+- ✅ **Divider line** after intro (matches Sections 2/3 professional style)
+- ✅ Tightened spacing rhythm (12pt between facts, not 14pt)
 - ✅ Uses ensureCursor for safety
+- ✅ Guarded intro paragraph (optional if needed in future)
 
 ### What Section 4 NO LONGER Shows
 - ❌ Client name (Section 1 only)
@@ -129,6 +133,30 @@ The renderer:
 - Section 4: Governance only (responsible person, scope, standards, limitations)
 - Zero duplication
 
+## Polish Improvements Applied
+
+### Visual Enhancements
+1. **Divider Line** - Added professional divider after intro paragraph
+   - Thickness: 0.7pt
+   - Color: rgb(0.84, 0.86, 0.89) - light gray
+   - Matches Sections 2/3 style
+   - 18pt spacing after divider
+
+2. **Consistent Layout**
+   - `VALUE_X = MARGIN + 150` constant for all value positioning
+   - Wrap width correctly calculated: `CONTENT_WIDTH - 150`
+   - All values align vertically at same x-position
+
+3. **Tightened Spacing**
+   - Reduced fact spacing from 14pt to 12pt
+   - Creates tighter, more professional rhythm
+   - Matches other fact blocks in PDF
+
+4. **Defensive Guards**
+   - Intro paragraph guarded with `if (introPara.trim())`
+   - Future-proof if intro becomes optional
+   - Empty value check prevents rendering blank lines
+
 ## Status
 ✅ Section 4 wiring fixed (moduleKeys set)
 ✅ Force-render protection added
@@ -136,6 +164,9 @@ The renderer:
 ✅ Section 4 custom renderer implemented (governance only)
 ✅ De-duplication complete
 ✅ Safety guards added (ensureCursor)
-✅ Text wrapping for long fields
+✅ Text wrapping with correct width calculation
+✅ Professional divider line added
+✅ Tightened spacing rhythm (12pt)
+✅ Consistent value positioning (VALUE_X)
 ✅ Diagnostic logging in place
 ✅ Build successful

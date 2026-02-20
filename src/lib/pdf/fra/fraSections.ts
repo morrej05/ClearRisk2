@@ -463,6 +463,8 @@ export function renderSection4Legislation(
   const norm = (v: any) => sanitizePdfText(String(v ?? '')).trim();
 
   // Helper function to draw governance facts
+  const VALUE_X = MARGIN + 150; // Consistent x-position for all values
+
   const drawGovernanceFact = (c: Cursor, label: string, value: string): Cursor => {
     if (!value) return c; // Skip empty values
 
@@ -485,7 +487,7 @@ export function renderSection4Legislation(
       color: rgb(0.42, 0.42, 0.42)
     });
 
-    // Wrap value text if needed
+    // Wrap value text to remaining width after VALUE_X
     const valueLines = wrapText(value, CONTENT_WIDTH - 150, 10, font);
 
     for (let i = 0; i < valueLines.length; i++) {
@@ -496,7 +498,7 @@ export function renderSection4Legislation(
       }
 
       p.drawText(valueLines[i], {
-        x: MARGIN + 150,
+        x: VALUE_X,
         y,
         size: 10,
         font,
@@ -504,28 +506,40 @@ export function renderSection4Legislation(
       });
     }
 
-    y -= 14; // Spacing after fact
+    y -= 12; // Spacing after fact (tightened rhythm)
     return { page: p, yPosition: y };
   };
 
   // Optional intro paragraph
   const introPara = 'This section outlines the regulatory framework and duty holder responsibilities applicable to this fire risk assessment.';
 
-  ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-  const introLines = wrapText(introPara, CONTENT_WIDTH, 10, font);
-  for (const line of introLines) {
+  if (introPara.trim()) {
     ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-    page.drawText(line, {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font,
-      color: rgb(0.18, 0.18, 0.18),
-    });
-    yPosition -= 14;
-  }
+    const introLines = wrapText(introPara, CONTENT_WIDTH, 10, font);
+    for (const line of introLines) {
+      ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.18, 0.18, 0.18),
+      });
+      yPosition -= 14;
+    }
 
-  yPosition -= 8; // Extra spacing before facts
+    // Divider line (match Sections 2/3)
+    const dividerY = yPosition - 6;
+    ({ page, yPosition } = ensureSpace(20, page, yPosition, pdfDoc, isDraft, totalPages));
+    page.drawLine({
+      start: { x: MARGIN, y: dividerY },
+      end: { x: MARGIN + CONTENT_WIDTH, y: dividerY },
+      thickness: 0.7,
+      color: rgb(0.84, 0.86, 0.89),
+    });
+
+    yPosition -= 18; // Space after divider before facts
+  }
 
   // Extract governance fields only
   const responsiblePerson = norm(

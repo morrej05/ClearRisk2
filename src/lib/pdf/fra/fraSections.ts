@@ -208,9 +208,21 @@ console.log('[A3 DATA FULL]', data);
 
     const sentences: string[] = [];
 
-    const typical = data.typical_occupancy_number ? String(data.typical_occupancy_number) : '';
-    const max = data.max_occupancy_number ? String(data.max_occupancy_number) : '';
-    const occType = norm(data.occupancy_type);
+    const typical = data.normal_occupancy ? String(data.normal_occupancy) : '';
+    const max = data.max_occupancy ? String(data.max_occupancy) : '';
+    const occProfile = norm(data.occupancy_profile);
+
+    const vulnerableGroups = Array.isArray(data.vulnerable_groups)
+      ? data.vulnerable_groups.map(norm).filter(Boolean).join(', ')
+      : norm(data.vulnerable_groups);
+
+    const vulnerableNotes = norm(data.vulnerable_groups_notes);
+    const peeps = norm(data.peeps_dependency);
+    const outOfHours = norm(data.out_of_hours_occupation);
+
+    const evacAssist = data.evacuation_assistance_required !== undefined
+      ? (data.evacuation_assistance_required ? 'Yes' : 'No')
+      : '';
 
     if (max || typical) {
       const parts: string[] = [];
@@ -219,15 +231,18 @@ console.log('[A3 DATA FULL]', data);
       pushIf(sentences, `The premises accommodate ${parts.join(', ')}.`);
     }
 
-    if (occType) {
-      pushIf(sentences, `The primary occupancy type is ${occType}.`);
+    if (occProfile) pushIf(sentences, `Occupancy profile: ${occProfile}.`);
+
+    if (vulnerableGroups || vulnerableNotes) {
+      const vg = [vulnerableGroups, vulnerableNotes].filter(Boolean).join(vulnerableGroups && vulnerableNotes ? ' — ' : '');
+      pushIf(sentences, `Vulnerable groups: ${vg}.`);
     }
 
-    if (data.vulnerable_persons_present !== undefined) {
-      pushIf(sentences, data.vulnerable_persons_present
-        ? `Vulnerable persons are present within the premises.`
-        : `No vulnerable persons were identified as regularly present.`);
-    }
+    if (peeps) pushIf(sentences, `Evacuation assistance / PEEPs: ${peeps}.`);
+
+    if (outOfHours) pushIf(sentences, `Out of hours occupation: ${outOfHours}.`);
+
+    if (evacAssist) pushIf(sentences, `Evacuation assistance required: ${evacAssist}.`);
 
     if (data.sleeping_accommodation !== undefined) {
       pushIf(sentences, data.sleeping_accommodation
@@ -255,10 +270,14 @@ console.log('[A3 DATA FULL]', data);
     const facts: Array<[string, string]> = [];
     if (typical) facts.push(['Typical occupancy', typical]);
     if (max) facts.push(['Maximum occupancy', max]);
-    if (occType) facts.push(['Occupancy type', occType]);
-    if (data.vulnerable_persons_present !== undefined) facts.push(['Vulnerable persons present', data.vulnerable_persons_present ? 'Yes' : 'No']);
+    if (occProfile) facts.push(['Occupancy profile', occProfile]);
+    if (vulnerableGroups) facts.push(['Vulnerable groups', vulnerableGroups]);
+    if (vulnerableNotes) facts.push(['Vulnerable groups notes', vulnerableNotes]);
+    if (peeps) facts.push(['PEEPs / dependency', peeps]);
+    if (outOfHours) facts.push(['Out of hours occupation', outOfHours]);
     if (data.sleeping_accommodation !== undefined) facts.push(['Sleeping accommodation', data.sleeping_accommodation ? 'Yes' : 'No']);
     if (data.lone_working !== undefined) facts.push(['Lone working', data.lone_working ? 'Yes' : 'No']);
+    if (evacAssist) facts.push(['Evacuation assistance required', evacAssist]);
 
     if (facts.length) {
       ({ page, yPosition } = ensureSpace(16, page, yPosition, pdfDoc, isDraft, totalPages));

@@ -667,7 +667,7 @@ export function renderSection5FireHazards(
   };
 
   const endGroup = () => {
-    yPosition -= 8;
+    yPosition -= 6;
   };
 
   // --- Clean grouped output ---

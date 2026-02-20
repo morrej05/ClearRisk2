@@ -592,13 +592,15 @@ if (section.id === 5) {
 
           // Draw summary line in italics
           page.drawText(sanitizePdfText(evaluation.summary), {
-            x: MARGIN + 15,          // indent to align with summary box content
+            x: MARGIN,
             y: yPosition,
-            size: 9,
+            size: 10,
             font,
-            color: rgb(0.45, 0.45, 0.45),
+            color: rgb(0.3, 0.3, 0.3),
           });
-          yPosition -= 10;            // tighter transition into Key Points
+
+          yPosition -= 20;
+        }
 
         const keyPointsResult = drawKeyPointsBlock({
           page,
@@ -1987,5 +1989,4 @@ function drawModuleSummary(
   yPosition = infoGapResult.yPosition;
 
   return { page, yPosition };
-}
 }

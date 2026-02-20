@@ -99,7 +99,7 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
 
     // First line with bullet glyph
     const first = sanitizePdfText(wrappedLines[0] ?? point);
-    page.drawText('-', {
+    page.drawText(sanitizePdfText('•'), {
       x: bulletIndentX,
       y: yPosition,
       size: bulletSize,

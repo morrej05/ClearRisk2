@@ -427,6 +427,11 @@ drawTableOfContents(page, font, fontBold);
         priority_band: a.priority_band,
       }));
 
+    // FORCE: Section 4 must always render (front matter governance)
+    if (section.id === 4) {
+      continue;
+    }
+
     // Sections 2 & 3 must always render full (custom renderers)
     if (section.id === 2 || section.id === 3) {
       continue;
@@ -474,6 +479,11 @@ drawTableOfContents(page, font, fontBold);
     );
 
     console.log('[FRA] main', section.id, 'found', sectionModules.map(m => m.module_key));
+
+    // DIAGNOSTIC: Check Section 4 module key matching
+    if (section.id === 4) {
+      console.log('[FRA] section 4 expects', section.moduleKeys, 'found', sectionModules.map(m => m.module_key));
+    }
 
     // Skip empty sections (except special sections that have custom logic)
     if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) {

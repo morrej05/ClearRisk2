@@ -672,10 +672,15 @@ export function renderSection5FireHazards(
   // Group 2: Oxygen enrichment
   const oxygen = norm(d.oxygen_enrichment);
   const oxygenNotes = norm(d.oxygen_sources_notes);
-  if (oxygen || oxygenNotes) {
-    drawSubhead('Oxygen enrichment');
-    if (oxygen) drawFact('Oxygen enrichment', titleCase(oxygen));
-    if (oxygenNotes) drawFact('Notes', oxygenNotes);
+    if (oxygen || oxygenNotes) {
+    // Avoid duplicated “Oxygen enrichment” heading + label when it's a single fact
+    if (oxygen && !oxygenNotes) {
+      drawFact('Oxygen enrichment', titleCase(oxygen));
+    } else {
+      drawSubhead('Oxygen enrichment');
+      if (oxygen) drawFact('Oxygen enrichment', titleCase(oxygen));
+      if (oxygenNotes) drawFact('Notes', oxygenNotes);
+    }
   }
 
   // Group 3: Higher-risk activities
@@ -706,8 +711,13 @@ export function renderSection5FireHazards(
 
     if (eicrSeen || eicrSat || c1c2 || pat) {
       drawSubhead('Electrical safety');
-      if (eicrSeen) drawFact('EICR evidence seen', titleCase(eicrSeen));
-      if (eicrSat) drawFact('EICR satisfactory', titleCase(eicrSat));
+            // Consolidate EICR lines into a single statement when possible
+      if (eicrSeen || eicrSat) {
+        const bits: string[] = [];
+        if (eicrSat) bits.push(`Satisfactory: ${titleCase(eicrSat)}`);
+        if (eicrSeen) bits.push(`Evidence seen: ${titleCase(eicrSeen)}`);
+        drawFact('EICR', bits.join(' • '));
+      }
       if (c1c2) drawFact('Outstanding C1/C2 defects', titleCase(c1c2));
       if (pat) drawFact('PAT testing in place', titleCase(pat));
     }

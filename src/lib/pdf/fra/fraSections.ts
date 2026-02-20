@@ -13,7 +13,7 @@ import {
   addNewPage,
 } from '../pdfUtils';
 import { PAGE_TOP_Y } from '../pdfCursor';
-import { ensureSpace } from './fraUtils';
+import { ensureSpace, ensureCursor } from './fraUtils';
 import {
   drawModuleContent,
   renderFilteredModuleData,
@@ -34,6 +34,8 @@ export function renderSection1AssessmentDetails(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): Cursor {
+  // CRITICAL: Ensure we start with a valid PDFPage
+  cursor = ensureCursor(cursor, pdfDoc, isDraft, totalPages);
   let { page, yPosition } = cursor;
 
   const a1Module = sectionModules[0];
@@ -46,8 +48,8 @@ export function renderSection1AssessmentDetails(
 
     let { page: p, yPosition: y } = c;
 
-    // Ensure space and get potentially new page
-    ({ page: p, yPosition: y } = ensureSpace(p, y, 14, pdfDoc, isDraft, totalPages));
+    // Ensure space and get potentially new page (requiredHeight, page, yPosition, ...)
+    ({ page: p, yPosition: y } = ensureSpace(14, p, y, pdfDoc, isDraft, totalPages));
 
     // Validate page has drawText
     if (!p || typeof (p as any).drawText !== 'function') {
@@ -80,10 +82,10 @@ export function renderSection1AssessmentDetails(
   const assessmentDate = document.assessment_date ? formatDate(document.assessment_date) : 'N/A';
   const introPara = `This fire risk assessment was undertaken on ${assessmentDate}.`;
 
-  ({ page, yPosition } = ensureSpace(page, yPosition, 14, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
   const introLines = wrapText(introPara, CONTENT_WIDTH, 10, font);
   for (const line of introLines) {
-    ({ page, yPosition } = ensureSpace(page, yPosition, 14, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
     page.drawText(line, {
       x: MARGIN,
       y: yPosition,

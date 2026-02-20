@@ -194,6 +194,30 @@ export function ensureSpace(
 }
 
 /**
+ * Ensure cursor has a valid PDFPage, creating one if needed
+ * This validates the cursor and guarantees page.drawText exists
+ */
+export function ensureCursor(
+  cursor: { page: PDFPage | undefined; yPosition: number },
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): { page: PDFPage; yPosition: number } {
+  // If page is missing or invalid, create a new page
+  if (!cursor.page || typeof (cursor.page as any).drawText !== 'function') {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    return { page: result.page, yPosition: PAGE_TOP_Y };
+  }
+
+  // Validate yPosition is a number
+  if (typeof cursor.yPosition !== 'number' || isNaN(cursor.yPosition)) {
+    return { page: cursor.page, yPosition: PAGE_TOP_Y };
+  }
+
+  return { page: cursor.page, yPosition: cursor.yPosition };
+}
+
+/**
  * Get organisation display name, handling edge cases
  */
 export function getOrganisationDisplayName(organisation: Organisation): string {

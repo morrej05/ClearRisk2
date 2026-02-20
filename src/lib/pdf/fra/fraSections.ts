@@ -36,6 +36,10 @@ export function renderSection2Premises(
   let { page, yPosition } = cursor;
 
   const a2Module = sectionModules[0];
+  console.log('[A2 MODULE]', a2Module);
+console.log('[A2 MODULE KEYS]', a2Module ? Object.keys(a2Module as any) : null);
+console.log('[A2 DATA]', (a2Module as any)?.data);
+console.log('[A2 DATA KEYS]', (a2Module as any)?.data ? Object.keys((a2Module as any).data) : null);
 
   if (!a2Module) {
     page.drawText('No Premises & General Information data captured (A2).', {

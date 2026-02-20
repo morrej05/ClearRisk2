@@ -451,6 +451,28 @@ drawTableOfContents(page, font, fontBold);
   page = sectionStartResult.page;
   yPosition = PAGE_TOP_Y;
 
+  // FORCE RENDER: Sections 2 & 3 (Premises + Occupants) before main loop.
+  // Reason: main loop is currently skipping ids 2/3 (confirmed by runtime logs).
+  {
+    const section2 = FRA_REPORT_STRUCTURE.find(s => s.id === 2);
+    if (section2) {
+      const mods2 = moduleInstances.filter(m => section2.moduleKeys.includes(m.module_key));
+      const cur2: Cursor = { page, yPosition };
+      const out2 = renderSection2Premises(cur2, mods2, document, font, fontBold, pdfDoc, isDraft, totalPages);
+      page = out2.page;
+      yPosition = out2.yPosition;
+    }
+
+    const section3 = FRA_REPORT_STRUCTURE.find(s => s.id === 3);
+    if (section3) {
+      const mods3 = moduleInstances.filter(m => section3.moduleKeys.includes(m.module_key));
+      const cur3: Cursor = { page, yPosition };
+      const out3 = renderSection3Occupants(cur3, mods3, document, font, fontBold, pdfDoc, isDraft, totalPages);
+      page = out3.page;
+      yPosition = out3.yPosition;
+    }
+  }
+
   // Section renderer map for explicit delegation
   const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[]) => Cursor> = {
     2: renderSection2Premises,
@@ -467,6 +489,9 @@ drawTableOfContents(page, font, fontBold);
   for (const section of FRA_REPORT_STRUCTURE) {
     // Skip section 1 (cover pages handled separately above)
     if (section.id === 1) continue;
+
+    // Skip sections 2 & 3 (already force-rendered above to prevent loop issues)
+    if (section.id === 2 || section.id === 3) continue;
 
     // Skip sections that will be rendered compactly
     if (compactSectionIds.has(section.id)) {

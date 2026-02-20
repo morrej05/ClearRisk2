@@ -621,6 +621,17 @@ drawTableOfContents(page, font, fontBold);
       console.log('Rendering section:', section.id);
       const renderer = SECTION_RENDERERS[section.id];
 
+      if (section.id === 2 || section.id === 3) {
+  page.drawText(`DEBUG: Section ${section.id} reached main render loop`, {
+    x: MARGIN,
+    y: yPosition,
+    size: 8,
+    font,
+    color: rgb(1, 0, 0),
+  });
+  yPosition -= 12;
+}
+
       if (renderer) {
         cursor = renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages);
         ({ page, yPosition } = cursor);

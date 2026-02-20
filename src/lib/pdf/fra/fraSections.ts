@@ -620,7 +620,7 @@ export function renderSection5FireHazards(
   const drawSubhead = (text: string) => {
     ({ page, yPosition } = ensureSpace(20, page, yPosition, pdfDoc, isDraft, totalPages));
     page.drawText(text, { x: MARGIN, y: yPosition, size: 11, font: fontBold, color: rgb(0.12, 0.12, 0.12) });
-    yPosition -= 14;
+    yPosition -= 16;
   };
 
   const drawLine = () => {
@@ -631,7 +631,7 @@ export function renderSection5FireHazards(
       thickness: 0.7,
       color: rgb(0.84, 0.86, 0.89),
     });
-    yPosition -= 14;
+    yPosition -= 16;
   };
 
   const drawFact = (label: string, value: string) => {

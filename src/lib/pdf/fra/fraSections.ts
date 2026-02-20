@@ -618,9 +618,15 @@ export function renderSection5FireHazards(
   };
 
   const drawSubhead = (text: string) => {
-    ({ page, yPosition } = ensureSpace(20, page, yPosition, pdfDoc, isDraft, totalPages));
-    page.drawText(text, { x: MARGIN, y: yPosition, size: 11, font: fontBold, color: rgb(0.12, 0.12, 0.12) });
-    yPosition -= 16;
+    ({ page, yPosition } = ensureSpace(18, page, yPosition, pdfDoc, isDraft, totalPages));
+    page.drawText(text.toUpperCase(), {
+      x: MARGIN,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.35, 0.35, 0.35),
+    });
+    yPosition -= 14;
   };
 
   const drawLine = () => {
@@ -640,7 +646,13 @@ export function renderSection5FireHazards(
 
     ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
 
-    page.drawText(`${label}:`, { x: MARGIN, y: yPosition, size: 10, font: fontBold, color: rgb(0.35, 0.35, 0.35) });
+    page.drawText(`${label}:`, {
+      x: MARGIN,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.42, 0.42, 0.42),
+    });
 
     const VALUE_X = MARGIN + 150;
     const lines = wrapText(v, CONTENT_WIDTH - 150, 10, font);

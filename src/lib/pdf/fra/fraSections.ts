@@ -78,29 +78,33 @@ console.log('[A2 DATA KEYS]', (a2Module as any)?.data ? Object.keys((a2Module as
       yPosition -= 14;
     };
 
-    // Narrative
+    const buildingName = norm(data.building_name);
+    const yearBuilt = norm(data.year_built);
+    const heightM = norm(data.height_m);
+    const storeysBand = norm(data.storeys_band);
+    const floorArea = norm(data.gross_floor_area_m2 || data.floor_area_m2 || data.total_floor_area_m2);
+    const buildingUse = norm(data.building_use || data.use_type || data.occupancy_profile);
+    const construction = norm(data.construction_type || data.primary_construction || data.frame_type);
+    const basement = data.has_basement !== undefined ? (data.has_basement ? 'Yes' : 'No') : '';
+    const notes = norm(data.notes);
+
     const sentences: string[] = [];
 
-    const buildingName = norm(data.building_name);
-    const buildingType = norm(data.building_type);
-    const storeysAG = data.storeys_above_ground ? String(data.storeys_above_ground) : '';
-    const storeysBG = data.storeys_below_ground ? String(data.storeys_below_ground) : '';
-    const gfa = data.gross_floor_area_m2 ? String(data.gross_floor_area_m2) : '';
-
-    if (buildingType || buildingName) {
-      pushIf(sentences, `The premises comprise ${buildingType || 'a'}${buildingName ? ` premises known as ${buildingName}` : ''}.`);
+    if (buildingUse || buildingName) {
+      pushIf(sentences, `The assessment relates to${buildingUse ? ` a ${buildingUse}` : ''}${buildingName ? ` premises known as ${buildingName}` : ' the premises'}.`);
     }
 
-    if (storeysAG || storeysBG) {
+    if (storeysBand || heightM) {
       const parts: string[] = [];
-      if (storeysAG) parts.push(`${storeysAG} storey${storeysAG === '1' ? '' : 's'} above ground`);
-      if (storeysBG) parts.push(`${storeysBG} level${storeysBG === '1' ? '' : 's'} below ground`);
-      pushIf(sentences, `The building comprises ${parts.join(' and ')}.`);
+      if (storeysBand) parts.push(`${storeysBand} storeys (band)`);
+      if (heightM) parts.push(`approximately ${heightM} m in height`);
+      pushIf(sentences, `The building is ${parts.join(' and ')}.`);
     }
 
-    if (gfa) {
-      pushIf(sentences, `The gross floor area is approximately ${gfa} m².`);
-    }
+    if (yearBuilt) pushIf(sentences, `The building is understood to date from approximately ${yearBuilt}.`);
+    if (construction) pushIf(sentences, `Primary construction is recorded as ${construction}.`);
+    if (basement) pushIf(sentences, `Basement present: ${basement}.`);
+    if (notes) pushIf(sentences, notes.endsWith('.') ? notes : `${notes}.`);
 
     if (data.has_building_address && data.building_address) {
       const addr = data.building_address;
@@ -119,13 +123,15 @@ console.log('[A2 DATA KEYS]', (a2Module as any)?.data ? Object.keys((a2Module as
       yPosition -= 10;
     }
 
-    // Facts
     const facts: Array<[string, string]> = [];
-    if (buildingType) facts.push(['Building use/type', buildingType]);
+    if (buildingUse) facts.push(['Building use', buildingUse]);
     if (buildingName) facts.push(['Building name', buildingName]);
-    if (storeysAG) facts.push(['Storeys above ground', storeysAG]);
-    if (storeysBG) facts.push(['Storeys below ground', storeysBG]);
-    if (gfa) facts.push(['Gross floor area (m²)', gfa]);
+    if (storeysBand) facts.push(['Storeys', storeysBand]);
+    if (heightM) facts.push(['Height (m)', heightM]);
+    if (floorArea) facts.push(['Floor area (m²)', floorArea]);
+    if (yearBuilt) facts.push(['Year built', yearBuilt]);
+    if (construction) facts.push(['Construction', construction]);
+    if (basement) facts.push(['Basement', basement]);
 
     if (data.has_building_address && data.building_address) {
       const addr = data.building_address;

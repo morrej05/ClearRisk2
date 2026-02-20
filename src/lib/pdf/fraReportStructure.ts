@@ -41,7 +41,7 @@ export const FRA_REPORT_STRUCTURE: PdfSection[] = [
   {
     id: 4,
     title: "Relevant Legislation & Duty Holder",
-    moduleKeys: [],
+    moduleKeys: ["A1_DOC_CONTROL"],
     description: "Regulatory framework, responsible person duties"
   },
   {

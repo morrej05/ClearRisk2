@@ -78,26 +78,18 @@ export function renderSection1AssessmentDetails(
     return { page: p, yPosition: y };
   };
 
-  // Intro paragraph
-  const assessmentDate = document.assessment_date ? formatDate(document.assessment_date) : 'N/A';
-  const introPara = `This fire risk assessment was undertaken on ${assessmentDate}.`;
+  // Intro sentence (optional, slim)
+  const introPara = 'Assessment overview for reporting and identification.';
 
   ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-  const introLines = wrapText(introPara, CONTENT_WIDTH, 10, font);
-  for (const line of introLines) {
-    ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-    page.drawText(line, {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font,
-      color: rgb(0.18, 0.18, 0.18),
-    });
-    yPosition -= 14;
-  }
-
-  // Spacing before facts
-  yPosition -= 6;
+  page.drawText(introPara, {
+    x: MARGIN,
+    y: yPosition,
+    size: 10,
+    font,
+    color: rgb(0.18, 0.18, 0.18),
+  });
+  yPosition -= 18; // Extra spacing after intro
 
   // Extract data from A1 module and document
   const data: any = a1Module?.data || {};
@@ -118,32 +110,30 @@ export function renderSection1AssessmentDetails(
     ''
   );
 
-  // Build address
+  // Build address (one line)
   const addressParts: string[] = [];
   const addr = document.meta?.site?.address || data.site?.address || {};
   if (addr.line1 || data.addressLine1) addressParts.push(norm(addr.line1 || data.addressLine1));
   if (addr.line2 || data.addressLine2) addressParts.push(norm(addr.line2 || data.addressLine2));
   if (addr.city || data.city) addressParts.push(norm(addr.city || data.city));
-  if (addr.county || data.county) addressParts.push(norm(addr.county || data.county));
   if (addr.postcode || data.postcode) addressParts.push(norm(addr.postcode || data.postcode));
   const address = addressParts.filter(Boolean).join(', ');
 
-  // Standards
-  const standards = Array.isArray(document.standards_selected) && document.standards_selected.length > 0
-    ? document.standards_selected.join(', ')
-    : '';
+  // Assessment date
+  const assessmentDate = document.assessment_date ? formatDate(document.assessment_date) : 'N/A';
 
-  // Draw key facts - update cursor after each call
+  // Draw compact facts list (5 rows max) - update cursor after each call
   ({ page, yPosition } = drawFact({ page, yPosition }, 'Client', clientName));
   ({ page, yPosition } = drawFact({ page, yPosition }, 'Site', siteName));
   ({ page, yPosition } = drawFact({ page, yPosition }, 'Address', address));
   ({ page, yPosition } = drawFact({ page, yPosition }, 'Assessment Date', assessmentDate));
   ({ page, yPosition } = drawFact({ page, yPosition }, 'Assessor', norm(document.assessor_name || '')));
-  ({ page, yPosition } = drawFact({ page, yPosition }, 'Assessor Role', norm(document.assessor_role || '')));
-  ({ page, yPosition } = drawFact({ page, yPosition }, 'Responsible Person', norm(document.responsible_person || '')));
-  ({ page, yPosition } = drawFact({ page, yPosition }, 'Scope', norm(document.scope_description || '')));
-  ({ page, yPosition } = drawFact({ page, yPosition }, 'Standards', standards));
-  ({ page, yPosition } = drawFact({ page, yPosition }, 'Limitations', norm(document.limitations_assumptions || '')));
+
+  // Optional: Include assessor role if present
+  const assessorRole = norm(document.assessor_role || '');
+  if (assessorRole) {
+    ({ page, yPosition } = drawFact({ page, yPosition }, 'Role', assessorRole));
+  }
 
   // Add some spacing after the section
   yPosition -= 8;
@@ -458,6 +448,8 @@ export function renderSection4Legislation(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): Cursor {
+  // CRITICAL: Ensure we start with a valid PDFPage
+  cursor = ensureCursor(cursor, pdfDoc, isDraft, totalPages);
   let { page, yPosition } = cursor;
 
   const a1Module = sectionModules.find(m => m.module_key === 'A1_DOC_CONTROL');

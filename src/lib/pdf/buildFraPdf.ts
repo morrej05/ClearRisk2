@@ -1988,3 +1988,4 @@ function drawModuleSummary(
 
   return { page, yPosition };
 }
+}

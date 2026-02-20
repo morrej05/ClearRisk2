@@ -585,6 +585,146 @@ export function renderSection4Legislation(
 }
 
 /**
+ * Section 5: Fire Hazards (FRA_1_HAZARDS)
+ * Clean grouped output with visual consistency matching Sections 2-4
+ */
+export function renderSection5FireHazards(
+  cursor: Cursor,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): Cursor {
+  cursor = ensureCursor(cursor, pdfDoc, isDraft, totalPages);
+  let { page, yPosition } = cursor;
+
+  const mod = sectionModules.find(m => m.module_key === 'FRA_1_HAZARDS');
+  if (!mod) return { page, yPosition };
+
+  const d: any = mod.data || {};
+
+  const norm = (v: any) => sanitizePdfText(String(v ?? '')).replace(/_/g, ' ').trim();
+  const titleCase = (s: string) =>
+    s.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
+
+  const list = (arr: any, other?: any) => {
+    const a = Array.isArray(arr) ? arr.map(norm).filter(Boolean) : [];
+    const o = norm(other);
+    if (o) a.push(o);
+    return a;
+  };
+
+  const drawSubhead = (text: string) => {
+    ({ page, yPosition } = ensureSpace(20, page, yPosition, pdfDoc, isDraft, totalPages));
+    page.drawText(text, { x: MARGIN, y: yPosition, size: 11, font: fontBold, color: rgb(0.12, 0.12, 0.12) });
+    yPosition -= 14;
+  };
+
+  const drawLine = () => {
+    const y = yPosition - 4;
+    page.drawLine({
+      start: { x: MARGIN, y },
+      end: { x: MARGIN + CONTENT_WIDTH, y },
+      thickness: 0.7,
+      color: rgb(0.84, 0.86, 0.89),
+    });
+    yPosition -= 14;
+  };
+
+  const drawFact = (label: string, value: string) => {
+    const v = norm(value);
+    if (!v) return;
+
+    ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+
+    page.drawText(`${label}:`, { x: MARGIN, y: yPosition, size: 10, font: fontBold, color: rgb(0.35, 0.35, 0.35) });
+
+    const VALUE_X = MARGIN + 150;
+    const lines = wrapText(v, CONTENT_WIDTH - 150, 10, font);
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) {
+        yPosition -= 12;
+        ({ page, yPosition } = ensureSpace(12, page, yPosition, pdfDoc, isDraft, totalPages));
+      }
+      page.drawText(lines[i], { x: VALUE_X, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
+    }
+    yPosition -= 12;
+  };
+
+  // --- Clean grouped output ---
+  // Small divider after outcome/key points area
+  drawLine();
+
+  const ignition = list(d.ignition_sources, d.ignition_other);
+  const fuels = list(d.fuel_sources, d.fuel_other);
+  const highRisk = list(d.high_risk_activities, d.high_risk_other);
+
+  // Group 1: Sources
+  if (ignition.length || fuels.length) {
+    drawSubhead('Sources');
+    if (ignition.length) drawFact('Ignition sources', ignition.map(titleCase).join(', '));
+    if (fuels.length) drawFact('Fuel sources', fuels.map(titleCase).join(', '));
+  }
+
+  // Group 2: Oxygen enrichment
+  const oxygen = norm(d.oxygen_enrichment);
+  const oxygenNotes = norm(d.oxygen_sources_notes);
+  if (oxygen || oxygenNotes) {
+    drawSubhead('Oxygen enrichment');
+    if (oxygen) drawFact('Oxygen enrichment', titleCase(oxygen));
+    if (oxygenNotes) drawFact('Notes', oxygenNotes);
+  }
+
+  // Group 3: Higher-risk activities
+  if (highRisk.length) {
+    drawSubhead('Higher-risk activities');
+    drawFact('Activities', highRisk.map(titleCase).join(', '));
+  }
+
+  // Group 4: Context factors
+  const hk = norm(d.housekeeping_fire_load);
+  const arson = norm(d.arson_risk);
+  const lone = norm(d.lone_working);
+
+  if (hk || arson || lone) {
+    drawSubhead('Context factors');
+    if (hk) drawFact('Housekeeping / fire load', titleCase(hk));
+    if (arson) drawFact('Arson risk', titleCase(arson));
+    if (lone) drawFact('Lone working', titleCase(lone));
+  }
+
+  // Group 5: Electrical safety (render shallowly unless you want deep mapping)
+  if (d.electrical_safety && typeof d.electrical_safety === 'object') {
+    const es = d.electrical_safety;
+    const eicrSeen = norm(es.eicr_evidence_seen ?? es.eicr_seen ?? '');
+    const eicrSat = norm(es.eicr_satisfactory ?? es.eicr_ok ?? '');
+    const c1c2 = norm(es.outstanding_c1_c2_defects ?? es.c1_c2_defects ?? '');
+    const pat = norm(es.pat_testing_in_place ?? es.pat_in_place ?? '');
+
+    if (eicrSeen || eicrSat || c1c2 || pat) {
+      drawSubhead('Electrical safety');
+      if (eicrSeen) drawFact('EICR evidence seen', titleCase(eicrSeen));
+      if (eicrSat) drawFact('EICR satisfactory', titleCase(eicrSat));
+      if (c1c2) drawFact('Outstanding C1/C2 defects', titleCase(c1c2));
+      if (pat) drawFact('PAT testing in place', titleCase(pat));
+    }
+  }
+
+  // Optional free notes
+  const notes = norm(d.notes);
+  if (notes) {
+    drawSubhead('Additional notes');
+    drawFact('Notes', notes);
+  }
+
+  yPosition -= 4;
+  return { page, yPosition };
+}
+
+/**
  * Section 7: Fire Detection, Alarm & Warning
  * Split from FRA_3_ACTIVE_SYSTEMS (detection fields only)
  */

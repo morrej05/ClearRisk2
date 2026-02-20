@@ -655,7 +655,14 @@ drawTableOfContents(page, font, fontBold);
       }
     }
   }
-
+console.log(
+  '[FRA] section',
+  section.id,
+  'moduleKeys=',
+  section.moduleKeys,
+  'modulesFound=',
+  sectionModules.map(m => m.module_key)
+);
   // Render low-density sections in compact format
   if (lowDensitySections.length > 0) {
     // Ensure space for compact section header

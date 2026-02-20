@@ -180,6 +180,8 @@ export function renderSection3Occupants(
   }
 
   const data: any = (a3Module as any).data;
+  console.log('[A3 DATA KEYS]', Object.keys(data));
+console.log('[A3 DATA FULL]', data);
 
   if (!data) {
     page.drawText('Occupants & Vulnerability module has no data payload (A3).', {

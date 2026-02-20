@@ -71,11 +71,15 @@ console.log('[A2 DATA KEYS]', (a2Module as any)?.data ? Object.keys((a2Module as
 
     const norm = (v: any) => sanitizePdfText(String(v ?? '')).replace(/_/g, ' ').trim();
     const pushIf = (arr: string[], s?: string) => { if (s && s.trim()) arr.push(s.trim()); };
+    const yesNo = (v: any) =>
+      v === 'yes' || v === true ? 'Yes'
+      : v === 'no' || v === false ? 'No'
+      : v;
 
     const drawFact = (label: string, value: string) => {
       page.drawText(`${label}:`, { x: MARGIN, y: yPosition, size: 9, font: fontBold, color: rgb(0.42, 0.42, 0.42) });
       page.drawText(value, { x: MARGIN + 140, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
-      yPosition -= 14;
+      yPosition -= 12;
     };
 
     const buildingName = norm(data.building_name);
@@ -94,14 +98,15 @@ console.log('[A2 DATA KEYS]', (a2Module as any)?.data ? Object.keys((a2Module as
       pushIf(sentences, `The assessment relates to${buildingUse ? ` a ${buildingUse}` : ''}${buildingName ? ` premises known as ${buildingName}` : ' the premises'}.`);
     }
 
-    if (storeysBand || heightM) {
-      const parts: string[] = [];
-      if (storeysBand) parts.push(`${storeysBand} storeys (band)`);
-      if (heightM) parts.push(`approximately ${heightM} m in height`);
-      pushIf(sentences, `The building is ${parts.join(' and ')}.`);
+    if (storeysBand && heightM) {
+      pushIf(sentences, `The building comprises ${storeysBand} storeys and is approximately ${heightM} metres in height.`);
+    } else if (storeysBand) {
+      pushIf(sentences, `The building comprises ${storeysBand} storeys.`);
+    } else if (heightM) {
+      pushIf(sentences, `The building is approximately ${heightM} metres in height.`);
     }
 
-    if (yearBuilt) pushIf(sentences, `The building is understood to date from approximately ${yearBuilt}.`);
+    if (yearBuilt) pushIf(sentences, `The building is understood to have been constructed circa ${yearBuilt}.`);
     if (construction) pushIf(sentences, `Primary construction is recorded as ${construction}.`);
     if (basement) pushIf(sentences, `Basement present: ${basement}.`);
     if (notes) pushIf(sentences, notes.endsWith('.') ? notes : `${notes}.`);
@@ -127,9 +132,9 @@ console.log('[A2 DATA KEYS]', (a2Module as any)?.data ? Object.keys((a2Module as
     if (buildingUse) facts.push(['Building use', buildingUse]);
     if (buildingName) facts.push(['Building name', buildingName]);
     if (storeysBand) facts.push(['Storeys', storeysBand]);
-    if (heightM) facts.push(['Height (m)', heightM]);
+    if (heightM) facts.push(['Height', `${heightM} m`]);
     if (floorArea) facts.push(['Floor area (m²)', floorArea]);
-    if (yearBuilt) facts.push(['Year built', yearBuilt]);
+    if (yearBuilt) facts.push(['Year Built', yearBuilt]);
     if (construction) facts.push(['Construction', construction]);
     if (basement) facts.push(['Basement', basement]);
 
@@ -209,11 +214,15 @@ console.log('[A3 DATA FULL]', data);
 
     const norm = (v: any) => sanitizePdfText(String(v ?? '')).replace(/_/g, ' ').trim();
     const pushIf = (arr: string[], s?: string) => { if (s && s.trim()) arr.push(s.trim()); };
+    const yesNo = (v: any) =>
+      v === 'yes' || v === true ? 'Yes'
+      : v === 'no' || v === false ? 'No'
+      : v;
 
     const drawFact = (label: string, value: string) => {
       page.drawText(`${label}:`, { x: MARGIN, y: yPosition, size: 9, font: fontBold, color: rgb(0.42, 0.42, 0.42) });
       page.drawText(value, { x: MARGIN + 140, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
-      yPosition -= 14;
+      yPosition -= 12;
     };
 
     const sentences: string[] = [];
@@ -230,10 +239,6 @@ console.log('[A3 DATA FULL]', data);
     const peeps = norm(data.peeps_dependency);
     const outOfHours = norm(data.out_of_hours_occupation);
 
-    const evacAssist = data.evacuation_assistance_required !== undefined
-      ? (data.evacuation_assistance_required ? 'Yes' : 'No')
-      : '';
-
     if (max || typical) {
       const parts: string[] = [];
       if (max) parts.push(`approximately ${max} persons at peak occupancy`);
@@ -248,11 +253,13 @@ console.log('[A3 DATA FULL]', data);
       pushIf(sentences, `Vulnerable groups: ${vg}.`);
     }
 
-    if (peeps) pushIf(sentences, `Evacuation assistance / PEEPs: ${peeps}.`);
+    if (peeps || data.evacuation_assistance_required) {
+      pushIf(sentences, `Personal Emergency Evacuation Plans (PEEPs) are in place.`);
+    }
 
-    if (outOfHours) pushIf(sentences, `Out of hours occupation: ${outOfHours}.`);
-
-    if (evacAssist) pushIf(sentences, `Evacuation assistance required: ${evacAssist}.`);
+    if (outOfHours) {
+      pushIf(sentences, `The premises are occupied outside normal working hours.`);
+    }
 
     if (data.sleeping_accommodation !== undefined) {
       pushIf(sentences, data.sleeping_accommodation
@@ -260,10 +267,8 @@ console.log('[A3 DATA FULL]', data);
         : `Sleeping accommodation is not present.`);
     }
 
-    if (data.lone_working !== undefined) {
-      pushIf(sentences, data.lone_working
-        ? `Lone working may occur.`
-        : `Lone working is not anticipated.`);
+    if (data.lone_working !== undefined && data.lone_working === 'yes') {
+      pushIf(sentences, `Lone working arrangements may be encountered.`);
     }
 
     if (sentences.length) {
@@ -283,11 +288,10 @@ console.log('[A3 DATA FULL]', data);
     if (occProfile) facts.push(['Occupancy profile', occProfile]);
     if (vulnerableGroups) facts.push(['Vulnerable groups', vulnerableGroups]);
     if (vulnerableNotes) facts.push(['Vulnerable groups notes', vulnerableNotes]);
-    if (peeps) facts.push(['PEEPs / dependency', peeps]);
-    if (outOfHours) facts.push(['Out of hours occupation', outOfHours]);
-    if (data.sleeping_accommodation !== undefined) facts.push(['Sleeping accommodation', data.sleeping_accommodation ? 'Yes' : 'No']);
-    if (data.lone_working !== undefined) facts.push(['Lone working', data.lone_working ? 'Yes' : 'No']);
-    if (evacAssist) facts.push(['Evacuation assistance required', evacAssist]);
+    if (peeps) facts.push(['PEEPs / dependency', yesNo(peeps)]);
+    if (outOfHours) facts.push(['Out of hours occupation', yesNo(outOfHours)]);
+    if (data.sleeping_accommodation !== undefined) facts.push(['Sleeping accommodation', yesNo(data.sleeping_accommodation)]);
+    if (data.lone_working !== undefined) facts.push(['Lone working', yesNo(data.lone_working)]);
 
     if (facts.length) {
       ({ page, yPosition } = ensureSpace(16, page, yPosition, pdfDoc, isDraft, totalPages));

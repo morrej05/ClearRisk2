@@ -35,7 +35,10 @@ export function renderSection2Premises(
 ): Cursor {
   let { page, yPosition } = cursor;
 
-  const a2Module = sectionModules.find(m => m.module_key === 'A2_BUILDING_PROFILE');
+  const a2Module =
+    sectionModules.find(m => m.module_key === 'A2_BUILDING_PROFILE') ||
+    sectionModules.find(m => m.module_key?.includes('A2') || m.module_key?.includes('BUILDING_PROFILE')) ||
+    sectionModules[0];
 
   if (a2Module && a2Module.data) {
     const data = a2Module.data;
@@ -140,7 +143,10 @@ export function renderSection3Occupants(
 ): Cursor {
   let { page, yPosition } = cursor;
 
-  const a3Module = sectionModules.find(m => m.module_key === 'A3_PERSONS_AT_RISK');
+  const a3Module =
+    sectionModules.find(m => m.module_key === 'A3_PERSONS_AT_RISK') ||
+    sectionModules.find(m => m.module_key?.includes('A3') || m.module_key?.includes('PERSONS_AT_RISK')) ||
+    sectionModules[0];
 
   if (a3Module && a3Module.data) {
     const data = a3Module.data;

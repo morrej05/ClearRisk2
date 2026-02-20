@@ -717,11 +717,16 @@ if (oxygenIsMeaningful || oxygenNotes) {
       drawSubhead('Electrical safety');
             // Consolidate EICR lines into a single statement when possible
       if (eicrSeen || eicrSat) {
-        const bits: string[] = [];
-        if (eicrSat) bits.push(`Satisfactory: ${titleCase(eicrSat)}`);
-        if (eicrSeen) bits.push(`Evidence seen: ${titleCase(eicrSeen)}`);
-        drawFact('EICR', bits.join(' • '));
-      }
+  const sat = eicrSat ? titleCase(eicrSat) : '';
+  const seen = eicrSeen ? titleCase(eicrSeen) : '';
+
+  let text = '';
+  if (sat && seen) text = `${sat} (evidence seen: ${seen})`;
+  else if (sat) text = sat;
+  else text = `Evidence seen: ${seen}`;
+
+  drawFact('EICR', text);
+}
       if (c1c2) drawFact('Outstanding C1/C2 defects', titleCase(c1c2));
       if (pat) drawFact('PAT testing in place', titleCase(pat));
     }

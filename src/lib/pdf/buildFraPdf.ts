@@ -527,6 +527,14 @@ drawTableOfContents(page, font, fontBold);
       yPosition = spaceResult.yPosition;
     }
 
+    // Right after sectionModules is computed (and before summary/key points/renderers)
+if (section.id === 5) {
+  console.log('[S5] moduleKeys expected:', section.moduleKeys);
+  console.log('[S5] modulesFound:', sectionModules.map(m => m.module_key));
+  console.log('[S5] firstModuleId:', sectionModules[0]?.id);
+  console.log('[S5] data:', sectionModules[0]?.data);
+  console.log('[S5] dataKeys:', Object.keys(sectionModules[0]?.data || {}));
+}
     // Draw section header
     ({ page, yPosition } = drawSectionHeader({ page, yPosition }, section.id, section.title, font, fontBold));
 

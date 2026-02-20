@@ -379,12 +379,13 @@ drawTableOfContents(page, font, fontBold);
   yPosition = PAGE_TOP_Y;
   ({ page, yPosition } = drawResponsiblePersonDuties({ page, yPosition }, document, font, fontBold, pdfDoc, isDraft, totalPages));
 
-  if (document.scope_description) {
-    const scopeResult = addNewPage(pdfDoc, isDraft, totalPages);
-    page = scopeResult.page;
-    yPosition = PAGE_TOP_Y;
-    ({ page, yPosition } = drawScope({ page, yPosition }, document.scope_description, font, fontBold, pdfDoc, isDraft, totalPages));
-  }
+  // Scope page removed — Scope is now rendered within Sections 2/4 to prevent empty standalone pages
+  // if (document.scope_description) {
+  //   const scopeResult = addNewPage(pdfDoc, isDraft, totalPages);
+  //   page = scopeResult.page;
+  //   yPosition = PAGE_TOP_Y;
+  //   ({ page, yPosition } = drawScope({ page, yPosition }, document.scope_description, font, fontBold, pdfDoc, isDraft, totalPages));
+  // }
 
   if (document.limitations_assumptions) {
     const limResult = addNewPage(pdfDoc, isDraft, totalPages);

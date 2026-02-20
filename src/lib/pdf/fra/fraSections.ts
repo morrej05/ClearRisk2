@@ -666,6 +666,10 @@ export function renderSection5FireHazards(
     yPosition -= 12;
   };
 
+  const endGroup = () => {
+    yPosition -= 6;
+  };
+
   // --- Clean grouped output ---
   // Small divider after outcome/key points area
   drawLine();
@@ -679,6 +683,7 @@ export function renderSection5FireHazards(
     drawSubhead('Sources');
     if (ignition.length) drawFact('Ignition sources', ignition.map(titleCase).join(', '));
     if (fuels.length) drawFact('Fuel sources', fuels.map(titleCase).join(', '));
+    endGroup();
   }
 
   // Group 2: Oxygen enrichment
@@ -703,6 +708,7 @@ if (oxygenIsMeaningful || oxygenNotes) {
   if (highRisk.length) {
     drawSubhead('Higher-risk activities');
     drawFact('Activities', highRisk.map(titleCase).join(', '));
+    endGroup();
   }
 
   // Group 4: Context factors
@@ -715,6 +721,7 @@ if (oxygenIsMeaningful || oxygenNotes) {
     if (hk) drawFact('Housekeeping / fire load', titleCase(hk));
     if (arson) drawFact('Arson risk', titleCase(arson));
     if (lone) drawFact('Lone working', titleCase(lone));
+    endGroup();
   }
 
   // Group 5: Electrical safety (render shallowly unless you want deep mapping)
@@ -741,6 +748,7 @@ if (oxygenIsMeaningful || oxygenNotes) {
 }
       if (c1c2) drawFact('Outstanding C1/C2 defects', titleCase(c1c2));
       if (pat) drawFact('PAT testing in place', titleCase(pat));
+      endGroup();
     }
   }
 

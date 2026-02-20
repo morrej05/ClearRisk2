@@ -135,7 +135,7 @@ The renderer:
 
 ## Polish Improvements Applied
 
-### Visual Enhancements
+### Phase 1: Initial Polish
 1. **Divider Line** - Added professional divider after intro paragraph
    - Thickness: 0.7pt
    - Color: rgb(0.84, 0.86, 0.89) - light gray
@@ -157,6 +157,42 @@ The renderer:
    - Future-proof if intro becomes optional
    - Empty value check prevents rendering blank lines
 
+### Phase 2: Visual Consistency with Sections 2/3
+
+1. **Intro Text** - More authoritative and concise
+   - Before: "This section outlines the regulatory framework and duty holder responsibilities applicable to this fire risk assessment."
+   - After: "This section outlines the applicable regulatory framework and identifies the duty holder responsibilities relevant to this assessment."
+
+2. **Divider Positioning** - Exact match to Sections 2/3
+   - Divider now at `yPosition` directly (not offset by -6)
+   - Uses `ensureSpace(16, ...)` before divider
+   - 12pt spacing after divider (was 18pt)
+
+3. **Label Typography** - Standardized across all sections
+   - Font size: 10pt (was 9pt)
+   - Color: rgb(0.35, 0.35, 0.35) - darker (was 0.42)
+   - Font: Bold
+   - Now matches Sections 2/3 exactly
+
+4. **Field Labels** - More natural language
+   - "Standards Referenced" → "Standards & Guidance"
+   - More client-friendly terminology
+
+5. **Section Spacing** - Aligned rhythm
+   - End of section: 12pt (was 8pt)
+   - Consistent with Sections 2/3 vertical spacing
+
+## Design Consistency Benefits
+
+Section 4 now feels like a natural part of the document family:
+- **Typography** matches Sections 2/3 exactly (10pt bold labels, darker gray)
+- **Divider style** is pixel-perfect identical (0.7pt, same color, same positioning)
+- **Spacing rhythm** is harmonized (12pt throughout)
+- **Label language** is more natural and client-friendly
+- **Intro text** is more authoritative and professional
+
+This creates a cohesive, professionally designed document where all sections feel deliberately crafted as a unified system.
+
 ## Status
 ✅ Section 4 wiring fixed (moduleKeys set)
 ✅ Force-render protection added
@@ -168,5 +204,10 @@ The renderer:
 ✅ Professional divider line added
 ✅ Tightened spacing rhythm (12pt)
 ✅ Consistent value positioning (VALUE_X)
+✅ **Label typography standardized (10pt, darker color)**
+✅ **Divider positioning exact match to Sections 2/3**
+✅ **Intro text refined for authority**
+✅ **Field labels more natural ("Standards & Guidance")**
+✅ **Section spacing aligned (12pt throughout)**
 ✅ Diagnostic logging in place
 ✅ Build successful

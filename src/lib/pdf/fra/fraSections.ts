@@ -478,13 +478,13 @@ export function renderSection4Legislation(
       throw new Error('[PDF] drawGovernanceFact received invalid page');
     }
 
-    // Draw label
+    // Draw label (standardized to match Sections 2/3)
     p.drawText(`${label}:`, {
       x: MARGIN,
       y,
-      size: 9,
+      size: 10,
       font: fontBold,
-      color: rgb(0.42, 0.42, 0.42)
+      color: rgb(0.35, 0.35, 0.35)
     });
 
     // Wrap value text to remaining width after VALUE_X
@@ -510,8 +510,8 @@ export function renderSection4Legislation(
     return { page: p, yPosition: y };
   };
 
-  // Optional intro paragraph
-  const introPara = 'This section outlines the regulatory framework and duty holder responsibilities applicable to this fire risk assessment.';
+  // Intro paragraph - authoritative and concise
+  const introPara = 'This section outlines the applicable regulatory framework and identifies the duty holder responsibilities relevant to this assessment.';
 
   if (introPara.trim()) {
     ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
@@ -528,17 +528,15 @@ export function renderSection4Legislation(
       yPosition -= 14;
     }
 
-    // Divider line (match Sections 2/3)
-    const dividerY = yPosition - 6;
-    ({ page, yPosition } = ensureSpace(20, page, yPosition, pdfDoc, isDraft, totalPages));
+    // Divider line (exact match to Sections 2/3)
+    ({ page, yPosition } = ensureSpace(16, page, yPosition, pdfDoc, isDraft, totalPages));
     page.drawLine({
-      start: { x: MARGIN, y: dividerY },
-      end: { x: MARGIN + CONTENT_WIDTH, y: dividerY },
+      start: { x: MARGIN, y: yPosition },
+      end: { x: MARGIN + CONTENT_WIDTH, y: yPosition },
       thickness: 0.7,
       color: rgb(0.84, 0.86, 0.89),
     });
-
-    yPosition -= 18; // Space after divider before facts
+    yPosition -= 12; // Space after divider before facts
   }
 
   // Extract governance fields only
@@ -577,11 +575,11 @@ export function renderSection4Legislation(
   // Render governance facts (only these 4 fields)
   ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Responsible Person', responsiblePerson));
   ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Assessment Scope', scope));
-  ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Standards Referenced', standards));
+  ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Standards & Guidance', standards));
   ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Limitations & Assumptions', limitations));
 
-  // Add spacing after section
-  yPosition -= 8;
+  // Add spacing after section (aligned with Sections 2/3)
+  yPosition -= 12;
 
   return { page, yPosition };
 }

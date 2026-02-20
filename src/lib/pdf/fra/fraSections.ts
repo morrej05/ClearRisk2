@@ -21,6 +21,119 @@ import {
 import type { Cursor, Document, ModuleInstance } from './fraTypes';
 
 /**
+ * Section 1: Assessment Details (A1_DOC_CONTROL)
+ * Renders key assessment metadata in a compact format
+ */
+export function renderSection1AssessmentDetails(
+  cursor: Cursor,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): Cursor {
+  let { page, yPosition } = cursor;
+
+  const a1Module = sectionModules[0];
+
+  // Helper functions
+  const norm = (v: any) => sanitizePdfText(String(v ?? '')).trim();
+  const drawFact = (label: string, value: string) => {
+    if (!value) return; // Skip empty values
+    ({ page, yPosition } = ensureSpace(page, yPosition, 14, pdfDoc, isDraft, totalPages));
+    page.drawText(`${label}:`, {
+      x: MARGIN,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.42, 0.42, 0.42)
+    });
+    page.drawText(value, {
+      x: MARGIN + 140,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.18, 0.18, 0.18)
+    });
+    yPosition -= 12;
+  };
+
+  // Intro paragraph
+  const assessmentDate = document.assessment_date ? formatDate(document.assessment_date) : 'N/A';
+  const introPara = `This fire risk assessment was undertaken on ${assessmentDate}.`;
+
+  ({ page, yPosition } = ensureSpace(page, yPosition, 14, pdfDoc, isDraft, totalPages));
+  const introLines = wrapText(introPara, CONTENT_WIDTH, 10, font);
+  for (const line of introLines) {
+    ({ page, yPosition } = ensureSpace(page, yPosition, 14, pdfDoc, isDraft, totalPages));
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.18, 0.18, 0.18),
+    });
+    yPosition -= 14;
+  }
+
+  // Spacing before facts
+  yPosition -= 6;
+
+  // Extract data from A1 module and document
+  const data: any = a1Module?.data || {};
+
+  // Client and Site info
+  const clientName = norm(
+    document.meta?.client?.name ||
+    data.client?.name ||
+    data.clientName ||
+    document.responsible_person ||
+    ''
+  );
+
+  const siteName = norm(
+    document.meta?.site?.name ||
+    data.site?.name ||
+    data.siteName ||
+    ''
+  );
+
+  // Build address
+  const addressParts: string[] = [];
+  const addr = document.meta?.site?.address || data.site?.address || {};
+  if (addr.line1 || data.addressLine1) addressParts.push(norm(addr.line1 || data.addressLine1));
+  if (addr.line2 || data.addressLine2) addressParts.push(norm(addr.line2 || data.addressLine2));
+  if (addr.city || data.city) addressParts.push(norm(addr.city || data.city));
+  if (addr.county || data.county) addressParts.push(norm(addr.county || data.county));
+  if (addr.postcode || data.postcode) addressParts.push(norm(addr.postcode || data.postcode));
+  const address = addressParts.filter(Boolean).join(', ');
+
+  // Standards
+  const standards = Array.isArray(document.standards_selected) && document.standards_selected.length > 0
+    ? document.standards_selected.join(', ')
+    : '';
+
+  // Draw key facts
+  drawFact('Client', clientName);
+  drawFact('Site', siteName);
+  drawFact('Address', address);
+  drawFact('Assessment Date', assessmentDate);
+  drawFact('Assessor', norm(document.assessor_name || ''));
+  drawFact('Assessor Role', norm(document.assessor_role || ''));
+  drawFact('Responsible Person', norm(document.responsible_person || ''));
+  drawFact('Scope', norm(document.scope_description || ''));
+  drawFact('Standards', standards);
+  drawFact('Limitations', norm(document.limitations_assumptions || ''));
+
+  // Add some spacing after the section
+  yPosition -= 8;
+
+  return { page, yPosition };
+}
+
+/**
  * Section 2: Premises & General Information (A2_BUILDING_PROFILE)
  */
 export function renderSection2Premises(

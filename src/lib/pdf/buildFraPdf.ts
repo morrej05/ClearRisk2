@@ -89,6 +89,7 @@ import {
   drawCleanAuditPage1,
 } from './fra/fraCoreDraw';
 import {
+  renderSection1AssessmentDetails,
   renderSection2Premises,
   renderSection3Occupants,
   renderSection4Legislation,
@@ -404,9 +405,6 @@ drawTableOfContents(page, font, fontBold);
   const lowDensitySections: Array<{ section: any; modules: ModuleInstance[]; actions: any[] }> = [];
 
   for (const section of FRA_REPORT_STRUCTURE) {
-    // Skip cover pages
-    if (section.id === 1) continue;
-
     const sectionModules = moduleInstances.filter(m =>
       section.moduleKeys.includes(m.module_key)
     );
@@ -452,6 +450,7 @@ drawTableOfContents(page, font, fontBold);
 
   // Section renderer map for explicit delegation
   const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[]) => Cursor> = {
+    1: renderSection1AssessmentDetails,
     2: renderSection2Premises,
     3: renderSection3Occupants,
     4: renderSection4Legislation,
@@ -462,11 +461,8 @@ drawTableOfContents(page, font, fontBold);
     14: renderSection14Review,
   };
 
-  // Render sections 2-14 using the fixed structure with flowing layout
+  // Render sections 1-14 using the fixed structure with flowing layout
   for (const section of FRA_REPORT_STRUCTURE) {
-    // Skip section 1 (cover pages handled separately above)
-    if (section.id === 1) continue;
-
     // Skip sections that will be rendered compactly
     if (compactSectionIds.has(section.id)) {
       continue;

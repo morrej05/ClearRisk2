@@ -22,9 +22,9 @@ export interface PdfSection {
 export const FRA_REPORT_STRUCTURE: PdfSection[] = [
   {
     id: 1,
-    title: "Report Details & Assessor Information",
-    moduleKeys: [],
-    description: "Cover page, version control, assessor credentials"
+    title: "Assessment Details",
+    moduleKeys: ["A1_DOC_CONTROL"],
+    description: "Assessment metadata, client, site, assessor information"
   },
   {
     id: 2,
@@ -41,7 +41,7 @@ export const FRA_REPORT_STRUCTURE: PdfSection[] = [
   {
     id: 4,
     title: "Relevant Legislation & Duty Holder",
-    moduleKeys: ["A1_DOC_CONTROL"],
+    moduleKeys: [],
     description: "Regulatory framework, responsible person duties"
   },
   {

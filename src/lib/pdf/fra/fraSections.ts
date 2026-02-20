@@ -671,17 +671,21 @@ export function renderSection5FireHazards(
 
   // Group 2: Oxygen enrichment
   const oxygen = norm(d.oxygen_enrichment);
-  const oxygenNotes = norm(d.oxygen_sources_notes);
-    if (oxygen || oxygenNotes) {
-    // Avoid duplicated “Oxygen enrichment” heading + label when it's a single fact
-    if (oxygen && !oxygenNotes) {
-      drawFact('Oxygen enrichment', titleCase(oxygen));
-    } else {
-      drawSubhead('Oxygen enrichment');
-      if (oxygen) drawFact('Oxygen enrichment', titleCase(oxygen));
-      if (oxygenNotes) drawFact('Notes', oxygenNotes);
-    }
+const oxygenNotes = norm(d.oxygen_sources_notes);
+
+// Treat "none"/"no" as not reportable unless notes exist
+const oxygenIsMeaningful =
+  !!oxygen && !['none', 'no', 'n/a', 'na', 'not applicable'].includes(oxygen.toLowerCase());
+
+if (oxygenIsMeaningful || oxygenNotes) {
+  if (oxygenIsMeaningful && !oxygenNotes) {
+    drawFact('Oxygen enrichment', titleCase(oxygen));
+  } else {
+    drawSubhead('Oxygen enrichment');
+    if (oxygenIsMeaningful) drawFact('Oxygen enrichment', titleCase(oxygen));
+    if (oxygenNotes) drawFact('Notes', oxygenNotes);
   }
+}
 
   // Group 3: Higher-risk activities
   if (highRisk.length) {

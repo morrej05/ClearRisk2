@@ -535,6 +535,7 @@ if (section.id === 5) {
   console.log('[S5] modulesFound:', sectionModules.map(m => m.module_key));
   console.log('[S5] firstModuleId:', sectionModules[0]?.id);
   console.log('[S5] data:', sectionModules[0]?.data);
+  console.log('[S5] electrical_safety keys', Object.keys(d.electrical_safety || {}), d.electrical_safety);
   console.log('[S5] dataKeys:', Object.keys(sectionModules[0]?.data || {}));
 }
     // Draw section header

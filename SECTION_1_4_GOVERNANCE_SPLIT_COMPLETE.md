@@ -93,10 +93,49 @@ cursor = ensureCursor(cursor, pdfDoc, isDraft, totalPages);
    - A1 module with full governance fields populated
    - Draft vs issued PDFs
 
+## De-Duplication Implementation
+
+### Custom Section 4 Renderer
+**File:** `src/lib/pdf/fra/fraSections.ts`
+
+Replaced generic `drawModuleContent` call with custom renderer that shows **ONLY** governance fields:
+
+1. **Responsible Person** - Duty holder for fire safety
+2. **Assessment Scope** - What the assessment covers
+3. **Standards Referenced** - BS 9999, PAS 79, etc.
+4. **Limitations & Assumptions** - Assessment constraints
+
+The renderer:
+- ✅ Skips empty fields automatically
+- ✅ Wraps long text properly
+- ✅ Uses consistent fact list layout (label: value)
+- ✅ Includes introductory paragraph about regulatory framework
+- ✅ Uses ensureCursor for safety
+
+### What Section 4 NO LONGER Shows
+- ❌ Client name (Section 1 only)
+- ❌ Site name (Section 1 only)
+- ❌ Address (Section 1 only)
+- ❌ Assessment date (Section 1 only)
+- ❌ Assessor name/role (Section 1 only)
+- ❌ Any other A1 fields unrelated to governance
+
+## Result
+
+**Before:** Section 1 and Section 4 both showed all A1 fields (duplication)
+
+**After:**
+- Section 1: Quick ID facts (client, site, address, date, assessor)
+- Section 4: Governance only (responsible person, scope, standards, limitations)
+- Zero duplication
+
 ## Status
 ✅ Section 4 wiring fixed (moduleKeys set)
 ✅ Force-render protection added
 ✅ Section 1 slimmed to identification facts only
+✅ Section 4 custom renderer implemented (governance only)
+✅ De-duplication complete
 ✅ Safety guards added (ensureCursor)
+✅ Text wrapping for long fields
 ✅ Diagnostic logging in place
 ✅ Build successful

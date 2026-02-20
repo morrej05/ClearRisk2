@@ -437,6 +437,7 @@ console.log('[A3 DATA FULL]', data);
 
 /**
  * Section 4: Legislation & Duty Holder (A1_DOC_CONTROL)
+ * Renders ONLY governance fields to avoid duplication with Section 1
  */
 export function renderSection4Legislation(
   cursor: Cursor,
@@ -454,9 +455,119 @@ export function renderSection4Legislation(
 
   const a1Module = sectionModules.find(m => m.module_key === 'A1_DOC_CONTROL');
 
-  if (a1Module) {
-    ({ page, yPosition } = drawModuleContent({ page, yPosition }, a1Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A1_DOC_CONTROL']));
+  if (!a1Module) {
+    return { page, yPosition };
   }
+
+  const data: any = a1Module.data || {};
+  const norm = (v: any) => sanitizePdfText(String(v ?? '')).trim();
+
+  // Helper function to draw governance facts
+  const drawGovernanceFact = (c: Cursor, label: string, value: string): Cursor => {
+    if (!value) return c; // Skip empty values
+
+    let { page: p, yPosition: y } = c;
+
+    // Ensure space for the fact
+    ({ page: p, yPosition: y } = ensureSpace(14, p, y, pdfDoc, isDraft, totalPages));
+
+    // Validate page
+    if (!p || typeof (p as any).drawText !== 'function') {
+      throw new Error('[PDF] drawGovernanceFact received invalid page');
+    }
+
+    // Draw label
+    p.drawText(`${label}:`, {
+      x: MARGIN,
+      y,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.42, 0.42, 0.42)
+    });
+
+    // Wrap value text if needed
+    const valueLines = wrapText(value, CONTENT_WIDTH - 150, 10, font);
+
+    for (let i = 0; i < valueLines.length; i++) {
+      if (i > 0) {
+        // Need new line for wrapped text
+        y -= 12;
+        ({ page: p, yPosition: y } = ensureSpace(12, p, y, pdfDoc, isDraft, totalPages));
+      }
+
+      p.drawText(valueLines[i], {
+        x: MARGIN + 150,
+        y,
+        size: 10,
+        font,
+        color: rgb(0.18, 0.18, 0.18)
+      });
+    }
+
+    y -= 14; // Spacing after fact
+    return { page: p, yPosition: y };
+  };
+
+  // Optional intro paragraph
+  const introPara = 'This section outlines the regulatory framework and duty holder responsibilities applicable to this fire risk assessment.';
+
+  ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+  const introLines = wrapText(introPara, CONTENT_WIDTH, 10, font);
+  for (const line of introLines) {
+    ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+    page.drawText(line, {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.18, 0.18, 0.18),
+    });
+    yPosition -= 14;
+  }
+
+  yPosition -= 8; // Extra spacing before facts
+
+  // Extract governance fields only
+  const responsiblePerson = norm(
+    document.responsible_person ||
+    data.responsible_person ||
+    data.duty_holder ||
+    ''
+  );
+
+  const scope = norm(
+    document.scope_description ||
+    data.scope_description ||
+    data.scope ||
+    ''
+  );
+
+  // Build standards string
+  let standards = '';
+  if (Array.isArray(document.standards_selected) && document.standards_selected.length > 0) {
+    standards = document.standards_selected.join(', ');
+  } else if (Array.isArray(data.standards_selected) && data.standards_selected.length > 0) {
+    standards = data.standards_selected.join(', ');
+  } else if (Array.isArray(data.standards) && data.standards.length > 0) {
+    standards = data.standards.join(', ');
+  }
+  standards = norm(standards);
+
+  const limitations = norm(
+    document.limitations_assumptions ||
+    data.limitations_assumptions ||
+    data.limitations ||
+    ''
+  );
+
+  // Render governance facts (only these 4 fields)
+  ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Responsible Person', responsiblePerson));
+  ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Assessment Scope', scope));
+  ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Standards Referenced', standards));
+  ({ page, yPosition } = drawGovernanceFact({ page, yPosition }, 'Limitations & Assumptions', limitations));
+
+  // Add spacing after section
+  yPosition -= 8;
 
   return { page, yPosition };
 }

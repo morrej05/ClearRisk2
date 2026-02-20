@@ -618,6 +618,7 @@ drawTableOfContents(page, font, fontBold);
       }
     } else {
       // Use section renderer if available, otherwise fallback to generic rendering
+      console.log('Rendering section:', section.id);
       const renderer = SECTION_RENDERERS[section.id];
 
       if (renderer) {

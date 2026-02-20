@@ -639,6 +639,14 @@ drawTableOfContents(page, font, fontBold);
         // Generic section rendering for standard modules
         // Pass section.moduleKeys to prevent cross-section info gap bleed
         for (const module of sectionModules) {
+          console.log(
+  '[FRA] section',
+  section.id,
+  'moduleKeys=',
+  section.moduleKeys,
+  'modulesFound=',
+  sectionModules.map(m => m.module_key)
+);
           ({ page, yPosition } = drawModuleContent(
             { page, yPosition },
             module,
@@ -655,14 +663,7 @@ drawTableOfContents(page, font, fontBold);
       }
     }
   }
-console.log(
-  '[FRA] section',
-  section.id,
-  'moduleKeys=',
-  section.moduleKeys,
-  'modulesFound=',
-  sectionModules.map(m => m.module_key)
-);
+
   // Render low-density sections in compact format
   if (lowDensitySections.length > 0) {
     // Ensure space for compact section header

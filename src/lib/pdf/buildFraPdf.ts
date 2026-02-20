@@ -599,7 +599,7 @@ if (section.id === 5) {
             color: rgb(0.45, 0.45, 0.45),
           });
 
-          yPosition -= 20;
+          yPosition -= 16;
         }
 
         const keyPointsResult = drawKeyPointsBlock({

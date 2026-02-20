@@ -594,9 +594,9 @@ if (section.id === 5) {
           page.drawText(sanitizePdfText(evaluation.summary), {
             x: MARGIN,
             y: yPosition,
-            size: 10,
+            size: 9,
             font,
-            color: rgb(0.3, 0.3, 0.3),
+            color: rgb(0.45, 0.45, 0.45),
           });
 
           yPosition -= 20;

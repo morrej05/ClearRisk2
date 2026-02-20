@@ -40,24 +40,40 @@ export function renderSection1AssessmentDetails(
 
   // Helper functions
   const norm = (v: any) => sanitizePdfText(String(v ?? '')).trim();
-  const drawFact = (label: string, value: string) => {
-    if (!value) return; // Skip empty values
-    ({ page, yPosition } = ensureSpace(page, yPosition, 14, pdfDoc, isDraft, totalPages));
-    page.drawText(`${label}:`, {
+
+  const drawFact = (c: Cursor, label: string, value: string): Cursor => {
+    if (!value) return c; // Skip empty values
+
+    let { page: p, yPosition: y } = c;
+
+    // Ensure space and get potentially new page
+    ({ page: p, yPosition: y } = ensureSpace(p, y, 14, pdfDoc, isDraft, totalPages));
+
+    // Validate page has drawText
+    if (!p || typeof (p as any).drawText !== 'function') {
+      throw new Error('[PDF] drawFact received invalid page');
+    }
+
+    // Draw label
+    p.drawText(`${label}:`, {
       x: MARGIN,
-      y: yPosition,
+      y,
       size: 9,
       font: fontBold,
       color: rgb(0.42, 0.42, 0.42)
     });
-    page.drawText(value, {
+
+    // Draw value
+    p.drawText(value, {
       x: MARGIN + 140,
-      y: yPosition,
+      y,
       size: 10,
       font,
       color: rgb(0.18, 0.18, 0.18)
     });
-    yPosition -= 12;
+
+    y -= 12;
+    return { page: p, yPosition: y };
   };
 
   // Intro paragraph
@@ -115,17 +131,17 @@ export function renderSection1AssessmentDetails(
     ? document.standards_selected.join(', ')
     : '';
 
-  // Draw key facts
-  drawFact('Client', clientName);
-  drawFact('Site', siteName);
-  drawFact('Address', address);
-  drawFact('Assessment Date', assessmentDate);
-  drawFact('Assessor', norm(document.assessor_name || ''));
-  drawFact('Assessor Role', norm(document.assessor_role || ''));
-  drawFact('Responsible Person', norm(document.responsible_person || ''));
-  drawFact('Scope', norm(document.scope_description || ''));
-  drawFact('Standards', standards);
-  drawFact('Limitations', norm(document.limitations_assumptions || ''));
+  // Draw key facts - update cursor after each call
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Client', clientName));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Site', siteName));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Address', address));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Assessment Date', assessmentDate));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Assessor', norm(document.assessor_name || '')));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Assessor Role', norm(document.assessor_role || '')));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Responsible Person', norm(document.responsible_person || '')));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Scope', norm(document.scope_description || '')));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Standards', standards));
+  ({ page, yPosition } = drawFact({ page, yPosition }, 'Limitations', norm(document.limitations_assumptions || '')));
 
   // Add some spacing after the section
   yPosition -= 8;

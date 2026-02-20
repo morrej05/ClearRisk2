@@ -411,7 +411,10 @@ drawTableOfContents(page, font, fontBold);
     );
 
     // Skip empty sections
-    if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) continue;
+    if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) {
+  console.log('[FRA] skipping empty section', section.id);
+  continue;
+}
 
     const moduleIds = sectionModules.map(m => m.id);
     const sectionActions = actionsWithRefs

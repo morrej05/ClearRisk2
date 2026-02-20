@@ -37,8 +37,33 @@ export function renderSection2Premises(
 
   const a2Module = sectionModules[0];
 
-  if (a2Module?.data) {
-    const data = a2Module.data as any;
+  if (!a2Module) {
+    page.drawText('No Premises & General Information data captured (A2).', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    yPosition -= 14;
+    return { page, yPosition };
+  }
+
+  const data: any = (a2Module as any).data;
+
+  if (!data) {
+    page.drawText('Premises & General Information module has no data payload (A2).', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    yPosition -= 14;
+    return { page, yPosition };
+  }
+
+  if (data) {
 
     const norm = (v: any) => sanitizePdfText(String(v ?? '')).replace(/_/g, ' ').trim();
     const pushIf = (arr: string[], s?: string) => { if (s && s.trim()) arr.push(s.trim()); };
@@ -142,8 +167,33 @@ export function renderSection3Occupants(
 
   const a3Module = sectionModules[0];
 
-  if (a3Module?.data) {
-    const data = a3Module.data as any;
+  if (!a3Module) {
+    page.drawText('No Occupants & Vulnerability data captured (A3).', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    yPosition -= 14;
+    return { page, yPosition };
+  }
+
+  const data: any = (a3Module as any).data;
+
+  if (!data) {
+    page.drawText('Occupants & Vulnerability module has no data payload (A3).', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    yPosition -= 14;
+    return { page, yPosition };
+  }
+
+  if (data) {
 
     const norm = (v: any) => sanitizePdfText(String(v ?? '')).replace(/_/g, ' ').trim();
     const pushIf = (arr: string[], s?: string) => { if (s && s.trim()) arr.push(s.trim()); };

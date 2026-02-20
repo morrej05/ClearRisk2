@@ -40,108 +40,86 @@ export function renderSection2Premises(
   if (a2Module && a2Module.data) {
     const data = a2Module.data;
 
-    // Building-specific identity (only if differs from site)
-    const showBuildingDetails = data.building_name || data.has_building_address;
-    if (showBuildingDetails) {
-      page.drawText('Building Details', {
-        x: MARGIN,
-        y: yPosition,
-        size: 12,
-        font: fontBold,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      yPosition -= 18;
+    const norm = (v: any) => sanitizePdfText(String(v ?? '')).replace(/_/g, ' ').trim();
+    const pushIf = (arr: string[], s?: string) => { if (s && s.trim()) arr.push(s.trim()); };
 
-      if (data.building_name) {
-        page.drawText(`Building Name: ${sanitizePdfText(data.building_name)}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
+    const drawFact = (label: string, value: string) => {
+      page.drawText(`${label}:`, { x: MARGIN, y: yPosition, size: 9, font: fontBold, color: rgb(0.42, 0.42, 0.42) });
+      page.drawText(value, { x: MARGIN + 140, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
+      yPosition -= 14;
+    };
+
+    // Narrative
+    const sentences: string[] = [];
+
+    const buildingName = norm(data.building_name);
+    const buildingType = norm(data.building_type);
+    const storeysAG = data.storeys_above_ground ? String(data.storeys_above_ground) : '';
+    const storeysBG = data.storeys_below_ground ? String(data.storeys_below_ground) : '';
+    const gfa = data.gross_floor_area_m2 ? String(data.gross_floor_area_m2) : '';
+
+    if (buildingType || buildingName) {
+      pushIf(sentences, `The premises comprise ${buildingType || 'a'}${buildingName ? ` premises known as ${buildingName}` : ''}.`);
+    }
+
+    if (storeysAG || storeysBG) {
+      const parts: string[] = [];
+      if (storeysAG) parts.push(`${storeysAG} storey${storeysAG === '1' ? '' : 's'} above ground`);
+      if (storeysBG) parts.push(`${storeysBG} level${storeysBG === '1' ? '' : 's'} below ground`);
+      pushIf(sentences, `The building comprises ${parts.join(' and ')}.`);
+    }
+
+    if (gfa) {
+      pushIf(sentences, `The gross floor area is approximately ${gfa} m².`);
+    }
+
+    if (data.has_building_address && data.building_address) {
+      const addr = data.building_address;
+      const addressParts = [addr.line1, addr.line2, addr.city, addr.postcode].filter(Boolean).map(norm);
+      if (addressParts.length) pushIf(sentences, `The building address is recorded as ${addressParts.join(', ')}.`);
+    }
+
+    if (sentences.length) {
+      const narrative = sentences.join(' ');
+      const lines = wrapText(narrative, CONTENT_WIDTH, 11, font);
+      for (const line of lines) {
+        ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(line, { x: MARGIN, y: yPosition, size: 11, font, color: rgb(0.18, 0.18, 0.18) });
         yPosition -= 14;
       }
-
-      if (data.has_building_address && data.building_address) {
-        const addr = data.building_address;
-        const addressParts = [addr.line1, addr.line2, addr.city, addr.postcode].filter(Boolean);
-        if (addressParts.length > 0) {
-          page.drawText(`Building Address: ${addressParts.join(', ')}`, {
-            x: MARGIN + 10,
-            y: yPosition,
-            size: 10,
-            font,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-          yPosition -= 14;
-        }
-      }
-
       yPosition -= 10;
     }
 
-    // Physical characteristics
-    const hasPhysicalData = data.building_type || data.storeys_above_ground || data.storeys_below_ground || data.gross_floor_area_m2;
-    if (hasPhysicalData) {
-      page.drawText('Physical Characteristics', {
-        x: MARGIN,
-        y: yPosition,
-        size: 12,
-        font: fontBold,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      yPosition -= 18;
+    // Facts
+    const facts: Array<[string, string]> = [];
+    if (buildingType) facts.push(['Building use/type', buildingType]);
+    if (buildingName) facts.push(['Building name', buildingName]);
+    if (storeysAG) facts.push(['Storeys above ground', storeysAG]);
+    if (storeysBG) facts.push(['Storeys below ground', storeysBG]);
+    if (gfa) facts.push(['Gross floor area (m²)', gfa]);
 
-      if (data.building_type) {
-        page.drawText(`Building Type: ${sanitizePdfText(data.building_type)}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
-      }
-
-      if (data.storeys_above_ground) {
-        page.drawText(`Storeys Above Ground: ${data.storeys_above_ground}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
-      }
-
-      if (data.storeys_below_ground) {
-        page.drawText(`Storeys Below Ground: ${data.storeys_below_ground}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
-      }
-
-      if (data.gross_floor_area_m2) {
-        page.drawText(`Gross Floor Area: ${data.gross_floor_area_m2}m²`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
-      }
-
-      yPosition -= 10;
+    if (data.has_building_address && data.building_address) {
+      const addr = data.building_address;
+      const addressParts = [addr.line1, addr.line2, addr.city, addr.postcode].filter(Boolean).map(norm);
+      if (addressParts.length) facts.push(['Building address', addressParts.join(', ')]);
     }
 
-    // Render full module content (includes outcome, assessor notes, other fields)
-    ({ page, yPosition } = drawModuleContent({ page, yPosition }, a2Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A2_BUILDING_PROFILE']));
+    if (facts.length) {
+      ({ page, yPosition } = ensureSpace(16, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawLine({
+        start: { x: MARGIN, y: yPosition },
+        end: { x: MARGIN + CONTENT_WIDTH, y: yPosition },
+        thickness: 0.7,
+        color: rgb(0.84, 0.86, 0.89),
+      });
+      yPosition -= 12;
+
+      for (const [label, value] of facts) {
+        ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        drawFact(label, value);
+      }
+      yPosition -= 6;
+    }
   }
 
   return { page, yPosition };
@@ -167,111 +145,85 @@ export function renderSection3Occupants(
   if (a3Module && a3Module.data) {
     const data = a3Module.data;
 
-    // Occupancy profile - only render header if we have content
-    const hasOccupancyData = data.typical_occupancy_number || data.max_occupancy_number || data.occupancy_type;
+    const norm = (v: any) => sanitizePdfText(String(v ?? '')).replace(/_/g, ' ').trim();
+    const pushIf = (arr: string[], s?: string) => { if (s && s.trim()) arr.push(s.trim()); };
 
-    if (hasOccupancyData) {
-      page.drawText('Occupancy Profile', {
-        x: MARGIN,
-        y: yPosition,
-        size: 12,
-        font: fontBold,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      yPosition -= 18;
+    const drawFact = (label: string, value: string) => {
+      page.drawText(`${label}:`, { x: MARGIN, y: yPosition, size: 9, font: fontBold, color: rgb(0.42, 0.42, 0.42) });
+      page.drawText(value, { x: MARGIN + 140, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
+      yPosition -= 14;
+    };
 
-      if (data.typical_occupancy_number) {
-        page.drawText(`Typical Number of Occupants: ${data.typical_occupancy_number}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
-      }
+    const sentences: string[] = [];
 
-      if (data.max_occupancy_number) {
-        page.drawText(`Maximum Number of Occupants: ${data.max_occupancy_number}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
-      }
+    const typical = data.typical_occupancy_number ? String(data.typical_occupancy_number) : '';
+    const max = data.max_occupancy_number ? String(data.max_occupancy_number) : '';
+    const occType = norm(data.occupancy_type);
 
-      if (data.occupancy_type) {
-        page.drawText(`Occupancy Type: ${sanitizePdfText(data.occupancy_type)}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 14;
-      }
-
-      yPosition -= 10;
+    if (max || typical) {
+      const parts: string[] = [];
+      if (max) parts.push(`approximately ${max} persons at peak occupancy`);
+      if (typical) parts.push(`with a typical occupancy of ${typical}`);
+      pushIf(sentences, `The premises accommodate ${parts.join(', ')}.`);
     }
 
-    // Vulnerability factors - only render header if we have content
-    const hasVulnerabilityData = data.vulnerable_persons_present !== undefined ||
-                                  data.sleeping_accommodation !== undefined ||
-                                  data.lone_working !== undefined;
-
-    if (hasVulnerabilityData) {
-      page.drawText('Vulnerability & Special Considerations', {
-        x: MARGIN,
-        y: yPosition,
-        size: 12,
-        font: fontBold,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      yPosition -= 18;
+    if (occType) {
+      pushIf(sentences, `The primary occupancy type is ${occType}.`);
+    }
 
     if (data.vulnerable_persons_present !== undefined) {
-      const vulnerableText = data.vulnerable_persons_present ? 'Yes' : 'No';
-      page.drawText(`Vulnerable Persons Present: ${vulnerableText}`, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 14;
+      pushIf(sentences, data.vulnerable_persons_present
+        ? `Vulnerable persons are present within the premises.`
+        : `No vulnerable persons were identified as regularly present.`);
     }
 
     if (data.sleeping_accommodation !== undefined) {
-      const sleepingText = data.sleeping_accommodation ? 'Yes' : 'No';
-      page.drawText(`Sleeping Accommodation: ${sleepingText}`, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 14;
+      pushIf(sentences, data.sleeping_accommodation
+        ? `Sleeping accommodation is present.`
+        : `Sleeping accommodation is not present.`);
     }
 
-      if (data.lone_working !== undefined) {
-        const loneText = data.lone_working ? 'Yes' : 'No';
-        page.drawText(`Lone Working: ${loneText}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 10,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
+    if (data.lone_working !== undefined) {
+      pushIf(sentences, data.lone_working
+        ? `Lone working may occur.`
+        : `Lone working is not anticipated.`);
+    }
+
+    if (sentences.length) {
+      const narrative = sentences.join(' ');
+      const lines = wrapText(narrative, CONTENT_WIDTH, 11, font);
+      for (const line of lines) {
+        ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(line, { x: MARGIN, y: yPosition, size: 11, font, color: rgb(0.18, 0.18, 0.18) });
         yPosition -= 14;
       }
-
       yPosition -= 10;
     }
 
-    // Render full module content (includes outcome, assessor notes, other fields)
-    ({ page, yPosition } = drawModuleContent({ page, yPosition }, a3Module, document, font, fontBold, pdfDoc, isDraft, totalPages, undefined, ['A3_PERSONS_AT_RISK']));
+    const facts: Array<[string, string]> = [];
+    if (typical) facts.push(['Typical occupancy', typical]);
+    if (max) facts.push(['Maximum occupancy', max]);
+    if (occType) facts.push(['Occupancy type', occType]);
+    if (data.vulnerable_persons_present !== undefined) facts.push(['Vulnerable persons present', data.vulnerable_persons_present ? 'Yes' : 'No']);
+    if (data.sleeping_accommodation !== undefined) facts.push(['Sleeping accommodation', data.sleeping_accommodation ? 'Yes' : 'No']);
+    if (data.lone_working !== undefined) facts.push(['Lone working', data.lone_working ? 'Yes' : 'No']);
+
+    if (facts.length) {
+      ({ page, yPosition } = ensureSpace(16, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawLine({
+        start: { x: MARGIN, y: yPosition },
+        end: { x: MARGIN + CONTENT_WIDTH, y: yPosition },
+        thickness: 0.7,
+        color: rgb(0.84, 0.86, 0.89),
+      });
+      yPosition -= 12;
+
+      for (const [label, value] of facts) {
+        ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        drawFact(label, value);
+      }
+      yPosition -= 6;
+    }
   }
 
   return { page, yPosition };

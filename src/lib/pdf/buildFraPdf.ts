@@ -492,7 +492,11 @@ drawTableOfContents(page, font, fontBold);
       }));
 
     let keyPoints: string[] = [];
-
+    // FORCE: Section 2 (Scope) must never render as a full section
+    if (section.id === 2) {
+      lowDensitySections.push({ section, modules: sectionModules, actions: sectionActions });
+      continue;
+    }
     // Hard page breaks only for sections 13 and 14
     const needsHardPageBreak = section.id === 13 || section.id === 14;
     if (needsHardPageBreak) {

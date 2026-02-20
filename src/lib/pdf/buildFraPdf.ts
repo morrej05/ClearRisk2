@@ -428,10 +428,8 @@ drawTableOfContents(page, font, fontBold);
         priority_band: a.priority_band,
       }));
 
-    // Force Scope (Section 2) to compact ALWAYS
-    if (section.id === 2) {
-      compactSectionIds.add(2);
-      lowDensitySections.push({ section, modules: sectionModules, actions: sectionActions });
+    // Sections 2 & 3 must always render full (custom renderers)
+    if (section.id === 2 || section.id === 3) {
       continue;
     }
 
@@ -451,28 +449,6 @@ drawTableOfContents(page, font, fontBold);
   page = sectionStartResult.page;
   yPosition = PAGE_TOP_Y;
 
-  // FORCE RENDER: Sections 2 & 3 (Premises + Occupants) before main loop.
-  // Reason: main loop is currently skipping ids 2/3 (confirmed by runtime logs).
-  {
-    const section2 = FRA_REPORT_STRUCTURE.find(s => s.id === 2);
-    if (section2) {
-      const mods2 = moduleInstances.filter(m => section2.moduleKeys.includes(m.module_key));
-      const cur2: Cursor = { page, yPosition };
-      const out2 = renderSection2Premises(cur2, mods2, document, font, fontBold, pdfDoc, isDraft, totalPages);
-      page = out2.page;
-      yPosition = out2.yPosition;
-    }
-
-    const section3 = FRA_REPORT_STRUCTURE.find(s => s.id === 3);
-    if (section3) {
-      const mods3 = moduleInstances.filter(m => section3.moduleKeys.includes(m.module_key));
-      const cur3: Cursor = { page, yPosition };
-      const out3 = renderSection3Occupants(cur3, mods3, document, font, fontBold, pdfDoc, isDraft, totalPages);
-      page = out3.page;
-      yPosition = out3.yPosition;
-    }
-  }
-
   // Section renderer map for explicit delegation
   const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[]) => Cursor> = {
     2: renderSection2Premises,
@@ -490,9 +466,6 @@ drawTableOfContents(page, font, fontBold);
     // Skip section 1 (cover pages handled separately above)
     if (section.id === 1) continue;
 
-    // Skip sections 2 & 3 (already force-rendered above to prevent loop issues)
-    if (section.id === 2 || section.id === 3) continue;
-
     // Skip sections that will be rendered compactly
     if (compactSectionIds.has(section.id)) {
       continue;
@@ -502,6 +475,8 @@ drawTableOfContents(page, font, fontBold);
     const sectionModules = moduleInstances.filter(m =>
       section.moduleKeys.includes(m.module_key)
     );
+
+    console.log('[FRA] main', section.id, 'found', sectionModules.map(m => m.module_key));
 
     // Skip empty sections (except special sections that have custom logic)
     if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) {
@@ -724,25 +699,8 @@ drawTableOfContents(page, font, fontBold);
 
     // Render each low-density section compactly
     for (const { section, modules, actions: sectionActions } of lowDensitySections) {
-      // Special case: Section 2 (Scope) renders as single compact line
-      if (section.id === 2) {
-        // Check if we need a new page
-        const compactResult = ensureSpace(20, page, yPosition, pdfDoc, isDraft, totalPages);
-        page = compactResult.page;
-        yPosition = compactResult.yPosition;
-
-        // Single compact line for Scope
-        const scopeText = modules[0]?.assessor_notes?.trim() || 'No building description provided.';
-        page.drawText(`2. Scope: ${scopeText}`, {
-          x: MARGIN + 10,
-          y: yPosition,
-          size: 11,
-          font: fontBold,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        yPosition -= 16;
-        continue;
-      }
+      // Sections 2 & 3 must never render in compact mode (they have custom renderers)
+      if (section.id === 2 || section.id === 3) continue;
 
       // Check if we need a new page
       const compactResult = ensureSpace(40, page, yPosition, pdfDoc, isDraft, totalPages);

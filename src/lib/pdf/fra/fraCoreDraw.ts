@@ -338,7 +338,7 @@ export function drawModuleKeyDetails(
     }
     yPosition -= 2;
   }
-
+yPosition -= 16;
   return { page, yPosition };
 }
 
@@ -463,37 +463,36 @@ export function drawInfoGapQuickActions(input: {
 
   // Neutral callout - light border instead of warning banner
   // Draw subtle border box with correct height
-  const boxStartY = yPosition + 5;
-  page.drawRectangle({
+    page.drawRectangle({
     x: MARGIN,
-    y: yPosition - boxHeight + 10,
+    y: yPosition - boxHeight,
     width: CONTENT_WIDTH,
     height: boxHeight,
     borderColor: rgb(0.7, 0.7, 0.7),
     borderWidth: 1,
     color: rgb(0.98, 0.98, 0.98),
   });
+  const boxTopY = yPosition;
+  let boxCursorY = boxTopY - 8;
 
-  yPosition -= 3;
-
-  // Title section with neutral info icon
+    // Title section with neutral info icon
   page.drawText(sanitizePdfText('i'), {
-    x: MARGIN + 8,
-    y: yPosition,
-    size: 11,
-    font: fontBold,
-    color: rgb(0.5, 0.5, 0.5),
-  });
+  x: MARGIN + 8,
+  y: boxCursorY,
+  size: 11,
+  font: fontBold,
+  color: rgb(0.5, 0.5, 0.5),
+});
 
-  page.drawText(sanitizePdfText('Assessment notes (incomplete information)'), {
-    x: MARGIN + 25,
-    y: yPosition,
-    size: 11,
-    font: fontBold,
-    color: rgb(0.4, 0.4, 0.4),
-  });
+page.drawText(sanitizePdfText('Assessment notes (incomplete information)'), {
+  x: MARGIN + 25,
+  y: boxCursorY,
+  size: 11,
+  font: fontBold,
+  color: rgb(0.4, 0.4, 0.4),
+});
 
-  yPosition -= 25;
+boxCursorY -= 18;
 
   // Reasons - neutral styling
   if (detection.reasons.length > 0) {

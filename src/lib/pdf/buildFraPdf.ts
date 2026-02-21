@@ -588,7 +588,7 @@ if (section.id === 5) {
             yPosition = PAGE_TOP_Y;
           }
 
-          yPosition -= 15;
+          yPosition -= 8;
 
           // Draw summary line in italics
           page.drawText(sanitizePdfText(evaluation.summary), {
@@ -599,7 +599,7 @@ if (section.id === 5) {
             color: rgb(0.3, 0.3, 0.3),
           });
 
-          yPosition -= 20;
+          yPosition -= 10;
         }
 
         const keyPointsResult = drawKeyPointsBlock({

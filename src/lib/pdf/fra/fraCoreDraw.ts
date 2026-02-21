@@ -328,7 +328,7 @@ export function drawModuleKeyDetails(
         yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
-        x: MARGIN + 15,
+        x: MARGIN + 12,
         y: yPosition,
         size: 10,
         font,
@@ -338,7 +338,7 @@ export function drawModuleKeyDetails(
     }
     yPosition -= 2;
   }
-yPosition -= 16;
+yPosition -= 12;
   return { page, yPosition };
 }
 

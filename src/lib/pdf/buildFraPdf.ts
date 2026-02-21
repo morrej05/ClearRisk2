@@ -582,24 +582,26 @@ if (section.id === 5) {
           });
 
           // Ensure space for summary line
-          if (yPosition < MARGIN + 80) {
-            const result = addNewPage(pdfDoc, isDraft, totalPages);
-            page = result.page;
-            yPosition = PAGE_TOP_Y;
-          }
-
-          yPosition -= 8;
-
-          // Draw summary line in italics
-          page.drawText(sanitizePdfText(evaluation.summary), {
-            x: MARGIN,
-            y: yPosition,
-            size: 10,
-            font,
-            color: rgb(0.3, 0.3, 0.3),
-          });
-
-          yPosition -= 10;
+          // Ensure space for summary line
+            if (yPosition < MARGIN + 60) {
+              const result = addNewPage(pdfDoc, isDraft, totalPages);
+              page = result.page;
+              yPosition = PAGE_TOP_Y;
+            }
+            
+            // Tighter spacing above evaluation summary
+            yPosition -= 8;
+            
+            page.drawText(sanitizePdfText(evaluation.summary), {
+              x: MARGIN,
+              y: yPosition,
+              size: 10,
+              font,
+              color: rgb(0.3, 0.3, 0.3),
+            });
+            
+            // Tighter spacing before Key Points block
+            yPosition -= 10;
         }
 
         const keyPointsResult = drawKeyPointsBlock({

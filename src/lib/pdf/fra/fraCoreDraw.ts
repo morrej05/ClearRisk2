@@ -302,7 +302,7 @@ export function drawModuleKeyDetails(
     font: fontBold,
     color: rgb(0, 0, 0),
   });
-  yPosition -= 10;
+  yPosition -= 8;
 
   for (const [label, value] of filteredDetails) {
     if (yPosition < MARGIN + 50) {
@@ -812,7 +812,7 @@ if (module.outcome) {
     color: rgb(0.25, 0.25, 0.25),
   });
 
-  yPosition -= 18;
+  yPosition -= 24;
 }
   // Assessor notes
   if (module.assessor_notes && module.assessor_notes.trim()) {

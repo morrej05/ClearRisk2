@@ -302,7 +302,7 @@ export function drawModuleKeyDetails(
     font: fontBold,
     color: rgb(0, 0, 0),
   });
-  yPosition -= 16;
+  yPosition -= 20;
 
   for (const [label, value] of filteredDetails) {
     if (yPosition < MARGIN + 50) {
@@ -450,7 +450,7 @@ export function drawInfoGapQuickActions(input: {
   const lineHeight = 13;
   const headingHeight = 30;
   const paddingTop = 10;
-  const paddingBottom = 15;
+  const paddingBottom = 8;
   const quickActionsHeight = detection.quickActions.length > 0 ? 24 + (detection.quickActions.length * 52) : 0;
   const boxHeight = headingHeight + (totalReasonLines * lineHeight) + quickActionsHeight + paddingTop + paddingBottom;
 
@@ -593,7 +593,7 @@ if (detection.quickActions.length > 0) {
 }
 
 // Move main cursor below the box (ignore any drift)
-yPosition = boxBottomY - 12;
+yPosition = boxBottomY - 8;
 
 return { page, yPosition };
 }

@@ -57,7 +57,7 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
   if (!keyPoints?.length) return { page, yPosition };
 
   // Helper to normalize point text (strip leading bullet markers)
-  const normalizePoint = (s: string) =>
+  const point = normalizePoint(rawPoint);
     (s ?? '')
       .trim()
       .replace(/^(\*|-|•)\s+/, '');

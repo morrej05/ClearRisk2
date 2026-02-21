@@ -451,7 +451,7 @@ export function drawInfoGapQuickActions(input: {
   const headingHeight = 30;
   const paddingTop = 10;
   const paddingBottom = 8;
-  const quickActionsHeight = detection.quickActions.length > 0 ? 24 + (detection.quickActions.length * 52) : 0;
+  const quickActionsHeight = detection.quickActions.length > 0 ? 20 + (detection.quickActions.length * 38) : 0;
   const boxHeight = headingHeight + (totalReasonLines * lineHeight) + quickActionsHeight + paddingTop + paddingBottom;
 
   // Check if we need a new page (reduced threshold from 50 to 30 for tighter packing)

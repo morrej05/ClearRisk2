@@ -685,22 +685,26 @@ export function drawAssessorSummary(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  // Layout (tighter + predictable)
-  const PAD = 10;
+
+  const PAD = 12;
   const LABEL_SIZE = 9;
   const BODY_SIZE = 11;
-  const GAP_AFTER_LABEL = 5;
-  const LINE_H = 12;
-  const AFTER_BOX_GAP = 12;
+  const LINE_H = 13;
+  const GAP_AFTER_LABEL = 6;
+  const AFTER_BOX_GAP = 14;
 
-  // Wrap summary to fit inside padding
   const innerWidth = CONTENT_WIDTH - PAD * 2;
   const summaryLines = wrapText(summaryText, innerWidth, BODY_SIZE, font);
 
-  // Compute height (use font sizes as the driver)
-  const labelBlockH = LABEL_SIZE + 2;
-  const bodyBlockH = summaryLines.length * LINE_H;
-  const boxHeight = PAD + labelBlockH + GAP_AFTER_LABEL + bodyBlockH + PAD;
+  const labelHeight = LABEL_SIZE + 2;
+  const bodyHeight = summaryLines.length * LINE_H;
+
+  const boxHeight =
+    PAD +
+    labelHeight +
+    GAP_AFTER_LABEL +
+    bodyHeight +
+    PAD;
 
   // Page break check
   if (yPosition - boxHeight < MARGIN + 50) {
@@ -709,13 +713,13 @@ export function drawAssessorSummary(
     yPosition = PAGE_TOP_Y;
   }
 
-  // Draw box directly under current yPosition
-  const boxTopY = yPosition;
-  const boxY = boxTopY - boxHeight;
+  // Draw rectangle
+  const boxTop = yPosition;
+  const boxBottom = boxTop - boxHeight;
 
   page.drawRectangle({
     x: MARGIN,
-    y: boxY,
+    y: boxBottom,
     width: CONTENT_WIDTH,
     height: boxHeight,
     color: rgb(0.96, 0.97, 0.98),
@@ -723,8 +727,8 @@ export function drawAssessorSummary(
     borderWidth: 1,
   });
 
-  // Draw label + body INSIDE the box
-  let cursorY = boxTopY - PAD - labelBlockH;
+  // Position label INSIDE the box correctly
+  let cursorY = boxTop - PAD - LABEL_SIZE;
 
   page.drawText('Assessor Summary:', {
     x: MARGIN + PAD,
@@ -734,8 +738,9 @@ export function drawAssessorSummary(
     color: rgb(0.4, 0.4, 0.4),
   });
 
-  cursorY -= GAP_AFTER_LABEL;
+  cursorY -= GAP_AFTER_LABEL + 2;
 
+  // Draw summary lines below label
   for (const line of summaryLines) {
     page.drawText(line, {
       x: MARGIN + PAD,
@@ -747,8 +752,8 @@ export function drawAssessorSummary(
     cursorY -= LINE_H;
   }
 
-  // Move main cursor below box
-  yPosition = boxY - AFTER_BOX_GAP;
+  // Move main yPosition below box
+  yPosition = boxBottom - AFTER_BOX_GAP;
 
   return { page, yPosition };
 }

@@ -53,6 +53,9 @@ function ensureSpace(
  */
 export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPointsBlockResult {
   let { page, keyPoints, font, fontBold, yPosition, pdfDoc, isDraft, totalPages } = input;
+  // Remove any existing bullet markers from input strings
+const normalizePoint = (s: string) =>
+  (s ?? '').trim().replace(/^(\*|-|•)\s+/, '');
 
   if (!keyPoints?.length) return { page, yPosition };
 

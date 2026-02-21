@@ -302,7 +302,7 @@ export function drawModuleKeyDetails(
     font: fontBold,
     color: rgb(0, 0, 0),
   });
-  yPosition -= 20;
+  yPosition -= 24;
 
   for (const [label, value] of filteredDetails) {
     if (yPosition < MARGIN + 50) {

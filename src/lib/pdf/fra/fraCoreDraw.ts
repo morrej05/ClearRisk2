@@ -731,17 +731,21 @@ export function drawAssessorSummary(
   });
 
   // Position label INSIDE the box correctly
-  let cursorY = boxTop - PAD - LABEL_SIZE;
+  // Use a real label block height (not just font size) so body starts below it
+const LABEL_H = LABEL_SIZE + 3;
 
-  page.drawText('Assessor Summary:', {
-    x: MARGIN + PAD,
-    y: cursorY,
-    size: LABEL_SIZE,
-    font,
-    color: rgb(0.4, 0.4, 0.4),
-  });
+let cursorY = boxTop - PAD - LABEL_H;
 
-  cursorY -= GAP_AFTER_LABEL + 2;
+page.drawText('Assessor Summary:', {
+  x: MARGIN + PAD,
+  y: cursorY,
+  size: LABEL_SIZE,
+  font,
+  color: rgb(0.4, 0.4, 0.4),
+});
+
+// Move to first body line baseline (gap + one line height)
+cursorY -= (GAP_AFTER_LABEL + LINE_H);
 
   // Draw summary lines below label
   for (const line of summaryLines) {

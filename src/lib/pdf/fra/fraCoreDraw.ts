@@ -782,40 +782,38 @@ export function drawModuleContent(
 ): Cursor {
   let { page, yPosition } = cursor;
 
-  // Outcome badge
-  if (module.outcome) {
-    const outcomeLabel = getOutcomeLabel(module.outcome);
-    const outcomeColor = getOutcomeColor(module.outcome);
+ // Outcome badge
+if (module.outcome) {
+  const outcomeLabel = getOutcomeLabel(module.outcome);
 
-    page.drawText('Outcome:', {
-      x: MARGIN,
-      y: yPosition,
-      size: 11,
-      font: fontBold,
-      color: rgb(0, 0, 0),
-    });
+  page.drawText('Outcome:', {
+    x: MARGIN,
+    y: yPosition,
+    size: 11,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
 
-    page.drawRectangle({
-      x: MARGIN + 70,
-      y: yPosition - 4,
-      width: 140,
-      height: 14,
-      color: rgb(0.93, 0.93, 0.93),
-      borderColor: rgb(0.80, 0.80, 0.80),
-      borderWidth: 0.5,
-    });
-    
-    page.drawText(outcomeLabel, {
-      x: MARGIN + 76,
-      y: yPosition - 1,
-      size: 10,
-      font: fontBold,
-      color: rgb(0.25, 0.25, 0.25),
-    });
-    
-    yPosition -= 18;
-  }
+  page.drawRectangle({
+    x: MARGIN + 70,
+    y: yPosition - 4,
+    width: 140,
+    height: 14,
+    color: rgb(0.93, 0.93, 0.93),
+    borderColor: rgb(0.80, 0.80, 0.80),
+    borderWidth: 0.5,
+  });
 
+  page.drawText(outcomeLabel, {
+    x: MARGIN + 76,
+    y: yPosition - 1,
+    size: 10,
+    font: fontBold,
+    color: rgb(0.25, 0.25, 0.25),
+  });
+
+  yPosition -= 18;
+}
   // Assessor notes
   if (module.assessor_notes && module.assessor_notes.trim()) {
     page.drawText('Assessor Notes:', {

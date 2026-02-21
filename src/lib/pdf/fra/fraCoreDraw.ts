@@ -1141,7 +1141,7 @@ export function drawAssumptionsAndLimitations(
   }
 
   if (hasFra4Assumptions) {
-    if (yPosition < MARGIN + 100) {
+    if (yPosition < MARGIN + 60) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
       yPosition = PAGE_TOP_Y;

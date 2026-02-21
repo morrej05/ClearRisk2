@@ -686,6 +686,9 @@ export function drawAssessorSummary(
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
 
+  // DEBUG MARKER — REMOVE AFTER CONFIRMED
+  console.log('[PDF] drawAssessorSummary v2 (fraCoreDraw.ts)');
+
   const PAD = 12;
   const LABEL_SIZE = 9;
   const BODY_SIZE = 11;

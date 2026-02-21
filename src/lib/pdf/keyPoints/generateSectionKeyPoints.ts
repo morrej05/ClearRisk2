@@ -303,5 +303,13 @@ export function generateSectionEvaluation(input: GenerateKeyPointsInput): Sectio
 export function generateSectionKeyPoints(input: GenerateKeyPointsInput): string[] {
   // Use new function internally, then project to string[]
   const fired = generateFiredSentences(input);
-  return fired.map(s => s.text);
+  const points = fired.map(s => s.text);
+
+  // Safety: ensure no leading bullet markers remain
+  return points.map(p =>
+    (p ?? '')
+      .toString()
+      .trim()
+      .replace(/^([•\-\*\u2022\u25CF\u25A0\u25AA]+)\s+/, '')
+  );
 }

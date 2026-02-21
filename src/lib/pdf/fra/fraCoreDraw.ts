@@ -525,7 +525,7 @@ boxCursorY -= 18;
           font,
           color: rgb(0.4, 0.4, 0.4),
         });
-        yPosition -= 13;
+        boxCursorY -= 13;
       }
     }
     yPosition -= 10;
@@ -609,10 +609,10 @@ boxCursorY -= 18;
           font,
           color: rgb(0.4, 0.4, 0.4),
         });
-        yPosition -= 13;
+        boxCursorY -= 13;
       }
 
-      yPosition -= 10;
+      boxCursorY -= 10;
     }
 
     // Tip at the bottom
@@ -845,7 +845,7 @@ if (module.outcome) {
       });
       yPosition -= 12;
     }
-    yPosition -= 10;
+    boxCursorY -= 10;
   }
 
   // Module data

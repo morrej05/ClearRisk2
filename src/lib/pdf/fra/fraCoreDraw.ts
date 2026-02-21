@@ -685,26 +685,33 @@ export function drawAssessorSummary(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
+  // --- Layout constants (tight + consistent) ---
+  const PAD = 12;
+  const INNER_GAP = 6;
+  const LABEL_SIZE = 9;
+  const BODY_SIZE = 11;
+  const LINE_H = 13;         // tighter than 16
+  const LABEL_H = 11;        // approx. height for size 9
+  const AFTER_GAP = 14;
+
   // Wrap summary text
-  const summaryLines = wrapText(summaryText, CONTENT_WIDTH - 40, 11, font);
+  const summaryLines = wrapText(summaryText, CONTENT_WIDTH - 2 * (PAD + 3), BODY_SIZE, font);
 
-  // Calculate box height needed for summary only
-  const lineHeight = 16;
-  const boxPadding = 15;
+  // Compute total box height (label + gap + body + padding)
+  const bodyHeight = summaryLines.length * LINE_H;
+  const boxHeight = PAD + LABEL_H + INNER_GAP + bodyHeight + PAD;
 
-  // Height for summary text only
-  const totalHeight = summaryLines.length * lineHeight;
-  const boxHeight = totalHeight + (boxPadding * 2);
-
-  // Check if we need a new page
+  // Page break check
   if (yPosition - boxHeight < MARGIN + 50) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
     yPosition = PAGE_TOP_Y;
   }
 
-  // Draw light background box
-  const boxY = yPosition - boxHeight + boxPadding;
+  // Draw box: anchor it directly below yPosition
+  const boxTopY = yPosition;
+  const boxY = boxTopY - boxHeight;
+
   page.drawRectangle({
     x: MARGIN,
     y: boxY,
@@ -715,32 +722,34 @@ export function drawAssessorSummary(
     borderWidth: 1,
   });
 
-  // Draw "Assessor Summary" label in smaller bold text
-  yPosition -= boxPadding + 2;
+  // Cursor inside the box
+  let cursorY = boxTopY - PAD - LABEL_H;
+
+  // Label
   page.drawText('Assessor Summary:', {
-    x: MARGIN + 15,
-    y: yPosition,
-    size: 9,
+    x: MARGIN + PAD,
+    y: cursorY,
+    size: LABEL_SIZE,
     font,
     color: rgb(0.4, 0.4, 0.4),
   });
 
-  yPosition -= 16;
+  cursorY -= INNER_GAP + 2;
 
-  // Draw summary text lines
+  // Body text
   for (const line of summaryLines) {
     page.drawText(line, {
-      x: MARGIN + 15,
-      y: yPosition,
-      size: 11,
+      x: MARGIN + PAD,
+      y: cursorY,
+      size: BODY_SIZE,
       font,
       color: rgb(0.15, 0.15, 0.15),
     });
-    yPosition -= lineHeight;
+    cursorY -= LINE_H;
   }
 
-  yPosition -= boxPadding;
-  yPosition -= 10; // Extra space after summary box
+  // Move main yPosition to just below the box
+  yPosition = boxY - AFTER_GAP;
 
   return { page, yPosition };
 }

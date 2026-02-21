@@ -450,7 +450,7 @@ export function drawInfoGapQuickActions(input: {
   const lineHeight = 13;
   const headingHeight = 30;
   const paddingTop = 10;
-  const paddingBottom = 8;
+  const paddingBottom = 6;
   const quickActionsHeight = detection.quickActions.length > 0 ? 20 + (detection.quickActions.length * 38) : 0;
   const boxHeight = headingHeight + (totalReasonLines * lineHeight) + quickActionsHeight + paddingTop + paddingBottom;
 

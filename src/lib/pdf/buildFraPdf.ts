@@ -1241,14 +1241,6 @@ function drawExecutiveSummary(
     SatisfactoryWithImprovements: 'SATISFACTORY WITH IMPROVEMENTS',
   };
 
-  const outcomeColors: Record<FraExecutiveOutcome, ReturnType<typeof rgb>> = {
-    MaterialLifeSafetyRiskPresent: rgb(0.7, 0, 0),
-    SignificantDeficiencies: rgb(0.8, 0.3, 0),
-    ImprovementsRequired: rgb(0.9, 0.6, 0),
-    SatisfactoryWithImprovements: rgb(0.2, 0.6, 0.2),
-  };
-
-  const outcomeLabel = outcomeLabels[outcome];
   const outcomeColor = outcomeColors[outcome];
 
   page.drawText('Overall Fire Safety Assessment:', {

@@ -319,7 +319,7 @@ export function drawModuleKeyDetails(
       color: rgb(0.3, 0.3, 0.3),
     });
 
-    yPosition -= 14;
+    yPosition -= 24;
     const valueLines = wrapText(value, CONTENT_WIDTH - 30, 10, font);
     for (const line of valueLines) {
       if (yPosition < MARGIN + 50) {

@@ -452,8 +452,8 @@ export function drawInfoGapQuickActions(input: {
   const quickActionsHeight = detection.quickActions.length > 0 ? 30 + (detection.quickActions.length * 18) : 0;
   const boxHeight = headingHeight + (totalReasonLines * lineHeight) + quickActionsHeight + paddingTop + paddingBottom;
 
-  // Check if we need a new page
-  if (yPosition < MARGIN + boxHeight + 50) {
+  // Check if we need a new page (reduced threshold from 50 to 30 for tighter packing)
+  if (yPosition < MARGIN + boxHeight + 30) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
     yPosition = PAGE_TOP_Y;
@@ -781,6 +781,11 @@ export function drawModuleContent(
   expectedModuleKeys?: string[]
 ): Cursor {
   let { page, yPosition } = cursor;
+
+  // Debug marker for Section 6 (FRA_2_ESCAPE_ASIS)
+  if (module.module_key === 'FRA_2_ESCAPE_ASIS') {
+    console.log('[PDF] S6 spacing patch applied');
+  }
 
  // Outcome badge
 if (module.outcome) {

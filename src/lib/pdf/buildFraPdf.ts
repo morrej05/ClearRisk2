@@ -1927,23 +1927,28 @@ function drawModuleSummary(
       font: fontBold,
       color: rgb(0, 0, 0),
     });
-
+    
+    // Light tag (not a slab)
     page.drawRectangle({
       x: MARGIN + 70,
-      y: yPosition - 3,
+      y: yPosition - 4,
       width: 140,
-      height: 18,
-      color: outcomeColor,
+      height: 14,
+      color: rgb(0.93, 0.93, 0.93),
+      borderColor: rgb(0.80, 0.80, 0.80),
+      borderWidth: 0.5,
     });
+    
     page.drawText(outcomeLabel, {
-      x: MARGIN + 75,
-      y: yPosition,
+      x: MARGIN + 76,
+      y: yPosition - 1,
       size: 10,
-      font,
-      color: rgb(1, 1, 1),
+      font: fontBold,
+      color: rgb(0.25, 0.25, 0.25),
     });
-
-    yPosition -= 25;
+    
+    // Tighter spacing after outcome
+    yPosition -= 18;
   }
 
   if (module.assessor_notes && module.assessor_notes.trim()) {

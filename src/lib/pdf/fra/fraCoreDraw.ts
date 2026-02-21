@@ -336,7 +336,7 @@ export function drawModuleKeyDetails(
       });
       yPosition -= 10;
     }
-    yPosition -= 3;
+    yPosition -= 2;
   }
 
   return { page, yPosition };
@@ -414,7 +414,7 @@ export function drawInfoGapQuickActions(input: {
         yPosition = PAGE_TOP_Y;
       }
 
-      yPosition -= 20;
+      yPosition -= 12;
 
       page.drawText(sanitizePdfText('i'), {
         x: MARGIN + 8,

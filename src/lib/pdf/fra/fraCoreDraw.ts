@@ -334,7 +334,7 @@ export function drawModuleKeyDetails(
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      yPosition -= 6;
+      yPosition -= 10;
     }
     yPosition -= 2;
   }

@@ -685,21 +685,22 @@ export function drawAssessorSummary(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  // --- Layout constants (tight + consistent) ---
-  const PAD = 12;
-  const INNER_GAP = 6;
+  // Layout (tighter + predictable)
+  const PAD = 10;
   const LABEL_SIZE = 9;
   const BODY_SIZE = 11;
-  const LINE_H = 13;         // tighter than 16
-  const LABEL_H = 11;        // approx. height for size 9
-  const AFTER_GAP = 14;
+  const GAP_AFTER_LABEL = 5;
+  const LINE_H = 12;
+  const AFTER_BOX_GAP = 12;
 
-  // Wrap summary text
-  const summaryLines = wrapText(summaryText, CONTENT_WIDTH - 2 * (PAD + 3), BODY_SIZE, font);
+  // Wrap summary to fit inside padding
+  const innerWidth = CONTENT_WIDTH - PAD * 2;
+  const summaryLines = wrapText(summaryText, innerWidth, BODY_SIZE, font);
 
-  // Compute total box height (label + gap + body + padding)
-  const bodyHeight = summaryLines.length * LINE_H;
-  const boxHeight = PAD + LABEL_H + INNER_GAP + bodyHeight + PAD;
+  // Compute height (use font sizes as the driver)
+  const labelBlockH = LABEL_SIZE + 2;
+  const bodyBlockH = summaryLines.length * LINE_H;
+  const boxHeight = PAD + labelBlockH + GAP_AFTER_LABEL + bodyBlockH + PAD;
 
   // Page break check
   if (yPosition - boxHeight < MARGIN + 50) {
@@ -708,7 +709,7 @@ export function drawAssessorSummary(
     yPosition = PAGE_TOP_Y;
   }
 
-  // Draw box: anchor it directly below yPosition
+  // Draw box directly under current yPosition
   const boxTopY = yPosition;
   const boxY = boxTopY - boxHeight;
 
@@ -722,10 +723,9 @@ export function drawAssessorSummary(
     borderWidth: 1,
   });
 
-  // Cursor inside the box
-  let cursorY = boxTopY - PAD - LABEL_H;
+  // Draw label + body INSIDE the box
+  let cursorY = boxTopY - PAD - labelBlockH;
 
-  // Label
   page.drawText('Assessor Summary:', {
     x: MARGIN + PAD,
     y: cursorY,
@@ -734,9 +734,8 @@ export function drawAssessorSummary(
     color: rgb(0.4, 0.4, 0.4),
   });
 
-  cursorY -= INNER_GAP + 2;
+  cursorY -= GAP_AFTER_LABEL;
 
-  // Body text
   for (const line of summaryLines) {
     page.drawText(line, {
       x: MARGIN + PAD,
@@ -748,8 +747,8 @@ export function drawAssessorSummary(
     cursorY -= LINE_H;
   }
 
-  // Move main yPosition to just below the box
-  yPosition = boxY - AFTER_GAP;
+  // Move main cursor below box
+  yPosition = boxY - AFTER_BOX_GAP;
 
   return { page, yPosition };
 }

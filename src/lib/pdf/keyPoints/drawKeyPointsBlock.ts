@@ -56,13 +56,19 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
 
   if (!keyPoints?.length) return { page, yPosition };
 
+  // Helper to normalize point text (strip leading bullet markers)
+  const normalizePoint = (s: string) =>
+    (s ?? '')
+      .trim()
+      .replace(/^(\*|-|•)\s+/, '');
+
   // Typography + spacing constants (tuned for compact, premium feel)
   const headingSize = 10.5;
   const bulletSize = 10;
-  const lineGap = 13;          // line height
-  const blockTopGap = 10;      // space before heading
-  const headingGap = 8;        // space after heading
-  const bulletGap = 3;         // space between bullets
+  const lineGap = 12;          // line height
+  const blockTopGap = 4;       // space before heading
+  const headingGap = 6;        // space after heading
+  const bulletGap = 2;         // space between bullets
 
   const bulletIndentX = MARGIN + 8;
   const textIndentX = MARGIN + 20;
@@ -87,7 +93,7 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
 
   // Bullets
   for (const rawPoint of keyPoints) {
-    const point = (rawPoint ?? '').trim();
+    const point = normalizePoint(rawPoint);
     if (!point) continue;
 
     // Wrap to available width; keep wrap params consistent with font size

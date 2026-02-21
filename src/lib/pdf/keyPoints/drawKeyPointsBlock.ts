@@ -89,7 +89,7 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
 
   // Bullets
   for (const rawPoint of keyPoints) {
-    const point = normalizePoint(rawPoint);
+        const point = normalizePoint(String(rawPoint ?? ''));
     if (!point) continue;
 
     // Wrap to available width; keep wrap params consistent with font size

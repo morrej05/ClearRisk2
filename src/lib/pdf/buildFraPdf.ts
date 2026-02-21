@@ -582,7 +582,6 @@ if (section.id === 5) {
           });
 
           // Ensure space for summary line
-          // Ensure space for summary line
             if (yPosition < MARGIN + 60) {
               const result = addNewPage(pdfDoc, isDraft, totalPages);
               page = result.page;

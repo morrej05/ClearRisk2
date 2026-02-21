@@ -600,8 +600,12 @@ if (section.id === 5) {
               color: rgb(0.3, 0.3, 0.3),
             });
             
-            // Tighter spacing before Key Points block
+            // Space before Key Points block (only if we're about to render them)
+          if (keyPoints.length > 0) {
             yPosition -= 22;
+          } else {
+            yPosition -= 8; // small separation when no bullets follow
+          }
         }
 
         const keyPointsResult = drawKeyPointsBlock({

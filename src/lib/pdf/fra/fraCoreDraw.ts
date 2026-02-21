@@ -358,6 +358,8 @@ export function drawInfoGapQuickActions(input: {
   keyPoints?: string[];
   expectedModuleKeys?: string[];
 }): { page: PDFPage; yPosition: number } {
+  console.log('[PDF] drawInfoGapQuickActions CLEAN VERSION');
+
   let { page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints, expectedModuleKeys } = input;
 
   // TEMP SAFETY (keep): if page is missing, bail so preview doesn't hard-crash
@@ -594,88 +596,6 @@ if (detection.quickActions.length > 0) {
 yPosition = boxBottomY - 12;
 
 return { page, yPosition };
-      // Priority badge
-      const priorityColor = quickAction.priority === 'P2' ? rgb(0.9, 0.5, 0.13) : rgb(0.85, 0.65, 0.13);
-      page.drawRectangle({
-        x: MARGIN + 10,
-        y: yPosition - 3,
-        width: 25,
-        height: 14,
-        color: priorityColor,
-      });
-      page.drawText(quickAction.priority, {
-        x: MARGIN + 13,
-        y: yPosition,
-        size: 8,
-        font: fontBold,
-        color: rgb(1, 1, 1),
-      });
-
-      yPosition -= 18;
-
-      // Action text
-      const actionLines = wrapText(quickAction.action, CONTENT_WIDTH - 30, 10, font);
-      for (const line of actionLines) {
-        if (yPosition < MARGIN + 50) {
-          const result = addNewPage(pdfDoc, isDraft, totalPages);
-          page = result.page;
-          yPosition = PAGE_TOP_Y;
-        }
-        page.drawText(line, {
-          x: MARGIN + 15,
-          y: yPosition,
-          size: 10,
-          font: fontBold,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        yPosition -= 10;
-      }
-
-      // Reason (why)
-      const reasonText = `Why: ${quickAction.reason}`;
-      const reasonLines = wrapText(reasonText, CONTENT_WIDTH - 30, 9, font);
-      for (const line of reasonLines) {
-        if (yPosition < MARGIN + 50) {
-          const result = addNewPage(pdfDoc, isDraft, totalPages);
-          page = result.page;
-          yPosition = PAGE_TOP_Y;
-        }
-        page.drawText(line, {
-          x: MARGIN + 15,
-          y: yPosition,
-          size: 9,
-          font,
-          color: rgb(0.4, 0.4, 0.4),
-        });
-        boxCursorY -= 13;
-      }
-
-      boxCursorY -= 10;
-    }
-
-    // Tip at the bottom
-    yPosition -= 5;
-    const tipText = 'Tip: Address these information gaps to improve assessment completeness and reduce risk uncertainty.';
-    const tipLines = wrapText(tipText, CONTENT_WIDTH - 20, 8, font);
-    for (const line of tipLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
-      page.drawText(line, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 8,
-        font,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-      yPosition -= 12;
-    }
-  }
-
-  yPosition -= 15;
-  return { page, yPosition };
 }
 
 /**
@@ -883,7 +803,7 @@ if (module.outcome) {
       });
       yPosition -= 12;
     }
-    boxCursorY -= 10;
+    yPosition -= 10;
   }
 
   // Module data

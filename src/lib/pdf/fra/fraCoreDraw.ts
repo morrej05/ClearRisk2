@@ -459,26 +459,31 @@ export function drawInfoGapQuickActions(input: {
     yPosition = PAGE_TOP_Y;
   }
 
-  yPosition -= 20;
+  // --- INFO GAP BOX (single-cursor, self-contained) ---
+yPosition -= 12;
 
-  // Neutral callout - light border instead of warning banner
-  // Draw subtle border box with correct height
-    page.drawRectangle({
-    x: MARGIN,
-    y: yPosition - boxHeight,
-    width: CONTENT_WIDTH,
-    height: boxHeight,
-    borderColor: rgb(0.7, 0.7, 0.7),
-    borderWidth: 1,
-    color: rgb(0.98, 0.98, 0.98),
-  });
-  const boxTopY = yPosition;
-  let boxCursorY = boxTopY - 8;
+// Box geometry
+const boxTopY = yPosition;
+const boxBottomY = boxTopY - boxHeight;
 
-    // Title section with neutral info icon
-  page.drawText(sanitizePdfText('i'), {
+// Draw container
+page.drawRectangle({
+  x: MARGIN,
+  y: boxBottomY,
+  width: CONTENT_WIDTH,
+  height: boxHeight,
+  borderColor: rgb(0.7, 0.7, 0.7),
+  borderWidth: 1,
+  color: rgb(0.98, 0.98, 0.98),
+});
+
+// Inner cursor
+let boxY = boxTopY - 12;
+
+// Title row
+page.drawText(sanitizePdfText('i'), {
   x: MARGIN + 8,
-  y: boxCursorY,
+  y: boxY,
   size: 11,
   font: fontBold,
   color: rgb(0.5, 0.5, 0.5),
@@ -486,76 +491,109 @@ export function drawInfoGapQuickActions(input: {
 
 page.drawText(sanitizePdfText('Assessment notes (incomplete information)'), {
   x: MARGIN + 25,
-  y: boxCursorY,
+  y: boxY,
   size: 11,
   font: fontBold,
   color: rgb(0.4, 0.4, 0.4),
 });
 
-boxCursorY -= 18;
+boxY -= 18;
 
-  // Reasons - neutral styling
-  if (detection.reasons.length > 0) {
-    for (const reason of detection.reasons) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
+// Reasons
+for (const reason of detection.reasons) {
+  page.drawText(sanitizePdfText('•'), {
+    x: MARGIN + 8,
+    y: boxY,
+    size: 10,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
 
-      page.drawText(sanitizePdfText('•'), {
-        x: MARGIN + 8,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-
-      const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
-      for (const line of reasonLines) {
-        if (yPosition < MARGIN + 50) {
-          const result = addNewPage(pdfDoc, isDraft, totalPages);
-          page = result.page;
-          yPosition = PAGE_TOP_Y;
-        }
-        page.drawText(line, {
-          x: MARGIN + 18,
-          y: yPosition,
-          size: 9,
-          font,
-          color: rgb(0.4, 0.4, 0.4),
-        });
-        boxCursorY -= 13;
-      }
-    }
-    yPosition -= 10;
-  }
-
-  // Quick Actions - neutral styling
-  if (detection.quickActions.length > 0) {
-    if (yPosition < MARGIN + 100) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
-
-    page.drawText('Recommended actions:', {
-      x: MARGIN + 8,
-      y: yPosition,
-      size: 10,
-      font: fontBold,
+  const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
+  for (const line of reasonLines) {
+    page.drawText(line, {
+      x: MARGIN + 18,
+      y: boxY,
+      size: 9,
+      font,
       color: rgb(0.4, 0.4, 0.4),
     });
+    boxY -= 12;
+  }
+  boxY -= 4;
+}
 
-    yPosition -= 20;
+boxY -= 6;
 
-    for (const quickAction of detection.quickActions) {
-      if (yPosition < MARGIN + 100) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
+// Recommended actions
+if (detection.quickActions.length > 0) {
+  page.drawText('Recommended actions:', {
+    x: MARGIN + 8,
+    y: boxY,
+    size: 10,
+    font: fontBold,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+
+  boxY -= 16;
+
+  for (const quickAction of detection.quickActions) {
+    const priorityColor =
+      quickAction.priority === 'P2' ? rgb(0.9, 0.5, 0.13) : rgb(0.85, 0.65, 0.13);
+
+    // badge
+    page.drawRectangle({
+      x: MARGIN + 10,
+      y: boxY - 2,
+      width: 25,
+      height: 12,
+      color: priorityColor,
+    });
+
+    page.drawText(quickAction.priority, {
+      x: MARGIN + 14,
+      y: boxY,
+      size: 8.5,
+      font: fontBold,
+      color: rgb(1, 1, 1),
+    });
+
+    // title
+    const titleLines = wrapText(quickAction.title, CONTENT_WIDTH - 55, 9.5, fontBold);
+    for (const line of titleLines) {
+      page.drawText(line, {
+        x: MARGIN + 42,
+        y: boxY,
+        size: 9.5,
+        font: fontBold,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      boxY -= 12;
+    }
+
+    // why (small)
+    if (quickAction.why) {
+      const whyLines = wrapText(`Why: ${quickAction.why}`, CONTENT_WIDTH - 55, 8.5, font);
+      for (const line of whyLines) {
+        page.drawText(line, {
+          x: MARGIN + 42,
+          y: boxY,
+          size: 8.5,
+          font,
+          color: rgb(0.35, 0.35, 0.35),
+        });
+        boxY -= 11;
       }
+    }
 
+    boxY -= 6;
+  }
+}
+
+// Move main cursor below the box (ignore any drift)
+yPosition = boxBottomY - 12;
+
+return { page, yPosition };
       // Priority badge
       const priorityColor = quickAction.priority === 'P2' ? rgb(0.9, 0.5, 0.13) : rgb(0.85, 0.65, 0.13);
       page.drawRectangle({

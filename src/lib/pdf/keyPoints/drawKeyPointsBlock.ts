@@ -55,7 +55,11 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
   let { page, keyPoints, font, fontBold, yPosition, pdfDoc, isDraft, totalPages } = input;
     // Remove any existing bullet markers from input strings
   const normalizePoint = (s: string) =>
-    (s ?? '').trim().replace(/^(\*|-|•)\s+/, '');
+  (s ?? '')
+    .toString()
+    .trim()
+    // strip common bullets including weird PDF substitutions
+    .replace(/^([•\u2022\u25CF\u25A0\u25AA\-\*\u00B7]+)\s+/, '');
 
   if (!keyPoints?.length) return { page, yPosition };
   // Typography + spacing constants (tuned for compact, premium feel)

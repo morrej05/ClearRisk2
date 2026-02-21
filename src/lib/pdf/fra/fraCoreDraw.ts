@@ -336,7 +336,7 @@ export function drawModuleKeyDetails(
       });
       yPosition -= 12;
     }
-    yPosition -= 5;
+    yPosition -= 3;
   }
 
   return { page, yPosition };
@@ -474,7 +474,7 @@ export function drawInfoGapQuickActions(input: {
     color: rgb(0.98, 0.98, 0.98),
   });
 
-  yPosition -= 5;
+  yPosition -= 3;
 
   // Title section with neutral info icon
   page.drawText(sanitizePdfText('i'), {
@@ -591,7 +591,7 @@ export function drawInfoGapQuickActions(input: {
           font: fontBold,
           color: rgb(0.1, 0.1, 0.1),
         });
-        yPosition -= 14;
+        yPosition -= 12;
       }
 
       // Reason (why)
@@ -838,7 +838,7 @@ export function drawModuleContent(
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      yPosition -= 14;
+      yPosition -= 12;
     }
     yPosition -= 10;
   }
@@ -1018,7 +1018,7 @@ export function drawActionRegister(
         font,
         color: rgb(0.1, 0.1, 0.1),
       });
-      yPosition -= 14;
+      yPosition -= 12;
     }
 
     // Add reason for priority for P1/P2 actions
@@ -1036,7 +1036,7 @@ export function drawActionRegister(
         font,
         color: rgb(0.6, 0.3, 0.3),
       });
-      yPosition -= 14;
+      yPosition -= 12;
     }
 
     const metaInfo: string[] = [];
@@ -1134,7 +1134,7 @@ export function drawAssumptionsAndLimitations(
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      yPosition -= 14;
+      yPosition -= 12;
     }
     yPosition -= 10;
   }
@@ -1169,7 +1169,7 @@ export function drawAssumptionsAndLimitations(
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      yPosition -= 14;
+      yPosition -= 12;
     }
   }
 
@@ -1205,7 +1205,7 @@ export function drawAssumptionsAndLimitations(
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      yPosition -= 14;
+      yPosition -= 12;
     }
   }
 
@@ -1263,7 +1263,7 @@ export function drawRegulatoryFramework(
       font,
       color: rgb(0.2, 0.2, 0.2),
     });
-    yPosition -= 14;
+    yPosition -= 12;
   }
 
   yPosition -= 10;
@@ -1430,7 +1430,7 @@ export function drawAttachmentsIndex(
       font: fontBold,
       color: rgb(0, 0, 0),
     });
-    yPosition -= 14;
+    yPosition -= 12;
 
     if (attachment.caption) {
       const captionLines = wrapText(attachment.caption, CONTENT_WIDTH - 20, 9, font);

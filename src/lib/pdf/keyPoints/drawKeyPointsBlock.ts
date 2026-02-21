@@ -94,10 +94,9 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
   // Bullets
   for (const rawPoint of keyPoints) {
         const point = normalizePoint(String(rawPoint ?? ''));
-    if (!point) continue;
+if (!point) continue;
 
-    // Wrap to available width; keep wrap params consistent with font size
-        const wrappedLines = wrapText(point, maxWidth, bulletSize, font);
+const wrappedLines = wrapText(point, maxWidth, bulletSize, font);
 
     // Estimate height needed for this bullet (lines + small gap)
     const needed = Math.max(1, wrappedLines.length) * lineGap + bulletGap;

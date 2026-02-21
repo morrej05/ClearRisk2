@@ -53,18 +53,11 @@ function ensureSpace(
  */
 export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPointsBlockResult {
   let { page, keyPoints, font, fontBold, yPosition, pdfDoc, isDraft, totalPages } = input;
-  // Remove any existing bullet markers from input strings
-const normalizePoint = (s: string) =>
-  (s ?? '').trim().replace(/^(\*|-|•)\s+/, '');
+    // Remove any existing bullet markers from input strings
+  const normalizePoint = (s: string) =>
+    (s ?? '').trim().replace(/^(\*|-|•)\s+/, '');
 
   if (!keyPoints?.length) return { page, yPosition };
-
-  // Helper to normalize point text (strip leading bullet markers)
-  const point = normalizePoint(rawPoint);
-    (s ?? '')
-      .trim()
-      .replace(/^(\*|-|•)\s+/, '');
-
   // Typography + spacing constants (tuned for compact, premium feel)
   const headingSize = 10.5;
   const bulletSize = 10;

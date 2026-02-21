@@ -70,8 +70,8 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
   const headingGap = 9;        // space after heading
   const bulletGap = 2;         // space between bullets
 
-  const bulletIndentX = MARGIN + 8;
-  const textIndentX = MARGIN + 20;
+  const bulletIndentX = MARGIN + 12;
+  const textIndentX = MARGIN + 26;
   const maxWidth = CONTENT_WIDTH - (textIndentX - MARGIN);
 
   // Ensure space for heading + at least 1–2 lines of bullets

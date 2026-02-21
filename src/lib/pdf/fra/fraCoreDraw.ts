@@ -305,7 +305,7 @@ export function drawModuleKeyDetails(
   yPosition -= 10;
 
   for (const [label, value] of filteredDetails) {
-    if (yPosition < MARGIN + 80) {
+    if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
       yPosition = PAGE_TOP_Y;

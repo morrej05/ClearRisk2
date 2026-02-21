@@ -601,7 +601,7 @@ if (section.id === 5) {
             });
             
             // Tighter spacing before Key Points block
-            yPosition -= 10;
+            yPosition -= 22;
         }
 
         const keyPointsResult = drawKeyPointsBlock({

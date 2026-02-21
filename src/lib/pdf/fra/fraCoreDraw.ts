@@ -319,7 +319,7 @@ export function drawModuleKeyDetails(
       color: rgb(0.3, 0.3, 0.3),
     });
 
-    yPosition -= 12;
+    yPosition -= 10;
     const valueLines = wrapText(value, CONTENT_WIDTH - 30, 10, font);
     for (const line of valueLines) {
       if (yPosition < MARGIN + 50) {
@@ -334,7 +334,7 @@ export function drawModuleKeyDetails(
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      yPosition -= 12;
+      yPosition -= 10;
     }
     yPosition -= 3;
   }
@@ -591,7 +591,7 @@ export function drawInfoGapQuickActions(input: {
           font: fontBold,
           color: rgb(0.1, 0.1, 0.1),
         });
-        yPosition -= 12;
+        yPosition -= 10;
       }
 
       // Reason (why)

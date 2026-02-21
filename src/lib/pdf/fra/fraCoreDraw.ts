@@ -302,7 +302,7 @@ export function drawModuleKeyDetails(
     font: fontBold,
     color: rgb(0, 0, 0),
   });
-  yPosition -= 8;
+  yPosition -= 16;
 
   for (const [label, value] of filteredDetails) {
     if (yPosition < MARGIN + 50) {
@@ -451,7 +451,7 @@ export function drawInfoGapQuickActions(input: {
   const headingHeight = 30;
   const paddingTop = 10;
   const paddingBottom = 15;
-  const quickActionsHeight = detection.quickActions.length > 0 ? 30 + (detection.quickActions.length * 18) : 0;
+  const quickActionsHeight = detection.quickActions.length > 0 ? 24 + (detection.quickActions.length * 52) : 0;
   const boxHeight = headingHeight + (totalReasonLines * lineHeight) + quickActionsHeight + paddingTop + paddingBottom;
 
   // Check if we need a new page (reduced threshold from 50 to 30 for tighter packing)
@@ -561,7 +561,7 @@ if (detection.quickActions.length > 0) {
     });
 
     // title
-    const titleLines = wrapText(quickAction.title, CONTENT_WIDTH - 55, 9.5, fontBold);
+    const titleLines = wrapText(quickAction.action, CONTENT_WIDTH - 55, 9.5, fontBold);
     for (const line of titleLines) {
       page.drawText(line, {
         x: MARGIN + 42,
@@ -574,8 +574,8 @@ if (detection.quickActions.length > 0) {
     }
 
     // why (small)
-    if (quickAction.why) {
-      const whyLines = wrapText(`Why: ${quickAction.why}`, CONTENT_WIDTH - 55, 8.5, font);
+    if (quickAction.reason) {
+      const whyLines = wrapText(`Why: ${quickAction.reason}`, CONTENT_WIDTH - 55, 8.5, font);
       for (const line of whyLines) {
         page.drawText(line, {
           x: MARGIN + 42,

@@ -694,7 +694,7 @@ export function drawAssessorSummary(
   const BODY_SIZE = 11;
   const LINE_H = 13;
   const GAP_AFTER_LABEL = 6;
-  const AFTER_BOX_GAP = 14;
+  const AFTER_BOX_GAP = 22;
 
   const innerWidth = CONTENT_WIDTH - PAD * 2;
   const summaryLines = wrapText(summaryText, innerWidth, BODY_SIZE, font);

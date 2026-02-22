@@ -200,12 +200,25 @@ export function drawModuleKeyDetails(
       break;
 
     case 'FRA_2_ESCAPE_ASIS':
+      if (data.escape_strategy_current) keyDetails.push(['Escape Strategy', data.escape_strategy_current]);
       if (data.escape_strategy) keyDetails.push(['Escape Strategy', data.escape_strategy]);
+      if (data.routes_description) keyDetails.push(['Routes Description', data.routes_description]);
       if (data.travel_distances_compliant) keyDetails.push(['Travel Distances Compliant', data.travel_distances_compliant]);
+      if (data.travel_distances) keyDetails.push(['Travel Distances', data.travel_distances]);
       if (data.final_exits_adequate) keyDetails.push(['Final Exits Adequate', data.final_exits_adequate]);
+      if (data.final_exits) keyDetails.push(['Final Exits', data.final_exits]);
+      if (data.escape_route_obstructions) keyDetails.push(['Escape Route Obstructions', data.escape_route_obstructions]);
       if (data.stair_protection_status) keyDetails.push(['Stair Protection Status', data.stair_protection_status]);
+      if (data.stair_protection) keyDetails.push(['Stair Protection', data.stair_protection]);
       if (data.signage_adequacy) keyDetails.push(['Signage Adequacy', data.signage_adequacy]);
+      if (data.signage) keyDetails.push(['Signage', data.signage]);
       if (data.disabled_egress_adequacy) keyDetails.push(['Disabled Egress Adequacy', data.disabled_egress_adequacy]);
+      if (data.disabled_egress) keyDetails.push(['Disabled Egress', data.disabled_egress]);
+      if (data.inner_rooms_present) keyDetails.push(['Inner Rooms Present', data.inner_rooms_present]);
+      if (data.inner_rooms) keyDetails.push(['Inner Rooms', data.inner_rooms]);
+      if (data.basement_present) keyDetails.push(['Basement Present', data.basement_present]);
+      if (data.basement) keyDetails.push(['Basement', data.basement]);
+      if (data.emergency_lighting_dependency) keyDetails.push(['Emergency Lighting Dependency', data.emergency_lighting_dependency]);
       break;
 
     case 'FRA_3_PROTECTION_ASIS':
@@ -395,6 +408,17 @@ export function drawModuleKeyDetails(
           label.toLowerCase().includes('satisfactory')) {
         return true;
       }
+
+      // FRA_2_ESCAPE_ASIS: Keep "no" for obstructions, inner rooms, basement
+      // (indicates good condition - no obstructions, no inner rooms, no basement)
+      if (module.module_key === 'FRA_2_ESCAPE_ASIS') {
+        if (label.toLowerCase().includes('obstruction') ||
+            label.toLowerCase().includes('inner room') ||
+            label.toLowerCase().includes('basement')) {
+          return true;
+        }
+      }
+
       return false;
     }
 

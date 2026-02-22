@@ -59,7 +59,7 @@ export const FRA_REPORT_STRUCTURE: PdfSection[] = [
   },
   {
     id: 7,
-    title: "Active Fire Protection (Detection, Alarm & Emergency Lighting)",
+    title: "Fire Detection, Alarm & Emergency Lighting",
     moduleKeys: ["FRA_3_ACTIVE_SYSTEMS"],
     description: "Fire detection, alarm/warning arrangements, and emergency lighting"
   },
@@ -73,7 +73,7 @@ export const FRA_REPORT_STRUCTURE: PdfSection[] = [
   {
     id: 10,
     displayNumber: 9, // Renumber to 9 for continuous sequence
-    title: "Fixed Fire Suppression & Firefighting Facilities",
+    title: "Fixed Suppression Systems & Firefighting Facilities",
     moduleKeys: ["FRA_8_FIREFIGHTING_EQUIPMENT"],
     description: "Sprinklers, hose reels, fire extinguishers, firefighting equipment"
   },

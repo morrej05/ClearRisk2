@@ -51,7 +51,14 @@ function drawTwoColumnRows(args: {
   for (const [label, value] of rows) {
     if (!value || !String(value).trim()) continue;
 
-    if (yPosition < MARGIN + 70) {
+    // --- Prevent label/value blocks splitting across pages ---
+    const safeValue = String(value ?? '');
+    const valueLinesForEstimate = wrapText(safeValue, valueWidth, 10, font);
+
+    // label line + value lines + small padding
+    const estimatedHeight = 14 + (valueLinesForEstimate.length * 14) + 10;
+
+    if (yPosition - estimatedHeight < MARGIN + 40) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
       yPosition = PAGE_TOP_Y;
@@ -65,7 +72,7 @@ function drawTwoColumnRows(args: {
       color: rgb(0.3, 0.3, 0.3),
     });
 
-    const lines = wrapText(String(value), valueWidth, 10, font);
+    const lines = wrapText(safeValue, valueWidth, 10, font);
     for (let i = 0; i < lines.length; i++) {
       if (i > 0) {
         yPosition -= rowGap;
@@ -194,7 +201,11 @@ export function drawModuleKeyDetails(
         if (eicr.eicr_date_of_test) keyDetails.push(['EICR Test Date', eicr.eicr_date_of_test]);
         if (eicr.eicr_next_test_due) keyDetails.push(['EICR Next Test Due', eicr.eicr_next_test_due]);
         if (eicr.eicr_satisfactory) keyDetails.push(['EICR Satisfactory', eicr.eicr_satisfactory === 'satisfactory' ? 'Satisfactory' : eicr.eicr_satisfactory === 'unsatisfactory' ? 'UNSATISFACTORY' : eicr.eicr_satisfactory]);
-        if (eicr.eicr_outstanding_c1_c2) keyDetails.push(['Outstanding C1/C2 Defects', eicr.eicr_outstanding_c1_c2 === 'yes' ? 'YES - IMMEDIATE ACTION REQUIRED' : 'No']);
+        if (eicr.eicr_outstanding_c1_c2 === 'yes') {
+          keyDetails.push(['Outstanding C1/C2 Defects', 'Yes']);
+        } else if (eicr.eicr_outstanding_c1_c2) {
+          keyDetails.push(['Outstanding C1/C2 Defects', eicr.eicr_outstanding_c1_c2 === 'no' ? 'No' : eicr.eicr_outstanding_c1_c2]);
+        }
         if (eicr.pat_in_place) keyDetails.push(['PAT Testing in Place', eicr.pat_in_place]);
       }
       break;

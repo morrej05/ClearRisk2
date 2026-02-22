@@ -755,12 +755,11 @@ if (d.electrical_safety && typeof d.electrical_safety === 'object') {
       drawFact('Electrical Installation Condition Report (EICR)', eicrText); // <-- label fix
     }
 
-    // Keep the C1/C2 line as well (explicit)
-    if (c1c2) {
-      drawFact(
-        'Outstanding C1/C2 defects',
-        c1c2 === 'yes' ? 'Yes — immediate action required' : titleCase(c1c2)
-      );
+    // Avoid duplicating urgency wording (already stated in the EICR line)
+    if (c1c2 === 'yes') {
+      drawFact('Outstanding C1/C2 defects', 'Yes');
+    } else if (c1c2) {
+      drawFact('Outstanding C1/C2 defects', titleCase(c1c2));
     }
 
     // PAT label expansion

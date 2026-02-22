@@ -724,33 +724,51 @@ if (oxygenIsMeaningful || oxygenNotes) {
     endGroup();
   }
 
-  // Group 5: Electrical safety (render shallowly unless you want deep mapping)
-  if (d.electrical_safety && typeof d.electrical_safety === 'object') {
-    const es = d.electrical_safety;
-    const eicrSeen = norm(es.eicr_evidence_seen ?? es.eicr_seen ?? '');
-    const eicrSat = norm(es.eicr_satisfactory ?? es.eicr_ok ?? '');
-    const c1c2 = norm(es.outstanding_c1_c2_defects ?? es.c1_c2_defects ?? '');
-    const pat = norm(es.pat_testing_in_place ?? es.pat_in_place ?? '');
+  // Group 5: Electrical safety
+if (d.electrical_safety && typeof d.electrical_safety === 'object') {
+  const es = d.electrical_safety;
 
-    if (eicrSeen || eicrSat || c1c2 || pat) {
-      drawSubhead('Electrical safety');
-            // Consolidate EICR lines into a single statement when possible
-      if (eicrSeen || eicrSat) {
-  const sat = eicrSat ? titleCase(eicrSat) : '';
-  const seen = eicrSeen ? titleCase(eicrSeen) : '';
+  // CONFIRMED form keys (Codex)
+  const eicrSeen = norm(es.eicr_evidence_seen ?? '');
+  const eicrSat  = norm(es.eicr_satisfactory ?? '');
+  const c1c2     = norm(es.eicr_outstanding_c1_c2 ?? ''); // <-- key fix
+  const pat      = norm(es.pat_in_place ?? '');           // <-- key fix
 
-  let text = '';
-  if (sat && seen) text = `${sat} (evidence seen: ${seen})`;
-  else if (sat) text = sat;
-  else text = `Evidence seen: ${seen}`;
+  if (eicrSeen || eicrSat || c1c2 || pat) {
+    drawSubhead('Electrical safety');
 
-  drawFact('EICR', text);
-}
-      if (c1c2) drawFact('Outstanding C1/C2 defects', titleCase(c1c2));
-      if (pat) drawFact('PAT testing in place', titleCase(pat));
-      endGroup();
+    // Build a single, reader-friendly EICR line
+    // Override: any outstanding C1/C2 => UNSATISFACTORY (regardless of "satisfactory" field)
+    let eicrText = '';
+    if (c1c2 === 'yes') {
+      eicrText = 'UNSATISFACTORY — outstanding C1/C2 defects (urgent remedial action required)';
+    } else {
+      const sat = eicrSat ? titleCase(eicrSat) : '';
+      const seen = eicrSeen ? titleCase(eicrSeen) : '';
+
+      if (sat && seen) eicrText = `${sat} (evidence seen: ${seen})`;
+      else if (sat) eicrText = sat;
+      else if (seen) eicrText = `Evidence seen: ${seen}`;
     }
+
+    if (eicrText) {
+      drawFact('Electrical Installation Condition Report (EICR)', eicrText); // <-- label fix
+    }
+
+    // Keep the C1/C2 line as well (explicit)
+    if (c1c2) {
+      drawFact(
+        'Outstanding C1/C2 defects',
+        c1c2 === 'yes' ? 'Yes — immediate action required' : titleCase(c1c2)
+      );
+    }
+
+    // PAT label expansion
+    if (pat) drawFact('Portable Appliance Testing (PAT) in place', titleCase(pat)); // <-- label fix
+
+    endGroup();
   }
+}
 
   // Optional free notes
   const notes = norm(d.notes);

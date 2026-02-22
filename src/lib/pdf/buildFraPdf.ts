@@ -672,7 +672,8 @@ if (section.id === 5) {
             isDraft,
             totalPages,
             keyPoints,
-            section.moduleKeys
+            section.moduleKeys,
+            section.id // Pass section ID for section-specific filtering
           ));
         }
       }

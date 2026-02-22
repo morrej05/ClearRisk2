@@ -792,19 +792,22 @@ export function renderSection7Detection(
 
   const fra3Module = sectionModules.find(m => m.module_key === 'FRA_3_ACTIVE_SYSTEMS');
 
-  if (fra3Module && fra3Module.data) {
-    // Render detection/alarm specific fields
-    const detectionFields = [
-      'detection_system_type',
-      'detection_system_grade',
-      'detection_coverage',
-      'alarm_type',
-      'alarm_audibility',
-      'alarm_testing',
-      'alarm_maintenance'
-    ];
-
-    ({ page, yPosition } = renderFilteredModuleData({ page, yPosition }, fra3Module, detectionFields, document, font, fontBold, pdfDoc, isDraft, totalPages, ['FRA_3_ACTIVE_SYSTEMS']));
+  if (fra3Module) {
+    // Use drawModuleContent with sectionId=7 for proper Section 7 filtering
+    // This will show fire alarm + emergency lighting fields via drawModuleKeyDetails
+    ({ page, yPosition } = drawModuleContent(
+      { page, yPosition },
+      fra3Module,
+      document,
+      font,
+      fontBold,
+      pdfDoc,
+      isDraft,
+      totalPages,
+      [], // keyPoints handled by main renderer
+      ['FRA_3_ACTIVE_SYSTEMS'],
+      7 // Section ID for Section 7 filtering
+    ));
   }
 
   return { page, yPosition };

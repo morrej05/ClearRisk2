@@ -101,7 +101,8 @@ export function drawModuleKeyDetails(
   fontBold: any,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  sectionId?: number // Optional: for section-specific filtering
 ): Cursor {
   let { page, yPosition } = cursor;
   const data = module.data || {};
@@ -209,37 +210,63 @@ export function drawModuleKeyDetails(
 
     case 'FRA_3_PROTECTION_ASIS':
     case 'FRA_3_ACTIVE_SYSTEMS':
-      // Debug: log available data keys for this module
-      console.log('[PDF] FRA_3_ACTIVE_SYSTEMS data keys:', Object.keys(data || {}));
+      // SECTION 7: Active Fire Protection (Detection, Alarm & Emergency Lighting)
+      if (sectionId === 7) {
+        // Fire Alarm System
+        if (data.fire_alarm_present) keyDetails.push(['Fire Alarm System', data.fire_alarm_present]);
+        if (data.alarm_present) keyDetails.push(['Alarm Present', data.alarm_present]);
+        if (data.fire_alarm_category) keyDetails.push(['Alarm Category', data.fire_alarm_category]);
+        if (data.alarm_category) keyDetails.push(['Alarm Category', data.alarm_category]);
+        if (data.category) keyDetails.push(['Category', data.category]); // L1/L2 etc
+        if (data.alarm_testing_evidence) keyDetails.push(['Alarm Testing Evidence', data.alarm_testing_evidence]);
+        if (data.system_type) keyDetails.push(['System Type', data.system_type]);
+        if (data.coverage) keyDetails.push(['Coverage', data.coverage]);
+        if (data.monitoring) keyDetails.push(['Monitoring', data.monitoring]);
+        if (data.testing_maintenance) keyDetails.push(['Testing / Maintenance', data.testing_maintenance]);
+        if (data.last_service_date) keyDetails.push(['Last Service Date', data.last_service_date]);
 
-      // Fire detection / alarm / warning – always show core fields
-      if (data.alarm_present) keyDetails.push(['Alarm Present', data.alarm_present]);
-      if (data.system_type) keyDetails.push(['System Type', data.system_type]);
-      if (data.alarm_category) keyDetails.push(['Alarm Category', data.alarm_category]);
-      if (data.category) keyDetails.push(['Category', data.category]); // L1/L2 etc
-      if (data.coverage) keyDetails.push(['Coverage', data.coverage]);
-      if (data.monitoring) keyDetails.push(['Monitoring', data.monitoring]);
-      if (data.alarm_testing_evidence) keyDetails.push(['Alarm Testing Evidence', data.alarm_testing_evidence]);
-      if (data.testing_maintenance) keyDetails.push(['Testing / Maintenance', data.testing_maintenance]);
-      if (data.last_service_date) keyDetails.push(['Last Service Date', data.last_service_date]);
-      if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
-      if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
-      if (data.notes) keyDetails.push(['Notes', data.notes]);
+        // Emergency Lighting
+        if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
+        if (data.emergency_lighting_testing_evidence) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing_evidence]);
+        if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
+
+        if (data.notes) keyDetails.push(['Notes', data.notes]);
+      } else {
+        // Legacy/fallback rendering for other sections
+        if (data.alarm_present) keyDetails.push(['Alarm Present', data.alarm_present]);
+        if (data.system_type) keyDetails.push(['System Type', data.system_type]);
+        if (data.alarm_category) keyDetails.push(['Alarm Category', data.alarm_category]);
+        if (data.category) keyDetails.push(['Category', data.category]);
+        if (data.coverage) keyDetails.push(['Coverage', data.coverage]);
+        if (data.monitoring) keyDetails.push(['Monitoring', data.monitoring]);
+        if (data.alarm_testing_evidence) keyDetails.push(['Alarm Testing Evidence', data.alarm_testing_evidence]);
+        if (data.testing_maintenance) keyDetails.push(['Testing / Maintenance', data.testing_maintenance]);
+        if (data.last_service_date) keyDetails.push(['Last Service Date', data.last_service_date]);
+        if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
+        if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
+        if (data.notes) keyDetails.push(['Notes', data.notes]);
+      }
       break;
 
     case 'FRA_4_PASSIVE_PROTECTION':
-      // Debug: log available data keys for this module
-      console.log('[PDF] FRA_4_PASSIVE_PROTECTION data keys:', Object.keys(data || {}));
-
-      // Emergency lighting / passive protection – show core compliance info
-      if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
-      if (data.emergency_lighting_adequacy) keyDetails.push(['Emergency Lighting Adequacy', data.emergency_lighting_adequacy]);
-      if (data.last_test_date) keyDetails.push(['Last Test Date', data.last_test_date]);
-      if (data.fire_doors_condition) keyDetails.push(['Fire Doors Condition', data.fire_doors_condition]);
-      if (data.compartmentation_condition) keyDetails.push(['Compartmentation', data.compartmentation_condition]);
-      if (data.penetrations_sealing) keyDetails.push(['Service Penetrations Sealing', data.penetrations_sealing]);
-      if (data.fire_stopping_confidence) keyDetails.push(['Fire Stopping Confidence', data.fire_stopping_confidence]);
-      if (data.notes) keyDetails.push(['Notes', data.notes]);
+      // SECTION 9: Passive Fire Protection (Compartmentation) ONLY
+      // Remove emergency lighting fields - they belong in Section 7
+      if (sectionId === 9) {
+        // Passive Fire Protection fields only
+        if (data.fire_doors_condition) keyDetails.push(['Fire Doors Condition', data.fire_doors_condition]);
+        if (data.fire_doors_inspection_regime) keyDetails.push(['Inspection Regime', data.fire_doors_inspection_regime]);
+        if (data.compartmentation_condition) keyDetails.push(['Compartmentation', data.compartmentation_condition]);
+        if (data.fire_stopping_confidence) keyDetails.push(['Fire Stopping Confidence', data.fire_stopping_confidence]);
+        if (data.penetrations_sealing) keyDetails.push(['Service Penetrations Sealing', data.penetrations_sealing]);
+        if (data.notes) keyDetails.push(['Notes', data.notes]);
+      } else {
+        // Legacy/fallback rendering for other sections (should not occur)
+        if (data.fire_doors_condition) keyDetails.push(['Fire Doors Condition', data.fire_doors_condition]);
+        if (data.compartmentation_condition) keyDetails.push(['Compartmentation', data.compartmentation_condition]);
+        if (data.penetrations_sealing) keyDetails.push(['Service Penetrations Sealing', data.penetrations_sealing]);
+        if (data.fire_stopping_confidence) keyDetails.push(['Fire Stopping Confidence', data.fire_stopping_confidence]);
+        if (data.notes) keyDetails.push(['Notes', data.notes]);
+      }
       break;
 
     case 'FRA_8_FIREFIGHTING_EQUIPMENT':
@@ -801,7 +828,8 @@ export function drawModuleContent(
   isDraft: boolean,
   totalPages: PDFPage[],
   keyPoints?: string[],
-  expectedModuleKeys?: string[]
+  expectedModuleKeys?: string[],
+  sectionId?: number // Optional: for section-specific filtering
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -873,7 +901,7 @@ if (module.outcome) {
   }
 
   // Module data
-  ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages, sectionId));
 
   // Info gap quick actions
   const infoGapResult = drawInfoGapQuickActions({

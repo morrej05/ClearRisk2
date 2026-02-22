@@ -238,6 +238,85 @@ export function drawDraftWatermark(page: PDFPage) {
   });
 }
 
+/**
+ * Draw a key/value row with proper column widths and text wrapping
+ * Prevents label/value text overlap by constraining both to fixed widths
+ *
+ * @param page - PDF page to draw on
+ * @param x - Starting x position (typically MARGIN)
+ * @param y - Starting y position
+ * @param label - Label text (will be wrapped if needed)
+ * @param value - Value text (will be wrapped if needed)
+ * @param fontBold - Bold font for label
+ * @param fontRegular - Regular font for value
+ * @param labelSize - Font size for label (default 9)
+ * @param valueSize - Font size for value (default 10)
+ * @param lineHeight - Line height for multi-line content (default 12)
+ * @param labelWidth - Fixed width for label column (default 210)
+ * @param gap - Gap between label and value columns (default 14)
+ * @returns New y position after drawing the row
+ */
+export function drawKeyValueRow(
+  page: PDFPage,
+  x: number,
+  y: number,
+  label: string,
+  value: string,
+  fontBold: any,
+  fontRegular: any,
+  labelSize: number = 9,
+  valueSize: number = 10,
+  lineHeight: number = 12,
+  labelWidth: number = 210,
+  gap: number = 14
+): number {
+  const safeLabel = sanitizePdfText(label).trim();
+  const safeValue = sanitizePdfText(value).trim();
+
+  if (!safeLabel || !safeValue) {
+    return y; // Skip empty rows
+  }
+
+  // Calculate column positions and widths
+  const labelX = x;
+  const valueX = x + labelWidth + gap;
+  const valueWidth = CONTENT_WIDTH - labelWidth - gap;
+
+  // Wrap both label and value to their respective column widths
+  const labelLines = wrapText(safeLabel, labelWidth, labelSize, fontBold);
+  const valueLines = wrapText(safeValue, valueWidth, valueSize, fontRegular);
+
+  // Determine how many lines we need (max of label or value)
+  const maxLines = Math.max(labelLines.length, valueLines.length);
+
+  let currentY = y;
+
+  // Draw label lines
+  for (let i = 0; i < labelLines.length; i++) {
+    page.drawText(labelLines[i], {
+      x: labelX,
+      y: currentY - (i * lineHeight),
+      size: labelSize,
+      font: fontBold,
+      color: rgb(0.42, 0.42, 0.42),
+    });
+  }
+
+  // Draw value lines
+  for (let i = 0; i < valueLines.length; i++) {
+    page.drawText(valueLines[i], {
+      x: valueX,
+      y: currentY - (i * lineHeight),
+      size: valueSize,
+      font: fontRegular,
+      color: rgb(0.18, 0.18, 0.18),
+    });
+  }
+
+  // Return new y position: move down by maxLines * lineHeight + small gap
+  return currentY - (maxLines * lineHeight) - 4;
+}
+
 export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PDFPage[]): { page: PDFPage } {
   // Defensive initialization - prevent crashes if totalPages is undefined
   if (!totalPages) {

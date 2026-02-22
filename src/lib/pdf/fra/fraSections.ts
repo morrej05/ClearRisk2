@@ -11,6 +11,7 @@ import {
   wrapText,
   formatDate,
   addNewPage,
+  drawKeyValueRow,
 } from '../pdfUtils';
 import { PAGE_TOP_Y } from '../pdfCursor';
 import { ensureSpace, ensureCursor } from './fraUtils';
@@ -644,26 +645,26 @@ export function renderSection5FireHazards(
     const v = norm(value);
     if (!v) return;
 
-    ({ page, yPosition } = ensureSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+    // Estimate required height for page break check
+    // Use a rough estimate: 14px per line, assume label might wrap once, value might wrap 2-3 times
+    const estimatedHeight = 50;
+    ({ page, yPosition } = ensureSpace(estimatedHeight, page, yPosition, pdfDoc, isDraft, totalPages));
 
-    page.drawText(`${label}:`, {
-      x: MARGIN,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-      color: rgb(0.42, 0.42, 0.42),
-    });
-
-    const VALUE_X = MARGIN + 150;
-    const lines = wrapText(v, CONTENT_WIDTH - 150, 10, font);
-    for (let i = 0; i < lines.length; i++) {
-      if (i > 0) {
-        yPosition -= 12;
-        ({ page, yPosition } = ensureSpace(12, page, yPosition, pdfDoc, isDraft, totalPages));
-      }
-      page.drawText(lines[i], { x: VALUE_X, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
-    }
-    yPosition -= 12;
+    // Use drawKeyValueRow helper with proper column widths to prevent overlap
+    yPosition = drawKeyValueRow(
+      page,
+      MARGIN,
+      yPosition,
+      `${label}:`,
+      v,
+      fontBold,
+      font,
+      9,  // labelSize
+      10, // valueSize
+      12, // lineHeight
+      210, // labelWidth - wider than 150 to accommodate long labels
+      14  // gap
+    );
   };
 
   const endGroup = () => {

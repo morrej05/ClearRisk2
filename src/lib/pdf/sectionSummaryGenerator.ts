@@ -166,10 +166,8 @@ export function extractSectionDrivers(sectionId: number, moduleInstances: Module
       return extractSection5Drivers(allData);
     case 6: // Means of Escape
       return extractSection6Drivers(allData);
-    case 7: // Fire Detection, Alarm & Warning
+    case 7: // Active Fire Protection (Detection, Alarm & Emergency Lighting)
       return extractSection7Drivers(allData);
-    case 8: // Emergency Lighting
-      return extractSection8Drivers(allData);
     case 9: // Passive Fire Protection (Compartmentation)
       return extractSection9Drivers(allData);
     case 10: // Fixed Fire Suppression & Firefighting
@@ -295,17 +293,7 @@ function extractSection7Drivers(data: Record<string, any>): string[] {
     drivers.push('Excessive false alarm activations reducing system credibility');
   }
 
-  if (drivers.length === 0) {
-    return ['No specific issues were recorded in this section.'];
-  }
-
-  return drivers.slice(0, 3);
-}
-
-function extractSection8Drivers(data: Record<string, any>): string[] {
-  const drivers: string[] = [];
-
-  // Emergency lighting presence
+  // Emergency lighting presence (merged from Section 8)
   if (data.emergency_lighting_present === 'no') {
     drivers.push('No emergency lighting system installed');
   } else if (data.emergency_lighting_present === 'yes') {
@@ -320,16 +308,11 @@ function extractSection8Drivers(data: Record<string, any>): string[] {
     drivers.push('Emergency lighting coverage is inadequate for escape routes and open areas');
   }
 
-  // System type
-  if (data.emergency_lighting_system_type && data.emergency_lighting_system_type !== 'unknown') {
-    drivers.push(`Emergency lighting type: ${data.emergency_lighting_system_type.replace(/_/g, ' ')}`);
-  }
-
   if (drivers.length === 0) {
     return ['No specific issues were recorded in this section.'];
   }
 
-  return drivers.slice(0, 3);
+  return drivers.slice(0, 4); // Increased limit to accommodate merged content
 }
 
 function extractSection9Drivers(data: Record<string, any>): string[] {

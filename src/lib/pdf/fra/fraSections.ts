@@ -764,8 +764,9 @@ if (oxygenIsMeaningful || oxygenNotes) {
 }
 
 /**
- * Section 7: Fire Detection, Alarm & Warning
- * Split from FRA_3_ACTIVE_SYSTEMS (detection fields only)
+ * Section 7: Active Fire Protection (Detection, Alarm & Emergency Lighting)
+ * Renders FRA_3_ACTIVE_SYSTEMS including detection, alarm, and emergency lighting
+ * (Emergency lighting merged from former Section 8)
  */
 export function renderSection7Detection(
   cursor: Cursor,
@@ -811,7 +812,9 @@ export function renderSection7Detection(
 
 /**
  * Section 8: Emergency Lighting
- * Split from FRA_3_ACTIVE_SYSTEMS (emergency lighting fields only)
+ * @deprecated REMOVED - Section 8 has been folded into Section 7
+ * Emergency lighting is now part of "Active Fire Protection (Detection, Alarm & Emergency Lighting)"
+ * This function is kept for backwards compatibility but should not be used.
  */
 export function renderSection8EmergencyLighting(
   cursor: Cursor,
@@ -823,34 +826,10 @@ export function renderSection8EmergencyLighting(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): Cursor {
-  let { page, yPosition } = cursor;
-
-  // ✅ Hard guarantee: always have a page before any operations
-  if (!page) {
-    const init = addNewPage(pdfDoc, isDraft, totalPages);
-    page = init.page;
-    yPosition = PAGE_TOP_Y;
-  }
-  if (typeof yPosition !== 'number') {
-    yPosition = PAGE_TOP_Y;
-  }
-
-  const fra3Module = sectionModules.find(m => m.module_key === 'FRA_3_ACTIVE_SYSTEMS');
-
-  if (fra3Module && fra3Module.data) {
-    // Render emergency lighting specific fields
-    const lightingFields = [
-      'emergency_lighting_type',
-      'emergency_lighting_coverage',
-      'emergency_lighting_duration',
-      'emergency_lighting_testing',
-      'emergency_lighting_maintenance'
-    ];
-
-    ({ page, yPosition } = renderFilteredModuleData({ page, yPosition }, fra3Module, lightingFields, document, font, fontBold, pdfDoc, isDraft, totalPages, ['FRA_3_ACTIVE_SYSTEMS']));
-  }
-
-  return { page, yPosition };
+  // DEPRECATED: Section 8 removed, emergency lighting now in Section 7
+  // Return cursor unchanged to avoid breaking existing code
+  console.warn('[PDF] renderSection8EmergencyLighting is deprecated - Section 8 removed');
+  return cursor;
 }
 
 /**

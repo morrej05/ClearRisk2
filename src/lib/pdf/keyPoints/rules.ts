@@ -286,12 +286,7 @@ export const section7Rules: KeyPointRule[] = [
     },
     evidence: (data) => [{ field: 'fire_alarm_category', value: safeGet(data, 'fire_alarm_category') }],
   },
-];
-
-/**
- * Section 8: Emergency Lighting (FRA_3_ACTIVE_SYSTEMS - emergency lighting)
- */
-export const section8Rules: KeyPointRule[] = [
+  // Emergency Lighting (merged from former Section 8)
   {
     id: 'emergency_lighting_absent',
     type: 'weakness',
@@ -642,8 +637,7 @@ export function getRulesForSection(sectionId: number): KeyPointRule[] {
   switch (sectionId) {
     case 5: return section5Rules;
     case 6: return section6Rules;
-    case 7: return section7Rules;
-    case 8: return section8Rules;
+    case 7: return section7Rules; // Now includes emergency lighting rules
     case 9: return section9Rules;
     case 10: return section10Rules;
     case 11: return section11Rules;

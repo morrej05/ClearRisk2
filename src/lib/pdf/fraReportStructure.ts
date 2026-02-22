@@ -58,15 +58,9 @@ export const FRA_REPORT_STRUCTURE: PdfSection[] = [
   },
   {
     id: 7,
-    title: "Fire Detection, Alarm & Warning",
+    title: "Active Fire Protection (Detection, Alarm & Emergency Lighting)",
     moduleKeys: ["FRA_3_ACTIVE_SYSTEMS"],
-    description: "Fire detection systems, alarm systems, warning arrangements"
-  },
-  {
-    id: 8,
-    title: "Emergency Lighting",
-    moduleKeys: ["FRA_3_ACTIVE_SYSTEMS"],
-    description: "Emergency lighting provision and adequacy"
+    description: "Fire detection, alarm/warning arrangements, and emergency lighting"
   },
   {
     id: 9,

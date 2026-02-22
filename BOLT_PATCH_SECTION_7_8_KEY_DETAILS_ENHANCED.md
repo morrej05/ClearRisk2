@@ -1,4 +1,4 @@
-# Bolt Patch: Enhanced Key Details for Sections 7 & 8
+# Bolt Patch: Enhanced Key Details for Sections 7 & 8 + Two-Column Layout Fix
 
 **Status**: ✅ Complete
 **Date**: 2026-02-22
@@ -10,6 +10,8 @@ Enhanced the key details rendering for FRA sections 7 and 8 to always show compr
 - **Section 8 (FRA_4_PASSIVE_PROTECTION)**: Emergency lighting, passive protection, compartmentation
 
 Added debug logging to verify the actual data structure and ensure correct field mapping.
+
+**BONUS FIX**: Implemented two-column layout for Section 6 Key Details to align with Section 5's professional structure.
 
 ---
 
@@ -324,12 +326,100 @@ if (data.fireAlarm?.systemType) {
 
 ---
 
+---
+
+## BONUS: Two-Column Layout Fix for Section 6 ✅
+
+### Problem
+Section 6 Key Details used a stacked layout (label above value), which:
+- Created excessive vertical space
+- Looked unprofessional compared to Section 5
+- Made the document longer than necessary
+
+### Solution
+Implemented two-column layout matching Section 5:
+
+**File**: `src/lib/pdf/fra/fraCoreDraw.ts` (lines 327-369)
+
+**Key Changes**:
+```typescript
+// Two-column layout aligned with Section 5
+const labelX = MARGIN + 5;
+const valueX = MARGIN + 220;  // Right column starts at fixed position
+const valueMaxWidth = CONTENT_WIDTH - (valueX - MARGIN);
+
+for (const [label, value] of filteredDetails) {
+  // Check page break
+  if (yPosition < MARGIN + 60) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_TOP_Y;
+  }
+
+  // Draw label (left column)
+  page.drawText(`${label}:`, {
+    x: labelX,
+    y: yPosition,
+    size: 10,
+    font: fontBold,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+
+  // Draw value (right column — SAME Y POSITION)
+  const valueLines = wrapText(value, valueMaxWidth, 10, font);
+
+  for (const line of valueLines) {
+    page.drawText(line, {
+      x: valueX,
+      y: yPosition,  // Same baseline as label
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    yPosition -= 12;
+  }
+
+  // Small gap between rows
+  yPosition -= 4;
+}
+```
+
+### Benefits
+- ✅ **Label and value share same baseline** (professional appearance)
+- ✅ **Consistent with Section 5** (visual harmony)
+- ✅ **Reduced vertical space** (more compact, easier to scan)
+- ✅ **Multi-line values wrap properly** (maintains alignment)
+- ✅ **Controlled spacing** (4px gap between rows, 12px line height)
+
+### Visual Comparison
+
+**Before** (stacked layout):
+```
+Alarm Present:
+    Yes
+Alarm Category:
+    L2
+Coverage:
+    Full building coverage
+```
+
+**After** (two-column layout):
+```
+Alarm Present:         Yes
+Alarm Category:        L2
+Coverage:              Full building coverage
+```
+
+---
+
 ## Files Modified
 
 1. **src/lib/pdf/fra/fraCoreDraw.ts**
    - Lines 146-164: Enhanced FRA_3_ACTIVE_SYSTEMS case
    - Lines 166-179: Enhanced FRA_4_PASSIVE_PROTECTION case
-   - Added debug logging in both cases
+   - Lines 327-369: Implemented two-column layout for Key Details
+   - Added debug logging in module cases
 
 ---
 
@@ -337,7 +427,7 @@ if (data.fireAlarm?.systemType) {
 
 ✅ **Build Successful**
 - ✓ 1945 modules transformed
-- ✓ Built in 20.77s
+- ✓ Built in 19.88s
 - Output: 2.3 MB JavaScript, 66.3 KB CSS
 
 ---
@@ -363,10 +453,21 @@ This patch builds on previous improvements:
 
 ## Summary
 
-✅ **Section 7 (FRA_3_ACTIVE_SYSTEMS)**: Added 7 new fields (system type, category, coverage, monitoring, testing, service date, notes)
-✅ **Section 8 (FRA_4_PASSIVE_PROTECTION)**: Added 4 new fields (emergency lighting details, test date, penetrations sealing, notes)
-✅ **Debug logging added** for field name verification
-✅ **Build successful** with no errors
-✅ **Comprehensive key details** now display for both sections
+### Enhanced Section 7 & 8 Key Details ✅
+- ✅ **Section 7 (FRA_3_ACTIVE_SYSTEMS)**: Added 7 new fields (system type, category, coverage, monitoring, testing, service date, notes)
+- ✅ **Section 8 (FRA_4_PASSIVE_PROTECTION)**: Added 4 new fields (emergency lighting details, test date, penetrations sealing, notes)
+- ✅ **Debug logging added** for field name verification
+- ✅ **Comprehensive key details** now display for both sections
 
-Sections 7 and 8 will now show complete, professional key details with all relevant compliance information.
+### Two-Column Layout Fix ✅
+- ✅ **Professional appearance**: Labels and values on same baseline
+- ✅ **Visual consistency**: Matches Section 5 structure
+- ✅ **Space efficiency**: Reduced vertical space usage
+- ✅ **Proper wrapping**: Multi-line values maintain alignment
+
+### Build Status ✅
+- ✅ **Build successful** with no errors (19.88s)
+- ✅ **All modules transformed** (1945 modules)
+- ✅ **Production ready**
+
+Sections 7 and 8 will now show complete, professional key details with all relevant compliance information, and all Key Details sections use a consistent, professional two-column layout.

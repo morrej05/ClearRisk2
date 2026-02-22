@@ -324,39 +324,48 @@ export function drawModuleKeyDetails(
   });
   yPosition -= 24;
 
+  // Two-column layout aligned with Section 5
+  const labelX = MARGIN + 5;
+  const valueX = MARGIN + 220;  // adjust slightly if needed
+  const valueMaxWidth = CONTENT_WIDTH - (valueX - MARGIN);
+
   for (const [label, value] of filteredDetails) {
-    if (yPosition < MARGIN + 50) {
+
+    if (yPosition < MARGIN + 60) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
       yPosition = PAGE_TOP_Y;
     }
 
+    // Draw label (left column)
     page.drawText(`${label}:`, {
-      x: MARGIN + 5,
+      x: labelX,
       y: yPosition,
       size: 10,
       font: fontBold,
       color: rgb(0.3, 0.3, 0.3),
     });
 
-    yPosition -= 14;
-    const valueLines = wrapText(value, CONTENT_WIDTH - 30, 10, font);
+    // Draw value (right column — SAME Y POSITION)
+    const valueLines = wrapText(value, valueMaxWidth, 10, font);
+
+    let firstLine = true;
     for (const line of valueLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
+
       page.drawText(line, {
-        x: MARGIN + 12,
+        x: valueX,
         y: yPosition,
         size: 10,
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      yPosition -= 10;
+
+      yPosition -= 12;
+      firstLine = false;
     }
-    yPosition -= 6;
+
+    // Small gap between rows
+    yPosition -= 4;
   }
 yPosition -= 12;
   return { page, yPosition };

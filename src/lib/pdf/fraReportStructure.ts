@@ -8,6 +8,7 @@
 
 export interface PdfSection {
   id: number;
+  displayNumber?: number; // Optional: for continuous numbering when sections are skipped
   title: string;
   moduleKeys: string[];
   description?: string;
@@ -64,36 +65,42 @@ export const FRA_REPORT_STRUCTURE: PdfSection[] = [
   },
   {
     id: 9,
+    displayNumber: 8, // Section 8 was removed (merged into 7), so display as 8
     title: "Passive Fire Protection (Compartmentation)",
     moduleKeys: ["FRA_4_PASSIVE_PROTECTION"],
     description: "Fire resistance, compartmentation, fire doors, fire stopping"
   },
   {
     id: 10,
+    displayNumber: 9, // Renumber to 9 for continuous sequence
     title: "Fixed Fire Suppression & Firefighting Facilities",
     moduleKeys: ["FRA_8_FIREFIGHTING_EQUIPMENT"],
     description: "Sprinklers, hose reels, fire extinguishers, firefighting equipment"
   },
   {
     id: 11,
+    displayNumber: 10, // Renumber to 10 for continuous sequence
     title: "Fire Safety Management & Procedures",
     moduleKeys: ["A4_MANAGEMENT_CONTROLS", "FRA_6_MANAGEMENT_SYSTEMS", "A5_EMERGENCY_ARRANGEMENTS", "FRA_7_EMERGENCY_ARRANGEMENTS", "A7_REVIEW_ASSURANCE"],
     description: "Management of fire safety, training, drills, maintenance, record keeping"
   },
   {
     id: 12,
+    displayNumber: 11, // Renumber to 11 for continuous sequence
     title: "External Fire Spread",
     moduleKeys: ["FRA_5_EXTERNAL_FIRE_SPREAD"],
     description: "External fire spread to/from adjacent buildings"
   },
   {
     id: 13,
+    displayNumber: 12, // Renumber to 12 for continuous sequence
     title: "Significant Findings, Risk Evaluation & Action Plan",
     moduleKeys: ["FRA_4_SIGNIFICANT_FINDINGS", "FRA_90_SIGNIFICANT_FINDINGS"],
     description: "Overall risk assessment, significant findings, recommendations"
   },
   {
     id: 14,
+    displayNumber: 13, // Renumber to 13 for continuous sequence
     title: "Review & Reassessment",
     moduleKeys: [],
     description: "Review requirements and next assessment date"

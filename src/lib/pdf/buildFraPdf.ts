@@ -535,8 +535,8 @@ if (section.id === 5) {
   console.log('[S5] data:', sectionModules[0]?.data);
   console.log('[S5] dataKeys:', Object.keys(sectionModules[0]?.data || {}));
 }
-    // Draw section header
-    ({ page, yPosition } = drawSectionHeader({ page, yPosition }, section.id, section.title, font, fontBold));
+    // Draw section header (use displayNumber for continuous numbering)
+    ({ page, yPosition } = drawSectionHeader({ page, yPosition }, section.displayNumber ?? section.id, section.title, font, fontBold));
 
     // Draw assessor summary for technical sections (5-12)
     if (section.id >= 5 && section.id <= 12) {

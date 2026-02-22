@@ -465,6 +465,18 @@ export function drawInfoGapQuickActions(input: {
     return { page, yPosition };
   }
 
+  // Only show the "incomplete information" box when the module is explicitly an info-gap outcome.
+  // Otherwise it clutters sections that already have a valid outcome (e.g. Minor Deficiency).
+  const OUTCOME = (module.outcome || '').toLowerCase();
+  const isInfoGapOutcome =
+    OUTCOME === 'info_gap' ||
+    OUTCOME === 'information_incomplete' ||
+    OUTCOME === 'incomplete_information';
+
+  if (!isInfoGapOutcome) {
+    return { page, yPosition };
+  }
+
   const detection = detectInfoGaps(
     module.module_key,
     module.data,

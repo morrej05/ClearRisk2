@@ -352,45 +352,109 @@ function extractSection9Drivers(data: Record<string, any>): string[] {
 
 function extractSection10Drivers(data: Record<string, any>): string[] {
   const drivers: string[] = [];
+  const firefighting = data.firefighting || {};
+  const fixedFacilities = firefighting.fixed_facilities || {};
 
-  // Sprinkler system
-  if (data.sprinkler_present === 'yes') {
-    const firefighting = data.firefighting || {};
-    const sprinklers = firefighting.fixed_facilities?.sprinklers || {};
+  // Extract building height for context
+  const buildingHeightM = data.building_height_m || 0;
+  const isHighRise = buildingHeightM >= 18;
 
-    if (sprinklers.servicing_status === 'overdue' || sprinklers.servicing_status === 'unknown') {
-      drivers.push('Sprinkler system servicing is overdue or not evidenced');
-    } else if (sprinklers.servicing_status === 'current') {
-      drivers.push('Sprinkler system is installed and servicing is current');
+  // 1. Sprinkler system - structured then legacy fallback
+  const sprinklers = fixedFacilities.sprinklers || {};
+  const hasSprinklers = sprinklers.installed === 'yes' || data.sprinkler_present === 'yes';
+
+  if (hasSprinklers) {
+    // Build sprinkler narrative with type and coverage
+    let sprinklerDesc = 'Sprinkler system installed';
+
+    // Add type if available (prioritize structured data)
+    const systemType = sprinklers.type || data.sprinkler_type;
+    if (systemType) {
+      const typeLabel = systemType.replace(/_/g, ' ').toLowerCase();
+      sprinklerDesc += ` (${typeLabel})`;
     }
+
+    // Add coverage if available
+    const coverage = sprinklers.coverage || data.sprinkler_coverage;
+    if (coverage) {
+      const coverageLabel = coverage.replace(/_/g, ' ').toLowerCase();
+      sprinklerDesc += ` with ${coverageLabel} coverage`;
+    }
+
+    // Note servicing status
+    const servicingStatus = sprinklers.servicing_status || data.sprinkler_servicing_status;
+    if (servicingStatus === 'overdue' || servicingStatus === 'unknown') {
+      sprinklerDesc += '; servicing overdue or not evidenced';
+    } else if (servicingStatus === 'current' || servicingStatus === 'satisfactory') {
+      sprinklerDesc += '; servicing current';
+    }
+
+    drivers.push(sprinklerDesc);
+  } else if (data.sprinkler_present === 'no') {
+    // No sprinklers - provide proportionality commentary
+    drivers.push('No sprinkler system installed; this is proportionate to the building height, use and risk profile');
   }
 
-  // Portable extinguishers
-  if (data.extinguishers_present === 'yes') {
-    if (data.extinguisher_servicing_evidence === 'no' || data.extinguisher_servicing_evidence === 'unknown') {
+  // 2. Rising mains (dry/wet risers) - check height requirements
+  const dryRiser = fixedFacilities.dry_riser || {};
+  const wetRiser = fixedFacilities.wet_riser || {};
+  const hasDryRiser = dryRiser.installed === 'yes' || data.rising_mains === 'dry_riser';
+  const hasWetRiser = wetRiser.installed === 'yes' || data.rising_mains === 'wet_riser';
+
+  if (hasDryRiser || hasWetRiser) {
+    const riserType = hasWetRiser ? 'wet riser' : 'dry riser';
+    let riserDesc = `${riserType.charAt(0).toUpperCase() + riserType.slice(1)} installed`;
+
+    // Check servicing
+    const riserServicing = hasWetRiser ? wetRiser.servicing_status : dryRiser.servicing_status;
+    if (riserServicing === 'current' || riserServicing === 'satisfactory') {
+      riserDesc += ' with current testing regime';
+    } else if (riserServicing === 'overdue' || riserServicing === 'defective') {
+      riserDesc += '; testing overdue or defective';
+    }
+
+    drivers.push(riserDesc);
+  } else if (!isHighRise && buildingHeightM > 0) {
+    // No risers but building < 18m
+    drivers.push('Rising mains not installed; not required based on building height');
+  }
+
+  // 3. Firefighting lift and shaft - positive provisions
+  const firefightingLift = fixedFacilities.firefighting_lift || {};
+  const firefightingShaft = fixedFacilities.firefighting_shaft || {};
+  const hasLift = firefightingLift.present === 'yes' || data.firefighting_lift === 'yes';
+  const hasShaft = firefightingShaft.present === 'yes' || data.firefighting_shaft === 'yes';
+
+  if (hasLift && hasShaft) {
+    drivers.push('Firefighting lift and firefighting shaft provided, supporting fire service intervention');
+  } else if (hasLift) {
+    drivers.push('Firefighting lift provided, supporting fire service access');
+  } else if (hasShaft) {
+    drivers.push('Firefighting shaft provided for fire service equipment access');
+  }
+
+  // 4. Portable extinguishers - only if deficient
+  const portableExtinguishers = firefighting.portable_extinguishers || {};
+  const hasExtinguishers = portableExtinguishers.present === 'yes' || data.extinguishers_present === 'yes';
+
+  if (data.extinguishers_present === 'no') {
+    drivers.push('No portable fire extinguishers provided');
+  } else if (hasExtinguishers) {
+    const extServicing = portableExtinguishers.servicing_status || data.extinguisher_servicing_status;
+    if (extServicing === 'overdue' || extServicing === 'unknown' || data.extinguisher_servicing_evidence === 'no') {
       drivers.push('Portable fire extinguishers lack evidence of annual servicing');
     }
-  } else if (data.extinguishers_present === 'no') {
-    drivers.push('No portable fire extinguishers provided');
   }
 
-  // Hose reels
-  const firefighting = data.firefighting || {};
-  const hoseReels = firefighting.hose_reels || {};
-  if (hoseReels.installed === 'yes' && (hoseReels.servicing_status === 'overdue' || hoseReels.servicing_status === 'unknown')) {
-    drivers.push('Hose reel servicing is overdue or not evidenced');
-  }
-
-  // Hydrant access
-  if (data.hydrant_access === 'inadequate' || data.hydrant_access === 'none') {
-    drivers.push('Fire hydrant access is inadequate for firefighting operations');
-  }
-
+  // 5. Overall proportionality statement (if space and no critical issues)
   if (drivers.length === 0) {
-    return ['No specific issues were recorded in this section.'];
+    drivers.push('Overall, firefighting facilities are proportionate to building height, use and risk profile');
+  } else if (drivers.length < 3 && !drivers.some(d => d.includes('overdue') || d.includes('lack') || d.includes('No portable'))) {
+    // Add proportionality statement if we have space and no deficiencies
+    drivers.push('Overall, facilities are proportionate to building height, use and risk profile');
   }
 
-  return drivers.slice(0, 3);
+  return drivers.slice(0, 4); // Allow 4 drivers for this section
 }
 
 function extractSection11Drivers(data: Record<string, any>): string[] {

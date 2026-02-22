@@ -27,6 +27,70 @@ import { FRA_REPORT_STRUCTURE } from '../fraReportStructure';
 import { type ScoringResult } from '../../fra/scoring/scoringEngine';
 
 /**
+ * Shared two-column row renderer
+ * MATCHES SECTION 5 GRID EXACTLY
+ */
+function drawTwoColumnRows(args: {
+  page: PDFPage;
+  rows: Array<[string, string]>;
+  font: any;
+  fontBold: any;
+  yPosition: number;
+  pdfDoc: PDFDocument;
+  isDraft: boolean;
+  totalPages: PDFPage[];
+}): { page: PDFPage; yPosition: number } {
+  let { page, rows, font, fontBold, yPosition, pdfDoc, isDraft, totalPages } = args;
+
+  // MATCH SECTION 5 GRID EXACTLY
+  const labelX = MARGIN;
+  const valueX = MARGIN + 150; // <-- EXACT match to Section 5's VALUE_X
+  const valueWidth = CONTENT_WIDTH - 150;
+  const rowGap = 12;
+
+  for (const [label, value] of rows) {
+    if (!value || !String(value).trim()) continue;
+
+    if (yPosition < MARGIN + 70) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_TOP_Y;
+    }
+
+    page.drawText(`${label}:`, {
+      x: labelX,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    const lines = wrapText(String(value), valueWidth, 10, font);
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) {
+        yPosition -= rowGap;
+        if (yPosition < MARGIN + 70) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_TOP_Y;
+        }
+      }
+      page.drawText(lines[i], {
+        x: valueX,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+    }
+
+    yPosition -= rowGap + 2;
+  }
+
+  return { page, yPosition };
+}
+
+/**
  * Draw module key details section
  */
 export function drawModuleKeyDetails(
@@ -322,52 +386,25 @@ export function drawModuleKeyDetails(
     font: fontBold,
     color: rgb(0, 0, 0),
   });
-  yPosition -= 24;
+  yPosition -= 18;
 
-  // Two-column layout aligned with Section 5
-  const labelX = MARGIN + 5;
-  const valueX = MARGIN + 220;  // adjust slightly if needed
-  const valueMaxWidth = CONTENT_WIDTH - (valueX - MARGIN);
+  // Draw using Section 5 grid alignment
+  const result = drawTwoColumnRows({
+    page,
+    rows: filteredDetails,
+    font,
+    fontBold,
+    yPosition,
+    pdfDoc,
+    isDraft,
+    totalPages,
+  });
+  page = result.page;
+  yPosition = result.yPosition;
 
-  for (const [label, value] of filteredDetails) {
+  // Small gap before next block
+  yPosition -= 8;
 
-    if (yPosition < MARGIN + 60) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
-
-    // Draw label (left column)
-    page.drawText(`${label}:`, {
-      x: labelX,
-      y: yPosition,
-      size: 10,
-      font: fontBold,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-
-    // Draw value (right column — SAME Y POSITION)
-    const valueLines = wrapText(value, valueMaxWidth, 10, font);
-
-    let firstLine = true;
-    for (const line of valueLines) {
-
-      page.drawText(line, {
-        x: valueX,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-
-      yPosition -= 12;
-      firstLine = false;
-    }
-
-    // Small gap between rows
-    yPosition -= 4;
-  }
-yPosition -= 12;
   return { page, yPosition };
 }
 

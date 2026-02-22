@@ -1,8 +1,26 @@
 # Section 6 Two-Column Layout Fix - Complete
 
-**Status**: ✅ Complete
-**Date**: 2026-02-22
-**File Modified**: `src/lib/pdf/fra/fraCoreDraw.ts` (lines 327-369)
+**Status**: ✅ Complete → 🔄 Superseded by Shared Grid Helper
+**Date**: 2026-02-22 (Initial) → 2026-02-22 (Improved)
+**File Modified**: `src/lib/pdf/fra/fraCoreDraw.ts`
+
+---
+
+## Update Notice
+
+This document describes the **initial two-column layout fix** for Section 6.
+
+**SUPERSEDED BY**: `SECTION_6_FORCED_TO_SECTION_5_GRID_COMPLETE.md`
+
+The implementation has been improved to use a **shared grid helper** that ensures Section 6 uses the **EXACT** same grid as Section 5 (`MARGIN + 150` instead of `MARGIN + 220`), providing:
+- Perfect alignment with Section 5
+- Reusable helper function
+- Single source of truth
+- Better code maintainability
+
+This document remains for historical reference.
+
+---
 
 ---
 

@@ -384,9 +384,12 @@ export function drawModuleKeyDetails(
     // Always keep section headers (empty values used for visual separation)
     if (value === '' && label.startsWith('---')) return true;
 
-    // Filter out meaningless values
-    if (!value || value.trim() === '') return false;
-    if (value.toLowerCase() === 'unknown' || value.toLowerCase() === 'not known') {
+    const normalizedLabel = String(label).toLowerCase();
+const normalizedValue = String(value ?? '').trim().toLowerCase();
+
+      // Filter out meaningless values
+      if (!normalizedValue) return false;
+      if (normalizedValue === 'unknown' || normalizedValue === 'not known') {
       // Only show unknown if outcome is info_gap AND this is a critical field
       const outcome = module.outcome;
       if (outcome === 'info_gap' || outcome === 'information_incomplete') {
@@ -396,25 +399,25 @@ export function drawModuleKeyDetails(
       }
       return false;
     }
-    if (value.toLowerCase() === 'not applicable' || value.toLowerCase() === 'n/a') return false;
-    if (value.toLowerCase() === 'no') {
+    if (normalizedValue === 'not applicable' || normalizedValue === 'n/a') return false;
+    if (normalizedValue === 'no') {
       // Keep "no" for presence/exists/provided questions (indicates deficiency)
-      if (label.toLowerCase().includes('exists') ||
-          label.toLowerCase().includes('present') ||
-          label.toLowerCase().includes('provided') ||
-          label.toLowerCase().includes('available') ||
-          label.toLowerCase().includes('in place') ||
-          label.toLowerCase().includes('evidence seen') ||
-          label.toLowerCase().includes('satisfactory')) {
+      if (normalizedLabel.includes('exists') ||
+          normalizedLabel.includes('present') ||
+          normalizedLabel.includes('provided') ||
+          normalizedLabel.includes('available') ||
+          normalizedLabel.includes('in place') ||
+          normalizedLabel.includes('evidence seen') ||
+          normalizedLabel.includes('satisfactory')) {
         return true;
       }
 
       // FRA_2_ESCAPE_ASIS: Keep "no" for obstructions, inner rooms, basement
       // (indicates good condition - no obstructions, no inner rooms, no basement)
       if (module.module_key === 'FRA_2_ESCAPE_ASIS') {
-        if (label.toLowerCase().includes('obstruction') ||
-            label.toLowerCase().includes('inner room') ||
-            label.toLowerCase().includes('basement')) {
+        if (normalizedLabel.includes('obstruction') ||
+            normalizedLabel.includes('inner room') ||
+            normalizedLabel.includes('basement')) {
           return true;
         }
       }

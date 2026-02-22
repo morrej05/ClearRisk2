@@ -326,7 +326,7 @@ export function drawModuleKeyDetails(
 
           if (ff.fixed_facilities.dry_riser?.installed) {
             const dr = ff.fixed_facilities.dry_riser;
-            keyDetails.push(['Dry Riser', dr.installed === 'yes' ? 'Installed' : dr.installed === 'no' ? 'NOT INSTALLED' : dr.installed]);
+            keyDetails.push(['Dry Riser', dr.installed === 'yes' ? 'Installed' : dr.installed === 'no' ? 'Not installed' : dr.installed]);
             if (dr.coverage) keyDetails.push(['Dry Riser Coverage', dr.coverage]);
             if (dr.servicing_status) keyDetails.push(['Dry Riser Servicing', dr.servicing_status]);
             if (dr.last_test_date) keyDetails.push(['Dry Riser Last Test', dr.last_test_date]);
@@ -334,18 +334,18 @@ export function drawModuleKeyDetails(
 
           if (ff.fixed_facilities.wet_riser?.installed) {
             const wr = ff.fixed_facilities.wet_riser;
-            keyDetails.push(['Wet Riser', wr.installed === 'yes' ? 'Installed' : wr.installed === 'no' ? 'NOT INSTALLED' : wr.installed]);
+            keyDetails.push(['Wet Riser', wr.installed === 'yes' ? 'Installed' : wr.installed === 'no' ? 'Not installed' : wr.installed]);
             if (wr.coverage) keyDetails.push(['Wet Riser Coverage', wr.coverage]);
             if (wr.servicing_status) keyDetails.push(['Wet Riser Servicing', wr.servicing_status === 'defective' ? 'DEFECTIVE - CRITICAL ISSUE' : wr.servicing_status]);
             if (wr.last_test_date) keyDetails.push(['Wet Riser Last Test', wr.last_test_date]);
           }
 
           if (ff.fixed_facilities.firefighting_lift?.present) {
-            keyDetails.push(['Firefighting Lift', ff.fixed_facilities.firefighting_lift.present === 'yes' ? 'Present' : ff.fixed_facilities.firefighting_lift.present === 'no' ? 'NOT PRESENT' : ff.fixed_facilities.firefighting_lift.present]);
+            keyDetails.push(['Firefighting Lift', ff.fixed_facilities.firefighting_lift.present === 'yes' ? 'Present' : ff.fixed_facilities.firefighting_lift.present === 'no' ? 'Not present' : ff.fixed_facilities.firefighting_lift.present]);
           }
 
           if (ff.fixed_facilities.firefighting_shaft?.present) {
-            keyDetails.push(['Firefighting Shaft', ff.fixed_facilities.firefighting_shaft.present === 'yes' ? 'Present' : ff.fixed_facilities.firefighting_shaft.present === 'no' ? 'NOT PRESENT' : ff.fixed_facilities.firefighting_shaft.present]);
+            keyDetails.push(['Firefighting Shaft', ff.fixed_facilities.firefighting_shaft.present === 'yes' ? 'Present' : ff.fixed_facilities.firefighting_shaft.present === 'no' ? 'Not present' : ff.fixed_facilities.firefighting_shaft.present]);
           }
         }
       } else {

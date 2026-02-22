@@ -6,6 +6,7 @@
  */
 
 import type { ModuleInstance } from '../supabase/attachments';
+import type { Document } from './fra/fraTypes';
 
 interface Action {
   id: string;
@@ -535,4 +536,128 @@ function extractSection12Drivers(data: Record<string, any>): string[] {
   }
 
   return drivers.slice(0, 3);
+}
+
+/**
+ * Generate contextual assessor summary for Section 10 from structured data
+ * Used when module.assessor_summary is missing or boilerplate
+ *
+ * @param module FRA_8 module instance
+ * @param document Document metadata (for building height)
+ * @returns Professional summary text or null if insufficient data
+ */
+export function generateSection10AssessorSummary(
+  module: ModuleInstance | undefined,
+  document: Document
+): string | null {
+  if (!module || !module.data) return null;
+
+  const data = module.data;
+  const firefighting = data.firefighting || {};
+  const fixedFacilities = firefighting.fixed_facilities || {};
+
+  // Extract building height for context
+  const buildingHeightM = data.building_height_m || document.meta?.building_height_m || 0;
+
+  const parts: string[] = [];
+
+  // 1. Sprinkler system narrative
+  const sprinklers = fixedFacilities.sprinklers || {};
+  const hasSprinklers = sprinklers.installed === 'yes' || data.sprinkler_present === 'yes';
+
+  if (hasSprinklers) {
+    let sprinklerText = 'Sprinkler system installed';
+
+    // Add type
+    const systemType = sprinklers.type || data.sprinkler_type;
+    if (systemType) {
+      const typeLabel = String(systemType).replace(/_/g, ' ').toLowerCase();
+      sprinklerText += ` (${typeLabel})`;
+    }
+
+    // Add coverage
+    const coverage = sprinklers.coverage || data.sprinkler_coverage;
+    if (coverage && coverage !== 'unknown') {
+      const coverageLabel = String(coverage).replace(/_/g, ' ').toLowerCase();
+      sprinklerText += ` with ${coverageLabel} coverage`;
+    }
+
+    // Add servicing status
+    const servicingStatus = sprinklers.servicing_status || data.sprinkler_servicing_status;
+    if (servicingStatus === 'current' || servicingStatus === 'satisfactory') {
+      sprinklerText += '; servicing current';
+    } else if (servicingStatus === 'overdue' || servicingStatus === 'unknown') {
+      sprinklerText += '; servicing overdue or not evidenced';
+    }
+
+    parts.push(sprinklerText);
+  } else if (data.sprinkler_present === 'no' || sprinklers.installed === 'no') {
+    parts.push('No sprinkler system installed');
+  }
+
+  // 2. Rising mains (dry/wet risers)
+  const dryRiser = fixedFacilities.dry_riser || {};
+  const wetRiser = fixedFacilities.wet_riser || {};
+  const hasDryRiser = dryRiser.installed === 'yes' || data.rising_mains === 'dry_riser';
+  const hasWetRiser = wetRiser.installed === 'yes' || data.rising_mains === 'wet_riser';
+  const isHighRise = buildingHeightM >= 18;
+
+  if (hasDryRiser || hasWetRiser) {
+    const riserType = hasWetRiser ? 'wet riser' : 'dry riser';
+    let riserText = `${riserType.charAt(0).toUpperCase() + riserType.slice(1)} installed`;
+
+    const riserServicing = hasWetRiser ? wetRiser.servicing_status : dryRiser.servicing_status;
+    if (riserServicing === 'current' || riserServicing === 'satisfactory') {
+      riserText += ' with current testing regime';
+    } else if (riserServicing === 'overdue' || riserServicing === 'defective') {
+      riserText += '; testing overdue or defective';
+    }
+
+    parts.push(riserText);
+  } else if (!isHighRise && buildingHeightM > 0) {
+    parts.push('rising mains not installed (not required based on building height)');
+  }
+
+  // 3. Firefighting lift and shaft
+  const firefightingLift = fixedFacilities.firefighting_lift || {};
+  const firefightingShaft = fixedFacilities.firefighting_shaft || {};
+  const hasLift = firefightingLift.present === 'yes' || data.firefighting_lift === 'yes';
+  const hasShaft = firefightingShaft.present === 'yes' || data.firefighting_shaft === 'yes';
+
+  if (hasLift && hasShaft) {
+    parts.push('firefighting lift and shaft provided');
+  } else if (hasLift) {
+    parts.push('firefighting lift provided');
+  } else if (hasShaft) {
+    parts.push('firefighting shaft provided');
+  }
+
+  // If no substantial content, return null
+  if (parts.length === 0) return null;
+
+  // Build final summary with proper grammar
+  let summary = '';
+
+  if (parts.length === 1) {
+    summary = parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + '.';
+  } else if (parts.length === 2) {
+    summary = parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + '; ' + parts[1] + '.';
+  } else {
+    // Three or more parts
+    const firstPart = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+    const middleParts = parts.slice(1, -1).join('; ');
+    const lastPart = parts[parts.length - 1];
+    summary = `${firstPart}; ${middleParts}; ${lastPart}.`;
+  }
+
+  // Add concluding statement if no deficiencies mentioned
+  const hasDeficiencies = summary.toLowerCase().includes('overdue') ||
+                          summary.toLowerCase().includes('defective') ||
+                          summary.toLowerCase().includes('not evidenced');
+
+  if (!hasDeficiencies) {
+    summary += ' Overall, facilities are proportionate to building height, use and risk profile.';
+  }
+
+  return summary;
 }

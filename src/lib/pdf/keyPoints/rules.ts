@@ -398,6 +398,7 @@ export const section9Rules: KeyPointRule[] = [
 
 /**
  * Section 10: Fixed Fire Suppression (FRA_8_FIREFIGHTING_EQUIPMENT)
+ * CRITICAL: Check structured data.firefighting.fixed_facilities FIRST, then fall back to legacy flat fields
  */
 export const section10Rules: KeyPointRule[] = [
   {
@@ -405,31 +406,99 @@ export const section10Rules: KeyPointRule[] = [
     type: 'weakness',
     weight: 85,
     when: (data) => {
-      // Only flag if storeys > 2 or high occupancy (indicates need)
+      // Check structured data first
+      const sprinklers = safeGet(data, 'firefighting.fixed_facilities.sprinklers', {});
+      const structuredInstalled = safeGet(sprinklers, 'installed');
+
+      // If structured data exists, use it
+      if (structuredInstalled) {
+        return isNo(structuredInstalled);
+      }
+
+      // Fall back to legacy flat field
       return isNo(safeGet(data, 'sprinkler_present'));
     },
     text: (data) => 'No sprinkler system present',
-    evidence: (data) => [{ field: 'sprinkler_present', value: safeGet(data, 'sprinkler_present') }],
+    evidence: (data) => {
+      const sprinklers = safeGet(data, 'firefighting.fixed_facilities.sprinklers', {});
+      return [
+        { field: 'firefighting.fixed_facilities.sprinklers.installed', value: safeGet(sprinklers, 'installed') },
+        { field: 'sprinkler_present', value: safeGet(data, 'sprinkler_present') }
+      ];
+    },
+  },
+  {
+    id: 'sprinkler_servicing_overdue',
+    type: 'weakness',
+    weight: 80,
+    when: (data) => {
+      // Check structured data first
+      const sprinklers = safeGet(data, 'firefighting.fixed_facilities.sprinklers', {});
+      const structuredInstalled = safeGet(sprinklers, 'installed');
+      const structuredServicing = safeGet(sprinklers, 'servicing_status');
+
+      if (structuredInstalled && isYes(structuredInstalled)) {
+        return structuredServicing === 'overdue' || structuredServicing === 'unknown';
+      }
+
+      // Fall back to legacy
+      const legacyPresent = safeGet(data, 'sprinkler_present');
+      const legacyServicing = safeGet(data, 'sprinkler_servicing_status');
+      return isYes(legacyPresent) && (legacyServicing === 'overdue' || legacyServicing === 'unknown');
+    },
+    text: (data) => 'Sprinkler system servicing overdue or not evidenced',
+    evidence: (data) => {
+      const sprinklers = safeGet(data, 'firefighting.fixed_facilities.sprinklers', {});
+      return [
+        { field: 'firefighting.fixed_facilities.sprinklers.servicing_status', value: safeGet(sprinklers, 'servicing_status') },
+        { field: 'sprinkler_servicing_status', value: safeGet(data, 'sprinkler_servicing_status') }
+      ];
+    },
   },
   {
     id: 'extinguishers_absent',
     type: 'weakness',
     weight: 90,
-    when: (data) => isNo(safeGet(data, 'extinguishers_present')),
+    when: (data) => {
+      // Check structured data first
+      const extinguishers = safeGet(data, 'firefighting.portable_extinguishers', {});
+      const structuredPresent = safeGet(extinguishers, 'present');
+
+      if (structuredPresent) {
+        return isNo(structuredPresent);
+      }
+
+      return isNo(safeGet(data, 'extinguishers_present'));
+    },
     text: (data) => 'Fire extinguishers not present; provision required',
-    evidence: (data) => [{ field: 'extinguishers_present', value: safeGet(data, 'extinguishers_present') }],
+    evidence: (data) => [
+      { field: 'firefighting.portable_extinguishers.present', value: safeGet(data, 'firefighting.portable_extinguishers.present') },
+      { field: 'extinguishers_present', value: safeGet(data, 'extinguishers_present') }
+    ],
   },
   {
     id: 'extinguisher_servicing_missing',
     type: 'weakness',
     weight: 75,
     when: (data) => {
+      // Check structured data first
+      const extinguishers = safeGet(data, 'firefighting.portable_extinguishers', {});
+      const structuredPresent = safeGet(extinguishers, 'present');
+      const structuredServicing = safeGet(extinguishers, 'servicing_status');
+
+      if (structuredPresent && isYes(structuredPresent)) {
+        return structuredServicing === 'overdue' || structuredServicing === 'unknown' || isNo(structuredServicing);
+      }
+
+      // Fall back to legacy
       const present = safeGet(data, 'extinguishers_present');
       const servicing = safeGet(data, 'extinguisher_servicing_evidence');
       return isYes(present) && isNo(servicing);
     },
     text: (data) => 'Fire extinguisher servicing evidence not available',
     evidence: (data) => [
+      { field: 'firefighting.portable_extinguishers.present', value: safeGet(data, 'firefighting.portable_extinguishers.present') },
+      { field: 'firefighting.portable_extinguishers.servicing_status', value: safeGet(data, 'firefighting.portable_extinguishers.servicing_status') },
       { field: 'extinguishers_present', value: safeGet(data, 'extinguishers_present') },
       { field: 'extinguisher_servicing_evidence', value: safeGet(data, 'extinguisher_servicing_evidence') }
     ],
@@ -449,9 +518,44 @@ export const section10Rules: KeyPointRule[] = [
     id: 'sprinkler_present',
     type: 'strength',
     weight: 50,
-    when: (data) => isYes(safeGet(data, 'sprinkler_present')),
-    text: (data) => 'Automatic sprinkler system installed',
-    evidence: (data) => [{ field: 'sprinkler_present', value: safeGet(data, 'sprinkler_present') }],
+    when: (data) => {
+      // Check structured data first
+      const sprinklers = safeGet(data, 'firefighting.fixed_facilities.sprinklers', {});
+      const structuredInstalled = safeGet(sprinklers, 'installed');
+
+      if (structuredInstalled) {
+        return isYes(structuredInstalled);
+      }
+
+      return isYes(safeGet(data, 'sprinkler_present'));
+    },
+    text: (data) => {
+      // Add detail if available
+      const sprinklers = safeGet(data, 'firefighting.fixed_facilities.sprinklers', {});
+      const systemType = safeGet(sprinklers, 'type') || safeGet(data, 'sprinkler_type');
+      const coverage = safeGet(sprinklers, 'coverage') || safeGet(data, 'sprinkler_coverage');
+
+      let text = 'Automatic sprinkler system installed';
+
+      if (systemType) {
+        const typeLabel = String(systemType).replace(/_/g, ' ').toLowerCase();
+        text += ` (${typeLabel})`;
+      }
+
+      if (coverage && coverage !== 'unknown') {
+        const coverageLabel = String(coverage).replace(/_/g, ' ').toLowerCase();
+        text += ` with ${coverageLabel} coverage`;
+      }
+
+      return text;
+    },
+    evidence: (data) => {
+      const sprinklers = safeGet(data, 'firefighting.fixed_facilities.sprinklers', {});
+      return [
+        { field: 'firefighting.fixed_facilities.sprinklers.installed', value: safeGet(sprinklers, 'installed') },
+        { field: 'sprinkler_present', value: safeGet(data, 'sprinkler_present') }
+      ];
+    },
   },
 ];
 

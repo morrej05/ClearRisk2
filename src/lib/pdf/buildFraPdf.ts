@@ -13,7 +13,7 @@ import {
   type FraExecutiveOutcome,
 } from '../modules/fra/severityEngine';
 import { drawCleanAuditSection13 } from './fraSection13CleanAudit';
-import { generateSectionSummary } from './sectionSummaryGenerator';
+import { generateSectionSummary, generateSection10AssessorSummary } from './sectionSummaryGenerator';
 import {
   calculateSCS,
   deriveFireProtectionReliance,
@@ -548,9 +548,25 @@ if (section.id === 5) {
       });
 
       if (summaryWithDrivers) {
+        // For Section 10, override summary text with structured data narrative if available
+        let summaryText = summaryWithDrivers.summary;
+
+        if (section.id === 10) {
+          const fra8Module = sectionModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
+          const generatedSummary = generateSection10AssessorSummary(fra8Module, document);
+
+          // Use generated summary if available and current summary is boilerplate
+          const isBoilerplate = summaryText.includes('No significant deficiencies identified') ||
+                                summaryText.includes('No material deficiencies identified');
+
+          if (generatedSummary && isBoilerplate) {
+            summaryText = generatedSummary;
+          }
+        }
+
         const summaryResult = drawAssessorSummary(
           page,
-          summaryWithDrivers.summary,
+          summaryText,
           summaryWithDrivers.drivers,
           font,
           yPosition,

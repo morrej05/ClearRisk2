@@ -882,19 +882,20 @@ export function renderSection10Suppression(
   const fra8Module = sectionModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
 
   if (fra8Module && fra8Module.data) {
-    // Render suppression systems (sprinklers, risers, etc.)
-    const suppressionFields = [
-      'sprinkler_system',
-      'sprinkler_type',
-      'sprinkler_coverage',
-      'rising_mains',
-      'dry_riser_type',
-      'wet_riser_type',
-      'firefighting_lift',
-      'firefighting_shaft'
-    ];
-
-    ({ page, yPosition } = renderFilteredModuleData({ page, yPosition }, fra8Module, suppressionFields, document, font, fontBold, pdfDoc, isDraft, totalPages, ['FRA_8_FIREFIGHTING_EQUIPMENT']));
+    // Use standard rendering pipeline to surface structured firefighting data
+    // This includes sprinklers, risers, firefighting shaft/lift from data.firefighting.fixed_facilities
+    ({ page, yPosition } = drawModuleContent(
+      { page, yPosition },
+      fra8Module,
+      document,
+      font,
+      fontBold,
+      pdfDoc,
+      isDraft,
+      totalPages,
+      undefined,
+      ['FRA_8_FIREFIGHTING_EQUIPMENT']
+    ));
   }
 
   return { page, yPosition };
@@ -1031,18 +1032,18 @@ export function renderSection11Management(
   const fra8Module = allModules.find((m) => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
 
   if (fra8Module && fra8Module.data) {
-    const equipmentFields = [
-      'portable_extinguishers',
-      'extinguisher_types',
-      'extinguisher_locations',
-      'hose_reels',
-      'fire_blankets',
-    ];
+    // Check for both structured (data.firefighting.portable_*) and legacy flat fields
+    const hasStructuredPortable =
+      fra8Module.data.firefighting?.portable_extinguishers?.present ||
+      fra8Module.data.firefighting?.hose_reels?.installed;
 
-    // Check if there's any actual data in the equipment fields
-    const hasEquipmentData = equipmentFields.some(
-      field => fra8Module.data[field] && fra8Module.data[field].toString().trim() !== ''
-    );
+    const hasLegacyPortable =
+      fra8Module.data.portable_extinguishers ||
+      fra8Module.data.extinguisher_types ||
+      fra8Module.data.hose_reels ||
+      fra8Module.data.fire_blankets;
+
+    const hasEquipmentData = hasStructuredPortable || hasLegacyPortable;
 
     ({ page, yPosition } = ensureSpace(120, page, yPosition, pdfDoc, isDraft, totalPages));
 
@@ -1056,16 +1057,35 @@ export function renderSection11Management(
     yPosition -= 20;
 
     if (hasEquipmentData) {
-      ({ page, yPosition } = renderFilteredModuleData(
+      // Create a filtered module that only includes portable equipment data
+      const portableOnlyModule = {
+        ...fra8Module,
+        data: {
+          // Include structured portable data
+          firefighting: fra8Module.data.firefighting ? {
+            portable_extinguishers: fra8Module.data.firefighting.portable_extinguishers,
+            hose_reels: fra8Module.data.firefighting.hose_reels,
+          } : undefined,
+          // Include legacy flat keys as fallback
+          portable_extinguishers: fra8Module.data.portable_extinguishers,
+          extinguisher_types: fra8Module.data.extinguisher_types,
+          extinguisher_locations: fra8Module.data.extinguisher_locations,
+          hose_reels: fra8Module.data.hose_reels,
+          fire_blankets: fra8Module.data.fire_blankets,
+        }
+      };
+
+      // Use standard rendering to show portable equipment details
+      ({ page, yPosition } = drawModuleContent(
         { page, yPosition },
-        fra8Module,
-        equipmentFields,
+        portableOnlyModule,
         document,
         font,
         fontBold,
         pdfDoc,
         isDraft,
         totalPages,
+        undefined,
         ['FRA_8_FIREFIGHTING_EQUIPMENT']
       ));
     } else {

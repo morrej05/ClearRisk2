@@ -318,28 +318,46 @@ export function drawModuleKeyDetails(
           if (ff.fixed_facilities.sprinklers?.installed) {
             const spk = ff.fixed_facilities.sprinklers;
             keyDetails.push(['Sprinkler System', spk.installed === 'yes' ? 'Installed' : 'Not Installed']);
+            if (spk.type) keyDetails.push(['Sprinkler Type', spk.type]);
+            if (spk.coverage) keyDetails.push(['Sprinkler Coverage', spk.coverage]);
             if (spk.servicing_status) keyDetails.push(['Sprinkler Servicing', spk.servicing_status === 'defective' ? 'DEFECTIVE - CRITICAL ISSUE' : spk.servicing_status]);
+            if (spk.last_service_date) keyDetails.push(['Sprinkler Last Service', spk.last_service_date]);
           }
 
           if (ff.fixed_facilities.dry_riser?.installed) {
             const dr = ff.fixed_facilities.dry_riser;
             keyDetails.push(['Dry Riser', dr.installed === 'yes' ? 'Installed' : dr.installed === 'no' ? 'NOT INSTALLED' : dr.installed]);
+            if (dr.coverage) keyDetails.push(['Dry Riser Coverage', dr.coverage]);
             if (dr.servicing_status) keyDetails.push(['Dry Riser Servicing', dr.servicing_status]);
+            if (dr.last_test_date) keyDetails.push(['Dry Riser Last Test', dr.last_test_date]);
           }
 
           if (ff.fixed_facilities.wet_riser?.installed) {
             const wr = ff.fixed_facilities.wet_riser;
             keyDetails.push(['Wet Riser', wr.installed === 'yes' ? 'Installed' : wr.installed === 'no' ? 'NOT INSTALLED' : wr.installed]);
+            if (wr.coverage) keyDetails.push(['Wet Riser Coverage', wr.coverage]);
             if (wr.servicing_status) keyDetails.push(['Wet Riser Servicing', wr.servicing_status === 'defective' ? 'DEFECTIVE - CRITICAL ISSUE' : wr.servicing_status]);
+            if (wr.last_test_date) keyDetails.push(['Wet Riser Last Test', wr.last_test_date]);
           }
 
           if (ff.fixed_facilities.firefighting_lift?.present) {
             keyDetails.push(['Firefighting Lift', ff.fixed_facilities.firefighting_lift.present === 'yes' ? 'Present' : ff.fixed_facilities.firefighting_lift.present === 'no' ? 'NOT PRESENT' : ff.fixed_facilities.firefighting_lift.present]);
           }
+
+          if (ff.fixed_facilities.firefighting_shaft?.present) {
+            keyDetails.push(['Firefighting Shaft', ff.fixed_facilities.firefighting_shaft.present === 'yes' ? 'Present' : ff.fixed_facilities.firefighting_shaft.present === 'no' ? 'NOT PRESENT' : ff.fixed_facilities.firefighting_shaft.present]);
+          }
         }
       } else {
+        // Legacy flat field fallback
         if (data.extinguishers_present) keyDetails.push(['Extinguishers Present', data.extinguishers_present]);
         if (data.extinguishers_servicing) keyDetails.push(['Extinguishers Servicing', data.extinguishers_servicing]);
+        if (data.sprinkler_system) keyDetails.push(['Sprinkler System', data.sprinkler_system]);
+        if (data.sprinkler_type) keyDetails.push(['Sprinkler Type', data.sprinkler_type]);
+        if (data.sprinkler_coverage) keyDetails.push(['Sprinkler Coverage', data.sprinkler_coverage]);
+        if (data.rising_mains) keyDetails.push(['Rising Mains', data.rising_mains]);
+        if (data.firefighting_lift) keyDetails.push(['Firefighting Lift', data.firefighting_lift]);
+        if (data.firefighting_shaft) keyDetails.push(['Firefighting Shaft', data.firefighting_shaft]);
       }
       break;
 
@@ -1727,7 +1745,9 @@ export function drawTableOfContents(
   yPosition -= 40;
 
   for (const section of FRA_REPORT_STRUCTURE) {
-    const sectionText = `${section.id}. ${section.title}`;
+    // Use displayNumber for consistent numbering (handles merged sections)
+    const sectionNumber = section.displayNumber ?? section.id;
+    const sectionText = `${sectionNumber}. ${section.title}`;
 
     page.drawText(sectionText, {
       x: MARGIN + 20,

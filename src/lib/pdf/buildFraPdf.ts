@@ -13,7 +13,7 @@ import {
   type FraExecutiveOutcome,
 } from '../modules/fra/severityEngine';
 import { drawCleanAuditSection13 } from './fraSection13CleanAudit';
-import { generateSectionSummary, generateSection10AssessorSummary } from './sectionSummaryGenerator';
+import { generateSectionSummary, generateAssessorSummary } from './sectionSummaryGenerator';
 import {
   calculateSCS,
   deriveFireProtectionReliance,
@@ -548,18 +548,17 @@ if (section.id === 5) {
       });
 
       if (summaryWithDrivers) {
-        // For Section 10, override summary text with structured data narrative if available
+        // Use universal assessor summary generator for all sections
+        // This automatically detects boilerplate and generates contextual narratives
         let summaryText = summaryWithDrivers.summary;
 
-        if (section.id === 10) {
-          const fra8Module = sectionModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
-          const generatedSummary = generateSection10AssessorSummary(fra8Module, document);
+        // Find primary module for this section
+        const primaryModule = sectionModules[0];
+        if (primaryModule) {
+          const generatedSummary = generateAssessorSummary(section.id, primaryModule, document);
 
-          // Use generated summary if available and current summary is boilerplate
-          const isBoilerplate = summaryText.includes('No significant deficiencies identified') ||
-                                summaryText.includes('No material deficiencies identified');
-
-          if (generatedSummary && isBoilerplate) {
+          // Use generated summary if available (it already handles boilerplate detection internally)
+          if (generatedSummary) {
             summaryText = generatedSummary;
           }
         }

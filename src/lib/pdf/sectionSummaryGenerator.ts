@@ -539,125 +539,377 @@ function extractSection12Drivers(data: Record<string, any>): string[] {
 }
 
 /**
- * Generate contextual assessor summary for Section 10 from structured data
- * Used when module.assessor_summary is missing or boilerplate
+ * Detect if text is generic boilerplate that should be replaced
+ */
+function isBoilerplateSummary(text: string): boolean {
+  if (!text || text.trim().length === 0) return true;
+
+  const normalized = text.toLowerCase().trim();
+
+  // Common boilerplate patterns
+  const boilerplatePatterns = [
+    'no significant deficiencies identified',
+    'no material deficiencies identified',
+    'minor deficiencies identified',
+    'significant deficiencies identified',
+    'deficiencies and/or information gaps identified',
+    'at time of assessment',
+    'urgent remedial action required',
+    'actions required to address these matters',
+    'improvements recommended',
+    'however key aspects could not be verified',
+  ];
+
+  // If text contains 2+ boilerplate patterns, it's generic
+  const matchCount = boilerplatePatterns.filter(pattern => normalized.includes(pattern)).length;
+  if (matchCount >= 2) return true;
+
+  // If text is very short and matches any pattern exactly, it's boilerplate
+  if (normalized.length < 150 && boilerplatePatterns.some(pattern => normalized.includes(pattern))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Universal Assessor Summary Generator
+ * Generates contextual narrative from structured module data
+ * Works across all FRA sections (5-11)
  *
- * @param module FRA_8 module instance
- * @param document Document metadata (for building height)
+ * @param sectionId Section number (5-11)
+ * @param module Module instance with structured data
+ * @param document Document metadata for context (building height, use, etc.)
  * @returns Professional summary text or null if insufficient data
  */
-export function generateSection10AssessorSummary(
+export function generateAssessorSummary(
+  sectionId: number,
   module: ModuleInstance | undefined,
   document: Document
 ): string | null {
   if (!module || !module.data) return null;
 
+  // If assessor provided custom summary and it's not boilerplate, use it
+  if (module.data.assessor_summary && !isBoilerplateSummary(module.data.assessor_summary)) {
+    return module.data.assessor_summary;
+  }
+
+  // Generate contextual summary based on section
+  switch (sectionId) {
+    case 5:
+      return generateSection5Summary(module, document);
+    case 6:
+      return generateSection6Summary(module, document);
+    case 7:
+      return generateSection7Summary(module, document);
+    case 9:
+      return generateSection9Summary(module, document);
+    case 10:
+      return generateSection10Summary(module, document);
+    case 11:
+      return generateSection11Summary(module, document);
+    default:
+      return null;
+  }
+}
+
+/**
+ * Section 5: Fire Hazards & Ignition Sources
+ */
+function generateSection5Summary(module: ModuleInstance, document: Document): string | null {
+  const data = module.data;
+  const parts: string[] = [];
+
+  // Electrical safety
+  const eicr = data.electrical_safety || {};
+  if (eicr.eicr_evidence_seen === 'yes') {
+    if (eicr.eicr_outstanding_c1_c2 === 'yes') {
+      parts.push('Electrical installation has outstanding C1/C2 defects requiring urgent attention');
+    } else if (eicr.eicr_satisfactory === 'satisfactory') {
+      parts.push('Electrical installation condition satisfactory with current EICR');
+    } else if (eicr.eicr_satisfactory === 'unsatisfactory') {
+      parts.push('Electrical installation rated unsatisfactory; remedial work required');
+    }
+  } else if (eicr.eicr_evidence_seen === 'no') {
+    parts.push('Electrical installation certificate not evidenced');
+  }
+
+  // High-risk activities
+  const highRiskActivities = data.high_risk_activities || [];
+  if (Array.isArray(highRiskActivities) && highRiskActivities.length > 0) {
+    parts.push(`High-risk activities identified including ${highRiskActivities[0]}`);
+  }
+
+  // Arson risk
+  if (data.arson_risk === 'high' || data.arson_risk === 'elevated') {
+    parts.push('Elevated arson risk noted');
+  }
+
+  // Housekeeping
+  if (data.housekeeping_fire_load === 'high' || data.housekeeping_fire_load === 'excessive') {
+    parts.push('Fire load management requires improvement');
+  } else if (data.housekeeping_fire_load === 'low' || data.housekeeping_fire_load === 'minimal') {
+    parts.push('Fire load appropriately managed');
+  }
+
+  if (parts.length === 0) return null;
+
+  return parts.slice(0, 3).join('. ') + '.';
+}
+
+/**
+ * Section 6: Means of Escape
+ */
+function generateSection6Summary(module: ModuleInstance, document: Document): string | null {
+  const data = module.data;
+  const parts: string[] = [];
+
+  // Escape strategy
+  const strategy = data.escape_strategy_current || data.escape_strategy;
+  if (strategy) {
+    const strategyLabel = String(strategy).replace(/_/g, ' ').toLowerCase();
+    parts.push(`Escape strategy is ${strategyLabel}`);
+  }
+
+  // Travel distances
+  if (data.travel_distances_compliant === 'yes' || data.travel_distances === 'compliant') {
+    parts.push('Travel distances within acceptable limits');
+  } else if (data.travel_distances_compliant === 'no' || data.travel_distances === 'non_compliant') {
+    parts.push('Travel distances exceed recommended limits');
+  }
+
+  // Obstructions
+  if (data.escape_route_obstructions === 'yes' || data.escape_route_obstructions === 'present') {
+    parts.push('Escape route obstructions identified requiring removal');
+  } else if (data.escape_route_obstructions === 'no') {
+    parts.push('Escape routes maintained clear');
+  }
+
+  // Signage
+  if (data.signage_adequacy === 'adequate' || data.signage === 'adequate') {
+    parts.push('Exit signage provision adequate');
+  } else if (data.signage_adequacy === 'inadequate' || data.signage === 'inadequate') {
+    parts.push('Exit signage requires enhancement');
+  }
+
+  if (parts.length === 0) return null;
+
+  return parts.slice(0, 3).join('. ') + '.';
+}
+
+/**
+ * Section 7: Fire Detection, Alarm & Emergency Lighting
+ */
+function generateSection7Summary(module: ModuleInstance, document: Document): string | null {
+  const data = module.data;
+  const parts: string[] = [];
+
+  // Fire alarm system
+  const hasAlarm = data.fire_alarm_present === 'yes' || data.alarm_present === 'yes';
+  if (hasAlarm) {
+    const category = data.fire_alarm_category || data.alarm_category || data.category;
+    if (category) {
+      const categoryLabel = String(category).toUpperCase();
+      parts.push(`Fire alarm system installed (${categoryLabel} category)`);
+    } else {
+      parts.push('Fire alarm system installed');
+    }
+
+    // Testing evidence
+    if (data.alarm_testing_evidence === 'current' || data.testing_maintenance === 'current') {
+      parts.push('Testing and maintenance regime current');
+    } else if (data.alarm_testing_evidence === 'overdue' || data.testing_maintenance === 'overdue') {
+      parts.push('Testing records overdue or not evidenced');
+    }
+  } else if (data.fire_alarm_present === 'no' || data.alarm_present === 'no') {
+    parts.push('No fire alarm system installed');
+  }
+
+  // Emergency lighting
+  const hasEL = data.emergency_lighting_present === 'yes';
+  if (hasEL) {
+    const elTesting = data.emergency_lighting_testing;
+    if (elTesting === 'current' || elTesting === 'satisfactory') {
+      parts.push('Emergency lighting provided with current testing');
+    } else if (elTesting === 'overdue' || elTesting === 'unsatisfactory') {
+      parts.push('Emergency lighting testing overdue');
+    }
+  } else if (data.emergency_lighting_present === 'no') {
+    parts.push('Emergency lighting not provided');
+  }
+
+  if (parts.length === 0) return null;
+
+  return parts.slice(0, 3).join('. ') + '.';
+}
+
+/**
+ * Section 9: Passive Fire Protection (Fire Doors, Compartmentation)
+ */
+function generateSection9Summary(module: ModuleInstance, document: Document): string | null {
+  const data = module.data;
+  const parts: string[] = [];
+
+  // Fire doors
+  if (data.fire_doors_present === 'yes') {
+    const doorCondition = data.fire_doors_condition;
+    if (doorCondition === 'good' || doorCondition === 'satisfactory') {
+      parts.push('Fire doors in satisfactory condition');
+    } else if (doorCondition === 'poor' || doorCondition === 'defective') {
+      parts.push('Fire door defects identified requiring remediation');
+    }
+  } else if (data.fire_doors_present === 'no') {
+    parts.push('No fire doors installed');
+  }
+
+  // Compartmentation
+  if (data.compartmentation_status === 'intact' || data.compartmentation_status === 'good') {
+    parts.push('Compartmentation integrity maintained');
+  } else if (data.compartmentation_status === 'breached' || data.compartmentation_status === 'compromised') {
+    parts.push('Compartmentation breaches identified');
+  }
+
+  // Fire stopping
+  if (data.fire_stopping_adequacy === 'adequate' || data.fire_stopping_adequacy === 'good') {
+    parts.push('Fire stopping provision adequate');
+  } else if (data.fire_stopping_adequacy === 'inadequate' || data.fire_stopping_adequacy === 'poor') {
+    parts.push('Fire stopping deficiencies noted');
+  }
+
+  if (parts.length === 0) return null;
+
+  return parts.slice(0, 3).join('. ') + '.';
+}
+
+/**
+ * Section 10: Fixed Fire Suppression & Firefighting Facilities
+ */
+function generateSection10Summary(module: ModuleInstance, document: Document): string | null {
   const data = module.data;
   const firefighting = data.firefighting || {};
   const fixedFacilities = firefighting.fixed_facilities || {};
 
-  // Extract building height for context
-  const buildingHeightM = data.building_height_m || document.meta?.building_height_m || 0;
-
   const parts: string[] = [];
 
-  // 1. Sprinkler system narrative
+  // Sprinkler system
   const sprinklers = fixedFacilities.sprinklers || {};
   const hasSprinklers = sprinklers.installed === 'yes' || data.sprinkler_present === 'yes';
 
   if (hasSprinklers) {
-    let sprinklerText = 'Sprinkler system installed';
-
-    // Add type
+    let text = 'Sprinkler system installed';
     const systemType = sprinklers.type || data.sprinkler_type;
-    if (systemType) {
-      const typeLabel = String(systemType).replace(/_/g, ' ').toLowerCase();
-      sprinklerText += ` (${typeLabel})`;
-    }
-
-    // Add coverage
     const coverage = sprinklers.coverage || data.sprinkler_coverage;
-    if (coverage && coverage !== 'unknown') {
+
+    if (systemType && coverage && coverage !== 'unknown') {
+      const typeLabel = String(systemType).replace(/_/g, ' ').toLowerCase();
       const coverageLabel = String(coverage).replace(/_/g, ' ').toLowerCase();
-      sprinklerText += ` with ${coverageLabel} coverage`;
+      text += ` (${typeLabel}, ${coverageLabel} coverage)`;
+    } else if (systemType) {
+      const typeLabel = String(systemType).replace(/_/g, ' ').toLowerCase();
+      text += ` (${typeLabel})`;
     }
 
-    // Add servicing status
     const servicingStatus = sprinklers.servicing_status || data.sprinkler_servicing_status;
-    if (servicingStatus === 'current' || servicingStatus === 'satisfactory') {
-      sprinklerText += '; servicing current';
-    } else if (servicingStatus === 'overdue' || servicingStatus === 'unknown') {
-      sprinklerText += '; servicing overdue or not evidenced';
+    if (servicingStatus === 'overdue' || servicingStatus === 'unknown') {
+      text += ' with servicing overdue';
     }
 
-    parts.push(sprinklerText);
+    parts.push(text);
   } else if (data.sprinkler_present === 'no' || sprinklers.installed === 'no') {
     parts.push('No sprinkler system installed');
   }
 
-  // 2. Rising mains (dry/wet risers)
+  // Rising mains
   const dryRiser = fixedFacilities.dry_riser || {};
   const wetRiser = fixedFacilities.wet_riser || {};
-  const hasDryRiser = dryRiser.installed === 'yes' || data.rising_mains === 'dry_riser';
-  const hasWetRiser = wetRiser.installed === 'yes' || data.rising_mains === 'wet_riser';
-  const isHighRise = buildingHeightM >= 18;
+  const hasDryRiser = dryRiser.installed === 'yes';
+  const hasWetRiser = wetRiser.installed === 'yes';
 
   if (hasDryRiser || hasWetRiser) {
-    const riserType = hasWetRiser ? 'wet riser' : 'dry riser';
-    let riserText = `${riserType.charAt(0).toUpperCase() + riserType.slice(1)} installed`;
-
+    const riserType = hasWetRiser ? 'Wet riser' : 'Dry riser';
     const riserServicing = hasWetRiser ? wetRiser.servicing_status : dryRiser.servicing_status;
-    if (riserServicing === 'current' || riserServicing === 'satisfactory') {
-      riserText += ' with current testing regime';
-    } else if (riserServicing === 'overdue' || riserServicing === 'defective') {
-      riserText += '; testing overdue or defective';
+
+    if (riserServicing === 'overdue' || riserServicing === 'defective') {
+      parts.push(`${riserType} testing overdue or defective`);
+    } else {
+      parts.push(`${riserType} installed with current testing`);
     }
-
-    parts.push(riserText);
-  } else if (!isHighRise && buildingHeightM > 0) {
-    parts.push('rising mains not installed (not required based on building height)');
   }
 
-  // 3. Firefighting lift and shaft
-  const firefightingLift = fixedFacilities.firefighting_lift || {};
-  const firefightingShaft = fixedFacilities.firefighting_shaft || {};
-  const hasLift = firefightingLift.present === 'yes' || data.firefighting_lift === 'yes';
-  const hasShaft = firefightingShaft.present === 'yes' || data.firefighting_shaft === 'yes';
-
-  if (hasLift && hasShaft) {
-    parts.push('firefighting lift and shaft provided');
-  } else if (hasLift) {
-    parts.push('firefighting lift provided');
-  } else if (hasShaft) {
-    parts.push('firefighting shaft provided');
+  // Portable extinguishers
+  const extinguishers = firefighting.portable_extinguishers || {};
+  if (extinguishers.present === 'yes' || data.extinguishers_present === 'yes') {
+    const servicingStatus = extinguishers.servicing_status || data.extinguisher_servicing_evidence;
+    if (servicingStatus === 'overdue' || servicingStatus === 'no' || servicingStatus === 'unknown') {
+      parts.push('Fire extinguisher servicing overdue');
+    }
+  } else if (extinguishers.present === 'no' || data.extinguishers_present === 'no') {
+    parts.push('Fire extinguishers not provided');
   }
 
-  // If no substantial content, return null
   if (parts.length === 0) return null;
 
-  // Build final summary with proper grammar
-  let summary = '';
+  return parts.slice(0, 3).join('. ') + '.';
+}
 
-  if (parts.length === 1) {
-    summary = parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + '.';
-  } else if (parts.length === 2) {
-    summary = parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + '; ' + parts[1] + '.';
-  } else {
-    // Three or more parts
-    const firstPart = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-    const middleParts = parts.slice(1, -1).join('; ');
-    const lastPart = parts[parts.length - 1];
-    summary = `${firstPart}; ${middleParts}; ${lastPart}.`;
+/**
+ * Section 11: Fire Safety Management & Procedures
+ */
+function generateSection11Summary(module: ModuleInstance, document: Document): string | null {
+  const data = module.data;
+  const parts: string[] = [];
+
+  // Fire safety policy
+  if (data.fire_safety_policy_exists === 'yes' || data.fire_safety_policy === 'yes') {
+    parts.push('Fire safety policy documented and in place');
+  } else if (data.fire_safety_policy_exists === 'no' || data.fire_safety_policy === 'no') {
+    parts.push('Fire safety policy not documented');
   }
 
-  // Add concluding statement if no deficiencies mentioned
-  const hasDeficiencies = summary.toLowerCase().includes('overdue') ||
-                          summary.toLowerCase().includes('defective') ||
-                          summary.toLowerCase().includes('not evidenced');
-
-  if (!hasDeficiencies) {
-    summary += ' Overall, facilities are proportionate to building height, use and risk profile.';
+  // Training provision
+  if (data.training_induction_provided === 'yes' || data.training_induction === 'yes') {
+    const refresher = data.training_refresher_frequency || data.training_refresher;
+    if (refresher === 'annual' || refresher === 'regular') {
+      parts.push('Staff fire safety training regime in place');
+    }
+  } else if (data.training_induction_provided === 'no' || data.training_induction === 'no') {
+    parts.push('Staff fire safety training not provided');
   }
 
-  return summary;
+  // Fire drills
+  const drillFrequency = data.training_fire_drill_frequency || data.drill_frequency;
+  if (drillFrequency === 'never' || drillFrequency === 'ad_hoc') {
+    parts.push('Fire drill frequency inadequate');
+  } else if (drillFrequency === 'annual' || drillFrequency === 'six_monthly') {
+    parts.push('Fire drills conducted at appropriate intervals');
+  }
+
+  // Testing records
+  if (data.testing_records === 'current' || data.testing_records === 'available') {
+    parts.push('Fire safety testing records maintained');
+  } else if (data.testing_records === 'no' || data.testing_records === 'not_available') {
+    parts.push('Fire safety testing records not evidenced');
+  }
+
+  // Housekeeping
+  if (data.housekeeping_rating === 'poor' || data.housekeeping_rating === 'inadequate') {
+    parts.push('Housekeeping standards require improvement');
+  } else if (data.housekeeping_rating === 'good' || data.housekeeping_rating === 'excellent') {
+    parts.push('Housekeeping standards satisfactory');
+  }
+
+  if (parts.length === 0) return null;
+
+  return parts.slice(0, 3).join('. ') + '.';
+}
+
+/**
+ * @deprecated Use generateAssessorSummary() instead
+ * Kept for backward compatibility with Section 10 specific call
+ */
+export function generateSection10AssessorSummary(
+  module: ModuleInstance | undefined,
+  document: Document
+): string | null {
+  return generateAssessorSummary(10, module, document);
 }

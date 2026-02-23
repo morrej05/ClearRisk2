@@ -101,6 +101,84 @@ import {
   renderSection14Review,
 } from './fra/fraSections';
 
+/**
+ * Get display section number (uses displayNumber if available, otherwise falls back to id)
+ */
+function getDisplaySectionNumber(sectionId: number): number {
+  const section = FRA_REPORT_STRUCTURE.find(s => s.id === sectionId);
+  return section?.displayNumber ?? section?.id ?? sectionId;
+}
+
+/**
+ * Render a standard section with consistent header, evidence, and numbering
+ */
+async function renderStandardSection(
+  cursor: Cursor,
+  section: PdfSection,
+  sectionModules: ModuleInstance[],
+  document: Document,
+  font: any,
+  fontBold: any,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  attachments: Attachment[],
+  evidenceRefMap: Map<string, string>,
+  moduleInstances: ModuleInstance[],
+  actions: Action[],
+  actionIdToSectionId: Map<string, number>
+): Promise<Cursor> {
+  let { page, yPosition } = cursor;
+
+  // Print section header using displayNumber
+  const displayNum = getDisplaySectionNumber(section.id);
+  const sectionTitle = `${displayNum}. ${section.title}`;
+
+  console.log('[FRA] renderStandardSection:', section.id, '→ display:', displayNum, sectionTitle);
+
+  // Ensure space for section header
+  const spaceResult = ensureSpace(80, page, yPosition, pdfDoc, isDraft, totalPages);
+  page = spaceResult.page;
+  yPosition = spaceResult.yPosition;
+
+  // Draw section header
+  yPosition -= 20;
+  page.drawText(sanitizePdfText(sectionTitle), {
+    x: MARGIN,
+    y: yPosition,
+    size: 14,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+  yPosition -= 30;
+
+  // Render each module in this section with full evidence support
+  for (const module of sectionModules) {
+    console.log('[FRA] renderStandardSection rendering module:', module.module_key);
+
+    ({ page, yPosition } = await drawModuleContent(
+      { page, yPosition },
+      module,
+      document,
+      font,
+      fontBold,
+      pdfDoc,
+      isDraft,
+      totalPages,
+      undefined, // keyPoints - let drawModuleContent handle it
+      section.moduleKeys, // expectedModuleKeys - for info gap filtering
+      section.id, // sectionId - for section-specific filtering
+      attachments, // Pass attachments for inline evidence
+      evidenceRefMap, // Pass evidence reference map
+      moduleInstances, // Pass module instances for evidence linking
+      actions, // Pass actions for action-linked evidence
+      actionIdToSectionId // Pass action->section map for null module_instance_id fallback
+    ));
+  }
+
+  return { page, yPosition };
+}
+
 export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array> {
   console.log('[PDF FRA] Starting FRA PDF build');
   const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
@@ -208,7 +286,8 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   const actionsWithRefs = sortedActions.map((action, index) => {
     const displayRef = action.reference_number || `R-${String(index + 1).padStart(2, '0')}`;
     const sectionId = moduleToSectionMap.get(action.module_instance_id);
-    const sectionRef = sectionId ? `Section ${sectionId}` : null;
+    // Use displayNumber for section references
+    const sectionRef = sectionId ? `Section ${getDisplaySectionNumber(sectionId)}` : null;
 
     return {
       ...action,
@@ -696,36 +775,24 @@ if (section.id === 5) {
         cursor = await renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances, actions, actionIdToSectionId);
         ({ page, yPosition } = cursor);
       } else {
-        // Generic section rendering for standard modules
-        // Pass section.moduleKeys to prevent cross-section info gap bleed
-        for (const module of sectionModules) {
-          console.log(
-  '[FRA] section',
-  section.id,
-  'moduleKeys=',
-  section.moduleKeys,
-  'modulesFound=',
-  sectionModules.map(m => m.module_key)
-);
-          ({ page, yPosition } = await drawModuleContent(
-            { page, yPosition },
-            module,
-            document,
-            font,
-            fontBold,
-            pdfDoc,
-            isDraft,
-            totalPages,
-            keyPoints,
-            section.moduleKeys,
-            section.id, // Pass section ID for section-specific filtering
-            attachments, // Pass attachments for inline evidence
-            evidenceRefMap, // Pass evidence reference map
-            moduleInstances, // Pass module instances for evidence linking
-            actions, // Pass actions for action-linked evidence
-            actionIdToSectionId // Pass action->section map for null module_instance_id fallback
-          ));
-        }
+        // Use standard section renderer for consistent header, evidence, and numbering
+        cursor = await renderStandardSection(
+          { page, yPosition },
+          section,
+          sectionModules,
+          document,
+          font,
+          fontBold,
+          pdfDoc,
+          isDraft,
+          totalPages,
+          attachments,
+          evidenceRefMap,
+          moduleInstances,
+          actions,
+          actionIdToSectionId
+        );
+        ({ page, yPosition } = cursor);
       }
     }
   }
@@ -767,8 +834,9 @@ if (section.id === 5) {
       page = compactResult.page;
       yPosition = compactResult.yPosition;
 
-      // Section number and title
-      page.drawText(`${section.id}. ${section.title}`, {
+      // Section number and title (use displayNumber)
+      const displayNum = getDisplaySectionNumber(section.id);
+      page.drawText(`${displayNum}. ${section.title}`, {
         x: MARGIN + 10,
         y: yPosition,
         size: 11,

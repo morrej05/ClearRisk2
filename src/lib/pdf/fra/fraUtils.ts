@@ -269,14 +269,9 @@ export function mapModuleKeyToSectionName(moduleKey: string): string {
   // Find the section that contains this module key
   for (const section of FRA_REPORT_STRUCTURE) {
     if (section.moduleKeys.includes(moduleKey)) {
-      // Special handling for split sections
-      if (section.id === 7 && moduleKey === 'FRA_3_ACTIVE_SYSTEMS') {
-        return '7/8. Active Fire Safety Systems';
-      }
-      if (section.id === 10 && moduleKey === 'FRA_8_FIREFIGHTING_EQUIPMENT') {
-        return '10/11. Firefighting Facilities & Equipment';
-      }
-      return `${section.id}. ${section.title}`;
+      // Use displayNumber if available, otherwise fall back to id
+      const displayNum = section.displayNumber ?? section.id;
+      return `${displayNum}. ${section.title}`;
     }
   }
 

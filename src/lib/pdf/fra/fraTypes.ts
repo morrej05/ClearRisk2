@@ -45,6 +45,7 @@ export interface Action {
   target_date: string | null;
   module_instance_id: string;
   created_at: string;
+  reference_number?: string | null;
 }
 
 export interface ActionRating {

@@ -1573,20 +1573,13 @@ export async function drawActionRegister(
       yPosition = PAGE_TOP_Y;
     }
 
-    // Map priority band to label
+    // Use priority band directly (P1/P2/P3/P4)
     const priorityBand = action.priority_band || 'P4';
-    const priorityLabelMap: Record<string, string> = {
-      'P1': 'Critical',
-      'P2': 'High',
-      'P3': 'Medium',
-      'P4': 'Low',
-    };
-    const priorityLabel = priorityLabelMap[priorityBand] || 'Medium';
-
     const actionText = action.recommended_action || '(No action text provided)';
     const owner = action.owner_display_name || undefined;
     const target = action.target_date ? formatDate(action.target_date) : undefined;
     const status = action.status || 'open';
+    const ref = action.reference_number || undefined;
 
     // Use new action card primitive
     yPosition = drawActionCard({
@@ -1594,8 +1587,9 @@ export async function drawActionRegister(
       x: MARGIN,
       y: yPosition,
       w: CONTENT_WIDTH,
+      ref,
       description: actionText,
-      priority: priorityLabel,
+      priority: priorityBand,
       owner,
       target,
       status,

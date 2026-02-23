@@ -1,5 +1,6 @@
 import { PDFPage, PDFFont, rgb } from 'pdf-lib';
 import { PDF_THEME, PdfProduct } from './pdfStyles';
+import { wrapText } from './pdfUtils';
 
 type Fonts = { regular: PDFFont; bold: PDFFont };
 
@@ -331,7 +332,7 @@ export function drawActionCard(args: {
   x: number;
   y: number;
   w: number;
-  actionRef?: string;
+  ref?: string;
   description: string;
   priority: string;
   owner?: string;
@@ -339,67 +340,69 @@ export function drawActionCard(args: {
   status?: string;
   fonts: { regular: any; bold: any };
 }) {
-  const { page, x, y, w, description, priority, owner, target, status, fonts } = args;
+  const { page, x, y, w, ref, description, priority, owner, target, status, fonts } = args;
 
   const cardPadding = 12;
   const stripeW = 4;
+  const titleSize = 11.5;
+  const metaSize = 9.5;
   const lineGap = 14;
 
   const p = (priority || '').toLowerCase();
-  let stripeColor = rgb(0.75, 0.45, 0.15); // default substantial tone
-
-  if (p.includes('critical')) stripeColor = rgb(0.65, 0.15, 0.15);
-  else if (p.includes('high')) stripeColor = rgb(0.70, 0.35, 0.10);
-  else if (p.includes('medium')) stripeColor = rgb(0.75, 0.65, 0.20);
-  else if (p.includes('low')) stripeColor = rgb(0.12, 0.29, 0.55);
-
-  const cardHeightEstimate = 70; // conservative; flow control handles overflow
-
-  // Left stripe
-  page.drawRectangle({
-    x,
-    y: y - cardHeightEstimate,
-    width: stripeW,
-    height: cardHeightEstimate,
-    color: stripeColor,
-  });
+  let stripeColor = rgb(0.75, 0.45, 0.15);
+  if (p.includes('p1') || p.includes('critical')) stripeColor = rgb(0.65, 0.15, 0.15);
+  else if (p.includes('p2') || p.includes('high')) stripeColor = rgb(0.70, 0.35, 0.10);
+  else if (p.includes('p3') || p.includes('medium')) stripeColor = rgb(0.75, 0.65, 0.20);
+  else if (p.includes('p4') || p.includes('low')) stripeColor = rgb(0.12, 0.29, 0.55);
 
   const textX = x + stripeW + cardPadding;
-  let textY = y - cardPadding;
+  const maxTextW = w - stripeW - cardPadding * 2;
 
-  // Priority label (small, uppercase)
-  page.drawText(priority.toUpperCase(), {
+  // Wrap description
+  const lines = wrapText(description, maxTextW, titleSize, fonts.regular);
+
+  // Height calc
+  const badgeRowH = 12;
+  const descH = lines.length * lineGap;
+  const metaH = 12;
+  const cardH = cardPadding + badgeRowH + 8 + descH + 8 + metaH + cardPadding;
+
+  page.drawRectangle({ x, y: y - cardH, width: stripeW, height: cardH, color: stripeColor });
+
+  let cursorY = y - cardPadding;
+
+  // Top row: "R-01   P4" or "R-01   HIGH"
+  const topLabel = ref ? `${ref}   ${priority}` : priority;
+  page.drawText(topLabel.toUpperCase(), {
     x: textX,
-    y: textY,
+    y: cursorY,
     size: 9,
     font: fonts.bold,
     color: stripeColor,
   });
+  cursorY -= 18;
 
-  textY -= lineGap;
+  // Description lines
+  for (const line of lines) {
+    page.drawText(line, {
+      x: textX,
+      y: cursorY,
+      size: titleSize,
+      font: fonts.regular,
+      color: PDF_THEME.colours.text,
+    });
+    cursorY -= lineGap;
+  }
 
-  // Description
-  page.drawText(description, {
-    x: textX,
-    y: textY,
-    size: 11.5,
-    font: fonts.regular,
-    color: PDF_THEME.colours.text,
-    maxWidth: w - stripeW - cardPadding * 2,
-  });
-
-  textY -= lineGap * 2;
-
-  // Metadata row
+  // Meta row
   const metaText = `Owner: ${owner || '(Unassigned)'}   |   Target: ${target || '-'}   |   Status: ${status || '-'}`;
-
   page.drawText(metaText, {
     x: textX,
-    y: textY,
-    size: 9.5,
+    y: cursorY - 2,
+    size: metaSize,
     font: fonts.regular,
     color: rgb(0.35, 0.38, 0.42),
   });
 
-  return y - cardHeightEstimate - 12;
+  return y - cardH - 12;
 }

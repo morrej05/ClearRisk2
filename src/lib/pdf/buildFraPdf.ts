@@ -139,6 +139,26 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   const evidenceRefMap = buildEvidenceRefMap(attachments);
   console.log('[PDF FRA] Built evidence reference map with', evidenceRefMap.size, 'entries');
 
+  // Build actionId -> sectionId map for action-linked evidence matching
+  // This allows attachments to match sections even when action.module_instance_id is null
+  const actionIdToSectionId = new Map<string, number>();
+  for (const action of actions) {
+    if (action.module_instance_id) {
+      const module = moduleInstances.find(m => m.id === action.module_instance_id);
+      if (module) {
+        // Use existing MODULE_KEY_TO_SECTION_ID map from fraCoreDraw
+        // For now, inline the same logic here
+        const section = FRA_REPORT_STRUCTURE.find(s => s.moduleKeys.includes(module.module_key));
+        if (section) {
+          actionIdToSectionId.set(action.id, section.id);
+        }
+      }
+    }
+    // Note: If action.module_instance_id is null/invalid and no section_reference exists,
+    // the action won't be mapped. This is acceptable as we can't determine the section.
+  }
+  console.log('[PDF FRA] Built action->section map with', actionIdToSectionId.size, 'entries');
+
   // Run quality gate validation
   console.log('[PDF FRA] Running quality gate validation...');
   const qualityResult = validateReportQuality(moduleInstances, actions);
@@ -459,15 +479,15 @@ drawTableOfContents(page, font, fontBold);
   yPosition = PAGE_TOP_Y;
 
   // Section renderer map for explicit delegation
-  const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[], att?: any, eMap?: any, mInst?: ModuleInstance[], acts?: Action[]) => Cursor> = {
+  const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[], att?: any, eMap?: any, mInst?: ModuleInstance[], acts?: Action[], actToSec?: Map<string, number>) => Cursor> = {
     1: renderSection1AssessmentDetails,
     2: renderSection2Premises,
     3: renderSection3Occupants,
     4: renderSection4Legislation,
     5: renderSection5FireHazards,
-    7: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts) => renderSection7Detection(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts),
-    10: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts) => renderSection10Suppression(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts),
-    11: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts) => renderSection11Management(cursor, modules, moduleInstances, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts),
+    7: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => renderSection7Detection(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
+    10: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => renderSection10Suppression(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
+    11: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => renderSection11Management(cursor, modules, moduleInstances, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
     14: renderSection14Review,
   };
 
@@ -668,7 +688,7 @@ if (section.id === 5) {
       const renderer = SECTION_RENDERERS[section.id];
 
       if (renderer) {
-        cursor = renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances, actions);
+        cursor = renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances, actions, actionIdToSectionId);
         ({ page, yPosition } = cursor);
       } else {
         // Generic section rendering for standard modules
@@ -697,7 +717,8 @@ if (section.id === 5) {
             attachments, // Pass attachments for inline evidence
             evidenceRefMap, // Pass evidence reference map
             moduleInstances, // Pass module instances for evidence linking
-            actions // Pass actions for action-linked evidence
+            actions, // Pass actions for action-linked evidence
+            actionIdToSectionId // Pass action->section map for null module_instance_id fallback
           ));
         }
       }

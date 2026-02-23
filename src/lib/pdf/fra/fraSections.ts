@@ -799,7 +799,8 @@ export function renderSection7Detection(
   attachments?: Attachment[],
   evidenceRefMap?: Map<string, string>,
   moduleInstances?: ModuleInstance[],
-  actions?: Action[]
+  actions?: Action[],
+  actionIdToSectionId?: Map<string, number>
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -833,7 +834,8 @@ export function renderSection7Detection(
       attachments, // Pass attachments for inline evidence
       evidenceRefMap, // Pass evidence reference map
       moduleInstances, // Pass module instances for evidence linking
-      actions // Pass actions for action-linked evidence
+      actions, // Pass actions for action-linked evidence
+      actionIdToSectionId // Pass action->section map for null module_instance_id fallback
     ));
   }
 
@@ -878,7 +880,8 @@ export function renderSection10Suppression(
   attachments?: Attachment[],
   evidenceRefMap?: Map<string, string>,
   moduleInstances?: ModuleInstance[],
-  actions?: Action[]
+  actions?: Action[],
+  actionIdToSectionId?: Map<string, number>
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -912,7 +915,8 @@ export function renderSection10Suppression(
       attachments, // Pass attachments for inline evidence
       evidenceRefMap, // Pass evidence reference map
       moduleInstances, // Pass module instances for evidence linking
-      actions // Pass actions for action-linked evidence
+      actions, // Pass actions for action-linked evidence
+      actionIdToSectionId // Pass action->section map for null module_instance_id fallback
     ));
   }
 
@@ -936,7 +940,8 @@ export function renderSection11Management(
   attachments?: Attachment[],
   evidenceRefMap?: Map<string, string>,
   moduleInstances?: ModuleInstance[],
-  actions?: Action[]
+  actions?: Action[],
+  actionIdToSectionId?: Map<string, number>
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -985,7 +990,8 @@ export function renderSection11Management(
       attachments, // Pass attachments for inline evidence
       evidenceRefMap, // Pass evidence reference map
       moduleInstances, // Pass module instances for evidence linking
-      actions // Pass actions for action-linked evidence
+      actions, // Pass actions for action-linked evidence
+      actionIdToSectionId // Pass action->section map for null module_instance_id fallback
     ));
 
     yPosition -= 15;
@@ -1023,7 +1029,8 @@ export function renderSection11Management(
       attachments, // Pass attachments for inline evidence
       evidenceRefMap, // Pass evidence reference map
       moduleInstances, // Pass module instances for evidence linking
-      actions // Pass actions for action-linked evidence
+      actions, // Pass actions for action-linked evidence
+      actionIdToSectionId // Pass action->section map for null module_instance_id fallback
     ));
 
     yPosition -= 15;
@@ -1059,7 +1066,8 @@ export function renderSection11Management(
       attachments, // Pass attachments for inline evidence
       evidenceRefMap, // Pass evidence reference map
       moduleInstances, // Pass module instances for evidence linking
-      actions // Pass actions for action-linked evidence
+      actions, // Pass actions for action-linked evidence
+      actionIdToSectionId // Pass action->section map for null module_instance_id fallback
     ));
 
     yPosition -= 15;
@@ -1128,7 +1136,8 @@ export function renderSection11Management(
         attachments, // Pass attachments for inline evidence
         evidenceRefMap, // Pass evidence reference map
         moduleInstances, // Pass module instances for evidence linking
-        actions // Pass actions for action-linked evidence
+        actions, // Pass actions for action-linked evidence
+        actionIdToSectionId // Pass action->section map for null module_instance_id fallback
       ));
     } else {
       page.drawText('No portable firefighting equipment data recorded.', {

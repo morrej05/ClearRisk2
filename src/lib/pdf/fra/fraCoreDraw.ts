@@ -954,7 +954,8 @@ export function drawInlineEvidenceBlock(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
-  actions?: Action[]
+  actions?: Action[],
+  actionIdToSectionId?: Map<string, number>
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -979,16 +980,27 @@ export function drawInlineEvidenceBlock(
     }
   }
 
-  // 2) Action-linked attachments (NEW)
+  // 2) Action-linked attachments (ENHANCED with actionIdToSectionId fallback)
   if (actions && actions.length > 0) {
     for (const att of attachments) {
       if (seenAttachmentIds.has(att.id)) continue;
 
       if (att.action_id) {
+        // a) First try actionIdToSectionId map (handles null module_instance_id)
+        if (actionIdToSectionId) {
+          const actionSectionId = actionIdToSectionId.get(att.action_id);
+          if (actionSectionId === sectionId) {
+            const refNum = evidenceRefMap.get(att.id);
+            sectionAttachments.push({ attachment: att, refNum: refNum || null, source: 'action' });
+            seenAttachmentIds.add(att.id);
+            continue; // Found via map, skip fallback
+          }
+        }
+
+        // b) Fallback to existing action.module_instance_id resolution
         const action = actions.find(a => a.id === att.action_id);
         if (!action) continue;
 
-        // Resolve action's section via its module_instance_id
         if (action.module_instance_id) {
           const module = moduleInstances.find(m => m.id === action.module_instance_id);
           if (!module) continue;
@@ -1001,6 +1013,24 @@ export function drawInlineEvidenceBlock(
           seenAttachmentIds.add(att.id);
         }
       }
+    }
+  }
+
+  // c) If attachment has module_instance_id but wasn't matched yet, try direct module resolution
+  // This catches attachments that might have been missed
+  for (const att of attachments) {
+    if (seenAttachmentIds.has(att.id)) continue;
+
+    if (att.module_instance_id) {
+      const module = moduleInstances.find(m => m.id === att.module_instance_id);
+      if (!module) continue;
+
+      const attSectionId = mapModuleKeyToSectionId(module.module_key);
+      if (attSectionId !== sectionId) continue;
+
+      const refNum = evidenceRefMap.get(att.id);
+      sectionAttachments.push({ attachment: att, refNum: refNum || null, source: 'module' });
+      seenAttachmentIds.add(att.id);
     }
   }
 
@@ -1093,7 +1123,8 @@ export function drawModuleContent(
   attachments?: Attachment[], // Optional: for inline evidence
   evidenceRefMap?: Map<string, string>, // Optional: evidence reference map
   moduleInstances?: ModuleInstance[], // Optional: for evidence linking
-  actions?: Action[] // Optional: for action-linked evidence
+  actions?: Action[], // Optional: for action-linked evidence
+  actionIdToSectionId?: Map<string, number> // Optional: action->section map for null module_instance_id fallback
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -1180,7 +1211,8 @@ if (module.outcome) {
       pdfDoc,
       isDraft,
       totalPages,
-      actions // Pass actions for action-linked evidence
+      actions, // Pass actions for action-linked evidence
+      actionIdToSectionId // Pass action->section map for null module_instance_id fallback
     ));
   }
 

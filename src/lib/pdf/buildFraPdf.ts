@@ -709,21 +709,21 @@ if (section.id === 5) {
 );
           ({ page, yPosition } = drawModuleContent(
             { page, yPosition },
-            module,
+            fra8Module,
             document,
             font,
             fontBold,
             pdfDoc,
             isDraft,
             totalPages,
-            keyPoints,
-            section.moduleKeys,
-            section.id, // Pass section ID for section-specific filtering
-            attachments, // Pass attachments for inline evidence
-            evidenceRefMap, // Pass evidence reference map
-            moduleInstances, // Pass module instances for evidence linking
-            actions, // Pass actions for action-linked evidence
-            actionIdToSectionId // Pass action->section map for null module_instance_id fallback
+            undefined, // keyPoints
+            ['FRA_8_FIREFIGHTING_EQUIPMENT'], // expectedModuleKeys (keep section clean)
+            10, // sectionId
+            attachments,
+            evidenceRefMap,
+            moduleInstances,
+            actions,
+            actionIdToSectionId
           ));
         }
       }

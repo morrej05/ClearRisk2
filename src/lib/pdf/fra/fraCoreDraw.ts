@@ -1126,6 +1126,9 @@ export function drawModuleContent(
   actions?: Action[], // Optional: for action-linked evidence
   actionIdToSectionId?: Map<string, number> // Optional: action->section map for null module_instance_id fallback
 ): Cursor {
+
+  console.log('[PDF FRA] drawModuleContent invoked', { sectionId });
+  
   let { page, yPosition } = cursor;
 
   // Debug marker for Section 6 (FRA_2_ESCAPE_ASIS)

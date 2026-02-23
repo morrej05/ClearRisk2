@@ -912,14 +912,13 @@ export function renderSection10Suppression(
       pdfDoc,
       isDraft,
       totalPages,
-      undefined,
-      ['FRA_8_FIREFIGHTING_EQUIPMENT'],
-      10, // Section 10: Fixed Fire Suppression & Firefighting Facilities
-      attachments, // Pass attachments for inline evidence
-      evidenceRefMap, // Pass evidence reference map
-      moduleInstances, // Pass module instances for evidence linking
-      actions, // Pass actions for action-linked evidence
-      actionIdToSectionId // Pass action->section map for null module_instance_id fallback
+      undefined,               // allowList (if unused)
+      10,                      // sectionId
+      attachments,
+      evidenceRefMap,
+      moduleInstances,
+      actions,
+      actionIdToSectionId
     ));
   }
 

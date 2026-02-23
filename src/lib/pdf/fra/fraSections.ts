@@ -912,8 +912,9 @@ export function renderSection10Suppression(
       pdfDoc,
       isDraft,
       totalPages,
-      undefined,               // allowList (if unused)
-      10,                      // sectionId
+      undefined, // keyPoints
+      ['FRA_8_FIREFIGHTING_EQUIPMENT'], // expectedModuleKeys
+      10, // sectionId
       attachments,
       evidenceRefMap,
       moduleInstances,

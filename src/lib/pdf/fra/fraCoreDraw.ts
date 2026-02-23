@@ -22,6 +22,7 @@ import {
   drawRiskBadge,
   drawRiskBand,
   drawLikelihoodConsequenceBlock,
+  drawActionCard,
 } from '../pdfPrimitives';
 import { PAGE_TOP_Y } from '../pdfCursor';
 import { CRITICAL_FIELDS } from './fraConstants';
@@ -1572,79 +1573,34 @@ export async function drawActionRegister(
       yPosition = PAGE_TOP_Y;
     }
 
+    // Map priority band to label
     const priorityBand = action.priority_band || 'P4';
-    const priorityColor = getPriorityColor(priorityBand);
-    page.drawRectangle({
-      x: MARGIN,
-      y: yPosition - 3,
-      width: 30,
-      height: 16,
-      color: priorityColor,
-    });
-    page.drawText(priorityBand, {
-      x: MARGIN + 4,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-
-    yPosition -= 18;
+    const priorityLabelMap: Record<string, string> = {
+      'P1': 'Critical',
+      'P2': 'High',
+      'P3': 'Medium',
+      'P4': 'Low',
+    };
+    const priorityLabel = priorityLabelMap[priorityBand] || 'Medium';
 
     const actionText = action.recommended_action || '(No action text provided)';
-    const actionLines = wrapText(actionText, CONTENT_WIDTH - 10, 10, font);
-    for (const line of actionLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
-      page.drawText(line, {
-        x: MARGIN + 5,
-        y: yPosition,
-        size: 10,
-        font,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      yPosition -= 12;
-    }
-
-    // Add reason for priority for P1/P2 actions
-    if ((action.priority_band === 'P1' || action.priority_band === 'P2') && action.trigger_text) {
-      yPosition -= 2;
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
-      page.drawText(`Reason: ${sanitizePdfText(action.trigger_text)}`, {
-        x: MARGIN + 5,
-        y: yPosition,
-        size: 9,
-        font,
-        color: rgb(0.6, 0.3, 0.3),
-      });
-      yPosition -= 12;
-    }
-
-    const metaInfo: string[] = [];
-    const owner = action.owner_display_name || '(Unassigned)';
-    metaInfo.push(`Owner: ${owner}`);
-    if (action.target_date) {
-      metaInfo.push(`Target: ${formatDate(action.target_date)}`);
-    }
+    const owner = action.owner_display_name || undefined;
+    const target = action.target_date ? formatDate(action.target_date) : undefined;
     const status = action.status || 'open';
-    metaInfo.push(`Status: ${status}`);
 
-    page.drawText(metaInfo.join(' | '), {
-      x: MARGIN + 5,
+    // Use new action card primitive
+    yPosition = drawActionCard({
+      page,
+      x: MARGIN,
       y: yPosition,
-      size: 8,
-      font,
-      color: rgb(0.5, 0.5, 0.5),
+      w: CONTENT_WIDTH,
+      description: actionText,
+      priority: priorityLabel,
+      owner,
+      target,
+      status,
+      fonts: { regular: font, bold: fontBold },
     });
-
-    yPosition -= 12;
 
     // Add inline evidence for this action
     if (attachments && evidenceRefMap) {

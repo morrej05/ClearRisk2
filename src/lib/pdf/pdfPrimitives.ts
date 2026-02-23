@@ -321,3 +321,85 @@ export function drawLikelihoodConsequenceBlock(args: {
 
   return y2 - PDF_THEME.rhythm.lg;
 }
+
+/**
+ * Draw Action Card (Engineering Consultancy Style)
+ * Left-stripe colored card with priority, description, and metadata
+ */
+export function drawActionCard(args: {
+  page: any;
+  x: number;
+  y: number;
+  w: number;
+  actionRef?: string;
+  description: string;
+  priority: string;
+  owner?: string;
+  target?: string;
+  status?: string;
+  fonts: { regular: any; bold: any };
+}) {
+  const { page, x, y, w, description, priority, owner, target, status, fonts } = args;
+
+  const cardPadding = 12;
+  const stripeW = 4;
+  const lineGap = 14;
+
+  const p = (priority || '').toLowerCase();
+  let stripeColor = rgb(0.75, 0.45, 0.15); // default substantial tone
+
+  if (p.includes('critical')) stripeColor = rgb(0.65, 0.15, 0.15);
+  else if (p.includes('high')) stripeColor = rgb(0.70, 0.35, 0.10);
+  else if (p.includes('medium')) stripeColor = rgb(0.75, 0.65, 0.20);
+  else if (p.includes('low')) stripeColor = rgb(0.12, 0.29, 0.55);
+
+  const cardHeightEstimate = 70; // conservative; flow control handles overflow
+
+  // Left stripe
+  page.drawRectangle({
+    x,
+    y: y - cardHeightEstimate,
+    width: stripeW,
+    height: cardHeightEstimate,
+    color: stripeColor,
+  });
+
+  const textX = x + stripeW + cardPadding;
+  let textY = y - cardPadding;
+
+  // Priority label (small, uppercase)
+  page.drawText(priority.toUpperCase(), {
+    x: textX,
+    y: textY,
+    size: 9,
+    font: fonts.bold,
+    color: stripeColor,
+  });
+
+  textY -= lineGap;
+
+  // Description
+  page.drawText(description, {
+    x: textX,
+    y: textY,
+    size: 11.5,
+    font: fonts.regular,
+    color: PDF_THEME.colours.text,
+    maxWidth: w - stripeW - cardPadding * 2,
+  });
+
+  textY -= lineGap * 2;
+
+  // Metadata row
+  const metaText = `Owner: ${owner || '(Unassigned)'}   |   Target: ${target || '-'}   |   Status: ${status || '-'}`;
+
+  page.drawText(metaText, {
+    x: textX,
+    y: textY,
+    size: 9.5,
+    font: fonts.regular,
+    color: rgb(0.35, 0.38, 0.42),
+  });
+
+  return y - cardHeightEstimate - 12;
+}

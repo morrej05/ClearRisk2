@@ -283,7 +283,8 @@ export default function DocumentOverview() {
         .from('attachments')
         .select('*', { count: 'exact', head: true })
         .eq('document_id', id)
-        .eq('organisation_id', organisation.id);
+        .eq('organisation_id', organisation.id)
+        .is('deleted_at', null);
 
       if (error) throw error;
       setEvidenceCount(count || 0);

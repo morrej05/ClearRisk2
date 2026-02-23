@@ -15,6 +15,8 @@ import {
   Save,
   Unlink,
   Filter,
+  Link as LinkIcon,
+  Info,
 } from 'lucide-react';
 import {
   getDocumentStatus,
@@ -30,8 +32,21 @@ import {
   type DocumentStatus,
 } from '../../utils/evidenceManagement';
 import { unlinkAttachmentFromAction, unlinkAttachmentFromModule } from '../../lib/supabase/attachments';
+import { supabase } from '../../lib/supabase';
 
 type FilterType = 'all' | 'unlinked' | 'section' | 'action';
+
+interface ModuleInstance {
+  id: string;
+  module_key: string;
+  module_instance_id: string;
+}
+
+interface Action {
+  id: string;
+  reference_number: string;
+  title: string;
+}
 
 export default function DocumentEvidenceV2() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +56,9 @@ export default function DocumentEvidenceV2() {
 
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [modules, setModules] = useState<ModuleInstance[]>([]);
+  const [actions, setActions] = useState<Action[]>([]);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
@@ -48,6 +66,7 @@ export default function DocumentEvidenceV2() {
   const [uploadCaption, setUploadCaption] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const [linkingAttachment, setLinkingAttachment] = useState<string | null>(null);
 
   const isLocked = documentStatus ? isDocumentLocked(documentStatus.issue_status) : false;
 
@@ -64,19 +83,95 @@ export default function DocumentEvidenceV2() {
     setError(null);
 
     try {
-      const [status, attachs] = await Promise.all([
+      const [status, attachs, modulesData, actionsData] = await Promise.all([
         getDocumentStatus(id),
         getDocumentAttachments(id),
+        loadModules(),
+        loadActions(),
       ]);
 
       setDocumentStatus(status);
       setAttachments(attachs);
+      setModules(modulesData);
+      setActions(actionsData);
+
+      loadThumbnails(attachs);
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Failed to load evidence data');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadModules = async (): Promise<ModuleInstance[]> => {
+    if (!id) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('module_instances')
+        .select('id, module_key, module_instance_id')
+        .eq('document_id', id)
+        .order('module_key');
+
+      if (error) {
+        console.error('Error loading modules:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (err) {
+      console.error('Error loading modules:', err);
+      return [];
+    }
+  };
+
+  const loadActions = async (): Promise<Action[]> => {
+    if (!id) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('actions')
+        .select('id, reference_number, title')
+        .eq('document_id', id)
+        .order('reference_number');
+
+      if (error) {
+        console.error('Error loading actions:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (err) {
+      console.error('Error loading actions:', err);
+      return [];
+    }
+  };
+
+  const loadThumbnails = async (attachs: Attachment[]) => {
+    const imageAttachments = attachs.filter(att => att.file_type.startsWith('image/'));
+    const thumbs: Record<string, string> = {};
+
+    for (const att of imageAttachments) {
+      try {
+        const { data, error } = await supabase.storage
+          .from('evidence')
+          .createSignedUrl(att.file_path, 3600);
+
+        if (error) {
+          console.warn(`Failed to load thumbnail for ${att.file_name}:`, error);
+          continue;
+        }
+
+        if (data?.signedUrl) {
+          thumbs[att.id] = data.signedUrl;
+        }
+      } catch (err) {
+        console.warn(`Exception loading thumbnail for ${att.file_name}:`, err);
+      }
+    }
+
+    setThumbnails(thumbs);
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,6 +322,50 @@ export default function DocumentEvidenceV2() {
     }
   };
 
+  const handleLinkToModule = async (attachmentId: string, moduleInstanceId: string) => {
+    if (isLocked) {
+      alert('Cannot modify evidence on an issued or superseded document.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('attachments')
+        .update({ module_instance_id: moduleInstanceId })
+        .eq('id', attachmentId);
+
+      if (error) throw error;
+
+      setLinkingAttachment(null);
+      await loadData();
+    } catch (err: any) {
+      console.error('Link error:', err);
+      alert(err.message || 'Failed to link evidence to module');
+    }
+  };
+
+  const handleLinkToAction = async (attachmentId: string, actionId: string) => {
+    if (isLocked) {
+      alert('Cannot modify evidence on an issued or superseded document.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('attachments')
+        .update({ action_id: actionId })
+        .eq('id', attachmentId);
+
+      if (error) throw error;
+
+      setLinkingAttachment(null);
+      await loadData();
+    } catch (err: any) {
+      console.error('Link error:', err);
+      alert(err.message || 'Failed to link evidence to action');
+    }
+  };
+
   const filteredAttachments = attachments.filter((att) => {
     switch (filterType) {
       case 'unlinked':
@@ -303,6 +442,21 @@ export default function DocumentEvidenceV2() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-blue-900 mb-1">DocumentEvidenceV2 Debug Info</p>
+              <div className="text-sm text-blue-800 space-y-1">
+                <p>Total attachments loaded: {attachments.length}</p>
+                <p>Modules loaded: {modules.length}</p>
+                <p>Actions loaded: {actions.length}</p>
+                <p>Thumbnails loaded: {Object.keys(thumbnails).length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {isLocked && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
@@ -429,8 +583,17 @@ export default function DocumentEvidenceV2() {
                 <div key={attachment.id} className="p-4 hover:bg-neutral-50 transition-colors">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
-                      {attachment.file_type.startsWith('image/') ? (
-                        <ImageIcon className="w-10 h-10 text-blue-600" />
+                      {attachment.file_type.startsWith('image/') && thumbnails[attachment.id] ? (
+                        <img
+                          src={thumbnails[attachment.id]}
+                          alt={attachment.file_name}
+                          className="w-14 h-14 object-cover rounded border border-neutral-200"
+                          style={{ width: '56px', height: '56px' }}
+                        />
+                      ) : attachment.file_type.startsWith('image/') ? (
+                        <div className="w-14 h-14 bg-neutral-100 rounded border border-neutral-200 flex items-center justify-center">
+                          <ImageIcon className="w-6 h-6 text-neutral-400" />
+                        </div>
                       ) : (
                         <FileText className="w-10 h-10 text-neutral-600" />
                       )}
@@ -527,10 +690,68 @@ export default function DocumentEvidenceV2() {
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
+
+                              <button
+                                onClick={() => setLinkingAttachment(linkingAttachment === attachment.id ? null : attachment.id)}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="Link to section/action"
+                              >
+                                <LinkIcon className="w-4 h-4" />
+                              </button>
                             </>
                           )}
                         </div>
                       </div>
+
+                      {!isLocked && linkingAttachment === attachment.id && (
+                        <div className="mt-3 pt-3 border-t border-neutral-200">
+                          <p className="text-xs font-medium text-neutral-700 mb-2">LINKING</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-700 mb-1">
+                                Link to Module/Section
+                              </label>
+                              {modules.length === 0 ? (
+                                <p className="text-xs text-neutral-500 italic">No modules/sections found</p>
+                              ) : (
+                                <select
+                                  value={attachment.module_instance_id || ''}
+                                  onChange={(e) => e.target.value && handleLinkToModule(attachment.id, e.target.value)}
+                                  className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  <option value="">Select module...</option>
+                                  {modules.map(mod => (
+                                    <option key={mod.id} value={mod.id}>
+                                      {mod.module_key}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-700 mb-1">
+                                Link to Action
+                              </label>
+                              {actions.length === 0 ? (
+                                <p className="text-xs text-neutral-500 italic">No actions found</p>
+                              ) : (
+                                <select
+                                  value={attachment.action_id || ''}
+                                  onChange={(e) => e.target.value && handleLinkToAction(attachment.id, e.target.value)}
+                                  className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  <option value="">Select action...</option>
+                                  {actions.map(action => (
+                                    <option key={action.id} value={action.id}>
+                                      {action.reference_number} - {action.title?.substring(0, 40) || 'Untitled'}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

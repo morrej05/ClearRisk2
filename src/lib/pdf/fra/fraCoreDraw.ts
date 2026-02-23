@@ -1201,6 +1201,16 @@ if (module.outcome) {
   // Module data
   ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages, sectionId));
 
+  // Debug evidence context arguments
+  console.log('[PDF FRA] drawModuleContent evidence args', {
+    sectionId,
+    attachmentsType: Array.isArray(attachments) ? 'array' : typeof attachments,
+    attachmentsLen: attachments?.length,
+    evidenceRefMapType: evidenceRefMap instanceof Map ? 'map' : typeof evidenceRefMap,
+    evidenceRefMapSize: (evidenceRefMap as any)?.size,
+    moduleInstancesLen: moduleInstances?.length,
+  });
+
   // Inline evidence block (if data provided and sectionId available)
   if (sectionId && attachments && evidenceRefMap && moduleInstances) {
     ({ page, yPosition } = drawInlineEvidenceBlock(

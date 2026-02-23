@@ -13,6 +13,8 @@ import {
   Lock,
   X,
   Save,
+  Unlink,
+  Filter,
 } from 'lucide-react';
 import {
   getDocumentStatus,
@@ -27,6 +29,9 @@ import {
   type Attachment,
   type DocumentStatus,
 } from '../../utils/evidenceManagement';
+import { unlinkAttachmentFromAction, unlinkAttachmentFromModule } from '../../lib/supabase/attachments';
+
+type FilterType = 'all' | 'unlinked' | 'section' | 'action';
 
 export default function DocumentEvidenceV2() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +47,7 @@ export default function DocumentEvidenceV2() {
   const [editCaption, setEditCaption] = useState('');
   const [uploadCaption, setUploadCaption] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<FilterType>('all');
 
   const isLocked = documentStatus ? isDocumentLocked(documentStatus.issue_status) : false;
 
@@ -183,6 +189,57 @@ export default function DocumentEvidenceV2() {
     }
   };
 
+  const handleUnlinkFromAction = async (attachmentId: string) => {
+    if (isLocked) {
+      alert('Cannot modify evidence on an issued or superseded document.');
+      return;
+    }
+
+    if (!confirm('Unlink this evidence from its action? The file will remain available and linked to its section.')) {
+      return;
+    }
+
+    try {
+      await unlinkAttachmentFromAction(attachmentId);
+      await loadData();
+    } catch (err: any) {
+      console.error('Unlink error:', err);
+      alert(err.message || 'Failed to unlink evidence from action');
+    }
+  };
+
+  const handleUnlinkFromModule = async (attachmentId: string) => {
+    if (isLocked) {
+      alert('Cannot modify evidence on an issued or superseded document.');
+      return;
+    }
+
+    if (!confirm('Unlink this evidence from its section/module? The file will remain available but unlinked.')) {
+      return;
+    }
+
+    try {
+      await unlinkAttachmentFromModule(attachmentId);
+      await loadData();
+    } catch (err: any) {
+      console.error('Unlink error:', err);
+      alert(err.message || 'Failed to unlink evidence from module');
+    }
+  };
+
+  const filteredAttachments = attachments.filter((att) => {
+    switch (filterType) {
+      case 'unlinked':
+        return !att.module_instance_id && !att.action_id;
+      case 'section':
+        return att.module_instance_id && !att.action_id;
+      case 'action':
+        return att.action_id;
+      default:
+        return true;
+    }
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -208,7 +265,7 @@ export default function DocumentEvidenceV2() {
               <div className="flex items-center gap-3 mb-2">
                 <FileText className="w-6 h-6 text-neutral-700" />
                 <h1 className="text-2xl font-bold text-neutral-900">
-                  Evidence & Attachments
+                  Evidence & Attachments ({attachments.length})
                   {documentStatus && (
                     <span className="text-lg font-normal text-neutral-600 ml-2">
                       — v{documentStatus.version_number}
@@ -296,8 +353,59 @@ export default function DocumentEvidenceV2() {
           className="hidden"
         />
 
+        {attachments.length > 0 && (
+          <div className="bg-white rounded-lg border border-neutral-200 p-4 mb-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-neutral-600" />
+              <span className="text-sm font-medium text-neutral-700">Filter:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    filterType === 'all'
+                      ? 'bg-neutral-900 text-white'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  }`}
+                >
+                  All ({attachments.length})
+                </button>
+                <button
+                  onClick={() => setFilterType('unlinked')}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    filterType === 'unlinked'
+                      ? 'bg-neutral-900 text-white'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  }`}
+                >
+                  Unlinked ({attachments.filter(a => !a.module_instance_id && !a.action_id).length})
+                </button>
+                <button
+                  onClick={() => setFilterType('section')}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    filterType === 'section'
+                      ? 'bg-neutral-900 text-white'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  }`}
+                >
+                  By Section ({attachments.filter(a => a.module_instance_id && !a.action_id).length})
+                </button>
+                <button
+                  onClick={() => setFilterType('action')}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    filterType === 'action'
+                      ? 'bg-neutral-900 text-white'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  }`}
+                >
+                  By Action ({attachments.filter(a => a.action_id).length})
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
-          {attachments.length === 0 ? (
+          {filteredAttachments.length === 0 && attachments.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
               <p className="text-neutral-600 font-medium">No evidence uploaded</p>
@@ -307,9 +415,17 @@ export default function DocumentEvidenceV2() {
                   : 'Upload photos, PDFs, or other evidence files to support this document'}
               </p>
             </div>
+          ) : filteredAttachments.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
+              <p className="text-neutral-600 font-medium">No evidence matches this filter</p>
+              <p className="text-sm text-neutral-500 mt-1">
+                Try selecting a different filter to see other attachments
+              </p>
+            </div>
           ) : (
             <div className="divide-y divide-neutral-200">
-              {attachments.map((attachment) => (
+              {filteredAttachments.map((attachment) => (
                 <div key={attachment.id} className="p-4 hover:bg-neutral-50 transition-colors">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
@@ -384,10 +500,30 @@ export default function DocumentEvidenceV2() {
                                 <Edit2 className="w-4 h-4" />
                               </button>
 
+                              {attachment.action_id && (
+                                <button
+                                  onClick={() => handleUnlinkFromAction(attachment.id)}
+                                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                  title="Unlink from action"
+                                >
+                                  <Unlink className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {attachment.module_instance_id && (
+                                <button
+                                  onClick={() => handleUnlinkFromModule(attachment.id)}
+                                  className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                  title="Unlink from section/module"
+                                >
+                                  <Unlink className="w-4 h-4" />
+                                </button>
+                              )}
+
                               <button
                                 onClick={() => handleDeleteAttachment(attachment.id)}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete"
+                                title="Delete permanently"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>

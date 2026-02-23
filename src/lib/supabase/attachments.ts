@@ -499,3 +499,27 @@ export async function fetchAttachmentBytes(attachment: Attachment): Promise<Uint
     return null;
   }
 }
+
+export async function unlinkAttachmentFromAction(attachmentId: string): Promise<void> {
+  const { error } = await supabase
+    .from('attachments')
+    .update({ action_id: null })
+    .eq('id', attachmentId);
+
+  if (error) {
+    console.error('Error unlinking attachment from action:', error);
+    throw error;
+  }
+}
+
+export async function unlinkAttachmentFromModule(attachmentId: string): Promise<void> {
+  const { error } = await supabase
+    .from('attachments')
+    .update({ module_instance_id: null })
+    .eq('id', attachmentId);
+
+  if (error) {
+    console.error('Error unlinking attachment from module:', error);
+    throw error;
+  }
+}

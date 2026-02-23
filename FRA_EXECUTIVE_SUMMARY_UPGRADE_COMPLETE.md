@@ -15,10 +15,15 @@ Successfully upgraded the FRA executive summary page with professional consultan
 3. ✅ Added large risk badge with semantic colors
 4. ✅ Implemented 5-segment risk band visualization
 5. ✅ Created structured Likelihood/Consequence block with mini matrix
-6. ✅ Preserved all scoring logic (display-only changes)
-7. ✅ Build successful (1946 modules, 26.69s)
+6. ✅ Updated TWO rendering locations for complete coverage:
+   - ✅ buildFraPdf.ts - drawRiskSummaryPage() (standard path)
+   - ✅ fraCoreDraw.ts - drawCleanAuditPage1() (clean audit path)
+7. ✅ Preserved all scoring logic (display-only changes)
+8. ✅ Build successful (1946 modules, 21.43s)
 
 **NO SCORING LOGIC CHANGED** - Only visual presentation updated
+
+**IMPORTANT**: Both FRA PDF rendering paths now use the same consultancy-style executive summary!
 
 ---
 
@@ -252,11 +257,13 @@ Consequence to Life if Fire Occurs: Moderate ┘
 
 ---
 
-## Integration in buildFraPdf.ts
+## Integration in FRA PDF Files
 
-### Changes to drawRiskSummaryPage()
+### 1. buildFraPdf.ts - drawRiskSummaryPage()
 
 **Location**: Lines 973-1076 (function `drawRiskSummaryPage`)
+
+**Purpose**: Executive summary page in standard FRA PDF
 
 **Before** (Lines of code removed):
 - Centered "Overall Risk to Life Assessment" title
@@ -317,6 +324,90 @@ yPosition = drawLikelihoodConsequenceBlock({
 
 ---
 
+### 2. fraCoreDraw.ts - drawCleanAuditPage1()
+
+**Location**: Lines 2391-2492 (function `drawCleanAuditPage1`)
+
+**Purpose**: First page of "clean audit" FRA PDFs (alternative rendering path)
+
+**Before** (Lines of code removed):
+- Bordered panel box (180px height)
+- Side-by-side "Likelihood" and "Consequence" labels in panel
+- "Overall Risk to Life" label in panel
+- Large colored risk word
+- Wrapped narrative text inside panel
+- Panel-based layout with colX1, colX2 positioning
+
+**After** (New implementation):
+```typescript
+const fonts = { regular: font, bold: fontBold };
+
+yPosition = drawExecutiveRiskHeader({
+  page,
+  x: MARGIN,
+  y: yPosition,
+  w: CONTENT_WIDTH,
+  label: 'Overall Risk to Life',
+  fonts,
+});
+
+yPosition = drawRiskBadge({
+  page,
+  x: MARGIN,
+  y: yPosition,
+  riskLabel: scoringResult.overallRisk,
+  fonts,
+});
+
+yPosition = drawRiskBand({
+  page,
+  x: MARGIN,
+  y: yPosition,
+  w: CONTENT_WIDTH,
+  riskLabel: scoringResult.overallRisk,
+  fonts,
+});
+
+yPosition = drawLikelihoodConsequenceBlock({
+  page,
+  x: MARGIN,
+  y: yPosition,
+  w: CONTENT_WIDTH,
+  likelihood: scoringResult.likelihood,
+  consequence: scoringResult.consequence,
+  fonts,
+});
+
+yPosition -= 10;
+
+// Narrative paragraph (preserved, moved outside panel)
+const narrativeText = `The likelihood of fire is assessed as ${scoringResult.likelihood} and the potential consequences are assessed as ${scoringResult.consequence}. The overall risk to life is therefore assessed as ${scoringResult.overallRisk}.`;
+const narrativeLines = wrapText(narrativeText, CONTENT_WIDTH, 10, font);
+for (const line of narrativeLines) {
+  page.drawText(line, {
+    x: MARGIN,
+    y: yPosition,
+    size: 10,
+    font,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+  yPosition -= 13;
+}
+```
+
+**Key Changes**:
+- ❌ Removed bordered panel container
+- ❌ Removed side-by-side layout with colX1/colX2
+- ✅ Same consultancy-style primitives as buildFraPdf.ts
+- ✅ Consistent left-aligned layout
+- ✅ Narrative text moved outside (no longer in panel)
+
+**Preserved Elements**:
+- Provisional assessment warning box (unchanged)
+- Subsequent page content (unchanged)
+
+---
+
 ## Imports Added
 
 ### buildFraPdf.ts - Lines 50-56
@@ -329,6 +420,17 @@ import {
   drawRiskBand,
   drawLikelihoodConsequenceBlock,
 } from './pdfPrimitives';
+```
+
+### fraCoreDraw.ts - Lines 20-25
+
+```typescript
+import {
+  drawExecutiveRiskHeader,
+  drawRiskBadge,
+  drawRiskBand,
+  drawLikelihoodConsequenceBlock,
+} from '../pdfPrimitives';
 ```
 
 ---
@@ -681,15 +783,19 @@ npm run build
 **Output**:
 ```
 ✓ 1946 modules transformed
-✓ built in 26.69s
-dist/assets/index-DKsEzVZG.js   2,335.41 kB │ gzip: 595.03 kB
+✓ built in 21.43s
+dist/assets/index-BtDd3XCK.js   2,337.31 kB │ gzip: 595.65 kB
 ```
 
-**Status**: ✅ Build successful
+**Status**: ✅ Build successful (after both changes)
 
 **TypeScript Errors**: None
 **Runtime Errors**: None
 **Warnings**: None (other than chunk size)
+
+**Note**: Both rendering locations updated successfully:
+- ✅ `buildFraPdf.ts` - drawRiskSummaryPage()
+- ✅ `fraCoreDraw.ts` - drawCleanAuditPage1()
 
 ---
 
@@ -698,11 +804,12 @@ dist/assets/index-DKsEzVZG.js   2,335.41 kB │ gzip: 595.03 kB
 | File | Changes | Description |
 |------|---------|-------------|
 | `src/lib/pdf/pdfPrimitives.ts` | +225 lines | Added 4 executive summary primitives |
-| `src/lib/pdf/buildFraPdf.ts` | +9 -35 imports, -96 render code | Replaced old rendering with primitives |
+| `src/lib/pdf/buildFraPdf.ts` | +9 imports, -96 render code | Replaced old rendering with primitives |
+| `src/lib/pdf/fra/fraCoreDraw.ts` | +5 imports, -92 render code | Replaced drawCleanAuditPage1 executive summary |
 
-**Total**: 2 files, +234 -96 lines
+**Total**: 3 files, +234 -188 lines
 
-**Net**: +138 lines (mostly reusable primitives)
+**Net**: +46 lines (reusable primitives, cleaner code)
 
 ---
 
@@ -995,5 +1102,36 @@ Successfully transformed FRA executive summary from generic report style to prof
 ✅ **Build Verification**: Successful, no errors
 ✅ **Design System**: Integrated with PDF_THEME
 ✅ **Extensibility**: Patterns ready for other products
+✅ **Complete Coverage**: Both rendering paths updated (standard + clean audit)
 
 The FRA executive summary page now matches the visual quality of leading engineering consultancy reports while preserving all technical rigor and scoring accuracy.
+
+---
+
+## Quick Reference: What Was Changed
+
+### Added (pdfPrimitives.ts)
+- `drawExecutiveRiskHeader()` - Professional header with FRA accent
+- `drawRiskBadge()` - Large risk badge with semantic colors
+- `drawRiskBand()` - 5-segment risk scale visualization
+- `drawLikelihoodConsequenceBlock()` - Two-column L/C display with mini matrix
+- `RISK_BANDS` constant - Risk level definitions and colors
+- `normalizeRiskBandKey()` - String normalization for risk levels
+
+### Replaced (buildFraPdf.ts)
+- **Function**: `drawRiskSummaryPage()`
+- **Removed**: Centered title, bordered box, verbose descriptions
+- **Added**: Consultancy-style primitives, left-aligned layout
+
+### Replaced (fraCoreDraw.ts)
+- **Function**: `drawCleanAuditPage1()`
+- **Removed**: 180px bordered panel, side-by-side layout, colX1/colX2 positioning
+- **Added**: Same consultancy-style primitives, consistent layout
+
+### Result
+All FRA executive summary pages (both rendering paths) now display:
+1. Left-aligned "OVERALL RISK TO LIFE" header (FRA red)
+2. Large risk badge (48px, semantic color, rounded corners)
+3. 5-segment risk band (with active segment highlighted)
+4. Structured Likelihood/Consequence block (with 3×3 mini matrix)
+5. Narrative explanation paragraph (preserved)

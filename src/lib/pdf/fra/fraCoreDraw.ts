@@ -17,6 +17,12 @@ import {
   getPriorityColor,
   addNewPage,
 } from '../pdfUtils';
+import {
+  drawExecutiveRiskHeader,
+  drawRiskBadge,
+  drawRiskBand,
+  drawLikelihoodConsequenceBlock,
+} from '../pdfPrimitives';
 import { PAGE_TOP_Y } from '../pdfCursor';
 import { CRITICAL_FIELDS } from './fraConstants';
 import { safeArray, mapModuleKeyToSectionName } from './fraUtils';
@@ -2384,106 +2390,62 @@ export function drawCleanAuditPage1(
 
   yPosition -= 40;
 
-  // Risk Summary Panel (Clean bordered box)
-  const panelHeight = 180;
-  const panelY = yPosition - panelHeight + 20;
+  // Executive Summary - Engineering Consultancy Style
+  const fonts = { regular: font, bold: fontBold };
 
-  page.drawRectangle({
-    x: MARGIN + 20,
-    y: panelY,
-    width: CONTENT_WIDTH - 40,
-    height: panelHeight,
-    borderColor: rgb(0.8, 0.8, 0.8),
-    borderWidth: 1,
-    color: rgb(1, 1, 1),
+  yPosition = drawExecutiveRiskHeader({
+    page,
+    x: MARGIN,
+    y: yPosition,
+    w: CONTENT_WIDTH,
+    label: 'Overall Risk to Life',
+    fonts,
   });
 
-  // Risk summary content
-  let panelYPos = yPosition - 25;
-
-  // Likelihood and Consequence (side by side)
-  const colX1 = MARGIN + 40;
-  const colX2 = centerX + 20;
-
-  page.drawText('Likelihood', {
-    x: colX1,
-    y: panelYPos,
-    size: 11,
-    font: fontBold,
-    color: rgb(0.3, 0.3, 0.3),
+  yPosition = drawRiskBadge({
+    page,
+    x: MARGIN,
+    y: yPosition,
+    riskLabel: scoringResult.overallRisk,
+    fonts,
   });
 
-  page.drawText('Consequence', {
-    x: colX2,
-    y: panelYPos,
-    size: 11,
-    font: fontBold,
-    color: rgb(0.3, 0.3, 0.3),
+  yPosition = drawRiskBand({
+    page,
+    x: MARGIN,
+    y: yPosition,
+    w: CONTENT_WIDTH,
+    riskLabel: scoringResult.overallRisk,
+    fonts,
   });
 
-  panelYPos -= 20;
-
-  page.drawText(scoringResult.likelihood, {
-    x: colX1,
-    y: panelYPos,
-    size: 14,
-    font: fontBold,
-    color: rgb(0.1, 0.1, 0.1),
+  yPosition = drawLikelihoodConsequenceBlock({
+    page,
+    x: MARGIN,
+    y: yPosition,
+    w: CONTENT_WIDTH,
+    likelihood: scoringResult.likelihood,
+    consequence: scoringResult.consequence,
+    fonts,
   });
 
-  page.drawText(scoringResult.consequence, {
-    x: colX2,
-    y: panelYPos,
-    size: 14,
-    font: fontBold,
-    color: rgb(0.1, 0.1, 0.1),
-  });
-
-  panelYPos -= 35;
-
-  // Overall Risk Category (centered, prominent)
-  const riskColor =
-    scoringResult.overallRisk === 'Intolerable' ? rgb(0.8, 0.1, 0.1) :
-    scoringResult.overallRisk === 'Substantial' ? rgb(0.9, 0.5, 0) :
-    scoringResult.overallRisk === 'Moderate' ? rgb(0.9, 0.7, 0) :
-    scoringResult.overallRisk === 'Tolerable' ? rgb(0.7, 0.7, 0) :
-    rgb(0.2, 0.6, 0.2);
-
-  page.drawText('Overall Risk to Life', {
-    x: colX1,
-    y: panelYPos,
-    size: 11,
-    font: fontBold,
-    color: rgb(0.3, 0.3, 0.3),
-  });
-
-  panelYPos -= 22;
-
-  page.drawText(scoringResult.overallRisk.toUpperCase(), {
-    x: colX1,
-    y: panelYPos,
-    size: 18,
-    font: fontBold,
-    color: riskColor,
-  });
-
-  panelYPos -= 35;
+  yPosition -= 10;
 
   // Auto narrative (wrapped)
   const narrativeText = `The likelihood of fire is assessed as ${scoringResult.likelihood} and the potential consequences are assessed as ${scoringResult.consequence}. The overall risk to life is therefore assessed as ${scoringResult.overallRisk}.`;
-  const narrativeLines = wrapText(narrativeText, CONTENT_WIDTH - 80, 10, font);
+  const narrativeLines = wrapText(narrativeText, CONTENT_WIDTH, 10, font);
   for (const line of narrativeLines) {
     page.drawText(line, {
-      x: colX1,
-      y: panelYPos,
+      x: MARGIN,
+      y: yPosition,
       size: 10,
       font,
-      color: rgb(0.4, 0.4, 0.4),
+      color: rgb(0.3, 0.3, 0.3),
     });
-    panelYPos -= 13;
+    yPosition -= 13;
   }
 
-  yPosition = panelY - 20;
+  yPosition -= 20;
 
   // Provisional warning (if applicable)
   if (scoringResult.provisional) {

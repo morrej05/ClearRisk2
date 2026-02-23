@@ -28,6 +28,7 @@ import {
   addSupersededWatermark,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
+import { drawSectionHeaderBar } from './pdfPrimitives';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
 
 interface Document {
@@ -514,14 +515,15 @@ function drawModuleSection(
 ): number {
   const moduleName = getModuleName(module.module_key);
 
-  page.drawText(sanitizePdfText(moduleName), {
+  yPosition = drawSectionHeaderBar({
+    page,
     x: MARGIN,
     y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
+    w: CONTENT_WIDTH,
+    title: sanitizePdfText(moduleName),
+    product: 'dsear',
+    fonts: { regular: font, bold: fontBold },
   });
-  yPosition -= 25;
 
   // Draw module-specific content
   yPosition = drawModuleContent(page, module, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);

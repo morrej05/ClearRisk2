@@ -25,6 +25,7 @@ import {
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { computeFsdSummary } from '../fsd/fsdAssuranceEngine';
+import { drawSectionHeaderBar, drawOutcomeBadge } from './pdfPrimitives';
 
 interface Document {
   id: string;
@@ -474,35 +475,25 @@ function drawModuleSummary(
   }
 
   const moduleName = getModuleName(moduleInstance.module_key);
-  page.drawText(sanitizePdfText(moduleName), {
+  yPosition = drawSectionHeaderBar({
+    page,
     x: MARGIN,
     y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0.1, 0.1, 0.1),
+    w: CONTENT_WIDTH,
+    title: sanitizePdfText(moduleName),
+    product: 'fsd',
+    fonts: { regular: font, bold: fontBold },
   });
-  yPosition -= 25;
 
   const outcome = moduleInstance.outcome || 'pending';
-  const outcomeLabel = getOutcomeLabel(outcome);
-  const outcomeColor = getOutcomeColor(outcome);
-
-  page.drawRectangle({
+  drawOutcomeBadge({
+    page,
     x: MARGIN,
-    y: yPosition - 12,
-    width: 120,
-    height: 16,
-    color: outcomeColor,
+    y: yPosition,
+    outcome: getOutcomeLabel(outcome),
+    fonts: { regular: font, bold: fontBold },
   });
-
-  page.drawText(sanitizePdfText(`Outcome: ${outcomeLabel}`), {
-    x: MARGIN + 5,
-    y: yPosition - 10,
-    size: 9,
-    font: fontBold,
-    color: rgb(1, 1, 1),
-  });
-  yPosition -= 30;
+  yPosition -= 24;
 
   if (moduleInstance.assessor_notes && moduleInstance.assessor_notes.trim()) {
     page.drawText('Assessor Notes:', {

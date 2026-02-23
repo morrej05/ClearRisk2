@@ -28,6 +28,7 @@ import {
   drawRecommendationsSection,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
+import { drawSectionHeaderBar } from './pdfPrimitives';
 
 interface Document {
   id: string;
@@ -525,26 +526,15 @@ function drawPartHeader(
   fontBold: any,
   yPosition: number
 ): number {
-  const boxHeight = 60;
-  const boxY = yPosition - boxHeight;
-
-  page.drawRectangle({
+  return drawSectionHeaderBar({
+    page,
     x: MARGIN,
-    y: boxY,
-    width: CONTENT_WIDTH,
-    height: boxHeight,
-    color: rgb(0.95, 0.95, 0.97),
+    y: yPosition,
+    w: CONTENT_WIDTH,
+    title: sanitizePdfText(title),
+    product: 'combined',
+    fonts: { regular: font, bold: fontBold },
   });
-
-  page.drawText(sanitizePdfText(title), {
-    x: MARGIN + 20,
-    y: boxY + 20,
-    size: 18,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-
-  return boxY - 30;
 }
 
 function drawTextSection(

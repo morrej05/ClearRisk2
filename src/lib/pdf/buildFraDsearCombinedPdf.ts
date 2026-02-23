@@ -18,6 +18,7 @@ import {
   addSupersededWatermark,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
+import { drawSectionHeaderBar } from './pdfPrimitives';
 
 interface Document {
   id: string;
@@ -423,14 +424,16 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
     yPosition = PAGE_HEIGHT - MARGIN;
 
-    page.drawText(sanitizePdfText('SECTION 1: FIRE RISK ASSESSMENT'), {
+    yPosition = drawSectionHeaderBar({
+      page,
       x: MARGIN,
       y: yPosition,
-      size: 16,
-      font: fontBold,
-      color: rgb(0, 0, 0),
+      w: CONTENT_WIDTH,
+      sectionNo: 'SECTION 1',
+      title: 'Fire Risk Assessment',
+      product: 'fra',
+      fonts: { regular: font, bold: fontBold },
     });
-    yPosition -= 30;
 
     // Sort modules by FRA order
     const sortedFraModules = fraModules.sort((a, b) => {
@@ -472,14 +475,16 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
     yPosition = PAGE_HEIGHT - MARGIN;
 
-    page.drawText(sanitizePdfText('SECTION 2: EXPLOSION RISK ASSESSMENT (DSEAR)'), {
+    yPosition = drawSectionHeaderBar({
+      page,
       x: MARGIN,
       y: yPosition,
-      size: 16,
-      font: fontBold,
-      color: rgb(0, 0, 0),
+      w: CONTENT_WIDTH,
+      sectionNo: 'SECTION 2',
+      title: 'Explosion Risk Assessment (DSEAR)',
+      product: 'dsear',
+      fonts: { regular: font, bold: fontBold },
     });
-    yPosition -= 30;
 
     // Sort modules by DSEAR order
     const sortedDsearModules = dsearModules.sort((a, b) => {

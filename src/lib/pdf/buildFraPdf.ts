@@ -47,6 +47,7 @@ import {
 import { addIssuedReportPages } from './issuedPdfPages';
 import { FRA_REPORT_STRUCTURE, getSectionTitle } from './fraReportStructure';
 import { getJurisdictionTemplate, getRegulatoryFrameworkText } from './jurisdictionTemplates';
+import { drawSectionHeaderBar } from './pdfPrimitives';
 import { generateSectionKeyPoints, generateFiredSentences, generateSectionEvaluation } from './keyPoints/generateSectionKeyPoints';
 import { drawKeyPointsBlock } from './keyPoints/drawKeyPointsBlock';
 import {
@@ -640,7 +641,16 @@ if (section.id === 5) {
   console.log('[S5] dataKeys:', Object.keys(sectionModules[0]?.data || {}));
 }
     // Draw section header (use displayNumber for continuous numbering)
-    ({ page, yPosition } = drawSectionHeader({ page, yPosition }, section.displayNumber ?? section.id, section.title, font, fontBold));
+    yPosition = drawSectionHeaderBar({
+      page,
+      x: MARGIN,
+      y: yPosition,
+      w: CONTENT_WIDTH,
+      sectionNo: String(section.displayNumber ?? section.id),
+      title: section.title,
+      product: 'fra',
+      fonts: { regular: font, bold: fontBold },
+    });
 
     // Draw assessor summary for technical sections (5-12)
     if (section.id >= 5 && section.id <= 12) {

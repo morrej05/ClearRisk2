@@ -14,6 +14,7 @@ import {
   drawRecommendationsSection,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
+import { drawSectionHeaderBar } from './pdfPrimitives';
 
 interface Document {
   id: string;
@@ -132,45 +133,48 @@ export async function buildReSurveyPdf(options: BuildPdfOptions): Promise<Uint8A
     ? moduleInstances.filter(m => selectedModules.includes(m.module_key))
     : moduleInstances;
 
-  for (const module of modulesToInclude) {
-    const { page } = addNewPage(pdfDoc, isDraft, totalPages);
-    let yPosition = PAGE_HEIGHT - MARGIN - 20;
+  let { page } = addNewPage(pdfDoc, isDraft, totalPages);
+  let yPosition = PAGE_HEIGHT - MARGIN - 20;
 
-    page.drawText(module.module_key, {
+  for (const module of modulesToInclude) {
+    // Ensure space for a header + a few lines
+    if (yPosition < MARGIN + 140) {
+      ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    }
+
+    // Commercial header bar (use module_key as title for now)
+    yPosition = drawSectionHeaderBar({
+      page,
       x: MARGIN,
       y: yPosition,
-      size: 16,
-      font: fontBold,
-      color: rgb(0, 0, 0),
+      w: CONTENT_WIDTH,
+      title: module.module_key,
+      product: 're',
+      fonts: { regular: font, bold: fontBold },
     });
 
-    yPosition -= 30;
-
+    // Notes
     if (module.assessor_notes) {
       const lines = wrapText(module.assessor_notes, CONTENT_WIDTH, 10, font);
       for (const line of lines) {
         if (yPosition < MARGIN + 40) {
-          const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
+          ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
           yPosition = PAGE_HEIGHT - MARGIN - 20;
-          newPage.drawText(line, {
-            x: MARGIN,
-            y: yPosition,
-            size: 10,
-            font: font,
-            color: rgb(0, 0, 0),
-          });
-        } else {
-          page.drawText(line, {
-            x: MARGIN,
-            y: yPosition,
-            size: 10,
-            font: font,
-            color: rgb(0, 0, 0),
-          });
         }
+        page.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
         yPosition -= 14;
       }
     }
+
+    // Tight separation between modules (not a full page)
+    yPosition -= 10;
   }
 
   // Add recommendations section

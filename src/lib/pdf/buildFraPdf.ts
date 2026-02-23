@@ -14,6 +14,7 @@ import {
 } from '../modules/fra/severityEngine';
 import { drawCleanAuditSection13 } from './fraSection13CleanAudit';
 import { generateSectionSummary, generateAssessorSummary } from './sectionSummaryGenerator';
+import { buildEvidenceRefMap } from './fra/fraCoreDraw';
 import {
   calculateSCS,
   deriveFireProtectionReliance,
@@ -133,6 +134,10 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   } catch (error) {
     console.warn('[PDF FRA] Failed to fetch attachments:', error);
   }
+
+  // Build evidence reference map for consistent E-00X numbering
+  const evidenceRefMap = buildEvidenceRefMap(attachments);
+  console.log('[PDF FRA] Built evidence reference map with', evidenceRefMap.size, 'entries');
 
   // Run quality gate validation
   console.log('[PDF FRA] Running quality gate validation...');
@@ -688,7 +693,10 @@ if (section.id === 5) {
             totalPages,
             keyPoints,
             section.moduleKeys,
-            section.id // Pass section ID for section-specific filtering
+            section.id, // Pass section ID for section-specific filtering
+            attachments, // Pass attachments for inline evidence
+            evidenceRefMap, // Pass evidence reference map
+            moduleInstances // Pass module instances for evidence linking
           ));
         }
       }
@@ -810,7 +818,7 @@ if (section.id === 5) {
     const result1 = addNewPage(pdfDoc, isDraft, totalPages);
     page = result1.page;
     yPosition = PAGE_TOP_Y;
-    ({ page, yPosition } = drawActionRegister({ page, yPosition }, actions, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = drawActionRegister({ page, yPosition }, actions, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap));
   }
 
   if (attachments.length > 0) {

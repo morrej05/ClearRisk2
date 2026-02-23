@@ -894,7 +894,8 @@ export function renderSection10Suppression(
       isDraft,
       totalPages,
       undefined,
-      ['FRA_8_FIREFIGHTING_EQUIPMENT']
+      ['FRA_8_FIREFIGHTING_EQUIPMENT'],
+      10 // Section 10: Fixed Fire Suppression & Firefighting Facilities
     ));
   }
 

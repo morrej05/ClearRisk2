@@ -854,14 +854,23 @@ function generateSection10Summary(module: ModuleInstance, document: Document): s
 
 /**
  * Section 11: Fire Safety Management & Procedures
+ * Enhanced with PTW systems and records depth
  */
 function generateSection11Summary(module: ModuleInstance, document: Document): string | null {
   const data = module.data;
   const parts: string[] = [];
 
+  // PTW Hot Work (provides authority)
+  const ptwHotWork = data.ptw_hot_work;
+  if (ptwHotWork === 'yes' || ptwHotWork === 'formal') {
+    parts.push('Formal permit-to-work system in place for hot work activities');
+  } else if (ptwHotWork === 'no' || ptwHotWork === 'informal') {
+    parts.push('Hot work permit-to-work system not implemented');
+  }
+
   // Fire safety policy
   if (data.fire_safety_policy_exists === 'yes' || data.fire_safety_policy === 'yes') {
-    parts.push('Fire safety policy documented and in place');
+    parts.push('Fire safety policy documented');
   } else if (data.fire_safety_policy_exists === 'no' || data.fire_safety_policy === 'no') {
     parts.push('Fire safety policy not documented');
   }
@@ -884,11 +893,28 @@ function generateSection11Summary(module: ModuleInstance, document: Document): s
     parts.push('Fire drills conducted at appropriate intervals');
   }
 
-  // Testing records
-  if (data.testing_records === 'current' || data.testing_records === 'available') {
-    parts.push('Fire safety testing records maintained');
-  } else if (data.testing_records === 'no' || data.testing_records === 'not_available') {
-    parts.push('Fire safety testing records not evidenced');
+  // Inspection records (specific about what's missing)
+  const inspectionRecords = data.inspection_records_available;
+  if (inspectionRecords === 'no' || inspectionRecords === 'partial') {
+    const missingRecords: string[] = [];
+
+    if (data.inspection_alarm_weekly_test === 'no' || data.inspection_alarm_weekly_test === 'unknown') {
+      missingRecords.push('fire alarm testing');
+    }
+    if (data.inspection_emergency_lighting_monthly === 'no' || data.inspection_emergency_lighting_monthly === 'unknown') {
+      missingRecords.push('emergency lighting');
+    }
+    if (data.inspection_extinguisher_annual === 'no' || data.inspection_extinguisher_annual === 'unknown') {
+      missingRecords.push('extinguisher servicing');
+    }
+
+    if (missingRecords.length > 0) {
+      parts.push(`Records not evidenced: ${missingRecords.join(', ')}`);
+    } else {
+      parts.push('Inspection records not fully evidenced');
+    }
+  } else if (inspectionRecords === 'yes' || inspectionRecords === 'available') {
+    parts.push('Testing and inspection records maintained');
   }
 
   // Housekeeping
@@ -900,7 +926,8 @@ function generateSection11Summary(module: ModuleInstance, document: Document): s
 
   if (parts.length === 0) return null;
 
-  return parts.slice(0, 3).join('. ') + '.';
+  // Return max 4 sentences (increased from 3 for governance depth)
+  return parts.slice(0, 4).join('. ') + '.';
 }
 
 /**

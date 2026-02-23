@@ -27,6 +27,59 @@ import { FRA_REPORT_STRUCTURE } from '../fraReportStructure';
 import { type ScoringResult } from '../../fra/scoring/scoringEngine';
 
 /**
+ * Build stable evidence reference map for consistent E-00X numbering
+ * Returns map: attachment.id -> E-00X reference
+ */
+export function buildEvidenceRefMap(attachments: Attachment[]): Map<string, string> {
+  const refMap = new Map<string, string>();
+
+  // Filter and deduplicate (same logic as drawAttachmentsIndex)
+  const seenKeys = new Set<string>();
+  const filteredAttachments = attachments.filter(att => {
+    if (att.file_name?.startsWith('._')) return false;
+
+    const uniqueKey = att.storage_path ||
+      `${att.file_name}_${att.file_size_bytes}_${att.created_at}`;
+
+    if (seenKeys.has(uniqueKey)) return false;
+
+    seenKeys.add(uniqueKey);
+    return true;
+  });
+
+  // Build reference map
+  for (let i = 0; i < filteredAttachments.length; i++) {
+    const attachment = filteredAttachments[i];
+    const refNum = `E-${String(i + 1).padStart(3, '0')}`;
+    refMap.set(attachment.id, refNum);
+  }
+
+  return refMap;
+}
+
+/**
+ * Map module key to section ID
+ */
+function mapModuleKeyToSectionId(moduleKey: string): number | null {
+  const keyToSection: Record<string, number> = {
+    'A1_DOC_CONTROL': 1,
+    'A2_BUILDING_PROFILE': 2,
+    'A3_PERSONS_AT_RISK': 3,
+    'A4_MANAGEMENT_CONTROLS': 4,
+    'FRA_1_IGNITION_SOURCES': 5,
+    'FRA_2_ESCAPE_ASIS': 6,
+    'FRA_3_FIRE_DETECTION': 7,
+    'FRA_4_SIGNIFICANT_FINDINGS': 8,
+    'FRA_5_EXTERNAL_FIRE_SPREAD': 9,
+    'FRA_8_FIREFIGHTING_EQUIPMENT': 10,
+    'A5_EMERGENCY_ARRANGEMENTS': 11,
+    'A7_REVIEW_ASSURANCE': 11,
+  };
+
+  return keyToSection[moduleKey] ?? null;
+}
+
+/**
  * Shared two-column row renderer
  * MATCHES SECTION 5 GRID EXACTLY
  */
@@ -884,6 +937,109 @@ cursorY -= (GAP_AFTER_LABEL + LINE_H);
 }
 
 /**
+ * Draw inline evidence block for a section
+ * Shows up to 2 evidence items linked to modules in this section
+ */
+export function drawInlineEvidenceBlock(
+  cursor: Cursor,
+  attachments: Attachment[],
+  moduleInstances: ModuleInstance[],
+  evidenceRefMap: Map<string, string>,
+  sectionId: number,
+  font: any,
+  fontBold: any,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): Cursor {
+  let { page, yPosition } = cursor;
+
+  // Find attachments for this section
+  const sectionAttachments: Array<{ attachment: Attachment; refNum: string }> = [];
+
+  for (const att of attachments) {
+    if (!att.module_instance_id) continue;
+
+    const module = moduleInstances.find(m => m.id === att.module_instance_id);
+    if (!module) continue;
+
+    const attSectionId = mapModuleKeyToSectionId(module.module_key);
+    if (attSectionId !== sectionId) continue;
+
+    const refNum = evidenceRefMap.get(att.id);
+    if (!refNum) continue;
+
+    sectionAttachments.push({ attachment: att, refNum });
+  }
+
+  if (sectionAttachments.length === 0) {
+    return { page, yPosition };
+  }
+
+  // Ensure space
+  if (yPosition < MARGIN + 100) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_TOP_Y;
+  }
+
+  yPosition -= 15;
+
+  // Header
+  page.drawText('Evidence (selected):', {
+    x: MARGIN,
+    y: yPosition,
+    size: 10,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 14;
+
+  // Show up to 2 items
+  const itemsToShow = sectionAttachments.slice(0, 2);
+
+  for (const { attachment, refNum } of itemsToShow) {
+    if (yPosition < MARGIN + 60) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_TOP_Y;
+    }
+
+    const displayName = attachment.caption || attachment.file_name || 'Unnamed';
+    const evidenceLine = `${refNum} – ${sanitizePdfText(displayName)}`;
+
+    // Wrap text if needed
+    const lines = wrapText(evidenceLine, CONTENT_WIDTH - 20, 9, font);
+    for (const line of lines) {
+      page.drawText(line, {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 9,
+        font,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPosition -= 11;
+    }
+  }
+
+  // If more than 2, add note
+  if (sectionAttachments.length > 2) {
+    page.drawText('See Evidence Index for full list.', {
+      x: MARGIN + 10,
+      y: yPosition,
+      size: 8,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    yPosition -= 10;
+  }
+
+  yPosition -= 10; // Extra spacing after evidence block
+
+  return { page, yPosition };
+}
+
+/**
  * Draw module content WITHOUT printing the module key/name
  */
 export function drawModuleContent(
@@ -897,7 +1053,10 @@ export function drawModuleContent(
   totalPages: PDFPage[],
   keyPoints?: string[],
   expectedModuleKeys?: string[],
-  sectionId?: number // Optional: for section-specific filtering
+  sectionId?: number, // Optional: for section-specific filtering
+  attachments?: Attachment[], // Optional: for inline evidence
+  evidenceRefMap?: Map<string, string>, // Optional: evidence reference map
+  moduleInstances?: ModuleInstance[] // Optional: for evidence linking
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -971,6 +1130,22 @@ if (module.outcome) {
   // Module data
   ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages, sectionId));
 
+  // Inline evidence block (if data provided and sectionId available)
+  if (sectionId && attachments && evidenceRefMap && moduleInstances) {
+    ({ page, yPosition } = drawInlineEvidenceBlock(
+      { page, yPosition },
+      attachments,
+      moduleInstances,
+      evidenceRefMap,
+      sectionId,
+      font,
+      fontBold,
+      pdfDoc,
+      isDraft,
+      totalPages
+    ));
+  }
+
   // Info gap quick actions
   const infoGapResult = drawInfoGapQuickActions({
     page,
@@ -1038,7 +1213,9 @@ export function drawActionRegister(
   fontBold: any,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  attachments?: Attachment[],
+  evidenceRefMap?: Map<string, string>
 ): { page: PDFPage; yPosition: number } {
   let { page, yPosition } = cursor;
   yPosition -= 20;
@@ -1181,7 +1358,38 @@ export function drawActionRegister(
       color: rgb(0.5, 0.5, 0.5),
     });
 
-    yPosition -= 20;
+    yPosition -= 12;
+
+    // Add inline evidence for this action
+    if (attachments && evidenceRefMap) {
+      const actionAttachments = attachments.filter(att => att.action_id === action.id);
+
+      if (actionAttachments.length > 0) {
+        if (yPosition < MARGIN + 50) {
+          const result = addNewPage(pdfDoc, isDraft, totalPages);
+          page = result.page;
+          yPosition = PAGE_TOP_Y;
+        }
+
+        const evidenceRefs = actionAttachments
+          .map(att => evidenceRefMap.get(att.id))
+          .filter(ref => ref)
+          .join(', ');
+
+        if (evidenceRefs) {
+          page.drawText(`Evidence: ${evidenceRefs}`, {
+            x: MARGIN + 5,
+            y: yPosition,
+            size: 8,
+            font,
+            color: rgb(0.4, 0.4, 0.4),
+          });
+          yPosition -= 10;
+        }
+      }
+    }
+
+    yPosition -= 8;
 
     page.drawLine({
       start: { x: MARGIN, y: yPosition },

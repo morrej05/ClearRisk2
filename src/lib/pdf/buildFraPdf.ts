@@ -47,7 +47,13 @@ import {
 import { addIssuedReportPages } from './issuedPdfPages';
 import { FRA_REPORT_STRUCTURE, getSectionTitle } from './fraReportStructure';
 import { getJurisdictionTemplate, getRegulatoryFrameworkText } from './jurisdictionTemplates';
-import { drawSectionHeaderBar } from './pdfPrimitives';
+import {
+  drawSectionHeaderBar,
+  drawExecutiveRiskHeader,
+  drawRiskBadge,
+  drawRiskBand,
+  drawLikelihoodConsequenceBlock,
+} from './pdfPrimitives';
 import { generateSectionKeyPoints, generateFiredSentences, generateSectionEvaluation } from './keyPoints/generateSectionKeyPoints';
 import { drawKeyPointsBlock } from './keyPoints/drawKeyPointsBlock';
 import {
@@ -974,44 +980,51 @@ function drawRiskSummaryPage(
 ): void {
   let yPosition = PAGE_TOP_Y;
 
-  page.drawText('Overall Risk to Life Assessment', {
+  const fonts = { regular: font, bold: fontBold };
+
+  const riskLabel = scoringResult.overallRisk;
+  const likelihoodLabel = scoringResult.likelihood;
+  const consequenceLabel = scoringResult.consequence;
+
+  yPosition = drawExecutiveRiskHeader({
+    page,
     x: MARGIN,
     y: yPosition,
-    size: 20,
-    font: fontBold,
-    color: rgb(0.1, 0.1, 0.1),
+    w: CONTENT_WIDTH,
+    label: 'Overall Risk to Life',
+    fonts,
   });
 
-  yPosition -= 50;
-
-  const riskColor =
-    scoringResult.overallRisk === 'Intolerable' ? rgb(0.8, 0.1, 0.1) :
-    scoringResult.overallRisk === 'Substantial' ? rgb(0.9, 0.5, 0) :
-    scoringResult.overallRisk === 'Moderate' ? rgb(0.9, 0.7, 0) :
-    scoringResult.overallRisk === 'Tolerable' ? rgb(0.7, 0.7, 0) :
-    rgb(0.2, 0.6, 0.2);
-
-  page.drawRectangle({
+  yPosition = drawRiskBadge({
+    page,
     x: MARGIN,
-    y: yPosition - 35,
-    width: CONTENT_WIDTH,
-    height: 50,
-    borderColor: riskColor,
-    borderWidth: 2,
-    color: rgb(1, 1, 1),
+    y: yPosition,
+    riskLabel,
+    fonts,
   });
 
-  page.drawText(scoringResult.overallRisk.toUpperCase(), {
-    x: MARGIN + 20,
-    y: yPosition - 15,
-    size: 24,
-    font: fontBold,
-    color: riskColor,
+  yPosition = drawRiskBand({
+    page,
+    x: MARGIN,
+    y: yPosition,
+    w: CONTENT_WIDTH,
+    riskLabel,
+    fonts,
   });
 
-  yPosition -= 60;
+  yPosition = drawLikelihoodConsequenceBlock({
+    page,
+    x: MARGIN,
+    y: yPosition,
+    w: CONTENT_WIDTH,
+    likelihood: likelihoodLabel,
+    consequence: consequenceLabel,
+    fonts,
+  });
 
   if (scoringResult.provisional) {
+    yPosition -= 10;
+
     page.drawRectangle({
       x: MARGIN,
       y: yPosition - 40,
@@ -1049,55 +1062,15 @@ function drawRiskSummaryPage(
 
   yPosition -= 20;
 
-  page.drawText('Risk Determination', {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0.2, 0.2, 0.2),
-  });
-
-  yPosition -= 25;
-
-  const likelihoodText = `Likelihood: ${scoringResult.likelihood} - The assessment of how likely harm is to occur based on identified hazards, management controls, and information completeness.`;
-  const likelihoodLines = wrapText(likelihoodText, CONTENT_WIDTH, 10, font);
-  for (const line of likelihoodLines) {
-    page.drawText(line, {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-    yPosition -= 14;
-  }
-
-  yPosition -= 10;
-
-  const consequenceText = `Consequence: ${scoringResult.consequence} - The potential severity of harm determined by building profile factors including occupancy, vulnerability, height, and evacuation complexity.`;
-  const consequenceLines = wrapText(consequenceText, CONTENT_WIDTH, 10, font);
-  for (const line of consequenceLines) {
-    page.drawText(line, {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-    yPosition -= 14;
-  }
-
-  yPosition -= 10;
-
-  const determinationText = `Determination: The overall risk to life is assessed as ${scoringResult.overallRisk} based on the combination of ${scoringResult.likelihood} likelihood and ${scoringResult.consequence} consequence. ${scoringResult.provisional ? 'This assessment is provisional pending resolution of critical information gaps.' : 'This assessment is based on complete information gathered during the survey.'}`;
-  const determinationLines = wrapText(determinationText, CONTENT_WIDTH, 10, fontBold);
+  const determinationText = `The overall risk to life is assessed as ${scoringResult.overallRisk} based on the combination of ${scoringResult.likelihood} likelihood and ${scoringResult.consequence} consequence. ${scoringResult.provisional ? 'This assessment is provisional pending resolution of critical information gaps.' : 'This assessment is based on complete information gathered during the survey.'}`;
+  const determinationLines = wrapText(determinationText, CONTENT_WIDTH, 10, font);
   for (const line of determinationLines) {
     page.drawText(line, {
       x: MARGIN,
       y: yPosition,
       size: 10,
-      font: fontBold,
-      color: rgb(0.2, 0.2, 0.2),
+      font,
+      color: rgb(0.3, 0.3, 0.3),
     });
     yPosition -= 14;
   }

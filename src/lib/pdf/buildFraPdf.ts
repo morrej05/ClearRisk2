@@ -479,15 +479,15 @@ drawTableOfContents(page, font, fontBold);
   yPosition = PAGE_TOP_Y;
 
   // Section renderer map for explicit delegation
-  const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[], att?: any, eMap?: any, mInst?: ModuleInstance[], acts?: Action[], actToSec?: Map<string, number>) => Cursor> = {
+  const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[], att?: any, eMap?: any, mInst?: ModuleInstance[], acts?: Action[], actToSec?: Map<string, number>) => Promise<Cursor> | Cursor> = {
     1: renderSection1AssessmentDetails,
     2: renderSection2Premises,
     3: renderSection3Occupants,
     4: renderSection4Legislation,
     5: renderSection5FireHazards,
-    7: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => renderSection7Detection(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
-    10: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => renderSection10Suppression(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
-    11: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => renderSection11Management(cursor, modules, moduleInstances, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
+    7: async (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => await renderSection7Detection(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
+    10: async (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => await renderSection10Suppression(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
+    11: async (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec) => await renderSection11Management(cursor, modules, moduleInstances, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts, actToSec),
     14: renderSection14Review,
   };
 
@@ -693,7 +693,7 @@ if (section.id === 5) {
       });
 
       if (renderer) {
-        cursor = renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances, actions, actionIdToSectionId);
+        cursor = await renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances, actions, actionIdToSectionId);
         ({ page, yPosition } = cursor);
       } else {
         // Generic section rendering for standard modules
@@ -707,7 +707,7 @@ if (section.id === 5) {
   'modulesFound=',
   sectionModules.map(m => m.module_key)
 );
-          ({ page, yPosition } = drawModuleContent(
+          ({ page, yPosition } = await drawModuleContent(
             { page, yPosition },
             module,
             document,
@@ -845,7 +845,7 @@ if (section.id === 5) {
     const result1 = addNewPage(pdfDoc, isDraft, totalPages);
     page = result1.page;
     yPosition = PAGE_TOP_Y;
-    ({ page, yPosition } = drawActionRegister({ page, yPosition }, actions, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap));
+    ({ page, yPosition } = await drawActionRegister({ page, yPosition }, actions, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap));
   }
 
   if (attachments.length > 0) {

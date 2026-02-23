@@ -469,3 +469,33 @@ export async function countAttachmentsByModule(moduleInstanceId: string): Promis
 
   return count || 0;
 }
+
+export async function fetchAttachmentBytes(attachment: Attachment): Promise<Uint8Array | null> {
+  try {
+    const filePath = extractFilePath(attachment);
+    if (!filePath) {
+      console.warn('[fetchAttachmentBytes] No valid file path for attachment:', attachment.id);
+      return null;
+    }
+
+    const { data, error } = await supabase.storage
+      .from('evidence')
+      .download(filePath);
+
+    if (error) {
+      console.warn('[fetchAttachmentBytes] Error downloading:', error, 'Path:', filePath);
+      return null;
+    }
+
+    if (!data) {
+      console.warn('[fetchAttachmentBytes] No data returned for:', filePath);
+      return null;
+    }
+
+    const arrayBuffer = await data.arrayBuffer();
+    return new Uint8Array(arrayBuffer);
+  } catch (error) {
+    console.warn('[fetchAttachmentBytes] Exception:', error, 'Attachment:', attachment.id);
+    return null;
+  }
+}

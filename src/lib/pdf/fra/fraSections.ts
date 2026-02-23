@@ -787,7 +787,7 @@ if (d.electrical_safety && typeof d.electrical_safety === 'object') {
  * Renders FRA_3_ACTIVE_SYSTEMS including detection, alarm, and emergency lighting
  * (Emergency lighting merged from former Section 8)
  */
-export function renderSection7Detection(
+export async function renderSection7Detection(
   cursor: Cursor,
   sectionModules: ModuleInstance[],
   document: Document,
@@ -801,7 +801,7 @@ export function renderSection7Detection(
   moduleInstances?: ModuleInstance[],
   actions?: Action[],
   actionIdToSectionId?: Map<string, number>
-): Cursor {
+): Promise<Cursor> {
   let { page, yPosition } = cursor;
 
   // ✅ Hard guarantee: always have a page before any operations
@@ -819,7 +819,7 @@ export function renderSection7Detection(
   if (fra3Module) {
     // Use drawModuleContent with sectionId=7 for proper Section 7 filtering
     // This will show fire alarm + emergency lighting fields via drawModuleKeyDetails
-    ({ page, yPosition } = drawModuleContent(
+    ({ page, yPosition } = await drawModuleContent(
       { page, yPosition },
       fra3Module,
       document,
@@ -868,7 +868,7 @@ export function renderSection8EmergencyLighting(
  * Section 10: Fixed Fire Suppression & Firefighting Facilities
  * Split from FRA_8 (suppression systems only)
  */
-export function renderSection10Suppression(
+export async function renderSection10Suppression(
   cursor: Cursor,
   sectionModules: ModuleInstance[],
   document: Document,
@@ -882,7 +882,7 @@ export function renderSection10Suppression(
   moduleInstances?: ModuleInstance[],
   actions?: Action[],
   actionIdToSectionId?: Map<string, number>
-): Cursor {
+): Promise<Cursor> {
 
   console.log('[PDF FRA] renderSection10Suppression called');
   
@@ -903,7 +903,7 @@ export function renderSection10Suppression(
   if (fra8Module && fra8Module.data) {
     // Use standard rendering pipeline to surface structured firefighting data
     // This includes sprinklers, risers, firefighting shaft/lift from data.firefighting.fixed_facilities
-    ({ page, yPosition } = drawModuleContent(
+    ({ page, yPosition } = await drawModuleContent(
       { page, yPosition },
       fra8Module,
       document,
@@ -930,7 +930,7 @@ export function renderSection10Suppression(
  * Section 11: Fire Safety Management & Procedures
  * Combines multiple management modules + FRA_8 portable equipment
  */
-export function renderSection11Management(
+export async function renderSection11Management(
   cursor: Cursor,
   sectionModules: ModuleInstance[],
   allModules: ModuleInstance[],
@@ -945,7 +945,7 @@ export function renderSection11Management(
   moduleInstances?: ModuleInstance[],
   actions?: Action[],
   actionIdToSectionId?: Map<string, number>
-): Cursor {
+): Promise<Cursor> {
   let { page, yPosition } = cursor;
 
   // HARD GUARD: never allow undefined page into this renderer
@@ -978,7 +978,7 @@ export function renderSection11Management(
     });
     yPosition -= 20;
 
-    ({ page, yPosition } = drawModuleContent(
+    ({ page, yPosition } = await drawModuleContent(
       { page, yPosition },
       managementSystemsModule,
       document,
@@ -1017,7 +1017,7 @@ export function renderSection11Management(
     });
     yPosition -= 20;
 
-    ({ page, yPosition } = drawModuleContent(
+    ({ page, yPosition } = await drawModuleContent(
       { page, yPosition },
       emergencyArrangementsModule,
       document,
@@ -1054,7 +1054,7 @@ export function renderSection11Management(
     });
     yPosition -= 20;
 
-    ({ page, yPosition } = drawModuleContent(
+    ({ page, yPosition } = await drawModuleContent(
       { page, yPosition },
       reviewAssuranceModule,
       document,
@@ -1124,7 +1124,7 @@ export function renderSection11Management(
       };
 
       // Use standard rendering to show portable equipment details
-      ({ page, yPosition } = drawModuleContent(
+      ({ page, yPosition } = await drawModuleContent(
         { page, yPosition },
         portableOnlyModule,
         document,

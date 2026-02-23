@@ -3,7 +3,7 @@
  * Core drawing functions for FRA PDF modules and info gaps
  */
 
-import { PDFDocument, PDFPage, rgb } from 'pdf-lib';
+import { PDFDocument, PDFPage, PDFImage, rgb } from 'pdf-lib';
 import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
 import {
   MARGIN,
@@ -22,9 +22,17 @@ import { CRITICAL_FIELDS } from './fraConstants';
 import { safeArray, mapModuleKeyToSectionName } from './fraUtils';
 import type { Cursor, Document, ModuleInstance, Action, ActionRating, Organisation } from './fraTypes';
 import type { Attachment } from '../../supabase/attachments';
+import { fetchAttachmentBytes } from '../../supabase/attachments';
 import { getJurisdictionConfig, getJurisdictionLabel } from '../../jurisdictions';
 import { FRA_REPORT_STRUCTURE } from '../fraReportStructure';
 import { type ScoringResult } from '../../fra/scoring/scoringEngine';
+
+/**
+ * In-memory cache for embedded PDF images
+ * Key: attachment.id, Value: embedded PDFImage
+ * Prevents re-downloading and re-embedding the same image multiple times
+ */
+const imageCache = new Map<string, PDFImage>();
 
 /**
  * Build stable evidence reference map for consistent E-00X numbering
@@ -940,10 +948,159 @@ cursorY -= (GAP_AFTER_LABEL + LINE_H);
 }
 
 /**
- * Draw inline evidence block for a section
- * Shows up to 2 evidence items linked to modules in this section
+ * Helper: Determine if attachment is an image type we can embed
  */
-export function drawInlineEvidenceBlock(
+function isImageAttachment(attachment: Attachment): boolean {
+  const fileType = attachment.file_type.toLowerCase();
+  const fileName = attachment.file_name.toLowerCase();
+
+  // Exclude logos
+  if (fileName.includes('logo')) {
+    return false;
+  }
+
+  // Check for supported image types
+  return fileType === 'image/png' ||
+         fileType === 'image/jpg' ||
+         fileType === 'image/jpeg' ||
+         fileType === 'image/webp';
+}
+
+/**
+ * Helper: Embed image into PDF document with caching
+ */
+async function embedImage(pdfDoc: PDFDocument, attachment: Attachment): Promise<PDFImage | null> {
+  // Check cache first
+  if (imageCache.has(attachment.id)) {
+    return imageCache.get(attachment.id)!;
+  }
+
+  try {
+    const bytes = await fetchAttachmentBytes(attachment);
+    if (!bytes) {
+      return null;
+    }
+
+    let image: PDFImage;
+    const fileType = attachment.file_type.toLowerCase();
+
+    if (fileType === 'image/png' || fileType === 'image/webp') {
+      image = await pdfDoc.embedPng(bytes);
+    } else if (fileType === 'image/jpg' || fileType === 'image/jpeg') {
+      image = await pdfDoc.embedJpg(bytes);
+    } else {
+      return null;
+    }
+
+    // Cache the embedded image
+    imageCache.set(attachment.id, image);
+    return image;
+  } catch (error) {
+    console.warn('[embedImage] Failed to embed:', attachment.file_name, error);
+    return null;
+  }
+}
+
+/**
+ * Helper: Draw image grid (2-3 columns)
+ */
+async function drawImageGrid(
+  page: PDFPage,
+  yPosition: number,
+  images: Array<{ image: PDFImage; refNum: string; fileName: string }>,
+  font: any,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[],
+  maxImages: number = 6
+): Promise<{ page: PDFPage; yPosition: number }> {
+  if (images.length === 0) {
+    return { page, yPosition };
+  }
+
+  const imagesToShow = images.slice(0, maxImages);
+  const cols = 3;
+  const gutter = 10;
+  const thumbWidth = (CONTENT_WIDTH - gutter * (cols - 1)) / cols;
+  const thumbHeight = thumbWidth * 0.75;
+  const captionHeight = 12;
+  const rowHeight = thumbHeight + captionHeight + 15;
+
+  let currentRow = 0;
+  let currentCol = 0;
+
+  for (const { image, refNum, fileName } of imagesToShow) {
+    // Check if we need a new page
+    if (yPosition < MARGIN + rowHeight + 50) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_TOP_Y;
+      currentRow = 0;
+      currentCol = 0;
+    }
+
+    const x = MARGIN + currentCol * (thumbWidth + gutter);
+    const y = yPosition - thumbHeight;
+
+    // Draw image with aspect ratio preservation
+    const imgDims = image.scale(1);
+    const scale = Math.min(thumbWidth / imgDims.width, thumbHeight / imgDims.height);
+    const scaledWidth = imgDims.width * scale;
+    const scaledHeight = imgDims.height * scale;
+
+    // Center image in thumbnail space
+    const xOffset = (thumbWidth - scaledWidth) / 2;
+    const yOffset = (thumbHeight - scaledHeight) / 2;
+
+    page.drawImage(image, {
+      x: x + xOffset,
+      y: y + yOffset,
+      width: scaledWidth,
+      height: scaledHeight,
+    });
+
+    // Draw border around thumbnail
+    page.drawRectangle({
+      x,
+      y,
+      width: thumbWidth,
+      height: thumbHeight,
+      borderColor: rgb(0.8, 0.8, 0.8),
+      borderWidth: 0.5,
+    });
+
+    // Draw caption below image
+    const captionY = y - 10;
+    const caption = sanitizePdfText(refNum);
+    page.drawText(caption, {
+      x: x + thumbWidth / 2 - (caption.length * 2.5),
+      y: captionY,
+      size: 8,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    currentCol++;
+    if (currentCol >= cols) {
+      currentCol = 0;
+      currentRow++;
+      yPosition -= rowHeight;
+    }
+  }
+
+  // If we didn't complete a full row, adjust yPosition
+  if (currentCol > 0) {
+    yPosition -= rowHeight;
+  }
+
+  return { page, yPosition };
+}
+
+/**
+ * Draw inline evidence block for a section
+ * Shows up to 6 images (2 rows of 3) or text fallback
+ */
+export async function drawInlineEvidenceBlock(
   cursor: Cursor,
   attachments: Attachment[],
   moduleInstances: ModuleInstance[],
@@ -956,7 +1113,7 @@ export function drawInlineEvidenceBlock(
   totalPages: PDFPage[],
   actions?: Action[],
   actionIdToSectionId?: Map<string, number>
-): Cursor {
+): Promise<Cursor> {
   let { page, yPosition } = cursor;
 
   // Collect attachments for this section
@@ -1017,7 +1174,6 @@ export function drawInlineEvidenceBlock(
   }
 
   // c) If attachment has module_instance_id but wasn't matched yet, try direct module resolution
-  // This catches attachments that might have been missed
   for (const att of attachments) {
     if (seenAttachmentIds.has(att.id)) continue;
 
@@ -1055,49 +1211,90 @@ export function drawInlineEvidenceBlock(
     font: fontBold,
     color: rgb(0.2, 0.2, 0.2),
   });
-  yPosition -= 14;
+  yPosition -= 20;
 
-  // Show up to 2 items (module-linked first, then action-linked)
-  const itemsToShow = sectionAttachments.slice(0, 2);
+  // Filter to image attachments only
+  const imageAttachments = sectionAttachments.filter(sa => isImageAttachment(sa.attachment));
 
-  for (const { attachment, refNum } of itemsToShow) {
-    if (yPosition < MARGIN + 60) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
+  // Try to embed images (up to 6 for sections)
+  const embeddedImages: Array<{ image: PDFImage; refNum: string; fileName: string }> = [];
+  for (const { attachment, refNum } of imageAttachments.slice(0, 6)) {
+    if (!refNum) continue;
 
-    const displayName = attachment.caption || attachment.file_name || 'Unnamed';
-
-    // Use refNum if available, otherwise fallback to filename only (temporary fallback)
-    const evidenceLine = refNum
-      ? `${refNum} – ${sanitizePdfText(displayName)}`
-      : sanitizePdfText(displayName);
-
-    // Wrap text if needed
-    const lines = wrapText(evidenceLine, CONTENT_WIDTH - 20, 9, font);
-    for (const line of lines) {
-      page.drawText(line, {
-        x: MARGIN + 10,
-        y: yPosition,
-        size: 9,
-        font,
-        color: rgb(0.3, 0.3, 0.3),
+    const image = await embedImage(pdfDoc, attachment);
+    if (image) {
+      embeddedImages.push({
+        image,
+        refNum,
+        fileName: attachment.file_name,
       });
-      yPosition -= 11;
     }
   }
 
-  // If more than 2, add note
-  if (sectionAttachments.length > 2) {
-    page.drawText('See Evidence Index for full list.', {
-      x: MARGIN + 10,
-      y: yPosition,
-      size: 8,
+  // Render image grid if we have images
+  if (embeddedImages.length > 0) {
+    ({ page, yPosition } = await drawImageGrid(
+      page,
+      yPosition,
+      embeddedImages,
       font,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-    yPosition -= 10;
+      pdfDoc,
+      isDraft,
+      totalPages,
+      6 // max 6 images (2 rows of 3)
+    ));
+
+    // If more than 6 images, add note
+    if (imageAttachments.length > 6) {
+      page.drawText('See Evidence Index for full list.', {
+        x: MARGIN,
+        y: yPosition,
+        size: 8,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      yPosition -= 12;
+    }
+  } else {
+    // Text fallback - show up to 2 items
+    const itemsToShow = sectionAttachments.slice(0, 2);
+
+    for (const { attachment, refNum } of itemsToShow) {
+      if (yPosition < MARGIN + 60) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_TOP_Y;
+      }
+
+      const displayName = attachment.caption || attachment.file_name || 'Unnamed';
+      const evidenceLine = refNum
+        ? `${refNum} – ${sanitizePdfText(displayName)}`
+        : sanitizePdfText(displayName);
+
+      const lines = wrapText(evidenceLine, CONTENT_WIDTH - 20, 9, font);
+      for (const line of lines) {
+        page.drawText(line, {
+          x: MARGIN + 10,
+          y: yPosition,
+          size: 9,
+          font,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPosition -= 11;
+      }
+    }
+
+    // If more than 2, add note
+    if (sectionAttachments.length > 2) {
+      page.drawText('See Evidence Index for full list.', {
+        x: MARGIN + 10,
+        y: yPosition,
+        size: 8,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      yPosition -= 10;
+    }
   }
 
   yPosition -= 10; // Extra spacing after evidence block
@@ -1108,7 +1305,7 @@ export function drawInlineEvidenceBlock(
 /**
  * Draw module content WITHOUT printing the module key/name
  */
-export function drawModuleContent(
+export async function drawModuleContent(
   cursor: Cursor,
   module: ModuleInstance,
   document: Document,
@@ -1125,7 +1322,7 @@ export function drawModuleContent(
   moduleInstances?: ModuleInstance[], // Optional: for evidence linking
   actions?: Action[], // Optional: for action-linked evidence
   actionIdToSectionId?: Map<string, number> // Optional: action->section map for null module_instance_id fallback
-): Cursor {
+): Promise<Cursor> {
 
   console.log('[PDF FRA] drawModuleContent invoked', { sectionId });
   
@@ -1213,7 +1410,7 @@ if (module.outcome) {
 
   // Inline evidence block (if data provided and sectionId available)
   if (sectionId && attachments && evidenceRefMap && moduleInstances) {
-    ({ page, yPosition } = drawInlineEvidenceBlock(
+    ({ page, yPosition } = await drawInlineEvidenceBlock(
       { page, yPosition },
       attachments,
       moduleInstances,
@@ -1287,7 +1484,7 @@ export function renderFilteredModuleData(
 /**
  * Draw Action Register
  */
-export function drawActionRegister(
+export async function drawActionRegister(
   cursor: Cursor,
   actions: Action[],
   actionRatings: ActionRating[],
@@ -1299,7 +1496,7 @@ export function drawActionRegister(
   totalPages: PDFPage[],
   attachments?: Attachment[],
   evidenceRefMap?: Map<string, string>
-): { page: PDFPage; yPosition: number } {
+): Promise<{ page: PDFPage; yPosition: number }> {
   let { page, yPosition } = cursor;
   yPosition -= 20;
   page.drawText('ACTION REGISTER', {
@@ -1454,20 +1651,54 @@ export function drawActionRegister(
           yPosition = PAGE_TOP_Y;
         }
 
-        const evidenceRefs = actionAttachments
-          .map(att => evidenceRefMap.get(att.id))
-          .filter(ref => ref)
-          .join(', ');
+        // Filter to image attachments
+        const imageAttachments = actionAttachments.filter(att => isImageAttachment(att));
 
-        if (evidenceRefs) {
-          page.drawText(`Evidence: ${evidenceRefs}`, {
-            x: MARGIN + 5,
-            y: yPosition,
-            size: 8,
+        // Try to embed images (up to 3 for actions - 1 row)
+        const embeddedImages: Array<{ image: PDFImage; refNum: string; fileName: string }> = [];
+        for (const att of imageAttachments.slice(0, 3)) {
+          const refNum = evidenceRefMap.get(att.id);
+          if (!refNum) continue;
+
+          const image = await embedImage(pdfDoc, att);
+          if (image) {
+            embeddedImages.push({
+              image,
+              refNum,
+              fileName: att.file_name,
+            });
+          }
+        }
+
+        // Render image grid if we have images
+        if (embeddedImages.length > 0) {
+          ({ page, yPosition } = await drawImageGrid(
+            page,
+            yPosition,
+            embeddedImages,
             font,
-            color: rgb(0.4, 0.4, 0.4),
-          });
-          yPosition -= 10;
+            pdfDoc,
+            isDraft,
+            totalPages,
+            3 // max 3 images (1 row) for actions
+          ));
+        } else {
+          // Text fallback
+          const evidenceRefs = actionAttachments
+            .map(att => evidenceRefMap.get(att.id))
+            .filter(ref => ref)
+            .join(', ');
+
+          if (evidenceRefs) {
+            page.drawText(`Evidence: ${evidenceRefs}`, {
+              x: MARGIN + 5,
+              y: yPosition,
+              size: 8,
+              font,
+              color: rgb(0.4, 0.4, 0.4),
+            });
+            yPosition -= 10;
+          }
         }
       }
     }

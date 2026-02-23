@@ -883,6 +883,9 @@ export function renderSection10Suppression(
   actions?: Action[],
   actionIdToSectionId?: Map<string, number>
 ): Cursor {
+
+  console.log('[PDF FRA] renderSection10Suppression called');
+  
   let { page, yPosition } = cursor;
 
   // ✅ Hard guarantee: always have a page before any operations

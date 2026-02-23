@@ -687,6 +687,11 @@ if (section.id === 5) {
       console.log('Rendering section:', section.id);
       const renderer = SECTION_RENDERERS[section.id];
 
+      console.log('[PDF FRA] renderer exists?', {
+        sectionId: section.id,
+        hasRenderer: !!renderer
+      });
+
       if (renderer) {
         cursor = renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances, actions, actionIdToSectionId);
         ({ page, yPosition } = cursor);

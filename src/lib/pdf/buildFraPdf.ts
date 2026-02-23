@@ -459,15 +459,15 @@ drawTableOfContents(page, font, fontBold);
   yPosition = PAGE_TOP_Y;
 
   // Section renderer map for explicit delegation
-  const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[], att?: any, eMap?: any, mInst?: ModuleInstance[]) => Cursor> = {
+  const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[], att?: any, eMap?: any, mInst?: ModuleInstance[], acts?: Action[]) => Cursor> = {
     1: renderSection1AssessmentDetails,
     2: renderSection2Premises,
     3: renderSection3Occupants,
     4: renderSection4Legislation,
     5: renderSection5FireHazards,
-    7: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst) => renderSection7Detection(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst),
-    10: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst) => renderSection10Suppression(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst),
-    11: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst) => renderSection11Management(cursor, modules, moduleInstances, doc, f, fb, pdf, draft, pages, att, eMap, mInst),
+    7: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts) => renderSection7Detection(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts),
+    10: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts) => renderSection10Suppression(cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts),
+    11: (cursor, modules, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts) => renderSection11Management(cursor, modules, moduleInstances, doc, f, fb, pdf, draft, pages, att, eMap, mInst, acts),
     14: renderSection14Review,
   };
 
@@ -668,7 +668,7 @@ if (section.id === 5) {
       const renderer = SECTION_RENDERERS[section.id];
 
       if (renderer) {
-        cursor = renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances);
+        cursor = renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances, actions);
         ({ page, yPosition } = cursor);
       } else {
         // Generic section rendering for standard modules
@@ -696,7 +696,8 @@ if (section.id === 5) {
             section.id, // Pass section ID for section-specific filtering
             attachments, // Pass attachments for inline evidence
             evidenceRefMap, // Pass evidence reference map
-            moduleInstances // Pass module instances for evidence linking
+            moduleInstances, // Pass module instances for evidence linking
+            actions // Pass actions for action-linked evidence
           ));
         }
       }

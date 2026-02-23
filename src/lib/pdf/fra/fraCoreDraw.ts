@@ -58,12 +58,28 @@ export function buildEvidenceRefMap(attachments: Attachment[]): Map<string, stri
 }
 
 /**
- * Map module key to section ID using FRA_REPORT_STRUCTURE as source of truth
+ * Build canonical moduleKey -> sectionId map from FRA_REPORT_STRUCTURE
+ * This is the single source of truth for all module-to-section mappings
+ */
+function buildModuleKeyToSectionIdMap(): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const section of FRA_REPORT_STRUCTURE) {
+    for (const moduleKey of section.moduleKeys) {
+      map.set(moduleKey, section.id);
+    }
+  }
+  return map;
+}
+
+// Build the map once at module load time
+const MODULE_KEY_TO_SECTION_ID = buildModuleKeyToSectionIdMap();
+
+/**
+ * Map module key to section ID using pre-built map
  * This ensures evidence filtering works correctly for all module keys
  */
 function mapModuleKeyToSectionId(moduleKey: string): number | null {
-  const section = FRA_REPORT_STRUCTURE.find(s => s.moduleKeys.includes(moduleKey));
-  return section?.id ?? null;
+  return MODULE_KEY_TO_SECTION_ID.get(moduleKey) ?? null;
 }
 
 /**
@@ -937,26 +953,55 @@ export function drawInlineEvidenceBlock(
   fontBold: any,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  actions?: Action[]
 ): Cursor {
   let { page, yPosition } = cursor;
 
-  // Find attachments for this section
-  const sectionAttachments: Array<{ attachment: Attachment; refNum: string }> = [];
+  // Collect attachments for this section
+  const sectionAttachments: Array<{ attachment: Attachment; refNum: string | null; source: 'module' | 'action' }> = [];
+  const seenAttachmentIds = new Set<string>();
 
+  // 1) Module-linked attachments (original logic)
   for (const att of attachments) {
-    if (!att.module_instance_id) continue;
+    if (seenAttachmentIds.has(att.id)) continue;
 
-    const module = moduleInstances.find(m => m.id === att.module_instance_id);
-    if (!module) continue;
+    if (att.module_instance_id) {
+      const module = moduleInstances.find(m => m.id === att.module_instance_id);
+      if (!module) continue;
 
-    const attSectionId = mapModuleKeyToSectionId(module.module_key);
-    if (attSectionId !== sectionId) continue;
+      const attSectionId = mapModuleKeyToSectionId(module.module_key);
+      if (attSectionId !== sectionId) continue;
 
-    const refNum = evidenceRefMap.get(att.id);
-    if (!refNum) continue;
+      const refNum = evidenceRefMap.get(att.id);
+      sectionAttachments.push({ attachment: att, refNum: refNum || null, source: 'module' });
+      seenAttachmentIds.add(att.id);
+    }
+  }
 
-    sectionAttachments.push({ attachment: att, refNum });
+  // 2) Action-linked attachments (NEW)
+  if (actions && actions.length > 0) {
+    for (const att of attachments) {
+      if (seenAttachmentIds.has(att.id)) continue;
+
+      if (att.action_id) {
+        const action = actions.find(a => a.id === att.action_id);
+        if (!action) continue;
+
+        // Resolve action's section via its module_instance_id
+        if (action.module_instance_id) {
+          const module = moduleInstances.find(m => m.id === action.module_instance_id);
+          if (!module) continue;
+
+          const actionSectionId = mapModuleKeyToSectionId(module.module_key);
+          if (actionSectionId !== sectionId) continue;
+
+          const refNum = evidenceRefMap.get(att.id);
+          sectionAttachments.push({ attachment: att, refNum: refNum || null, source: 'action' });
+          seenAttachmentIds.add(att.id);
+        }
+      }
+    }
   }
 
   if (sectionAttachments.length === 0) {
@@ -982,7 +1027,7 @@ export function drawInlineEvidenceBlock(
   });
   yPosition -= 14;
 
-  // Show up to 2 items
+  // Show up to 2 items (module-linked first, then action-linked)
   const itemsToShow = sectionAttachments.slice(0, 2);
 
   for (const { attachment, refNum } of itemsToShow) {
@@ -993,7 +1038,11 @@ export function drawInlineEvidenceBlock(
     }
 
     const displayName = attachment.caption || attachment.file_name || 'Unnamed';
-    const evidenceLine = `${refNum} – ${sanitizePdfText(displayName)}`;
+
+    // Use refNum if available, otherwise fallback to filename only (temporary fallback)
+    const evidenceLine = refNum
+      ? `${refNum} – ${sanitizePdfText(displayName)}`
+      : sanitizePdfText(displayName);
 
     // Wrap text if needed
     const lines = wrapText(evidenceLine, CONTENT_WIDTH - 20, 9, font);
@@ -1043,7 +1092,8 @@ export function drawModuleContent(
   sectionId?: number, // Optional: for section-specific filtering
   attachments?: Attachment[], // Optional: for inline evidence
   evidenceRefMap?: Map<string, string>, // Optional: evidence reference map
-  moduleInstances?: ModuleInstance[] // Optional: for evidence linking
+  moduleInstances?: ModuleInstance[], // Optional: for evidence linking
+  actions?: Action[] // Optional: for action-linked evidence
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -1129,7 +1179,8 @@ if (module.outcome) {
       fontBold,
       pdfDoc,
       isDraft,
-      totalPages
+      totalPages,
+      actions // Pass actions for action-linked evidence
     ));
   }
 

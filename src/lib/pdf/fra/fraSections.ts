@@ -20,6 +20,7 @@ import {
   renderFilteredModuleData,
 } from './fraCoreDraw';
 import type { Cursor, Document, ModuleInstance } from './fraTypes';
+import type { Attachment } from '../../supabase/attachments';
 
 /**
  * Section 1: Assessment Details (A1_DOC_CONTROL)
@@ -794,7 +795,10 @@ export function renderSection7Detection(
   fontBold: any,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  attachments?: Attachment[],
+  evidenceRefMap?: Map<string, string>,
+  moduleInstances?: ModuleInstance[]
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -824,7 +828,10 @@ export function renderSection7Detection(
       totalPages,
       [], // keyPoints handled by main renderer
       ['FRA_3_ACTIVE_SYSTEMS'],
-      7 // Section ID for Section 7 filtering
+      7, // Section ID for Section 7 filtering
+      attachments, // Pass attachments for inline evidence
+      evidenceRefMap, // Pass evidence reference map
+      moduleInstances // Pass module instances for evidence linking
     ));
   }
 
@@ -865,7 +872,10 @@ export function renderSection10Suppression(
   fontBold: any,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  attachments?: Attachment[],
+  evidenceRefMap?: Map<string, string>,
+  moduleInstances?: ModuleInstance[]
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -895,7 +905,10 @@ export function renderSection10Suppression(
       totalPages,
       undefined,
       ['FRA_8_FIREFIGHTING_EQUIPMENT'],
-      10 // Section 10: Fixed Fire Suppression & Firefighting Facilities
+      10, // Section 10: Fixed Fire Suppression & Firefighting Facilities
+      attachments, // Pass attachments for inline evidence
+      evidenceRefMap, // Pass evidence reference map
+      moduleInstances // Pass module instances for evidence linking
     ));
   }
 
@@ -915,7 +928,10 @@ export function renderSection11Management(
   fontBold: any,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  attachments?: Attachment[],
+  evidenceRefMap?: Map<string, string>,
+  moduleInstances?: ModuleInstance[]
 ): Cursor {
   let { page, yPosition } = cursor;
 
@@ -959,7 +975,11 @@ export function renderSection11Management(
       isDraft,
       totalPages,
       undefined,
-      ['A4_MANAGEMENT_CONTROLS', 'FRA_6_MANAGEMENT_SYSTEMS']
+      ['A4_MANAGEMENT_CONTROLS', 'FRA_6_MANAGEMENT_SYSTEMS'],
+      11, // Section 11: Fire Safety Management
+      attachments, // Pass attachments for inline evidence
+      evidenceRefMap, // Pass evidence reference map
+      moduleInstances // Pass module instances for evidence linking
     ));
 
     yPosition -= 15;
@@ -992,7 +1012,11 @@ export function renderSection11Management(
       isDraft,
       totalPages,
       undefined,
-      ['A5_EMERGENCY_ARRANGEMENTS', 'FRA_7_EMERGENCY_ARRANGEMENTS']
+      ['A5_EMERGENCY_ARRANGEMENTS', 'FRA_7_EMERGENCY_ARRANGEMENTS'],
+      11, // Section 11: Fire Safety Management
+      attachments, // Pass attachments for inline evidence
+      evidenceRefMap, // Pass evidence reference map
+      moduleInstances // Pass module instances for evidence linking
     ));
 
     yPosition -= 15;
@@ -1023,7 +1047,11 @@ export function renderSection11Management(
       isDraft,
       totalPages,
       undefined,
-      ['A7_REVIEW_ASSURANCE']
+      ['A7_REVIEW_ASSURANCE'],
+      11, // Section 11: Fire Safety Management
+      attachments, // Pass attachments for inline evidence
+      evidenceRefMap, // Pass evidence reference map
+      moduleInstances // Pass module instances for evidence linking
     ));
 
     yPosition -= 15;
@@ -1087,7 +1115,11 @@ export function renderSection11Management(
         isDraft,
         totalPages,
         undefined,
-        ['FRA_8_FIREFIGHTING_EQUIPMENT']
+        ['FRA_8_FIREFIGHTING_EQUIPMENT'],
+        11, // Section 11: Fire Safety Management
+        attachments, // Pass attachments for inline evidence
+        evidenceRefMap, // Pass evidence reference map
+        moduleInstances // Pass module instances for evidence linking
       ));
     } else {
       page.drawText('No portable firefighting equipment data recorded.', {

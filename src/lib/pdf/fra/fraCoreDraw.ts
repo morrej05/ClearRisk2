@@ -58,25 +58,12 @@ export function buildEvidenceRefMap(attachments: Attachment[]): Map<string, stri
 }
 
 /**
- * Map module key to section ID
+ * Map module key to section ID using FRA_REPORT_STRUCTURE as source of truth
+ * This ensures evidence filtering works correctly for all module keys
  */
 function mapModuleKeyToSectionId(moduleKey: string): number | null {
-  const keyToSection: Record<string, number> = {
-    'A1_DOC_CONTROL': 1,
-    'A2_BUILDING_PROFILE': 2,
-    'A3_PERSONS_AT_RISK': 3,
-    'A4_MANAGEMENT_CONTROLS': 4,
-    'FRA_1_IGNITION_SOURCES': 5,
-    'FRA_2_ESCAPE_ASIS': 6,
-    'FRA_3_FIRE_DETECTION': 7,
-    'FRA_4_SIGNIFICANT_FINDINGS': 8,
-    'FRA_5_EXTERNAL_FIRE_SPREAD': 9,
-    'FRA_8_FIREFIGHTING_EQUIPMENT': 10,
-    'A5_EMERGENCY_ARRANGEMENTS': 11,
-    'A7_REVIEW_ASSURANCE': 11,
-  };
-
-  return keyToSection[moduleKey] ?? null;
+  const section = FRA_REPORT_STRUCTURE.find(s => s.moduleKeys.includes(moduleKey));
+  return section?.id ?? null;
 }
 
 /**

@@ -371,8 +371,8 @@ export function drawActionCard(args: {
 
   let cursorY = y - cardPadding;
 
-  // Top row: "R-01   P4" or "R-01   HIGH"
-  const topLabel = ref ? `${ref}   ${priority}` : priority;
+  // Top row: "R-01 • P4" or just "P4"
+  const topLabel = ref ? `${ref} • ${priority}` : priority;
   page.drawText(topLabel.toUpperCase(), {
     x: textX,
     y: cursorY,

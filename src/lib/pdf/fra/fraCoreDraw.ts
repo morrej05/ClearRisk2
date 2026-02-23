@@ -1557,6 +1557,12 @@ export async function drawActionRegister(
     return { page, yPosition: yPosition - 20 };
   }
 
+  // Generate stable display references (R-01, R-02, etc.) for actions without assigned reference_number
+  const displayRefMap = new Map<string, string>();
+  sortedActions.forEach((a, i) => {
+    displayRefMap.set(a.id, `R-${String(i + 1).padStart(2, '0')}`);
+  });
+
   for (const action of sortedActions) {
     if (!action.recommended_action || typeof action.recommended_action !== 'string') {
       console.warn('[PDF] Action missing recommended_action:', {
@@ -1579,7 +1585,8 @@ export async function drawActionRegister(
     const owner = action.owner_display_name || undefined;
     const target = action.target_date ? formatDate(action.target_date) : undefined;
     const status = action.status || 'open';
-    const ref = action.reference_number || undefined;
+    // Prefer stored ref; otherwise use stable display ref from sorted order
+    const ref = action.reference_number || displayRefMap.get(action.id);
 
     // Use new action card primitive
     yPosition = drawActionCard({
@@ -1647,7 +1654,7 @@ export async function drawActionRegister(
 
           if (evidenceRefs) {
             page.drawText(`Evidence: ${evidenceRefs}`, {
-              x: MARGIN + 5,
+              x: MARGIN + 28, // Align with card text (4px stripe + 12px padding + 12px spacing)
               y: yPosition,
               size: 8,
               font,

@@ -54,6 +54,11 @@ export default function ActionDetailModal({
   onActionUpdated,
   returnTo,
 }: ActionDetailModalProps) {
+  // Hard guard at the top
+  if (!action) {
+    return null;
+  }
+
   const navigate = useNavigate();
   const location = useLocation();
   const { organisation, user } = useAuth();
@@ -249,7 +254,7 @@ export default function ActionDetailModal({
 
   const handleGoToDocument = () => {
     if (!action.document?.id) return;
-    const documentType = action.document.document_type;
+    const documentType = action.document?.document_type;
     let from = '/common-dashboard';
 
     if (documentType === 'DSEAR') {
@@ -588,10 +593,10 @@ export default function ActionDetailModal({
             {action.document && (
               <div className="mt-3 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                 <div className="text-sm font-medium text-neutral-700">
-                  {action.document.title}
+                  {action.document?.title}
                 </div>
                 <div className="text-xs text-neutral-500 mt-1">
-                  {action.document.document_type}
+                  {action.document?.document_type}
                   {action.module_instance?.module_key &&
                     ` • ${action.module_instance.module_key}`}
                 </div>

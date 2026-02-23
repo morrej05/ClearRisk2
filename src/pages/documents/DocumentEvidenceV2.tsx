@@ -39,13 +39,12 @@ type FilterType = 'all' | 'unlinked' | 'section' | 'action';
 interface ModuleInstance {
   id: string;
   module_key: string;
-  module_instance_id: string;
 }
 
 interface Action {
   id: string;
-  reference_number: string;
-  title: string;
+  reference_number: string | null;
+  recommended_action: string;
 }
 
 export default function DocumentEvidenceV2() {
@@ -105,14 +104,15 @@ export default function DocumentEvidenceV2() {
   };
 
   const loadModules = async (): Promise<ModuleInstance[]> => {
-    if (!id) return [];
+    if (!id || !organisation?.id) return [];
 
     try {
       const { data, error } = await supabase
         .from('module_instances')
-        .select('id, module_key, module_instance_id')
+        .select('id, module_key')
         .eq('document_id', id)
-        .order('module_key');
+        .eq('organisation_id', organisation.id)
+        .order('module_key', { ascending: true });
 
       if (error) {
         console.error('Error loading modules:', error);
@@ -127,14 +127,15 @@ export default function DocumentEvidenceV2() {
   };
 
   const loadActions = async (): Promise<Action[]> => {
-    if (!id) return [];
+    if (!id || !organisation?.id) return [];
 
     try {
       const { data, error } = await supabase
         .from('actions')
-        .select('id, reference_number, title')
+        .select('id, reference_number, recommended_action')
         .eq('document_id', id)
-        .order('reference_number');
+        .eq('organisation_id', organisation.id)
+        .order('reference_number', { ascending: true });
 
       if (error) {
         console.error('Error loading actions:', error);
@@ -741,11 +742,17 @@ export default function DocumentEvidenceV2() {
                                   className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 >
                                   <option value="">Select action...</option>
-                                  {actions.map(action => (
-                                    <option key={action.id} value={action.id}>
-                                      {action.reference_number} - {action.title?.substring(0, 40) || 'Untitled'}
-                                    </option>
-                                  ))}
+                                  {actions.map(action => {
+                                    const truncatedAction = action.recommended_action?.substring(0, 60) || 'Untitled';
+                                    const label = action.reference_number
+                                      ? `${action.reference_number} — ${truncatedAction}`
+                                      : truncatedAction;
+                                    return (
+                                      <option key={action.id} value={action.id}>
+                                        {label}
+                                      </option>
+                                    );
+                                  })}
                                 </select>
                               )}
                             </div>

@@ -314,33 +314,34 @@ export function drawLikelihoodConsequenceBlock(args: {
     color: PDF_THEME.colours.text,
   });
 
-  const gridSize = 10;
-  const gridX = x + w - (gridSize * 3) - 6;
-  const gridYTop = y - 4;
+  // Matrix icon removed per user request
+  // const gridSize = 10;
+  // const gridX = x + w - (gridSize * 3) - 6;
+  // const gridYTop = y - 4;
 
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      page.drawRectangle({
-        x: gridX + c * gridSize,
-        y: (gridYTop - (r + 1) * gridSize),
-        width: gridSize,
-        height: gridSize,
-        borderWidth: 1,
-        borderColor: rgb(0.75, 0.77, 0.8),
-        color: rgb(1, 1, 1),
-      });
-    }
-  }
+  // for (let r = 0; r < 3; r++) {
+  //   for (let c = 0; c < 3; c++) {
+  //     page.drawRectangle({
+  //       x: gridX + c * gridSize,
+  //       y: (gridYTop - (r + 1) * gridSize),
+  //       width: gridSize,
+  //       height: gridSize,
+  //       borderWidth: 1,
+  //       borderColor: rgb(0.75, 0.77, 0.8),
+  //       color: rgb(1, 1, 1),
+  //     });
+  //   }
+  // }
 
-  page.drawRectangle({
-    x: gridX + 1 * gridSize,
-    y: gridYTop - (3 * gridSize),
-    width: gridSize,
-    height: gridSize,
-    color: rgb(0.9, 0.92, 0.96),
-    borderWidth: 1,
-    borderColor: rgb(0.75, 0.77, 0.8),
-  });
+  // page.drawRectangle({
+  //   x: gridX + 1 * gridSize,
+  //   y: gridYTop - (3 * gridSize),
+  //   width: gridSize,
+  //   height: gridSize,
+  //   color: rgb(0.9, 0.92, 0.96),
+  //   borderWidth: 1,
+  //   borderColor: rgb(0.75, 0.77, 0.8),
+  // });
 
   return y2 - PDF_THEME.rhythm.lg;
 }

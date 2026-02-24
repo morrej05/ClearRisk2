@@ -17,6 +17,7 @@ import {
   getPriorityColor,
   addNewPage,
   deriveAutoActionTitle,
+  deriveSystemActionTitle,
 } from '../pdfUtils';
 import {
   drawExecutiveRiskHeader,
@@ -1560,8 +1561,11 @@ export async function drawActionRegister(
 
     // Use priority band directly (P1/P2/P3/P4)
     const priorityBand = action.priority_band || 'P4';
-    // Derive short title for auto actions, full text for manual actions
-    const actionText = deriveAutoActionTitle(action);
+    // Derive short title for system actions, full text for manual actions
+    const actionText = deriveSystemActionTitle({
+      recommended_action: action.recommended_action,
+      source: action.source,
+    }) || '(No action text provided)';
     const owner = action.owner_display_name || undefined;
     const target = action.target_date ? formatDate(action.target_date) : undefined;
     const status = action.status || 'open';

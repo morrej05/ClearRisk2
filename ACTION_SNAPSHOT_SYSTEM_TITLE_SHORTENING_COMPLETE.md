@@ -1,7 +1,7 @@
-# Action Snapshot System Title Shortening - COMPLETE
+# Action Snapshot and Register System Title Shortening - COMPLETE
 
 ## Problem
-The PDF Action Plan Snapshot was displaying full action text for all actions, including verbose system-generated actions. This made the snapshot less readable and took up unnecessary space, especially when system actions included rationale clauses like "to ensure..." or "in order to...".
+The PDF Action Plan Snapshot and Action Register (Section 13) were displaying full action text for all actions, including verbose system-generated actions. This made these sections less readable and took up unnecessary space, especially when system actions included rationale clauses like "to ensure..." or "in order to...".
 
 ## Solution
 Implemented selective title shortening that:
@@ -11,11 +11,14 @@ Implemented selective title shortening that:
 - Removes rationale tails ("to ensure...", "in order to...", "so that...")
 - Removes urgency prefixes ("URGENT:", "IMMEDIATE:")
 - Caps at 95 characters with ellipsis if needed
+- Applied consistently to both Action Plan Snapshot (Section 4) and Action Register (Section 13)
 
 ## Implementation
 
-### File Modified
-`src/lib/pdf/pdfUtils.ts`
+### Files Modified
+1. `src/lib/pdf/pdfUtils.ts`
+2. `src/lib/pdf/fra/fraCoreDraw.ts`
+3. `src/lib/pdf/buildFraPdf.ts`
 
 ### Changes Made
 
@@ -54,7 +57,7 @@ export function deriveSystemActionTitle(action: { recommended_action?: string; s
    - Remove rationale phrases ("to ensure...", "in order to...", "so that...")
    - Cap at 95 characters with ellipsis
 
-#### 2. Updated drawActionPlanSnapshot to Use New Function (Line 1088)
+#### 2. Updated drawActionPlanSnapshot to Use New Function (pdfUtils.ts:1088)
 ```typescript
 // Before:
 const actionTitle = deriveAutoActionTitle(action);
@@ -66,6 +69,41 @@ const actionTitle = deriveSystemActionTitle(action);
 **Comment updated:**
 ```typescript
 // Derive short title for system actions, full text for manual actions
+```
+
+#### 3. Updated FRA Action Register (fraCoreDraw.ts)
+
+**Import added (Line 20):**
+```typescript
+import {
+  // ... existing imports
+  deriveSystemActionTitle,
+} from '../pdfUtils';
+```
+
+**Updated drawActionRegister function (Lines 1564-1568):**
+```typescript
+// Before:
+// Derive short title for auto actions, full text for manual actions
+const actionText = deriveAutoActionTitle(action);
+
+// After:
+// Derive short title for system actions, full text for manual actions
+const actionText = deriveSystemActionTitle({
+  recommended_action: action.recommended_action,
+  source: action.source,
+}) || '(No action text provided)';
+```
+
+#### 4. Updated actionsForPdf Mapping (buildFraPdf.ts)
+
+**Comment updates (Lines 500, 941):**
+```typescript
+// Before:
+source: a.source, // Needed for deriveAutoActionTitle
+
+// After:
+source: a.source, // Needed for deriveSystemActionTitle
 ```
 
 ## Behavior Changes
@@ -183,22 +221,26 @@ source: "system"
 ## Integration Points
 
 ### Action Plan Snapshot (Section 4)
-- Uses `deriveSystemActionTitle` in `drawActionPlanSnapshot`
+- Uses `deriveSystemActionTitle` in `drawActionPlanSnapshot` (pdfUtils.ts)
 - Displays up to 5 actions per priority band
 - Each action shown as: `• [Ref] ([Section]): [Title]`
+- System actions shortened, manual actions preserved
 
-### Full Recommendations Section (Section 13)
-- Still shows complete action text
-- No shortening applied
-- Full detail preserved for implementation
+### Action Register (Section 13)
+- Uses `deriveSystemActionTitle` in `drawActionRegister` (fraCoreDraw.ts)
+- Displays all actions in full action card format
+- Each action card includes reference, priority, owner, target date, status
+- System action titles shortened, manual actions preserved
+- Consistent presentation with Action Plan Snapshot
 
 ## Benefits
 
-1. **Improved Readability**: Snapshot is cleaner and easier to scan
+1. **Improved Readability**: Both snapshot and register are cleaner and easier to scan
 2. **Preserves User Intent**: Manual actions show exactly what assessor wrote
 3. **Consistent Length**: All system actions display at similar lengths
 4. **Professional Appearance**: Removes redundant rationale text
 5. **Selective Shortening**: Only applies where it makes sense (system-generated)
+6. **Consistent Presentation**: Same logic applied to both Section 4 (Snapshot) and Section 13 (Register)
 
 ## Dependency on Source Classification
 
@@ -214,8 +256,10 @@ See: `ADD_ACTION_SOURCE_CLASSIFICATION_FIX_COMPLETE.md`
 
 ✅ Implementation complete
 ✅ Build successful
-✅ deriveSystemActionTitle helper added
-✅ drawActionPlanSnapshot updated
+✅ deriveSystemActionTitle helper added (pdfUtils.ts)
+✅ drawActionPlanSnapshot updated (Section 4 snapshot)
+✅ drawActionRegister updated (Section 13 register)
 ✅ Selective shortening (system only)
 ✅ Manual actions preserved
+✅ Consistent across both sections
 ✅ Ready for testing

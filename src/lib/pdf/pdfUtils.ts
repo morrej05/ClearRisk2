@@ -987,16 +987,20 @@ export function drawActionPlanSnapshot(
         actionText = actionText.substring(0, 97) + '...';
       }
 
-      // Reference and section - reference_number is always present from PDF processing
+      // Reference and section - reference_number from DB or undefined
       const ref = action.reference_number;
       const section = action.section_reference;
 
-      // Build display text: only include section if it exists and isn't a placeholder
-      let displayText = `• ${ref}`;
-      if (section && section !== 'TBD' && section !== 'unknown' && section !== '') {
-        displayText += ` (${section})`;
+      // Build display text: only include ref and section if they exist
+      let displayText = '• ';
+      if (ref) {
+        displayText += ref;
+        if (section && section !== 'TBD' && section !== 'unknown' && section !== '') {
+          displayText += ` (${section})`;
+        }
+        displayText += ': ';
       }
-      displayText += `: ${actionText}`;
+      displayText += actionText;
 
       context.page.drawText(displayText, {
         x: MARGIN + 10,
@@ -1124,17 +1128,18 @@ export function drawRecommendationsSection(
       pagesAdded++;
     }
 
-    // Reference number is always present from PDF processing
+    // Reference number from DB or undefined
     const refNum = action.reference_number;
-    page.drawText(refNum, {
-      x: MARGIN,
-      y: yPosition,
-      size: 12,
-      font: fonts.bold,
-      color: rgb(0, 0, 0),
-    });
-
-    yPosition -= 20;
+    if (refNum) {
+      page.drawText(refNum, {
+        x: MARGIN,
+        y: yPosition,
+        size: 12,
+        font: fonts.bold,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= 20;
+    }
 
     const descLines = wrapText(action.recommended_action, CONTENT_WIDTH - 20, 10, fonts.regular);
     for (const line of descLines) {

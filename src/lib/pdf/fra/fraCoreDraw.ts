@@ -1540,7 +1540,7 @@ export async function drawActionRegister(
   }
 
   // NO FALLBACK REFERENCE GENERATION
-  // Use canonical DB reference_number or display "—" if unissued
+  // Use canonical DB reference_number exactly as stored, or undefined if not set
 
   for (const action of actions) {
     if (!action.recommended_action || typeof action.recommended_action !== 'string') {
@@ -1564,8 +1564,8 @@ export async function drawActionRegister(
     const owner = action.owner_display_name || undefined;
     const target = action.target_date ? formatDate(action.target_date) : undefined;
     const status = action.status || 'open';
-    // Use canonical DB reference only (show "—" if unissued)
-    const ref = action.reference_number ?? '—';
+    // Use canonical DB reference only (undefined if not set)
+    const ref = action.reference_number || undefined;
 
     // Use new action card primitive
     yPosition = drawActionCard({

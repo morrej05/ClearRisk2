@@ -313,7 +313,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   }
 
   // Prepare actions for PDF (NO fallback reference generation)
-  // Use canonical DB reference_number or display "—" if unissued
+  // Use canonical DB reference_number exactly as stored, or undefined if not set
   const actionsWithRefs = sortedActions.map((action) => {
     const sectionId = moduleToSectionMap.get(action.module_instance_id);
     // Use displayNumber for section references

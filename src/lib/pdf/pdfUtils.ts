@@ -1077,7 +1077,17 @@ export function drawActionPlanSnapshot(
     context.yPosition -= 20;
 
     // List actions (max 5 per priority to keep snapshot concise)
-    const displayActions = priorityActions.slice(0, 5);
+    // Sort system actions first within each priority group
+    const sortedActions = [...priorityActions].sort((a, b) => {
+      const aSys = (a.source === 'system') ? 0 : 1;
+      const bSys = (b.source === 'system') ? 0 : 1;
+      if (aSys !== bSys) return aSys - bSys;
+
+      // Stable secondary sort (by ref if present, else by created_at)
+      return String(a.reference_number || '').localeCompare(String(b.reference_number || ''));
+    });
+
+    const displayActions = sortedActions.slice(0, 5);
     for (const action of displayActions) {
       if (context.yPosition < MARGIN + 40) {
         context.page = addNewPage(pdfDoc, isDraft, totalPages).page;

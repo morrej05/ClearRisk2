@@ -93,6 +93,28 @@ export function formatDate(dateString: string | null): string {
   });
 }
 
+/**
+ * Derive a concise title from a system-generated action for PDF snapshot display.
+ * Manual actions are returned unchanged. System actions are shortened to first clause.
+ */
+export function deriveSystemActionTitle(action: { recommended_action?: string; source?: string }): string {
+  const text = String(action?.recommended_action || '').trim();
+  if (!text) return '(No action text provided)';
+
+  const src = String(action?.source || '').toLowerCase();
+  if (src !== 'system') return text; // only shorten system actions
+
+  // Keep first clause (imperative), strip rationale tails, remove urgency prefix
+  let title = text.split(/\n|;|\.(\s|$)/)[0].trim();
+  title = title.replace(/^(urgent|immediate)\s*[:\-]\s*/i, '').trim();
+  title = title.replace(/\s+\b(to|in order to|so that)\b.*$/i, '').trim();
+
+  const max = 95;
+  if (title.length > max) title = title.slice(0, max - 1).trimEnd() + '…';
+
+  return title || text;
+}
+
 export function formatAddress(addr?: any): string {
   if (!addr) return '';
   const parts = [
@@ -1062,8 +1084,8 @@ export function drawActionPlanSnapshot(
         context.yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
 
-      // Derive short title for auto actions, full text for manual actions
-      const actionTitle = deriveAutoActionTitle(action);
+      // Derive short title for system actions, full text for manual actions
+      const actionTitle = deriveSystemActionTitle(action);
       let actionText = sanitizePdfText(actionTitle);
       if (actionText.length > 100) {
         actionText = actionText.substring(0, 97) + '...';

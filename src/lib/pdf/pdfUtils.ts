@@ -115,6 +115,31 @@ export function deriveSystemActionTitle(action: { recommended_action?: string; s
   return title || text;
 }
 
+/**
+ * Derive ultra-short title for system actions in Action Plan Snapshot.
+ * Hard cap at 70 characters for snapshot readability and clean scanning.
+ * Manual actions are returned unchanged.
+ */
+export function deriveSystemSnapshotTitle(action: { recommended_action?: string; source?: string }): string {
+  const text = String(action?.recommended_action || '').trim();
+  if (!text) return '(No action text provided)';
+
+  const src = String(action?.source || '').toLowerCase();
+  if (src !== 'system') return text;
+
+  // Remove common filler starts (optional but helps)
+  let t = text
+    .replace(/^(urgent|immediate)\s*[:\-]\s*/i, '')
+    .replace(/^confirm (requirement )?for\s+/i, '')
+    .replace(/^provide\s+/i, '')
+    .trim();
+
+  // Hard cap for snapshot readability
+  const max = 70;
+  if (t.length > max) t = t.slice(0, max - 1).trimEnd() + '…';
+  return t;
+}
+
 export function formatAddress(addr?: any): string {
   if (!addr) return '';
   const parts = [
@@ -1094,8 +1119,8 @@ export function drawActionPlanSnapshot(
         context.yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
 
-      // Derive short title for system actions, full text for manual actions
-      const actionTitle = deriveSystemActionTitle(action);
+      // Derive ultra-short title for snapshot (70 char max for system actions)
+      const actionTitle = deriveSystemSnapshotTitle(action);
       let actionText = sanitizePdfText(actionTitle);
       if (actionText.length > 100) {
         actionText = actionText.substring(0, 97) + '...';

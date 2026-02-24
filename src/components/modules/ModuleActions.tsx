@@ -15,6 +15,7 @@ interface Action {
   updated_at: string;
   source: string | null;
   owner_user_id: string | null;
+  reference_number?: string;
   document: {
     id: string;
     title: string;
@@ -97,7 +98,16 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
       const { data, error } = await supabase
         .from('actions')
         .select(`
-          *,
+          id,
+          recommended_action,
+          status,
+          priority_band,
+          target_date,
+          updated_at,
+          source,
+          owner_user_id,
+          reference_number,
+          created_at,
           document:documents!actions_document_id_fkey(id,title,document_type),
           module_instance:module_instances(id,module_key,outcome),
           owner:user_profiles(id,name)
@@ -350,6 +360,9 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
             <thead className="bg-neutral-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
+                  Ref
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
                   Priority
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">
@@ -369,6 +382,11 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
             <tbody className="bg-white divide-y divide-neutral-200">
               {actions.map((action) => (
                 <tr key={action.id} className="hover:bg-neutral-50 transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="text-sm font-mono text-neutral-900">
+                      {action.reference_number ?? '—'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-bold rounded border ${getPriorityColor(

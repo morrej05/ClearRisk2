@@ -5,6 +5,7 @@ Previously, all actions created through the AddActionModal were getting the `sou
 - Auto-generated suggestions that users tweaked were still marked as `system`/`library`/`ai`
 - Manual actions from scratch were sometimes misclassified
 - PDF shortening logic couldn't distinguish between accepted suggestions and user-authored text
+- Edit state was sticky across modal re-openings
 
 ## Solution
 Added intelligent source classification that tracks whether the user edited the action text, ensuring:
@@ -19,12 +20,31 @@ Added intelligent source classification that tracks whether the user edited the 
 
 ### Changes Made
 
-#### 1. Added Edit Tracking State (Line 52)
+#### 1. Removed Default Source Value (Line 41)
+```typescript
+// Before:
+source = 'manual',
+
+// After:
+source,
+```
+**Why:** Prevents fallback to 'manual' when caller doesn't specify, allowing proper undefined handling in resolution logic.
+
+#### 2. Added Edit Tracking State (Line 52)
 ```typescript
 const [userEditedActionText, setUserEditedActionText] = useState(false);
 ```
 
-#### 2. Track User Edits in Textarea onChange (Lines 481-484)
+#### 3. Reset Edit Tracking on Modal Re-open (Lines 75-77)
+```typescript
+// Reset edit tracking when modal opens with new props
+useEffect(() => {
+  setUserEditedActionText(false);
+}, [defaultAction, documentId, moduleInstanceId]);
+```
+**Why:** Prevents sticky edit state when modal is reused for different actions.
+
+#### 4. Track User Edits in Textarea onChange (Lines 487-490)
 ```typescript
 <textarea
   value={formData.recommendedAction}
@@ -36,7 +56,7 @@ const [userEditedActionText, setUserEditedActionText] = useState(false);
 />
 ```
 
-#### 3. Smart Source Resolution Logic (Lines 262-272)
+#### 5. Smart Source Resolution Logic (Lines 268-278)
 ```typescript
 // Resolve source based on whether user edited the text
 const resolvedSource: 'manual' | 'library' | 'system' | 'ai' =
@@ -51,7 +71,7 @@ const resolvedSource: 'manual' | 'library' | 'system' | 'ai' =
           : 'manual';
 ```
 
-#### 4. Use Resolved Source in Insert (Line 294)
+#### 6. Use Resolved Source in Insert (Line 300)
 ```typescript
 source: resolvedSource,
 ```
@@ -218,9 +238,28 @@ Can distinguish between:
 - Supports template expansion features
 - Enables source-based filtering/reporting
 
+## Edge Cases Handled
+
+### 1. Sticky Edit State
+**Problem:** If modal was reused, edit flag stayed true from previous usage
+**Solution:** Reset `userEditedActionText` via useEffect when props change
+
+### 2. Undefined Source Prop
+**Problem:** Callers might not pass source at all
+**Solution:** Removed default value, resolution logic handles undefined properly
+
+### 3. Empty defaultAction
+**Problem:** Manual actions shouldn't be marked as system
+**Solution:** Check `defaultAction.trim()` before classifying as system
+
+### 4. Multiple Modal Opens
+**Problem:** Opening modal multiple times could carry state
+**Solution:** useEffect dependencies include `defaultAction`, `documentId`, and `moduleInstanceId`
+
 ## Status
 
 ✅ Implementation complete
 ✅ Build successful
 ✅ Ready for testing
 ✅ No database migration needed
+✅ Edge cases handled (sticky state, undefined props, reused modals)

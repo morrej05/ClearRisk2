@@ -38,7 +38,7 @@ export default function AddActionModal({
   defaultAction = '',
   defaultLikelihood = 3,
   defaultImpact = 3,
-  source = 'manual',
+  source,
 }: AddActionModalProps) {
   const { organisation, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,6 +70,11 @@ export default function AddActionModal({
     escalateToP1: false,
     escalationJustification: '',
   });
+
+  // Reset edit tracking when modal opens with new props
+  useEffect(() => {
+    setUserEditedActionText(false);
+  }, [defaultAction, documentId, moduleInstanceId]);
 
   useEffect(() => {
     const fetchContext = async () => {

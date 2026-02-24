@@ -147,6 +147,7 @@ export default function DocumentPreviewPage() {
 
           modules = modulesData || [];
 
+          console.log('[PDF Preview] generating for document id:', id);
           const { data: actionsData } = await supabase
             .from('actions')
             .select(`*`)
@@ -154,6 +155,7 @@ export default function DocumentPreviewPage() {
             .eq('organisation_id', organisation.id)
             .is('deleted_at', null);
 
+          console.log('[PDF Preview] actions loaded:', actionsData?.length ?? 0);
           actions = actionsData || [];
         } else {
           // Draft document: load live data
@@ -166,10 +168,12 @@ export default function DocumentPreviewPage() {
           if (moduleError) throw moduleError;
           modules = modulesData || [];
 
+          console.log('[PDF Preview] generating for document id:', id);
           const { data: actionsData, error: actionsError } = await supabase
             .from('actions')
             .select(`
               id,
+              reference_number,
               source,
               recommended_action,
               priority_band,
@@ -185,6 +189,7 @@ export default function DocumentPreviewPage() {
             .order('created_at', { ascending: true });
 
           if (actionsError) throw actionsError;
+          console.log('[PDF Preview] actions loaded:', actionsData?.length ?? 0);
 
           const actionIds = (actionsData || []).map((a: any) => a.id);
           if (actionIds.length > 0) {
@@ -351,6 +356,10 @@ export default function DocumentPreviewPage() {
           // Use original enrichedActions if refetch fails
         }
       }
+
+      console.log('[PDF Preview] actions sources summary:',
+        (actions || []).reduce((acc:any,a:any)=>{ const k=a.source||'null'; acc[k]=(acc[k]||0)+1; return acc; }, {})
+      );
 
       const pdfOptions = {
         document,

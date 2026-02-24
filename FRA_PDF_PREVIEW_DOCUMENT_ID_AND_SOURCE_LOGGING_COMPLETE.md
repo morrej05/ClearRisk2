@@ -130,16 +130,44 @@ When generating a PDF for a document with system-generated actions:
 
 ```
 [PDF Preview] generating for document id: e58f9b2e-4d3a-4a7f-9c1e-2f8a6b4c5d7e
-[PDF Preview] actions loaded: 5
-[PDF Preview] actions sources summary: { system: 2, manual: 3 }
+[PDF Preview] actions loaded: 10
+[PDF Preview] actions sources summary: { manual: 8, system: 2 }
 [PDF FRA] Creating PDF document and embedding fonts
 [PDF] actions sample (before snapshot) [
   { id: '...', source: 'system', ref: 'FRA-2026-001', text: 'Install fire extinguishers...' },
   { id: '...', source: 'manual', ref: 'FRA-2026-002', text: 'Conduct quarterly drills' },
   { id: '...', source: 'system', ref: 'FRA-2026-003', text: 'Upgrade emergency lighting...' }
 ]
+[PDF] actions source counts (before snapshot): { manual: 8, system: 2 }
+[PDF] first 10 action sources: [
+  { ref: 'FRA-2026-001', source: 'system' },
+  { ref: 'FRA-2026-002', source: 'manual' },
+  { ref: 'FRA-2026-003', source: 'system' },
+  { ref: 'FRA-2026-004', source: 'manual' },
+  { ref: 'FRA-2026-005', source: 'manual' },
+  { ref: 'FRA-2026-006', source: 'manual' },
+  { ref: 'FRA-2026-007', source: 'manual' },
+  { ref: 'FRA-2026-008', source: 'manual' },
+  { ref: 'FRA-2026-009', source: 'manual' },
+  { ref: 'FRA-2026-010', source: 'manual' }
+]
 [PDF] actions sample (before register) [
-  // Same data structure
+  { id: '...', source: 'system', ref: 'FRA-2026-001', text: 'Install fire extinguishers...' },
+  { id: '...', source: 'manual', ref: 'FRA-2026-002', text: 'Conduct quarterly drills' },
+  { id: '...', source: 'system', ref: 'FRA-2026-003', text: 'Upgrade emergency lighting...' }
+]
+[PDF] actions source counts (before register): { manual: 8, system: 2 }
+[PDF] first 10 action sources: [
+  { ref: 'FRA-2026-001', source: 'system' },
+  { ref: 'FRA-2026-002', source: 'manual' },
+  { ref: 'FRA-2026-003', source: 'system' },
+  { ref: 'FRA-2026-004', source: 'manual' },
+  { ref: 'FRA-2026-005', source: 'manual' },
+  { ref: 'FRA-2026-006', source: 'manual' },
+  { ref: 'FRA-2026-007', source: 'manual' },
+  { ref: 'FRA-2026-008', source: 'manual' },
+  { ref: 'FRA-2026-009', source: 'manual' },
+  { ref: 'FRA-2026-010', source: 'manual' }
 ]
 ```
 
@@ -201,13 +229,59 @@ GROUP BY source;
 - `ACTION_SOURCE_END_TO_END_COMPLETE.md` - Ensures source is selected in queries
 - `ACTION_SNAPSHOT_SYSTEM_TITLE_SHORTENING_COMPLETE.md` - Uses source to shorten titles
 
+## Additional Logging in buildFraPdf.ts
+
+### 4. Before drawActionPlanSnapshot (Line 514-524)
+
+Added comprehensive source logging before the action snapshot:
+
+```typescript
+console.log('[PDF] actions source counts (before snapshot):',
+  (actionsForPdf || []).reduce((acc: any, a: any) => {
+    const k = (a.source ?? 'null') as string;
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {})
+);
+
+console.log('[PDF] first 10 action sources:',
+  (actionsForPdf || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
+);
+```
+
+### 5. Before drawActionRegister (Line 987-997)
+
+Added identical logging before the action register:
+
+```typescript
+console.log('[PDF] actions source counts (before register):',
+  (actions || []).reduce((acc: any, a: any) => {
+    const k = (a.source ?? 'null') as string;
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {})
+);
+
+console.log('[PDF] first 10 action sources:',
+  (actions || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
+);
+```
+
+**What These Show:**
+- Source distribution breakdown (e.g., `{ manual: 8, system: 2 }`)
+- First 10 actions with their reference numbers and sources
+- Confirms data flows correctly from query → PDF generation
+
 ## Status
 
-✅ Document ID logged before queries
-✅ Actions count logged after queries
-✅ source field included in draft query select
-✅ reference_number added to draft query select (was missing)
-✅ Sources summary logged before PDF generation
+✅ Document ID logged before queries (DocumentPreviewPage.tsx)
+✅ Actions count logged after queries (DocumentPreviewPage.tsx)
+✅ source field included in draft query select (DocumentPreviewPage.tsx)
+✅ reference_number added to draft query select (DocumentPreviewPage.tsx)
+✅ Sources summary logged before PDF generation (DocumentPreviewPage.tsx)
+✅ Source counts logged before snapshot (buildFraPdf.ts line 514-520)
+✅ Source counts logged before register (buildFraPdf.ts line 987-993)
+✅ First 10 sources logged in both places (buildFraPdf.ts)
 ✅ Build successful
 ✅ Ready to test
 

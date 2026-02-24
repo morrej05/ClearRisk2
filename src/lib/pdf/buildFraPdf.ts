@@ -511,6 +511,18 @@ drawTableOfContents(page, font, fontBold);
     text: (a.recommended_action||'').slice(0,60),
   })));
 
+  console.log('[PDF] actions source counts (before snapshot):',
+    (actionsForPdf || []).reduce((acc: any, a: any) => {
+      const k = (a.source ?? 'null') as string;
+      acc[k] = (acc[k] || 0) + 1;
+      return acc;
+    }, {})
+  );
+
+  console.log('[PDF] first 10 action sources:',
+    (actionsForPdf || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
+  );
+
   drawActionPlanSnapshot(
     pdfDoc,
     actionsForPdf,
@@ -971,6 +983,18 @@ if (section.id === 5) {
       ref: a.reference_number,
       text: (a.recommended_action||'').slice(0,60),
     })));
+
+    console.log('[PDF] actions source counts (before register):',
+      (actions || []).reduce((acc: any, a: any) => {
+        const k = (a.source ?? 'null') as string;
+        acc[k] = (acc[k] || 0) + 1;
+        return acc;
+      }, {})
+    );
+
+    console.log('[PDF] first 10 action sources:',
+      (actions || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
+    );
 
     const result1 = addNewPage(pdfDoc, isDraft, totalPages);
     page = result1.page;

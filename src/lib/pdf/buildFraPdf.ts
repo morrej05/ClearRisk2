@@ -504,6 +504,13 @@ drawTableOfContents(page, font, fontBold);
     superseded_at: null,
   }));
 
+  console.log('[PDF] actions sample (before snapshot)', (actionsForPdf || []).slice(0,3).map(a => ({
+    id: a.id,
+    source: a.source,
+    ref: a.reference_number,
+    text: (a.recommended_action||'').slice(0,60),
+  })));
+
   drawActionPlanSnapshot(
     pdfDoc,
     actionsForPdf,
@@ -957,6 +964,13 @@ if (section.id === 5) {
     page = resultLI.page;
     yPosition = PAGE_TOP_Y;
     yPosition = drawLikelihoodConsequenceExplanation(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+    console.log('[PDF] actions sample (before register)', (actions || []).slice(0,3).map(a => ({
+      id: a.id,
+      source: a.source,
+      ref: a.reference_number,
+      text: (a.recommended_action||'').slice(0,60),
+    })));
 
     const result1 = addNewPage(pdfDoc, isDraft, totalPages);
     page = result1.page;

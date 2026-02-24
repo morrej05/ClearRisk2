@@ -170,6 +170,7 @@ export default function DocumentPreviewPage() {
             .from('actions')
             .select(`
               id,
+              source,
               recommended_action,
               priority_band,
               status,
@@ -303,6 +304,7 @@ export default function DocumentPreviewPage() {
             .from('actions')
             .select(`
               id,
+              source,
               recommended_action,
               priority_band,
               status,

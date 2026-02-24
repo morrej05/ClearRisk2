@@ -201,7 +201,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): number {
     color: rgb(0.1, 0.1, 0.1),
   });
 
-  yPosition -= 20;
+  yPosition -= 44; // Increased spacing (2 baseline steps) before likelihood details
 
   // Check for assessor override
   const hasLikelihoodOverride = fra4Module.data.override_likelihood !== undefined && fra4Module.data.override_likelihood !== null;

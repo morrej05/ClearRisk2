@@ -1083,8 +1083,19 @@ export function drawRecommendationsSection(
       return (priorityOrder[a.priority_band as keyof typeof priorityOrder] || 99) - (priorityOrder[b.priority_band as keyof typeof priorityOrder] || 99);
     }
 
-    const aNum = a.reference_number ? parseInt(a.reference_number.replace('R-', ''), 10) : 999;
-    const bNum = b.reference_number ? parseInt(b.reference_number.replace('R-', ''), 10) : 999;
+    // Extract numeric sequence from FRA-YYYY-### format (last 3 digits)
+    const extractSeq = (ref: string | null | undefined): number => {
+      if (!ref) return 999;
+      const match = ref.match(/^FRA-\d{4}-(\d{3})$/);
+      if (match) return parseInt(match[1], 10);
+      // Legacy R-xx format fallback
+      const legacyMatch = ref.match(/^R-(\d+)$/);
+      if (legacyMatch) return parseInt(legacyMatch[1], 10);
+      return 999;
+    };
+
+    const aNum = extractSeq(a.reference_number);
+    const bNum = extractSeq(b.reference_number);
     return aNum - bNum;
   });
 

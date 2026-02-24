@@ -485,7 +485,7 @@ drawTableOfContents(page, font, fontBold);
   // Convert actions to ActionForPdf format with stable reference numbers and section refs
   const actionsForPdf: ActionForPdf[] = actionsWithRefs.map(a => ({
     id: a.id,
-    reference_number: a.reference_number, // Deterministic display ref (R-01, R-02...) or DB value
+    reference_number: a.reference_number, // Deterministic display ref (FRA-YYYY-001, FRA-YYYY-002...) from DB
     recommended_action: a.recommended_action,
     priority_band: a.priority_band,
     status: a.status,

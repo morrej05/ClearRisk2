@@ -927,9 +927,9 @@ function drawActionRegister(
   yPosition -= 4;
 
   const sortedActions = [...actions].sort((a, b) => {
-    const priorityOrder = { P1: 0, P2: 1, P3: 2, P4: 3 };
-    return (priorityOrder[a.priority_band as keyof typeof priorityOrder] || 4) -
-           (priorityOrder[b.priority_band as keyof typeof priorityOrder] || 4);
+    if (!a.reference_number) return 1;
+    if (!b.reference_number) return -1;
+    return a.reference_number.localeCompare(b.reference_number);
   });
 
   sortedActions.forEach((action, index) => {

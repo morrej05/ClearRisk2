@@ -282,20 +282,14 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
   /**
    * Canonical action comparator:
-   * - priority_band ASC (P1 → P4)
-   * - target_date ASC (nulls last)
-   * - created_at ASC
+   * - reference_number ASC (nulls last)
+   * This ensures FRA-2026-001, 002, 003... appear in correct sequence.
+   * Lexicographic sort works correctly due to PREFIX-YYYY-### format.
    */
   function sortActionsCanonical(a: any, b: any): number {
-    const pr = priorityRank(a.priority_band) - priorityRank(b.priority_band);
-    if (pr !== 0) return pr;
-
-    const td = dateValue(a.target_date) - dateValue(b.target_date);
-    if (td !== 0) return td;
-
-    const ca = new Date(a.created_at).getTime();
-    const cb = new Date(b.created_at).getTime();
-    return ca - cb;
+    if (!a.reference_number) return 1;
+    if (!b.reference_number) return -1;
+    return a.reference_number.localeCompare(b.reference_number);
   }
 
   // Sort actions using canonical comparator (used everywhere in FRA PDF)
@@ -401,9 +395,9 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
       const priorityActions = actions
         .filter((a) => ['P1', 'P2', 'P3'].includes(a.priority_band) && (a.status === 'open' || a.status === 'in_progress'))
         .sort((a, b) => {
-          const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4 };
-          return (priorityOrder[a.priority_band as keyof typeof priorityOrder] || 99) -
-                 (priorityOrder[b.priority_band as keyof typeof priorityOrder] || 99);
+          if (!a.reference_number) return 1;
+          if (!b.reference_number) return -1;
+          return a.reference_number.localeCompare(b.reference_number);
         });
 
       const riskSummaryResult = addNewPage(pdfDoc, isDraft, totalPages);
@@ -1534,25 +1528,11 @@ function drawExecutiveSummary(
 
     yPosition -= 22;
 
-    // Sort actions with SCS weighting
+    // Sort actions by reference number (stable professional order)
     const sortedTopActions = [...openActions].sort((a, b) => {
-      const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4 };
-      const aPriority = priorityOrder[a.priority_band as keyof typeof priorityOrder] || 5;
-      const bPriority = priorityOrder[b.priority_band as keyof typeof priorityOrder] || 5;
-
-      if (aPriority !== bPriority) return aPriority - bPriority;
-
-      // If same priority and SCS is High or VeryHigh, prefer critical categories
-      if (scsEarly.band === 'High' || scsEarly.band === 'VeryHigh') {
-        const criticalCategories = ['MeansOfEscape', 'DetectionAlarm', 'Compartmentation'];
-        const aIsCritical = criticalCategories.includes(a.finding_category || '');
-        const bIsCritical = criticalCategories.includes(b.finding_category || '');
-
-        if (aIsCritical && !bIsCritical) return -1;
-        if (!aIsCritical && bIsCritical) return 1;
-      }
-
-      return 0;
+      if (!a.reference_number) return 1;
+      if (!b.reference_number) return -1;
+      return a.reference_number.localeCompare(b.reference_number);
     });
 
     const topActions = sortedTopActions.slice(0, 3);

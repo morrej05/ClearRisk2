@@ -52,8 +52,7 @@ export async function getActionRegisterSiteLevel(
       .from('action_register_site_level')
       .select('*')
       .eq('document_id', documentId)
-      .order('priority_band', { ascending: true })
-      .order('created_at', { ascending: false });
+      .order('reference_number', { ascending: true, nullsFirst: false });
 
     if (error) throw error;
     return data || [];
@@ -71,9 +70,7 @@ export async function getActionRegisterOrgLevel(
       .from('action_register_site_level')
       .select('*')
       .eq('organisation_id', organisationId)
-      .order('tracking_status', { ascending: false })
-      .order('priority_band', { ascending: true })
-      .order('created_at', { ascending: false });
+      .order('reference_number', { ascending: true, nullsFirst: false });
 
     if (error) throw error;
     return data || [];

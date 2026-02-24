@@ -2355,6 +2355,17 @@ export function drawCleanAuditPage1(
     fonts,
   });
 
+  yPosition -= 48; // Additional gap below risk band
+
+  // Debug marker
+  page.drawText('[DEBUG] before likelihood', {
+    x: MARGIN,
+    y: yPosition,
+    size: 8,
+    font,
+    color: rgb(1, 0, 0),
+  });
+
   yPosition = drawLikelihoodConsequenceBlock({
     page,
     x: MARGIN,

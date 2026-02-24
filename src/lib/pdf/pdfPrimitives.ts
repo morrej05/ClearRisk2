@@ -429,3 +429,89 @@ export function drawActionCard(args: {
 
   return y - cardH - 12;
 }
+
+/**
+ * Draw Page Title (Arup-style hierarchy)
+ * Main H1-level page heading with rule underneath
+ */
+export function drawPageTitle(
+  page: PDFPage,
+  x: number,
+  y: number,
+  title: string,
+  fonts: { regular: PDFFont; bold: PDFFont }
+): number {
+  page.drawText(title, {
+    x,
+    y,
+    size: 26,
+    font: fonts.bold,
+    color: PDF_THEME.colours.charcoal,
+  });
+
+  const ruleY = y - 10;
+  page.drawLine({
+    start: { x, y: ruleY },
+    end: { x: x + 495, y: ruleY },
+    thickness: 1,
+    color: PDF_THEME.colours.divider,
+  });
+
+  return ruleY - 24;
+}
+
+/**
+ * Draw Section Title (Arup-style hierarchy)
+ * H2-level section heading
+ */
+export function drawSectionTitle(
+  page: PDFPage,
+  x: number,
+  y: number,
+  title: string,
+  fonts: { regular: PDFFont; bold: PDFFont }
+): number {
+  page.drawText(title, {
+    x,
+    y,
+    size: 14,
+    font: fonts.bold,
+    color: PDF_THEME.colours.charcoal,
+  });
+
+  return y - 18;
+}
+
+/**
+ * Draw Contents Row (aligned number column)
+ * Format: "01  Section Title"
+ */
+export function drawContentsRow(
+  page: PDFPage,
+  x: number,
+  y: number,
+  sectionNumber: number,
+  title: string,
+  fonts: { regular: PDFFont; bold: PDFFont }
+): number {
+  const numberColWidth = 28;
+  const numText = String(sectionNumber).padStart(2, '0');
+
+  page.drawText(numText, {
+    x,
+    y,
+    size: 12,
+    font: fonts.bold,
+    color: PDF_THEME.colours.text,
+  });
+
+  page.drawText(title, {
+    x: x + numberColWidth,
+    y,
+    size: 12,
+    font: fonts.regular,
+    color: PDF_THEME.colours.text,
+  });
+
+  return y - 18;
+}

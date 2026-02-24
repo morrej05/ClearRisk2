@@ -23,6 +23,9 @@ import {
   drawRiskBand,
   drawLikelihoodConsequenceBlock,
   drawActionCard,
+  drawPageTitle,
+  drawSectionTitle,
+  drawContentsRow,
 } from '../pdfPrimitives';
 import { PAGE_TOP_Y } from '../pdfCursor';
 import { CRITICAL_FIELDS } from './fraConstants';
@@ -1506,15 +1509,11 @@ export async function drawActionRegister(
 ): Promise<{ page: PDFPage; yPosition: number }> {
   let { page, yPosition } = cursor;
   yPosition -= 20;
-  page.drawText('ACTION REGISTER', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
 
-  yPosition -= 30;
+  // Use Arup-style page title
+  yPosition = drawPageTitle(page, MARGIN, yPosition, 'Action Register', { regular: font, bold: fontBold });
+
+  yPosition -= 12;
 
   // Build rating map (latest per action)
   const ratingMap = new Map<string, ActionRating>();
@@ -2197,31 +2196,23 @@ export function drawTableOfContents(
 ): void {
   let yPosition = PAGE_TOP_Y - 40;
 
-  // Title
-  page.drawText('Contents', {
-    x: MARGIN,
-    y: yPosition,
-    size: 20,
-    font: fontBold,
-    color: rgb(0.1, 0.1, 0.1),
-  });
+  // Title - using Arup-style page title
+  yPosition = drawPageTitle(page, MARGIN, yPosition, 'Contents', { regular: font, bold: fontBold });
 
-  yPosition -= 40;
+  yPosition -= 12;
 
   for (const section of FRA_REPORT_STRUCTURE) {
     // Use displayNumber for consistent numbering (handles merged sections)
     const sectionNumber = section.displayNumber ?? section.id;
-    const sectionText = `${sectionNumber}. ${section.title}`;
 
-    page.drawText(sectionText, {
-      x: MARGIN + 20,
-      y: yPosition,
-      size: 11,
-      font,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    yPosition -= 18;
+    yPosition = drawContentsRow(
+      page,
+      MARGIN + 20,
+      yPosition,
+      sectionNumber,
+      section.title,
+      { regular: font, bold: fontBold }
+    );
 
     if (yPosition < MARGIN + 50) {
       break;
@@ -2329,14 +2320,18 @@ export function drawCleanAuditPage1(
   // Executive Summary - Engineering Consultancy Style
   const fonts = { regular: font, bold: fontBold };
 
-  yPosition = drawExecutiveRiskHeader({
-    page,
-    x: MARGIN,
-    y: yPosition,
-    w: CONTENT_WIDTH,
-    label: 'Overall Risk to Life',
-    fonts,
+  // Use Arup-style section title
+  yPosition = drawSectionTitle(page, MARGIN, yPosition, 'OVERALL RISK TO LIFE', fonts);
+
+  // Add rule line for consistency
+  const ruleY = yPosition;
+  page.drawLine({
+    start: { x: MARGIN, y: ruleY },
+    end: { x: MARGIN + CONTENT_WIDTH, y: ruleY },
+    thickness: 1,
+    color: rgb(0.85, 0.87, 0.89),
   });
+  yPosition = ruleY - 18;
 
   yPosition = drawRiskBadge({
     page,

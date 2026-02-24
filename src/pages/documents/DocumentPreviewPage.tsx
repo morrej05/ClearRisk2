@@ -16,6 +16,7 @@ import { SurveyBadgeRow } from '../../components/SurveyBadgeRow';
 import { getReModulesForDocument } from '../../lib/modules/moduleCatalog';
 import { migrateLegacyFraActions } from '../../lib/modules/fra/migrateLegacyFraActions';
 import type { FraContext } from '../../lib/modules/fra/severityEngine';
+import { assignActionReferenceNumbers } from '../../utils/actionReferenceNumbers';
 
 type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED' | 'FIRE_EXPLOSION_COMBINED';
 type ReReportTab = 're_survey' | 're_lp';
@@ -283,10 +284,76 @@ export default function DocumentPreviewPage() {
         branding_logo_path: freshOrg.branding_logo_path
       });
 
+      // Ensure action reference numbers are assigned before generating PDFs (Policy B)
+      if (!isReDocument) {
+        try {
+          await assignActionReferenceNumbers(document.id, document.base_document_id ?? document.id);
+          console.log('[PDF Preview] Action reference numbers assigned');
+        } catch (refError) {
+          console.error('[PDF Preview] Failed to assign reference numbers:', refError);
+          // Continue anyway - references may already exist
+        }
+      }
+
+      // Refetch actions to include assigned reference numbers
+      let actions = enrichedActions;
+      if (!isReDocument) {
+        try {
+          const { data: actionsData } = await supabase
+            .from('actions')
+            .select(`
+              id,
+              recommended_action,
+              priority_band,
+              status,
+              owner_user_id,
+              target_date,
+              module_instance_id,
+              reference_number,
+              created_at
+            `)
+            .eq('document_id', document.id)
+            .eq('organisation_id', organisation.id)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: true });
+
+          if (actionsData) {
+            // Re-enrich with owner names
+            const ownerUserIds = actionsData.map((a: any) => a.owner_user_id).filter(Boolean);
+            const uniqueOwnerIds = [...new Set(ownerUserIds)];
+            const userNameMap = new Map<string, string>();
+
+            if (uniqueOwnerIds.length > 0) {
+              const { data: profiles } = await supabase
+                .from('user_profiles')
+                .select('user_id, name')
+                .in('user_id', uniqueOwnerIds);
+
+              (profiles || []).forEach((p: any) => {
+                if (p?.name) userNameMap.set(p.user_id, p.name);
+              });
+            }
+
+            actions = actionsData.map((a: any) => ({
+              ...a,
+              owner_display_name: a.owner_user_id ? userNameMap.get(a.owner_user_id) : null,
+            }));
+
+            console.log('[PDF Preview] Refetched actions with references:', {
+              count: actions.length,
+              withRefs: actions.filter((a: any) => a.reference_number).length,
+            });
+          }
+        } catch (refetchError) {
+          console.error('[PDF Preview] Failed to refetch actions:', refetchError);
+          // Use original enrichedActions if refetch fails
+        }
+      }
+
       const pdfOptions = {
         document,
         moduleInstances,
-        actions: enrichedActions,
+        actions,
         actionRatings,
         organisation: {
           id: freshOrg.id,

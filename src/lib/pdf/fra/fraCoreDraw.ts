@@ -1525,28 +1525,10 @@ export async function drawActionRegister(
     }
   }
 
-  // Sort actions: open/in_progress first, then by priority, then by target_date, then by created_at desc
-  const sortedActions = [...actions].sort((a, b) => {
-    const aComplete = a.status === 'complete';
-    const bComplete = b.status === 'complete';
-    if (aComplete !== bComplete) return aComplete ? 1 : -1;
+  // NO RE-SORTING: Actions are already sorted by buildFraPdf.ts using canonical order
+  // Render actions in the order provided (preserves consistent order throughout PDF)
 
-    const priorityOrder = ['P1', 'P2', 'P3', 'P4'];
-    const aPriority = priorityOrder.indexOf(a.priority_band || 'P4');
-    const bPriority = priorityOrder.indexOf(b.priority_band || 'P4');
-    if (aPriority !== bPriority) return aPriority - bPriority;
-
-    if (a.target_date && b.target_date) {
-      const dateCompare = new Date(a.target_date).getTime() - new Date(b.target_date).getTime();
-      if (dateCompare !== 0) return dateCompare;
-    }
-    if (a.target_date && !b.target_date) return -1;
-    if (!a.target_date && b.target_date) return 1;
-
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
-
-  if (sortedActions.length === 0) {
+  if (actions.length === 0) {
     page.drawText('No actions have been created for this assessment.', {
       x: MARGIN,
       y: yPosition,
@@ -1557,13 +1539,10 @@ export async function drawActionRegister(
     return { page, yPosition: yPosition - 20 };
   }
 
-  // Generate stable display references (R-01, R-02, etc.) for actions without assigned reference_number
-  const displayRefMap = new Map<string, string>();
-  sortedActions.forEach((a, i) => {
-    displayRefMap.set(a.id, `R-${String(i + 1).padStart(2, '0')}`);
-  });
+  // NO FALLBACK REFERENCE GENERATION
+  // Use canonical DB reference_number or display "—" if unissued
 
-  for (const action of sortedActions) {
+  for (const action of actions) {
     if (!action.recommended_action || typeof action.recommended_action !== 'string') {
       console.warn('[PDF] Action missing recommended_action:', {
         id: action.id,
@@ -1585,8 +1564,8 @@ export async function drawActionRegister(
     const owner = action.owner_display_name || undefined;
     const target = action.target_date ? formatDate(action.target_date) : undefined;
     const status = action.status || 'open';
-    // Prefer stored ref; otherwise use stable display ref from sorted order
-    const ref = action.reference_number || displayRefMap.get(action.id);
+    // Use canonical DB reference only (show "—" if unissued)
+    const ref = action.reference_number ?? '—';
 
     // Use new action card primitive
     yPosition = drawActionCard({

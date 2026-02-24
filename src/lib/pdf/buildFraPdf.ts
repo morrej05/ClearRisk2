@@ -254,28 +254,52 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     assuranceGaps: qualityResult.assuranceGaps.length,
   });
 
-  // Sort actions for deterministic PDF display order (priority, then created_at, then action text)
-  const sortedActions = [...actions].sort((a, b) => {
-    // Priority order: P1 > P2 > P3 > P4
-    const priorityMap: Record<string, number> = { P1: 1, P2: 2, P3: 3, P4: 4 };
-    const aPriority = priorityMap[a.priority_band] || 99;
-    const bPriority = priorityMap[b.priority_band] || 99;
+  // ============================================================================
+  // CANONICAL ACTION SORTING FOR FRA PDF
+  // This is the SINGLE source of truth for action order throughout the FRA PDF
+  // ============================================================================
 
-    if (aPriority !== bPriority) {
-      return aPriority - bPriority;
-    }
+  /**
+   * Priority rank helper: P1=1, P2=2, P3=3, P4=4, others=99
+   */
+  function priorityRank(p?: string): number {
+    const v = (p || '').toUpperCase().trim();
+    if (v === 'P1') return 1;
+    if (v === 'P2') return 2;
+    if (v === 'P3') return 3;
+    if (v === 'P4') return 4;
+    return 99;
+  }
 
-    // Then by created_at (oldest first)
-    const aDate = new Date(a.created_at).getTime();
-    const bDate = new Date(b.created_at).getTime();
+  /**
+   * Date value helper: null/undefined -> Infinity (nulls last)
+   */
+  function dateValue(d?: string | null): number {
+    if (!d) return Number.POSITIVE_INFINITY;
+    const t = new Date(d).getTime();
+    return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+  }
 
-    if (aDate !== bDate) {
-      return aDate - bDate;
-    }
+  /**
+   * Canonical action comparator:
+   * - priority_band ASC (P1 → P4)
+   * - target_date ASC (nulls last)
+   * - created_at ASC
+   */
+  function sortActionsCanonical(a: any, b: any): number {
+    const pr = priorityRank(a.priority_band) - priorityRank(b.priority_band);
+    if (pr !== 0) return pr;
 
-    // Finally by recommended_action text (alphabetical)
-    return (a.recommended_action || '').localeCompare(b.recommended_action || '');
-  });
+    const td = dateValue(a.target_date) - dateValue(b.target_date);
+    if (td !== 0) return td;
+
+    const ca = new Date(a.created_at).getTime();
+    const cb = new Date(b.created_at).getTime();
+    return ca - cb;
+  }
+
+  // Sort actions using canonical comparator (used everywhere in FRA PDF)
+  const sortedActions = [...actions].sort(sortActionsCanonical);
 
   // Build module_instance_id -> FRA section mapping
   const moduleToSectionMap = new Map<string, number>();
@@ -288,17 +312,17 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     }
   }
 
-  // Generate stable action reference IDs for actions that don't have them
-  // Use deterministic display refs (R-01, R-02...) based on sorted order
-  const actionsWithRefs = sortedActions.map((action, index) => {
-    const displayRef = action.reference_number || `R-${String(index + 1).padStart(2, '0')}`;
+  // Prepare actions for PDF (NO fallback reference generation)
+  // Use canonical DB reference_number or display "—" if unissued
+  const actionsWithRefs = sortedActions.map((action) => {
     const sectionId = moduleToSectionMap.get(action.module_instance_id);
     // Use displayNumber for section references
     const sectionRef = sectionId ? `Section ${getDisplaySectionNumber(sectionId)}` : null;
 
     return {
       ...action,
-      reference_number: displayRef,
+      // Keep original reference_number (no fallback injection)
+      reference_number: action.reference_number,
       section_reference: sectionRef,
       owner_display_name: getDisplayableOwner(action.owner_display_name),
     };

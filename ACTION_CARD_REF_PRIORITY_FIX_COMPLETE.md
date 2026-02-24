@@ -171,6 +171,26 @@ Added a new "Ref" column as the first column in the organization-wide Action Reg
 3. ✅ **Consistency**: Org-level register matches document-level view
 4. ✅ **Audit Trail**: Reference numbers visible at organizational level
 
+### Deep-Linking to Actions
+
+**Navigation Enhancement** (Line 402):
+```typescript
+onClick={() => navigate(`/documents/${action.document_id}/workspace?openAction=${action.id}`)}
+```
+
+**User Experience**:
+- Click any row in org Action Register
+- Navigate directly to document workspace
+- Action modal opens automatically for the selected action
+- No manual searching required
+
+**Example Flow**:
+1. User sees "R-01 | Fix emergency exit | P1 | Overdue" in org register
+2. Clicks row
+3. Navigates to `/documents/abc-123/workspace?openAction=xyz-789`
+4. Document workspace loads with action R-01 modal already open
+5. User can immediately review/edit/close the action
+
 ---
 
 ---

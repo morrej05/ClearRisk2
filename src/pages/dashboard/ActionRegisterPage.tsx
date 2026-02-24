@@ -399,7 +399,7 @@ export default function ActionRegisterPage() {
                   <tr
                     key={action.id}
                     className="hover:bg-neutral-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/documents/${action.document_id}/workspace`)}
+                    onClick={() => navigate(`/documents/${action.document_id}/workspace?openAction=${action.id}`)}
                   >
                     <td className="px-4 py-3 text-sm font-mono text-neutral-900">
                       {action.reference_number ?? '—'}

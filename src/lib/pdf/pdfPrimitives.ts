@@ -365,11 +365,14 @@ export function drawActionCard(args: {
 }) {
   const { page, x, y, w, ref, description, priority, owner, target, status, fonts } = args;
 
-  const cardPadding = 12;
+  const cardPadding = 14;
   const stripeW = 4;
   const titleSize = 11.5;
   const metaSize = 9.5;
   const lineGap = 14;
+  const headerRowH = 14;
+  const gapAfterHeader = 10;
+  const gapBeforeMeta = 10;
 
   const p = (priority || '').toLowerCase();
   let stripeColor = rgb(0.75, 0.45, 0.15);
@@ -385,25 +388,52 @@ export function drawActionCard(args: {
   const lines = wrapText(description, maxTextW, titleSize, fonts.regular);
 
   // Height calc
-  const badgeRowH = 12;
   const descH = lines.length * lineGap;
   const metaH = 12;
-  const cardH = cardPadding + badgeRowH + 8 + descH + 8 + metaH + cardPadding;
+  const cardH = cardPadding + headerRowH + gapAfterHeader + descH + gapBeforeMeta + metaH + cardPadding;
 
   page.drawRectangle({ x, y: y - cardH, width: stripeW, height: cardH, color: stripeColor });
 
   let cursorY = y - cardPadding;
 
-  // Top row: "FRA-2026-001 • P4" or just "P4"
-  const topLabel = ref ? `${ref} • ${priority}` : priority;
-  page.drawText(topLabel.toUpperCase(), {
-    x: textX,
-    y: cursorY,
+  // Header row: ref on left, priority pill on right
+  if (ref) {
+    page.drawText(ref, {
+      x: textX,
+      y: cursorY,
+      size: 9.5,
+      font: fonts.bold,
+      color: PDF_THEME.colours.text,
+    });
+  }
+
+  // Priority pill on right
+  const priorityText = priority.toUpperCase();
+  const priorityTextW = fonts.bold.widthOfTextAtSize(priorityText, 9);
+  const pillPaddingX = 6;
+  const pillPaddingY = 3;
+  const pillW = priorityTextW + pillPaddingX * 2;
+  const pillH = 12;
+  const pillX = x + w - cardPadding - pillW;
+  const pillY = cursorY - 2;
+
+  page.drawRectangle({
+    x: pillX,
+    y: pillY - pillH + pillPaddingY,
+    width: pillW,
+    height: pillH,
+    color: rgb(0.93, 0.94, 0.95),
+  });
+
+  page.drawText(priorityText, {
+    x: pillX + pillPaddingX,
+    y: pillY - pillH + pillPaddingY + 3,
     size: 9,
     font: fonts.bold,
     color: stripeColor,
   });
-  cursorY -= 18;
+
+  cursorY -= (headerRowH + gapAfterHeader);
 
   // Description lines
   for (const line of lines) {
@@ -417,11 +447,13 @@ export function drawActionCard(args: {
     cursorY -= lineGap;
   }
 
+  cursorY -= gapBeforeMeta;
+
   // Meta row
   const metaText = `Owner: ${owner || '(Unassigned)'}   |   Target: ${target || '-'}   |   Status: ${status || '-'}`;
   page.drawText(metaText, {
     x: textX,
-    y: cursorY - 2,
+    y: cursorY,
     size: metaSize,
     font: fonts.regular,
     color: rgb(0.35, 0.38, 0.42),

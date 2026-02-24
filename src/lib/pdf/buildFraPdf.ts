@@ -1030,6 +1030,8 @@ function drawRiskSummaryPage(
     fonts,
   });
 
+  yPosition -= 24; // Additional gap below risk band
+
   yPosition = drawLikelihoodConsequenceBlock({
     page,
     x: MARGIN,

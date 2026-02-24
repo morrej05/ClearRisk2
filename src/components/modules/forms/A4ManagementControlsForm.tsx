@@ -68,6 +68,9 @@ export default function A4ManagementControlsForm({
     change_management_process_exists: moduleInstance.data.change_management_process_exists || 'unknown',
     change_management_review_triggers_defined: moduleInstance.data.change_management_review_triggers_defined || 'unknown',
     management_notes: moduleInstance.data.management_notes || '',
+    ptw_hot_work_fire_watch_required: moduleInstance.data.ptw_hot_work_fire_watch_required || null,
+    ptw_hot_work_post_watch_mins: moduleInstance.data.ptw_hot_work_post_watch_mins || null,
+    ptw_hot_work_comments: moduleInstance.data.ptw_hot_work_comments || '',
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
@@ -401,6 +404,68 @@ export default function A4ManagementControlsForm({
                 <Plus className="w-4 h-4" />
                 Quick Add: Implement hot work permit system
               </button>
+            )}
+
+            {formData.ptw_hot_work === 'yes' && (
+              <div className="mt-4 pt-4 border-t border-neutral-200 space-y-4">
+                <p className="text-sm font-medium text-neutral-700">Hot work permit detail</p>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Fire watch during hot work required?
+                  </label>
+                  <select
+                    value={formData.ptw_hot_work_fire_watch_required === null ? '' : formData.ptw_hot_work_fire_watch_required ? 'yes' : 'no'}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        ptw_hot_work_fire_watch_required: e.target.value === '' ? null : e.target.value === 'yes',
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  >
+                    <option value="">Not stated</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Post-work fire watch duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.ptw_hot_work_post_watch_mins || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        ptw_hot_work_post_watch_mins: e.target.value ? parseInt(e.target.value) : null,
+                      })
+                    }
+                    placeholder="e.g., 60"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Hot work permit comments
+                  </label>
+                  <textarea
+                    value={formData.ptw_hot_work_comments}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        ptw_hot_work_comments: e.target.value,
+                      })
+                    }
+                    placeholder="Details about permit system, procedures, supervision..."
+                    rows={2}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+                  />
+                </div>
+              </div>
             )}
 
             <div>

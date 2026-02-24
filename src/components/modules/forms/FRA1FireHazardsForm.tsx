@@ -99,6 +99,34 @@ export default function FRA1FireHazardsForm({
       eicr_notes: '',
       pat_in_place: 'unknown',
     },
+    hot_work_detail: moduleInstance.data.hot_work_detail || {
+      permit_required: null,
+      fire_watch_during: null,
+      post_work_fire_watch_required: null,
+      post_work_duration_mins: null,
+      typical_frequency: null,
+      notes: '',
+    },
+    lightning: moduleInstance.data.lightning || {
+      lightning_protection_present: null,
+      lightning_risk_assessment_completed: null,
+      assessment_date: null,
+      notes: '',
+    },
+    duct_cleaning: moduleInstance.data.duct_cleaning || {
+      ducts_present: null,
+      dust_grease_risk: null,
+      cleaning_frequency: null,
+      last_cleaned: null,
+      notes: '',
+    },
+    dsear_screen: moduleInstance.data.dsear_screen || {
+      flammables_present: null,
+      explosive_atmospheres_possible: null,
+      dsear_assessment_status: null,
+      assessor: null,
+      notes: '',
+    },
   });
 
   const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
@@ -787,6 +815,518 @@ export default function FRA1FireHazardsForm({
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <h3 className="text-lg font-bold text-neutral-900 mb-4">
+            Hot Work Controls (Detail)
+          </h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            Capture specific arrangements for hot work activities
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Hot work permit system in place?
+              </label>
+              <select
+                value={formData.hot_work_detail.permit_required === null ? '' : formData.hot_work_detail.permit_required ? 'yes' : 'no'}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    hot_work_detail: {
+                      ...formData.hot_work_detail,
+                      permit_required: e.target.value === '' ? null : e.target.value === 'yes',
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Fire watch during hot work?
+              </label>
+              <select
+                value={formData.hot_work_detail.fire_watch_during === null ? '' : formData.hot_work_detail.fire_watch_during ? 'yes' : 'no'}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    hot_work_detail: {
+                      ...formData.hot_work_detail,
+                      fire_watch_during: e.target.value === '' ? null : e.target.value === 'yes',
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Post-work fire watch required?
+              </label>
+              <select
+                value={formData.hot_work_detail.post_work_fire_watch_required === null ? '' : formData.hot_work_detail.post_work_fire_watch_required ? 'yes' : 'no'}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    hot_work_detail: {
+                      ...formData.hot_work_detail,
+                      post_work_fire_watch_required: e.target.value === '' ? null : e.target.value === 'yes',
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            {formData.hot_work_detail.post_work_fire_watch_required && (
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Post-work fire watch duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  value={formData.hot_work_detail.post_work_duration_mins || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      hot_work_detail: {
+                        ...formData.hot_work_detail,
+                        post_work_duration_mins: e.target.value ? parseInt(e.target.value) : null,
+                      },
+                    })
+                  }
+                  placeholder="e.g., 60"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Typical frequency of hot work
+              </label>
+              <select
+                value={formData.hot_work_detail.typical_frequency || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    hot_work_detail: {
+                      ...formData.hot_work_detail,
+                      typical_frequency: e.target.value || null,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="rare">Rare / Ad-hoc</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Hot work notes
+              </label>
+              <textarea
+                value={formData.hot_work_detail.notes}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    hot_work_detail: {
+                      ...formData.hot_work_detail,
+                      notes: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Additional details about hot work controls, permit content, supervision..."
+                rows={2}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <h3 className="text-lg font-bold text-neutral-900 mb-4">
+            Lightning Protection
+          </h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            Lightning risk assessment and protection systems
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Lightning protection present?
+              </label>
+              <select
+                value={formData.lightning.lightning_protection_present || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    lightning: {
+                      ...formData.lightning,
+                      lightning_protection_present: e.target.value || null,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Lightning risk assessment completed?
+              </label>
+              <select
+                value={formData.lightning.lightning_risk_assessment_completed || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    lightning: {
+                      ...formData.lightning,
+                      lightning_risk_assessment_completed: e.target.value || null,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Assessment date (if known)
+              </label>
+              <input
+                type="text"
+                value={formData.lightning.assessment_date || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    lightning: {
+                      ...formData.lightning,
+                      assessment_date: e.target.value || null,
+                    },
+                  })
+                }
+                placeholder="e.g., March 2024"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Lightning protection notes
+              </label>
+              <textarea
+                value={formData.lightning.notes}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    lightning: {
+                      ...formData.lightning,
+                      notes: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Details about lightning protection system, test records, risk assessment findings..."
+                rows={2}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <h3 className="text-lg font-bold text-neutral-900 mb-4">
+            Duct & Extract Cleaning
+          </h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            Extract ventilation and cleaning regimes
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Extract ductwork present?
+              </label>
+              <select
+                value={formData.duct_cleaning.ducts_present || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    duct_cleaning: {
+                      ...formData.duct_cleaning,
+                      ducts_present: e.target.value || null,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+
+            {formData.duct_cleaning.ducts_present === 'yes' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Dust / grease accumulation risk
+                  </label>
+                  <select
+                    value={formData.duct_cleaning.dust_grease_risk || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        duct_cleaning: {
+                          ...formData.duct_cleaning,
+                          dust_grease_risk: e.target.value || null,
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  >
+                    <option value="">Not stated</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Cleaning frequency
+                  </label>
+                  <select
+                    value={formData.duct_cleaning.cleaning_frequency || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        duct_cleaning: {
+                          ...formData.duct_cleaning,
+                          cleaning_frequency: e.target.value || null,
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  >
+                    <option value="">Not stated</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="annually">Annually</option>
+                    <option value="ad-hoc">Ad-hoc</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Last cleaned (if known)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.duct_cleaning.last_cleaned || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        duct_cleaning: {
+                          ...formData.duct_cleaning,
+                          last_cleaned: e.target.value || null,
+                        },
+                      })
+                    }
+                    placeholder="e.g., January 2026"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Duct cleaning notes
+              </label>
+              <textarea
+                value={formData.duct_cleaning.notes}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    duct_cleaning: {
+                      ...formData.duct_cleaning,
+                      notes: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Details about duct systems, kitchen extract, maintenance records..."
+                rows={2}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <h3 className="text-lg font-bold text-neutral-900 mb-4">
+            DSEAR Screening
+          </h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            Dangerous Substances and Explosive Atmospheres Regulations 2002
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Flammable substances present?
+              </label>
+              <select
+                value={formData.dsear_screen.flammables_present || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    dsear_screen: {
+                      ...formData.dsear_screen,
+                      flammables_present: e.target.value || null,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Explosive atmospheres possible?
+              </label>
+              <select
+                value={formData.dsear_screen.explosive_atmospheres_possible || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    dsear_screen: {
+                      ...formData.dsear_screen,
+                      explosive_atmospheres_possible: e.target.value || null,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              >
+                <option value="">Not stated</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+
+            {(formData.dsear_screen.flammables_present === 'yes' || formData.dsear_screen.explosive_atmospheres_possible === 'yes') && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    DSEAR assessment status
+                  </label>
+                  <select
+                    value={formData.dsear_screen.dsear_assessment_status || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dsear_screen: {
+                          ...formData.dsear_screen,
+                          dsear_assessment_status: e.target.value || null,
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  >
+                    <option value="">Not stated</option>
+                    <option value="completed">Completed</option>
+                    <option value="not completed">Not completed</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Assessor / responsible person
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.dsear_screen.assessor || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dsear_screen: {
+                          ...formData.dsear_screen,
+                          assessor: e.target.value || null,
+                        },
+                      })
+                    }
+                    placeholder="Name or role"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                DSEAR screening notes
+              </label>
+              <textarea
+                value={formData.dsear_screen.notes}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    dsear_screen: {
+                      ...formData.dsear_screen,
+                      notes: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Details about dangerous substances, assessment findings, control measures..."
+                rows={2}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
+              />
+            </div>
           </div>
         </div>
 

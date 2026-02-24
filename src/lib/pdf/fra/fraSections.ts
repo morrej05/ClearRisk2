@@ -780,6 +780,79 @@ if (d.electrical_safety && typeof d.electrical_safety === 'object') {
   }
 }
 
+  // Group 6: Hot work, Lightning, Duct cleaning, DSEAR (screening)
+  const hotWork = d.hot_work_detail || {};
+  const lightning = d.lightning || {};
+  const ductCleaning = d.duct_cleaning || {};
+  const dsearScreen = d.dsear_screen || {};
+
+  const hwPermit = hotWork.permit_required === true ? 'Yes' : hotWork.permit_required === false ? 'No' : '';
+  const hwFireWatch = hotWork.fire_watch_during === true ? 'Yes' : hotWork.fire_watch_during === false ? 'No' : '';
+  const hwPostWatch = hotWork.post_work_fire_watch_required === true ? 'Yes' : hotWork.post_work_fire_watch_required === false ? 'No' : '';
+  const hwPostMins = hotWork.post_work_duration_mins ? `${hotWork.post_work_duration_mins} minutes` : '';
+  const hwFreq = norm(hotWork.typical_frequency);
+  const hwNotes = norm(hotWork.notes);
+
+  const lnProtection = norm(lightning.lightning_protection_present);
+  const lnAssessment = norm(lightning.lightning_risk_assessment_completed);
+  const lnDate = norm(lightning.assessment_date);
+  const lnNotes = norm(lightning.notes);
+
+  const ductPresent = norm(ductCleaning.ducts_present);
+  const ductRisk = norm(ductCleaning.dust_grease_risk);
+  const ductFreq = norm(ductCleaning.cleaning_frequency);
+  const ductLast = norm(ductCleaning.last_cleaned);
+  const ductNotes = norm(ductCleaning.notes);
+
+  const dsFlam = norm(dsearScreen.flammables_present);
+  const dsAtmos = norm(dsearScreen.explosive_atmospheres_possible);
+  const dsStatus = norm(dsearScreen.dsear_assessment_status);
+  const dsAssessor = norm(dsearScreen.assessor);
+  const dsNotes = norm(dsearScreen.notes);
+
+  const hasHotWorkData = hwPermit || hwFireWatch || hwPostWatch || hwPostMins || hwFreq || hwNotes;
+  const hasLightningData = lnProtection || lnAssessment || lnDate || lnNotes;
+  const hasDuctData = ductPresent || ductRisk || ductFreq || ductLast || ductNotes;
+  const hasDsearData = dsFlam || dsAtmos || dsStatus || dsAssessor || dsNotes;
+
+  if (hasHotWorkData || hasLightningData || hasDuctData || hasDsearData) {
+    drawSubhead('Hot work, lightning, duct cleaning, DSEAR (screening)');
+
+    if (hasHotWorkData) {
+      if (hwPermit) drawFact('Hot work permit system', hwPermit);
+      if (hwFireWatch) drawFact('Fire watch during hot work', hwFireWatch);
+      if (hwPostWatch) drawFact('Post-work fire watch', hwPostWatch);
+      if (hwPostMins) drawFact('Post-work fire watch duration', hwPostMins);
+      if (hwFreq) drawFact('Hot work frequency', titleCase(hwFreq));
+      if (hwNotes) drawFact('Hot work notes', hwNotes);
+    }
+
+    if (hasLightningData) {
+      if (lnProtection) drawFact('Lightning protection present', titleCase(lnProtection));
+      if (lnAssessment) drawFact('Lightning risk assessment', titleCase(lnAssessment));
+      if (lnDate) drawFact('Assessment date', lnDate);
+      if (lnNotes) drawFact('Lightning notes', lnNotes);
+    }
+
+    if (hasDuctData) {
+      if (ductPresent) drawFact('Extract ductwork present', titleCase(ductPresent));
+      if (ductRisk) drawFact('Dust/grease accumulation risk', titleCase(ductRisk));
+      if (ductFreq) drawFact('Duct cleaning frequency', titleCase(ductFreq));
+      if (ductLast) drawFact('Last cleaned', ductLast);
+      if (ductNotes) drawFact('Duct cleaning notes', ductNotes);
+    }
+
+    if (hasDsearData) {
+      if (dsFlam) drawFact('Flammable substances present', titleCase(dsFlam));
+      if (dsAtmos) drawFact('Explosive atmospheres possible', titleCase(dsAtmos));
+      if (dsStatus) drawFact('DSEAR assessment status', titleCase(dsStatus));
+      if (dsAssessor) drawFact('DSEAR assessor', dsAssessor);
+      if (dsNotes) drawFact('DSEAR notes', dsNotes);
+    }
+
+    endGroup();
+  }
+
   // Optional free notes
   const notes = norm(d.notes);
   if (notes) {
@@ -1053,6 +1126,59 @@ export async function renderSection11Management(
       actions, // Pass actions for action-linked evidence
       actionIdToSectionId // Pass action->section map for null module_instance_id fallback
     ));
+
+    // Hot work permit controls (detail) - if available
+    const mgmtData: any = managementSystemsModule.data || {};
+    const hwFireWatchReq = mgmtData.ptw_hot_work_fire_watch_required;
+    const hwPostMins = mgmtData.ptw_hot_work_post_watch_mins;
+    const hwComments = sanitizePdfText(String(mgmtData.ptw_hot_work_comments ?? '')).trim();
+
+    const hasHotWorkDetail = hwFireWatchReq !== null || hwPostMins || hwComments;
+
+    if (hasHotWorkDetail) {
+      ({ page, yPosition } = ensureSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
+      yPosition -= 8;
+
+      page.drawText('Hot work permit controls (detail)', {
+        x: MARGIN,
+        y: yPosition,
+        size: 9,
+        font: fontBold,
+        color: rgb(0.35, 0.35, 0.35),
+      });
+      yPosition -= 14;
+
+      const drawFact = (label: string, value: string) => {
+        if (!value) return;
+        ({ page, yPosition } = ensureSpace(30, page, yPosition, pdfDoc, isDraft, totalPages));
+        yPosition = drawKeyValueRow(
+          page,
+          MARGIN,
+          yPosition,
+          `${label}:`,
+          value,
+          fontBold,
+          font,
+          9,
+          10,
+          12,
+          210,
+          14
+        );
+      };
+
+      if (hwFireWatchReq !== null) {
+        drawFact('Fire watch during hot work', hwFireWatchReq ? 'Yes' : 'No');
+      }
+      if (hwPostMins) {
+        drawFact('Post-work fire watch duration', `${hwPostMins} minutes`);
+      }
+      if (hwComments) {
+        drawFact('Comments', hwComments);
+      }
+
+      yPosition -= 6;
+    }
 
     yPosition -= 15;
   }

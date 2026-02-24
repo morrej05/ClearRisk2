@@ -6,7 +6,8 @@ export const MARGIN = 50;
 export const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
 
 // PDF Debug Layout Mode - developer-only overlay for spacing/pagination tuning
-export const PDF_DEBUG_LAYOUT = import.meta.env.VITE_PDF_DEBUG_LAYOUT === 'true';
+// export const PDF_DEBUG_LAYOUT = import.meta.env.VITE_PDF_DEBUG_LAYOUT === 'true';
+export const PDF_DEBUG_LAYOUT = true;
 
 export function sanitizePdfText(input: unknown): string {
   const s = (input ?? '').toString();

@@ -1324,34 +1324,23 @@ export function drawRecommendationsSection(
  * @param action - Action object with recommended_action and source fields
  * @returns Shortened title for auto actions, full text for manual actions
  */
-export function deriveAutoActionTitle(action: any): string {
+export function deriveAutoActionTitle(action: { recommended_action?: string; source?: string }): string {
   const text = String(action?.recommended_action || '').trim();
   if (!text) return '(No action text provided)';
 
-  const source = String(action?.source || '').toLowerCase();
+  const src = String(action?.source || '').toLowerCase();
 
-  // Only shorten auto/system-generated actions
-  const isAuto =
-    source === 'system' ||
-    source === 'ai' ||
-    source === 'library' ||
-    source === 'recommendation' ||
-    source === 'template';
+  // Treat anything non-manual as auto unless explicitly marked manual
+  const isManual = src === 'manual' || src === 'user' || src === 'author';
+  if (isManual) return text;
 
-  if (!isAuto) return text; // manual stays as-is
-
-  // Heuristics: take first clause, remove rationale fragments, keep imperative core.
-  // 1) split on first semicolon/period/newline
+  // Shorten: take first clause; remove rationale tails; drop urgency prefix
   let title = text.split(/\n|;|\.(\s|$)/)[0].trim();
-
-  // 2) remove common trailing rationale starters
-  title = title.replace(/\s*\b(to|in order to|so that)\b.*$/i, '').trim();
-
-  // 3) drop leading "Urgent:" etc if present
   title = title.replace(/^(urgent|immediate)\s*[:\-]\s*/i, '').trim();
+  title = title.replace(/\s+\b(to|in order to|so that)\b.*$/i, '').trim();
 
-  // 4) enforce max length (keeps titles punchy)
-  const max = 90;
+  // Cap length
+  const max = 95;
   if (title.length > max) title = title.slice(0, max - 1).trimEnd() + '…';
 
   return title || text;

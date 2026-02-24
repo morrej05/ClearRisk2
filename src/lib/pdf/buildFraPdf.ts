@@ -497,6 +497,7 @@ drawTableOfContents(page, font, fontBold);
     status: a.status,
     section_reference: a.section_reference, // Derived from FRA_REPORT_STRUCTURE
     module_instance_id: a.module_instance_id,
+    source: a.source, // Needed for deriveAutoActionTitle
     first_raised_in_version: null,
     closed_at: null,
     superseded_by_action_id: null,
@@ -937,6 +938,7 @@ if (section.id === 5) {
       recommended_action: action.recommended_action,
       priority_band: action.priority_band,
       status: action.status,
+      source: action.source, // Needed for deriveAutoActionTitle
       first_raised_in_version: action.first_raised_in_version || null,
       closed_at: action.closed_at || null,
       superseded_by_action_id: action.superseded_by_action_id || null,

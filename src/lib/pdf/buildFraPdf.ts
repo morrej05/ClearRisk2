@@ -96,6 +96,7 @@ import {
   drawTableOfContents,
   drawCleanAuditPage1,
 } from './fra/fraCoreDraw';
+
 import {
   renderSection1AssessmentDetails,
   renderSection2Premises,
@@ -444,16 +445,27 @@ drawTableOfContents(page, font, fontBold);
     page = gapsResult.page;
     yPosition = PAGE_TOP_Y;
 
-    // Title
+    // Move down to give breathing room at top
+    yPosition -= 60;
+
+    // Title - match consultancy hierarchy style
     page.drawText('Assessment Completeness', {
       x: MARGIN,
       y: yPosition,
-      size: 16,
+      size: 26,
       font: fontBold,
-      color: rgb(0.2, 0.2, 0.2),
+      color: rgb(0.12, 0.16, 0.22),
     });
 
-    yPosition -= 30;
+    // Rule line beneath heading
+    page.drawLine({
+      start: { x: MARGIN, y: yPosition - 8 },
+      end: { x: MARGIN + CONTENT_WIDTH, y: yPosition - 8 },
+      thickness: 1,
+      color: rgb(0.8, 0.82, 0.85),
+    });
+
+    yPosition -= 32;
 
     // Note
     const noteText = 'The following areas require additional information to complete the assessment:';

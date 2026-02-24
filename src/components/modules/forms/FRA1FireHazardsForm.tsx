@@ -99,11 +99,7 @@ export default function FRA1FireHazardsForm({
       eicr_notes: '',
       pat_in_place: 'unknown',
     },
-    hot_work_detail: moduleInstance.data.hot_work_detail || {
-      permit_required: null,
-      fire_watch_during: null,
-      post_work_fire_watch_required: null,
-      post_work_duration_mins: null,
+    hot_work_context: moduleInstance.data.hot_work_context || {
       typical_frequency: null,
       notes: '',
     },
@@ -820,116 +816,24 @@ export default function FRA1FireHazardsForm({
 
         <div className="bg-white rounded-lg border border-neutral-200 p-6">
           <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Hot Work Controls (Detail)
+            Hot Work (Ignition Source Context)
           </h3>
           <p className="text-sm text-neutral-600 mb-4">
-            Capture specific arrangements for hot work activities
+            Basic context about hot work as an ignition source (detailed controls captured in Management Systems)
           </p>
 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Hot work permit system in place?
-              </label>
-              <select
-                value={formData.hot_work_detail.permit_required === null ? '' : formData.hot_work_detail.permit_required ? 'yes' : 'no'}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    hot_work_detail: {
-                      ...formData.hot_work_detail,
-                      permit_required: e.target.value === '' ? null : e.target.value === 'yes',
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="">Not stated</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Fire watch during hot work?
-              </label>
-              <select
-                value={formData.hot_work_detail.fire_watch_during === null ? '' : formData.hot_work_detail.fire_watch_during ? 'yes' : 'no'}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    hot_work_detail: {
-                      ...formData.hot_work_detail,
-                      fire_watch_during: e.target.value === '' ? null : e.target.value === 'yes',
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="">Not stated</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Post-work fire watch required?
-              </label>
-              <select
-                value={formData.hot_work_detail.post_work_fire_watch_required === null ? '' : formData.hot_work_detail.post_work_fire_watch_required ? 'yes' : 'no'}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    hot_work_detail: {
-                      ...formData.hot_work_detail,
-                      post_work_fire_watch_required: e.target.value === '' ? null : e.target.value === 'yes',
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="">Not stated</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </div>
-
-            {formData.hot_work_detail.post_work_fire_watch_required && (
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Post-work fire watch duration (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={formData.hot_work_detail.post_work_duration_mins || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      hot_work_detail: {
-                        ...formData.hot_work_detail,
-                        post_work_duration_mins: e.target.value ? parseInt(e.target.value) : null,
-                      },
-                    })
-                  }
-                  placeholder="e.g., 60"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Typical frequency of hot work
               </label>
               <select
-                value={formData.hot_work_detail.typical_frequency || ''}
+                value={formData.hot_work_context.typical_frequency || ''}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    hot_work_detail: {
-                      ...formData.hot_work_detail,
+                    hot_work_context: {
+                      ...formData.hot_work_context,
                       typical_frequency: e.target.value || null,
                     },
                   })
@@ -946,20 +850,20 @@ export default function FRA1FireHazardsForm({
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Hot work notes
+                Hot work context notes
               </label>
               <textarea
-                value={formData.hot_work_detail.notes}
+                value={formData.hot_work_context.notes}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    hot_work_detail: {
-                      ...formData.hot_work_detail,
+                    hot_work_context: {
+                      ...formData.hot_work_context,
                       notes: e.target.value,
                     },
                   })
                 }
-                placeholder="Additional details about hot work controls, permit content, supervision..."
+                placeholder="Brief context about hot work activities and ignition risk (e.g., 'Welding in workshop', 'Occasional contractors')"
                 rows={2}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
               />

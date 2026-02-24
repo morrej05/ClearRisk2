@@ -780,18 +780,14 @@ if (d.electrical_safety && typeof d.electrical_safety === 'object') {
   }
 }
 
-  // Group 6: Hot work, Lightning, Duct cleaning, DSEAR (screening)
-  const hotWork = d.hot_work_detail || {};
+  // Group 6: Hot work context, Lightning, Duct cleaning, DSEAR (screening)
+  const hotWorkContext = d.hot_work_context || {};
   const lightning = d.lightning || {};
   const ductCleaning = d.duct_cleaning || {};
   const dsearScreen = d.dsear_screen || {};
 
-  const hwPermit = hotWork.permit_required === true ? 'Yes' : hotWork.permit_required === false ? 'No' : '';
-  const hwFireWatch = hotWork.fire_watch_during === true ? 'Yes' : hotWork.fire_watch_during === false ? 'No' : '';
-  const hwPostWatch = hotWork.post_work_fire_watch_required === true ? 'Yes' : hotWork.post_work_fire_watch_required === false ? 'No' : '';
-  const hwPostMins = hotWork.post_work_duration_mins ? `${hotWork.post_work_duration_mins} minutes` : '';
-  const hwFreq = norm(hotWork.typical_frequency);
-  const hwNotes = norm(hotWork.notes);
+  const hwFreq = norm(hotWorkContext.typical_frequency);
+  const hwNotes = norm(hotWorkContext.notes);
 
   const lnProtection = norm(lightning.lightning_protection_present);
   const lnAssessment = norm(lightning.lightning_risk_assessment_completed);
@@ -810,21 +806,17 @@ if (d.electrical_safety && typeof d.electrical_safety === 'object') {
   const dsAssessor = norm(dsearScreen.assessor);
   const dsNotes = norm(dsearScreen.notes);
 
-  const hasHotWorkData = hwPermit || hwFireWatch || hwPostWatch || hwPostMins || hwFreq || hwNotes;
+  const hasHotWorkData = hwFreq || hwNotes;
   const hasLightningData = lnProtection || lnAssessment || lnDate || lnNotes;
   const hasDuctData = ductPresent || ductRisk || ductFreq || ductLast || ductNotes;
   const hasDsearData = dsFlam || dsAtmos || dsStatus || dsAssessor || dsNotes;
 
   if (hasHotWorkData || hasLightningData || hasDuctData || hasDsearData) {
-    drawSubhead('Hot work, lightning, duct cleaning, DSEAR (screening)');
+    drawSubhead('Hot work context, lightning, duct cleaning, DSEAR (screening)');
 
     if (hasHotWorkData) {
-      if (hwPermit) drawFact('Hot work permit system', hwPermit);
-      if (hwFireWatch) drawFact('Fire watch during hot work', hwFireWatch);
-      if (hwPostWatch) drawFact('Post-work fire watch', hwPostWatch);
-      if (hwPostMins) drawFact('Post-work fire watch duration', hwPostMins);
       if (hwFreq) drawFact('Hot work frequency', titleCase(hwFreq));
-      if (hwNotes) drawFact('Hot work notes', hwNotes);
+      if (hwNotes) drawFact('Hot work context', hwNotes);
     }
 
     if (hasLightningData) {

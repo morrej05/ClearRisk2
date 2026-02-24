@@ -1062,8 +1062,9 @@ export function drawActionPlanSnapshot(
         context.yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
 
-      // Action text (truncated if too long)
-      let actionText = sanitizePdfText(action.recommended_action);
+      // Derive short title for auto actions, full text for manual actions
+      const actionTitle = deriveAutoActionTitle(action);
+      let actionText = sanitizePdfText(actionTitle);
       if (actionText.length > 100) {
         actionText = actionText.substring(0, 97) + '...';
       }
@@ -1222,7 +1223,9 @@ export function drawRecommendationsSection(
       yPosition -= 20;
     }
 
-    const descLines = wrapText(action.recommended_action, CONTENT_WIDTH - 20, 10, fonts.regular);
+    // Derive short title for auto actions, full text for manual actions
+    const actionTitle = deriveAutoActionTitle(action);
+    const descLines = wrapText(actionTitle, CONTENT_WIDTH - 20, 10, fonts.regular);
     for (const line of descLines) {
       if (yPosition < MARGIN + 40) {
         const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
@@ -1312,4 +1315,44 @@ export function drawRecommendationsSection(
   }
 
   return pagesAdded;
+}
+
+/**
+ * Derives a short, punchy action title from auto-generated actions for PDF headings.
+ * Manual actions pass through unchanged.
+ *
+ * @param action - Action object with recommended_action and source fields
+ * @returns Shortened title for auto actions, full text for manual actions
+ */
+export function deriveAutoActionTitle(action: any): string {
+  const text = String(action?.recommended_action || '').trim();
+  if (!text) return '(No action text provided)';
+
+  const source = String(action?.source || '').toLowerCase();
+
+  // Only shorten auto/system-generated actions
+  const isAuto =
+    source === 'system' ||
+    source === 'ai' ||
+    source === 'library' ||
+    source === 'recommendation' ||
+    source === 'template';
+
+  if (!isAuto) return text; // manual stays as-is
+
+  // Heuristics: take first clause, remove rationale fragments, keep imperative core.
+  // 1) split on first semicolon/period/newline
+  let title = text.split(/\n|;|\.(\s|$)/)[0].trim();
+
+  // 2) remove common trailing rationale starters
+  title = title.replace(/\s*\b(to|in order to|so that)\b.*$/i, '').trim();
+
+  // 3) drop leading "Urgent:" etc if present
+  title = title.replace(/^(urgent|immediate)\s*[:\-]\s*/i, '').trim();
+
+  // 4) enforce max length (keeps titles punchy)
+  const max = 90;
+  if (title.length > max) title = title.slice(0, max - 1).trimEnd() + '…';
+
+  return title || text;
 }

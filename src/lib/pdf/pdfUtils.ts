@@ -5,6 +5,9 @@ export const PAGE_HEIGHT = 841.89;
 export const MARGIN = 50;
 export const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
 
+// PDF Debug Layout Mode - developer-only overlay for spacing/pagination tuning
+export const PDF_DEBUG_LAYOUT = import.meta.env.VITE_PDF_DEBUG_LAYOUT === 'true';
+
 export function sanitizePdfText(input: unknown): string {
   const s = (input ?? '').toString();
 
@@ -317,6 +320,76 @@ export function drawKeyValueRow(
   return currentY - (maxLines * lineHeight) - 4;
 }
 
+/**
+ * Debug helper: Draw baseline grid for visual spacing alignment
+ */
+export function drawBaselineGrid(page: PDFPage, step = 12) {
+  if (!PDF_DEBUG_LAYOUT) return;
+  const light = rgb(0.85, 0.90, 1.0); // very light blue
+  for (let y = MARGIN; y < PAGE_HEIGHT - MARGIN; y += step) {
+    page.drawLine({
+      start: { x: MARGIN, y },
+      end: { x: PAGE_WIDTH - MARGIN, y },
+      thickness: 0.25,
+      color: light,
+      opacity: 0.25,
+    });
+  }
+}
+
+/**
+ * Debug helper: Draw margin guides to visualize page boundaries
+ */
+export function drawMarginGuides(page: PDFPage) {
+  if (!PDF_DEBUG_LAYOUT) return;
+  const c = rgb(0.2, 0.6, 1.0);
+  // top/bottom margin lines
+  page.drawLine({
+    start: { x: MARGIN, y: PAGE_HEIGHT - MARGIN },
+    end: { x: PAGE_WIDTH - MARGIN, y: PAGE_HEIGHT - MARGIN },
+    thickness: 0.5,
+    color: c,
+    opacity: 0.35,
+  });
+  page.drawLine({
+    start: { x: MARGIN, y: MARGIN },
+    end: { x: PAGE_WIDTH - MARGIN, y: MARGIN },
+    thickness: 0.5,
+    color: c,
+    opacity: 0.35,
+  });
+  // left/right margin lines
+  page.drawLine({
+    start: { x: MARGIN, y: MARGIN },
+    end: { x: MARGIN, y: PAGE_HEIGHT - MARGIN },
+    thickness: 0.5,
+    color: c,
+    opacity: 0.35,
+  });
+  page.drawLine({
+    start: { x: PAGE_WIDTH - MARGIN, y: MARGIN },
+    end: { x: PAGE_WIDTH - MARGIN, y: PAGE_HEIGHT - MARGIN },
+    thickness: 0.5,
+    color: c,
+    opacity: 0.35,
+  });
+}
+
+/**
+ * Debug helper: Draw small text label for debugging layout
+ */
+export function drawDebugLabel(page: PDFPage, x: number, y: number, text: string, font?: any) {
+  if (!PDF_DEBUG_LAYOUT) return;
+  page.drawText(text, {
+    x,
+    y,
+    size: 6,
+    font,
+    color: rgb(0.2, 0.6, 1.0),
+    opacity: 0.9,
+  });
+}
+
 export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PDFPage[]): { page: PDFPage } {
   // Defensive initialization - prevent crashes if totalPages is undefined
   if (!totalPages) {
@@ -325,6 +398,13 @@ export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PD
   }
 
   const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+
+  // Draw debug overlays when flag is enabled
+  if (PDF_DEBUG_LAYOUT) {
+    drawBaselineGrid(page, 12);
+    drawMarginGuides(page);
+  }
+
   totalPages.push(page);
   // Status is shown prominently on cover page - no need for repeated watermark
   return { page };

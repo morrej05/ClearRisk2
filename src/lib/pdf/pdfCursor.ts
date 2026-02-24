@@ -1,5 +1,5 @@
 import { PDFDocument, PDFPage } from 'pdf-lib';
-import { addNewPage, PAGE_HEIGHT, MARGIN } from './pdfUtils';
+import { addNewPage, PAGE_HEIGHT, MARGIN, PDF_DEBUG_LAYOUT, drawDebugLabel } from './pdfUtils';
 
 /**
  * Cursor type for tracking current page and Y position during PDF layout.
@@ -77,6 +77,16 @@ export function ensureSpace(
 ): Cursor {
   // Check if we have enough space
   if (cursor.yPosition - requiredHeight < MARGIN + 50) {
+    // Annotate page break trigger in debug mode
+    if (PDF_DEBUG_LAYOUT && cursor.page) {
+      drawDebugLabel(
+        cursor.page,
+        MARGIN,
+        cursor.yPosition + 6,
+        `PAGE BREAK: y=${Math.round(cursor.yPosition)} need=${Math.round(requiredHeight)}`
+      );
+    }
+
     // Not enough space - create new page
     const init = addNewPage(pdfDoc, isDraft, totalPages);
     return {

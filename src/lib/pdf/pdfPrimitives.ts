@@ -1,8 +1,30 @@
 import { PDFPage, PDFFont, rgb } from 'pdf-lib';
 import { PDF_THEME, PdfProduct } from './pdfStyles';
-import { wrapText } from './pdfUtils';
+import { wrapText, PDF_DEBUG_LAYOUT } from './pdfUtils';
 
 type Fonts = { regular: PDFFont; bold: PDFFont };
+
+/**
+ * Debug helper: Draw bounding box with label for layout debugging
+ */
+export function drawDebugBox(page: PDFPage, x: number, yTop: number, w: number, h: number, label: string) {
+  if (!PDF_DEBUG_LAYOUT) return;
+  page.drawRectangle({
+    x,
+    y: yTop - h,
+    width: w,
+    height: h,
+    borderColor: rgb(0.2, 0.6, 1.0),
+    borderWidth: 0.5,
+    opacity: 0.25,
+  });
+  page.drawText(label, {
+    x: x + 2,
+    y: yTop + 2,
+    size: 6,
+    color: rgb(0.2, 0.6, 1.0),
+  });
+}
 
 export function drawDivider(page: PDFPage, x: number, y: number, w: number) {
   page.drawLine({

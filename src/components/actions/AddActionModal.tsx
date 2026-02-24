@@ -49,6 +49,7 @@ export default function AddActionModal({
   const [documentType, setDocumentType] = useState<string | null>(null);
   const [moduleInstances, setModuleInstances] = useState<any[]>([]);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
+  const [userEditedActionText, setUserEditedActionText] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -258,6 +259,18 @@ export default function AddActionModal({
         }
       }
 
+      // Resolve source based on whether user edited the text
+      const resolvedSource: 'manual' | 'library' | 'system' | 'ai' =
+        source === 'library' || source === 'ai'
+          ? source
+          : source === 'system' || source === 'info_gap' || source === 'recommendation'
+            ? 'system'
+            : userEditedActionText
+              ? 'manual'
+              : defaultAction.trim()
+                ? 'system'
+                : 'manual';
+
       const actionData = {
         organisation_id: organisation.id,
         document_id: documentId,
@@ -278,7 +291,7 @@ export default function AddActionModal({
         escalation_justification: formData.escalateToP1
           ? formData.escalationJustification.trim()
           : null,
-        source: source,
+        source: resolvedSource,
       };
 
       const { data: action, error: actionError } = await supabase
@@ -477,9 +490,10 @@ export default function AddActionModal({
             </label>
             <textarea
               value={formData.recommendedAction}
-              onChange={(e) =>
-                setFormData({ ...formData, recommendedAction: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, recommendedAction: e.target.value });
+                setUserEditedActionText(true);
+              }}
               placeholder="Describe the recommended action to address the identified deficiency or risk..."
               rows={4}
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"

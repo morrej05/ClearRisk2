@@ -126,7 +126,7 @@ const RISK_BANDS: { key: RiskBandKey; label: string; color: any }[] = [
   { key: 'trivial',      label: 'Trivial',      color: rgb(0.25, 0.55, 0.35) },
   { key: 'tolerable',    label: 'Tolerable',    color: rgb(0.45, 0.65, 0.35) },
   { key: 'moderate',     label: 'Moderate',     color: rgb(0.75, 0.65, 0.2)  },
-  { key: 'substantial',  label: 'Substantial',  color: rgb(0.75, 0.45, 0.15) },
+  { key: 'substantial',  label: 'Substantial',  color: rgb(156/255, 74/255, 26/255) },
   { key: 'intolerable',  label: 'Intolerable',  color: rgb(0.65, 0.15, 0.15) },
 ];
 

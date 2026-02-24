@@ -14,6 +14,7 @@ export interface ActionRegisterEntry {
   module_key: string | null;
   module_outcome: any;
   recommended_action: string;
+  reference_number: string | null;
   priority_band: string;
   timescale: string | null;
   target_date: string | null;

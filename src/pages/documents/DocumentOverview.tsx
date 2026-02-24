@@ -1368,8 +1368,8 @@ try {
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {filteredActions.slice(0, 10).map((action, index) => {
-                    // Generate a simple display reference based on priority and index
-                    const refNumber = `${action.priority_band}-${(index + 1).toString().padStart(2, '0')}`;
+                    // Use canonical reference_number if assigned, otherwise show pending indicator
+                    const refNumber = action.reference_number ?? '—';
 
                     return (
                       <tr

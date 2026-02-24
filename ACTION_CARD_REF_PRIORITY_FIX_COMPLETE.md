@@ -6,6 +6,128 @@
 
 ---
 
+# UI Canonical Reference Update - COMPLETE
+
+**Date**: 2026-02-24
+**Status**: ✅ Complete
+**Objective**: Make UI use canonical action reference_number everywhere (no computed refs)
+
+## Patch 1 Summary
+
+Successfully updated the UI to display canonical action references from the database instead of computing temporary index-based references.
+
+**Before**: UI computed refs like `P1-01`, `P2-01` based on filtered index
+**After**: UI displays canonical refs like `R-01`, `R-02` from `reference_number` field (or `—` if not yet assigned)
+
+**Build Status**: ✅ Successful (18.88s, 1946 modules)
+
+---
+
+## Changes Made
+
+### 1. Database View Enhancement
+
+**File**: Database view `action_register_site_level`
+
+Added `a.reference_number` to the SELECT list to expose canonical action references to the API.
+
+### 2. TypeScript Interface Update
+
+**File**: `src/utils/actionRegister.ts`
+
+Added `reference_number: string | null` field to `ActionRegisterEntry` interface.
+
+### 3. UI Component Update
+
+**File**: `src/pages/documents/DocumentOverview.tsx` (Line 1372)
+
+**Before**:
+```typescript
+// Generate a simple display reference based on priority and index
+const refNumber = `${action.priority_band}-${(index + 1).toString().padStart(2, '0')}`;
+```
+
+**After**:
+```typescript
+// Use canonical reference_number if assigned, otherwise show pending indicator
+const refNumber = action.reference_number ?? '—';
+```
+
+---
+
+## Behavior Comparison
+
+### Before (Computed Refs)
+
+**Draft Document**:
+| Ref | Priority | Action |
+|-----|----------|--------|
+| P1-01 | P1 | Fix emergency exit |
+| P1-02 | P1 | Replace fire door |
+| P2-01 | P2 | Update signage |
+
+**Problems**:
+- ❌ Ref changes based on filter/sort order
+- ❌ Ref doesn't match PDF (which uses R-01, R-02)
+- ❌ Confusing to users (different refs in UI vs PDF)
+
+### After (Canonical Refs)
+
+**Draft Document** (before issuing):
+| Ref | Priority | Action |
+|-----|----------|--------|
+| — | P1 | Fix emergency exit |
+| — | P1 | Replace fire door |
+| — | P2 | Update signage |
+
+**Benefits**:
+- ✅ Clear that refs not yet assigned
+- ✅ No confusion about which ref is "real"
+
+**Issued Document** (after issuing):
+| Ref | Priority | Action |
+|-----|----------|--------|
+| R-01 | P1 | Fix emergency exit |
+| R-02 | P1 | Replace fire door |
+| R-03 | P2 | Update signage |
+
+**Benefits**:
+- ✅ UI matches PDF exactly
+- ✅ Refs are stable (don't change with sorting/filtering)
+- ✅ Refs are globally unique (within document)
+
+---
+
+## Benefits
+
+### For Users
+✅ **Consistency**: UI and PDF show identical references
+✅ **Clarity**: `—` clearly indicates refs not yet assigned
+✅ **Stability**: Refs don't change with filtering/sorting
+✅ **Cross-Reference**: Easy to find actions between UI and PDF
+
+### For Developers
+✅ **Simplicity**: Removed computed ref logic from UI
+✅ **Maintainability**: Single source of truth (database)
+✅ **Type Safety**: Added reference_number to TypeScript interface
+✅ **Predictability**: UI always reflects database state
+
+---
+
+## Files Modified
+
+| File | Change | Description |
+|------|--------|-------------|
+| Database view | Modified | Added `a.reference_number` to `action_register_site_level` |
+| `src/utils/actionRegister.ts` | Modified | Added `reference_number` to `ActionRegisterEntry` interface |
+| `src/pages/documents/DocumentOverview.tsx` | Modified | Use canonical ref instead of computed ref |
+
+**Result**: UI now displays canonical references that match PDF output exactly.
+
+---
+
+---
+
 ## Summary
 
 Successfully fixed two critical issues with the action cards:

@@ -368,6 +368,9 @@ export default function ActionRegisterPage() {
             <table className="w-full">
               <thead className="border-b border-neutral-200">
                 <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                    Ref
+                  </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">
                     Document
                   </th>
@@ -398,6 +401,9 @@ export default function ActionRegisterPage() {
                     className="hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => navigate(`/documents/${action.document_id}/workspace`)}
                   >
+                    <td className="px-4 py-3 text-sm font-mono text-neutral-900">
+                      {action.reference_number ?? '—'}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="text-sm font-medium text-neutral-900">
                         {action.document_title}

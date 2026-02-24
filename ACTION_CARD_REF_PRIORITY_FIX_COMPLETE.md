@@ -120,9 +120,56 @@ const refNumber = action.reference_number ?? '—';
 |------|--------|-------------|
 | Database view | Modified | Added `a.reference_number` to `action_register_site_level` |
 | `src/utils/actionRegister.ts` | Modified | Added `reference_number` to `ActionRegisterEntry` interface |
-| `src/pages/documents/DocumentOverview.tsx` | Modified | Use canonical ref instead of computed ref |
+| `src/pages/documents/DocumentOverview.tsx` | Modified | Use canonical ref instead of computed ref (document-level) |
+| `src/pages/dashboard/ActionRegisterPage.tsx` | Modified | Added Ref column with canonical references (org-level) |
 
-**Result**: UI now displays canonical references that match PDF output exactly.
+**Result**: UI now displays canonical references that match PDF output exactly across both document and org-level views.
+
+---
+
+## Org-Level Action Register Update
+
+**File**: `src/pages/dashboard/ActionRegisterPage.tsx`
+
+Added a new "Ref" column as the first column in the organization-wide Action Register table.
+
+### Changes Made
+
+**1. Table Header** (Line 371-373):
+```typescript
+<th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+  Ref
+</th>
+```
+
+**2. Table Row** (Line 404-406):
+```typescript
+<td className="px-4 py-3 text-sm font-mono text-neutral-900">
+  {action.reference_number ?? '—'}
+</td>
+```
+
+### Updated Column Order
+
+**Before**:
+| Document | Action | Priority | Status | Tracking | Target Date | Owner |
+|----------|--------|----------|--------|----------|-------------|-------|
+
+**After**:
+| **Ref** | Document | Action | Priority | Status | Tracking | Target Date | Owner |
+|---------|----------|--------|----------|--------|----------|-------------|-------|
+| R-01 | Fire Risk Assessment v1 | Fix emergency exit | P1 | Open | Overdue | John Doe |
+| R-02 | Fire Risk Assessment v1 | Replace fire door | P2 | In Progress | On Track | Jane Smith |
+| — | Fire Safety Design v1 | Update signage | P3 | Open | Due Soon | (Unassigned) |
+
+**Note**: Draft documents show `—` until issued and refs are assigned.
+
+### Benefits
+
+1. ✅ **Quick Reference Lookup**: Users can quickly find actions by ref number
+2. ✅ **Cross-Document View**: See refs from multiple documents in one table
+3. ✅ **Consistency**: Org-level register matches document-level view
+4. ✅ **Audit Trail**: Reference numbers visible at organizational level
 
 ---
 

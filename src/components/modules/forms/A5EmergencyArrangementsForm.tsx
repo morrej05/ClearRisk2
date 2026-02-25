@@ -534,6 +534,7 @@ export default function A5EmergencyArrangementsForm({
         <AddActionModal
           documentId={document.id}
           moduleInstanceId={moduleInstance.id}
+          sourceModuleKey={moduleInstance.module_key}
           onClose={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);

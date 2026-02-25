@@ -11,6 +11,7 @@ import {
 } from '../../lib/modules/fra/severityEngine';
 import { deriveExplosionSeverity } from '../../lib/dsear/criticalityEngine';
 import { bumpActionsVersion } from '../../lib/actions/actionsInvalidation';
+import { getModuleOutcomeCategory } from '../../lib/modules/moduleCatalog';
 
 interface AddActionModalProps {
   documentId: string;
@@ -21,6 +22,7 @@ interface AddActionModalProps {
   defaultLikelihood?: number;
   defaultImpact?: number;
   source?: 'manual' | 'info_gap' | 'recommendation' | 'system';
+  sourceModuleKey?: string;
 }
 
 const TIMESCALE_OPTIONS = [
@@ -40,6 +42,7 @@ export default function AddActionModal({
   defaultLikelihood = 3,
   defaultImpact = 3,
   source,
+  sourceModuleKey,
 }: AddActionModalProps) {
   const { organisation, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -158,6 +161,20 @@ export default function AddActionModal({
     severityTier = 'T4';
     triggerId = 'MANUAL-P1';
     triggerText = 'Manually escalated to P1 by assessor.';
+  }
+
+  // FRA-only: Apply critical module floor (P2/T3 minimum for critical modules)
+  // If source module is 'critical' and derived priority is too low, clamp to P2/T3
+  const isCriticalModule = sourceModuleKey && getModuleOutcomeCategory(sourceModuleKey) === 'critical';
+  if (isCriticalModule && documentType === 'FRA') {
+    // Floor priority: P3/P4 → P2 (don't downgrade P1)
+    if (priorityBand === 'P3' || priorityBand === 'P4') {
+      priorityBand = 'P2';
+    }
+    // Floor severity: T1/T2 → T3 (don't downgrade T4)
+    if (severityTier === 'T1' || severityTier === 'T2') {
+      severityTier = 'T3';
+    }
   }
 
   const getSuggestedTimescale = (priorityBand: string): string => {

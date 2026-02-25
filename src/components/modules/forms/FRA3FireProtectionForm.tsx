@@ -16,6 +16,7 @@ interface Document {
 
 interface ModuleInstance {
   id: string;
+  module_key: string;
   outcome: string | null;
   assessor_notes: string;
   data: Record<string, any>;
@@ -1346,6 +1347,7 @@ export default function FRA3FireProtectionForm({
         <AddActionModal
           documentId={document.id}
           moduleInstanceId={moduleInstance.id}
+          sourceModuleKey={moduleInstance.module_key}
           onClose={() => {
             setShowActionModal(false);
             setQuickActionTemplate(null);

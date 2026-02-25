@@ -1543,12 +1543,21 @@ function drawExecutiveSummary(
 
   yPosition -= 30;
 
+  // Derive emergency lighting presence from Section 7 owner module (FRA_3_ACTIVE_SYSTEMS)
+  // Single source of truth for EL system existence across all SCS/reliance calculations
+  const activeSystemsModule = moduleInstances.find(
+    (m) => m.module_key === 'FRA_3_ACTIVE_SYSTEMS' || m.module_key === 'FRA_3_PROTECTION_ASIS'
+  );
+  const hasEmergencyLightingSystem =
+    activeSystemsModule?.data?.emergency_lighting_present === true ||
+    String(activeSystemsModule?.data?.emergency_lighting_present || '').toLowerCase() === 'yes';
+
   // Calculate SCS for top issues weighting (early calculation)
   const buildingProfileEarly = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');
   const protectionModuleEarly = moduleInstances.find((m) => m.module_key === 'FRA_3_FIRE_PROTECTION');
   const protectionDataEarly: FireProtectionModuleData = {
     hasDetectionSystem: protectionModuleEarly?.data?.detection_system_present === true,
-    hasEmergencyLighting: protectionModuleEarly?.data?.emergency_lighting_present === true,
+    hasEmergencyLighting: hasEmergencyLightingSystem,
     hasSuppressionSystem: protectionModuleEarly?.data?.suppression_system_present === true,
     hasSmokeControl: protectionModuleEarly?.data?.smoke_control_present === true,
     compartmentationCritical: protectionModuleEarly?.outcome === 'material_def',
@@ -1703,7 +1712,7 @@ function drawExecutiveSummary(
   const protectionModule = moduleInstances.find((m) => m.module_key === 'FRA_3_FIRE_PROTECTION');
   const protectionData: FireProtectionModuleData = {
     hasDetectionSystem: protectionModule?.data?.detection_system_present === true,
-    hasEmergencyLighting: protectionModule?.data?.emergency_lighting_present === true,
+    hasEmergencyLighting: hasEmergencyLightingSystem,
     hasSuppressionSystem: protectionModule?.data?.suppression_system_present === true,
     hasSmokeControl: protectionModule?.data?.smoke_control_present === true,
     compartmentationCritical: protectionModule?.outcome === 'material_def',

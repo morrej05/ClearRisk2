@@ -725,13 +725,11 @@ if (oxygenIsMeaningful || oxygenNotes) {
   // Group 4: Context factors
   const hk = norm(d.housekeeping_fire_load);
   const arson = norm(d.arson_risk);
-  const lone = norm(d.lone_working);
 
-  if (hk || arson || lone) {
+  if (hk || arson) {
     drawSubhead('Context factors');
     if (hk) drawFact('Housekeeping / fire load', titleCase(hk));
     if (arson) drawFact('Arson risk', titleCase(arson));
-    if (lone) drawFact('Lone working', titleCase(lone));
     endGroup();
   }
 

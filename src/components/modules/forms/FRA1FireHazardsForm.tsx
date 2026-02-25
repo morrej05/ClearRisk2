@@ -86,7 +86,6 @@ export default function FRA1FireHazardsForm({
     high_risk_other: moduleInstance.data.high_risk_other || '',
     arson_risk: moduleInstance.data.arson_risk || 'unknown',
     housekeeping_fire_load: moduleInstance.data.housekeeping_fire_load || 'unknown',
-    lone_working: moduleInstance.data.lone_working || 'unknown',
     notes: moduleInstance.data.notes || '',
     electrical_safety: moduleInstance.data.electrical_safety || {
       eicr_last_date: null,
@@ -135,7 +134,6 @@ export default function FRA1FireHazardsForm({
     const unknowns = [
       formData.arson_risk === 'unknown' && 'arson_risk',
       formData.housekeeping_fire_load === 'unknown' && 'housekeeping_fire_load',
-      formData.lone_working === 'unknown' && 'lone_working',
       formData.oxygen_enrichment === 'unknown' && 'oxygen_enrichment',
     ].filter(Boolean).length;
 
@@ -566,25 +564,6 @@ export default function FRA1FireHazardsForm({
               </button>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Lone working arrangements
-              </label>
-              <select
-                value={formData.lone_working}
-                onChange={(e) =>
-                  setFormData({ ...formData, lone_working: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="unknown">Unknown</option>
-                <option value="yes">Yes - lone working occurs</option>
-                <option value="no">No - always multiple occupants</option>
-              </select>
-              <p className="text-xs text-neutral-500 mt-1">
-                Consider implications for emergency response and detection requirements
-              </p>
-            </div>
           </div>
         </div>
 

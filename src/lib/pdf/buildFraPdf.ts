@@ -812,10 +812,15 @@ if (section.id === 5) {
     // Special case: Section 13 (Significant Findings)
     if (section.id === 13) {
       if (fra4Module) {
+        // Filter actions to only those belonging to FRA modules (in moduleToSectionMap)
+        // This excludes actions from FSD, DSEAR, or other non-FRA modules
+        const fraModuleIds = Array.from(moduleToSectionMap.keys());
+        const section13Actions = actionsWithRefs.filter(a => fraModuleIds.includes(a.module_instance_id));
+
         yPosition = drawCleanAuditSection13({
           page: cursor.page,
           fra4Module,
-          actions: actionsWithRefs,
+          actions: section13Actions,
           moduleInstances,
           font,
           fontBold,

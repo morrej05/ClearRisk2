@@ -13,7 +13,7 @@ import {
   type FraExecutiveOutcome,
 } from '../modules/fra/severityEngine';
 import { drawCleanAuditSection13 } from './fraSection13CleanAudit';
-import { generateSectionSummary, generateAssessorSummary } from './sectionSummaryGenerator';
+import { generateSectionSummary, generateAssessorSummary, getHasEmergencyLightingSystemFromActiveSystems } from './sectionSummaryGenerator';
 import { buildEvidenceRefMap } from './fra/fraCoreDraw';
 import {
   calculateSCS,
@@ -1543,14 +1543,9 @@ function drawExecutiveSummary(
 
   yPosition -= 30;
 
-  // Derive emergency lighting presence from Section 7 owner module (FRA_3_ACTIVE_SYSTEMS)
+  // Derive emergency lighting presence from Section 7 owner module (via helper)
   // Single source of truth for EL system existence across all SCS/reliance calculations
-  const activeSystemsModule = moduleInstances.find(
-    (m) => m.module_key === 'FRA_3_ACTIVE_SYSTEMS' || m.module_key === 'FRA_3_PROTECTION_ASIS'
-  );
-  const hasEmergencyLightingSystem =
-    activeSystemsModule?.data?.emergency_lighting_present === true ||
-    String(activeSystemsModule?.data?.emergency_lighting_present || '').toLowerCase() === 'yes';
+  const hasEmergencyLightingSystem = getHasEmergencyLightingSystemFromActiveSystems(moduleInstances);
 
   // Calculate SCS for top issues weighting (early calculation)
   const buildingProfileEarly = moduleInstances.find((m) => m.module_key === 'A2_BUILDING_PROFILE');

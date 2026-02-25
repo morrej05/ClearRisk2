@@ -932,3 +932,22 @@ export function generateSection10AssessorSummary(
 ): string | null {
   return generateAssessorSummary(10, module, document);
 }
+
+/**
+ * Helper: Derive emergency lighting system presence from Section 7 owner module
+ *
+ * Single source of truth for emergency lighting presence used in SCS/reliance calculations.
+ * Queries FRA_3_ACTIVE_SYSTEMS (current) or FRA_3_PROTECTION_ASIS (deprecated) module.
+ *
+ * @param moduleInstances - Array of module instances to search
+ * @returns true if emergency lighting system is present, false otherwise
+ */
+export function getHasEmergencyLightingSystemFromActiveSystems(moduleInstances: any[]): boolean {
+  const active = moduleInstances.find(m =>
+    m.module_key === 'FRA_3_ACTIVE_SYSTEMS' || m.module_key === 'FRA_3_PROTECTION_ASIS'
+  );
+  return (
+    active?.data?.emergency_lighting_present === true ||
+    String(active?.data?.emergency_lighting_present || '').toLowerCase() === 'yes'
+  );
+}

@@ -681,7 +681,7 @@ drawTableOfContents(page, font, fontBold);
 
       // Tighten blank-page threshold before Section 13 (which forces a hard page break)
       // This prevents nearly-empty trailing pages before the significant findings section
-      const required = (section.id === 11 || section.id === 12) ? 160 : requiredHeight;
+      const required = (section.id === 11 || section.id === 12) ? 180 : requiredHeight;
 
       const spaceResult = ensureSpace(required, page, yPosition, pdfDoc, isDraft, totalPages);
       page = spaceResult.page;

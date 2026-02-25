@@ -18,8 +18,8 @@ export const PDF_STYLES = {
     divider: rgb(0.85, 0.85, 0.85),
   },
   blocks: {
-    sectionHeader: 72,
-    sectionHeaderWithSummary: 120,
+    sectionHeader: 88,
+    sectionHeaderWithSummary: 140,
   },
 };
 

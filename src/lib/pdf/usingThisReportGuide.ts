@@ -76,7 +76,7 @@ export function drawUsingThisReportSection(
     },
     {
       label: 'Action Plan:',
-      text: 'Prioritized recommendations with target dates and responsible persons. Actions are categorized as Critical, High, Medium, or Low priority.',
+      text: 'Prioritized recommendations with target dates and responsible persons. Actions are prioritised using a Severity Tier (T1–T4) mapped to a Priority Band (P1–P4).',
     },
     {
       label: 'Detailed Assessment:',
@@ -127,20 +127,20 @@ export function drawUsingThisReportSection(
 
   const priorityItems = [
     {
-      label: 'Critical:',
-      text: 'Immediate action required. Significant risk to life safety. Address within 24-48 hours or implement interim controls.',
+      label: 'T4 → P1:',
+      text: 'Material Life Safety Risk. Immediate action required to address significant risk to life safety.',
     },
     {
-      label: 'High:',
-      text: 'Urgent action required. Material deficiency requiring resolution within 1-4 weeks.',
+      label: 'T3 → P2:',
+      text: 'Significant Deficiency. Urgent action required to resolve material compliance or protection gaps.',
     },
     {
-      label: 'Medium:',
-      text: 'Action required within 3-6 months. Improvements needed to meet best practice standards.',
+      label: 'T2 → P3:',
+      text: 'Improvement Required. Action needed to meet best practice standards and enhance fire safety resilience.',
     },
     {
-      label: 'Low:',
-      text: 'Governance or minor improvements. Address within 6-12 months as part of ongoing fire safety management.',
+      label: 'T1 → P4:',
+      text: 'Minor. Governance or incremental improvements to maintain fire safety management standards.',
     },
   ];
 
@@ -241,7 +241,7 @@ export function drawUsingThisReportSection(
 
   yPosition -= 20;
 
-  const actionText = 'Review the Action Plan immediately and assign responsibilities. Critical and High priority items should be addressed as soon as reasonably practicable. Maintain records of completed actions and any interim risk control measures implemented. Schedule a review meeting with key stakeholders within 7 days of receiving this report.';
+  const actionText = 'Review the Action Plan immediately and assign responsibilities. P1 and P2 actions should be prioritised for prompt attention, with P3 and P4 addressed as part of planned improvement. Maintain records of completed actions and any interim risk control measures implemented. Schedule a review meeting with key stakeholders within 7 days of receiving this report.';
   const actionLines = wrapText(actionText, CONTENT_WIDTH - 20, 10, font);
 
   for (const line of actionLines) {

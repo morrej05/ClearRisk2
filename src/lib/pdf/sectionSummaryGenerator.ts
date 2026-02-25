@@ -476,11 +476,6 @@ function extractSection11Drivers(data: Record<string, any>): string[] {
     drivers.push('Fire drills are not conducted at appropriate intervals');
   }
 
-  // Alarm testing
-  if (data.inspection_alarm_weekly_test === 'no') {
-    drivers.push('Weekly fire alarm testing is not being conducted');
-  }
-
   // Hot work permit
   if (data.ptw_hot_work === 'no' && data.contractor_supervision === 'no') {
     drivers.push('No hot work permit system in place despite contractor activities');
@@ -888,23 +883,10 @@ function generateSection11Summary(module: ModuleInstance, document: Document): s
     parts.push('Fire drills conducted at appropriate intervals');
   }
 
-  // Inspection records (specific about what's missing)
+  // Inspection records (governance perspective - not specific systems)
   const inspectionRecords = data.inspection_records_available;
   if (inspectionRecords === 'no' || inspectionRecords === 'partial') {
-    const missingRecords: string[] = [];
-
-    if (data.inspection_alarm_weekly_test === 'no' || data.inspection_alarm_weekly_test === 'unknown') {
-      missingRecords.push('fire alarm testing');
-    }
-    if (data.inspection_extinguisher_annual === 'no' || data.inspection_extinguisher_annual === 'unknown') {
-      missingRecords.push('extinguisher servicing');
-    }
-
-    if (missingRecords.length > 0) {
-      parts.push(`Records not evidenced: ${missingRecords.join(', ')}`);
-    } else {
-      parts.push('Inspection records not fully evidenced');
-    }
+    parts.push('Inspection records not fully evidenced');
   } else if (inspectionRecords === 'yes' || inspectionRecords === 'available') {
     parts.push('Testing and inspection records maintained');
   }

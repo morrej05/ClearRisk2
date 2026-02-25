@@ -57,7 +57,6 @@ export default function A4ManagementControlsForm({
     ptw_electrical_isolation_loto: moduleInstance.data.ptw_electrical_isolation_loto || 'unknown',
     ptw_confined_space: moduleInstance.data.ptw_confined_space || 'unknown',
     ptw_other_permits: moduleInstance.data.ptw_other_permits || '',
-    inspection_alarm_weekly_test: moduleInstance.data.inspection_alarm_weekly_test || 'unknown',
     inspection_extinguishers_annual_service: moduleInstance.data.inspection_extinguishers_annual_service || 'unknown',
     inspection_fire_doors_frequency: moduleInstance.data.inspection_fire_doors_frequency || 'unknown',
     inspection_records_available: moduleInstance.data.inspection_records_available || 'unknown',
@@ -97,9 +96,6 @@ export default function A4ManagementControlsForm({
     }
     if (formData.ptw_hot_work === 'no' && formData.contractor_supervision === 'no') {
       criticalIssues.push('No hot work permit system with contractor works');
-    }
-    if (formData.inspection_alarm_weekly_test === 'no') {
-      criticalIssues.push('Fire alarm not tested weekly');
     }
 
     if (criticalIssues.length >= 2) {
@@ -526,23 +522,6 @@ export default function A4ManagementControlsForm({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Fire alarm weekly test conducted?
-              </label>
-              <select
-                value={formData.inspection_alarm_weekly_test}
-                onChange={(e) =>
-                  setFormData({ ...formData, inspection_alarm_weekly_test: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="unknown">Unknown</option>
-                <option value="yes">Yes - documented</option>
-                <option value="no">No</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Fire extinguishers annual service?
               </label>
               <select
@@ -595,13 +574,12 @@ export default function A4ManagementControlsForm({
               </select>
             </div>
 
-            {(formData.inspection_alarm_weekly_test === 'no' ||
-              formData.inspection_fire_doors_frequency === 'none' ||
+            {(formData.inspection_fire_doors_frequency === 'none' ||
               formData.inspection_records_available === 'no') && (
               <button
                 onClick={() =>
                   handleQuickAction({
-                    action: 'Establish comprehensive inspection and testing logbook/schedule covering fire alarm weekly tests, emergency lighting, extinguishers, and fire doors with record-keeping system',
+                    action: 'Maintain fire safety logbook and inspection records by implementing a structured record system for inspections, tests, servicing, and remedial actions. Technical adequacy and deficiencies of individual systems are assessed in the relevant technical sections.',
                     likelihood: 4,
                     impact: 3,
                   })
@@ -609,7 +587,7 @@ export default function A4ManagementControlsForm({
                 className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
-                Quick Add: Create inspection/testing programme
+                Quick Add: Maintain fire safety records
               </button>
             )}
           </div>

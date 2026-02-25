@@ -311,7 +311,6 @@ export function drawModuleKeyDetails(
       if (data.inner_rooms) keyDetails.push(['Inner Rooms', data.inner_rooms]);
       if (data.basement_present) keyDetails.push(['Basement Present', data.basement_present]);
       if (data.basement) keyDetails.push(['Basement', data.basement]);
-      if (data.emergency_lighting_dependency) keyDetails.push(['Emergency Lighting Dependency', data.emergency_lighting_dependency]);
       break;
 
     case 'FRA_3_PROTECTION_ASIS':

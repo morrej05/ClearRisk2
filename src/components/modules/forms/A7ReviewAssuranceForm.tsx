@@ -40,7 +40,6 @@ export default function A7ReviewAssuranceForm({
       siteInspection: (moduleInstance.data.review?.siteInspection || 'na') as ChecklistValue,
       photos: (moduleInstance.data.review?.photos || 'na') as ChecklistValue,
       alarmEvidence: (moduleInstance.data.review?.alarmEvidence || 'na') as ChecklistValue,
-      elEvidence: (moduleInstance.data.review?.elEvidence || 'na') as ChecklistValue,
       drillEvidence: (moduleInstance.data.review?.drillEvidence || 'na') as ChecklistValue,
       maintenanceLogs: (moduleInstance.data.review?.maintenanceLogs || 'na') as ChecklistValue,
       rpInterview: (moduleInstance.data.review?.rpInterview || 'na') as ChecklistValue,
@@ -198,7 +197,6 @@ export default function A7ReviewAssuranceForm({
             {renderChecklistItem('Site inspection completed?', 'siteInspection')}
             {renderChecklistItem('Photos taken?', 'photos')}
             {renderChecklistItem('Fire alarm test evidence reviewed?', 'alarmEvidence')}
-            {renderChecklistItem('Emergency lighting test evidence reviewed?', 'elEvidence')}
             {renderChecklistItem('Evacuation drill evidence reviewed?', 'drillEvidence')}
             {renderChecklistItem('Maintenance logs reviewed?', 'maintenanceLogs')}
             {renderChecklistItem('Responsible person interview completed?', 'rpInterview')}

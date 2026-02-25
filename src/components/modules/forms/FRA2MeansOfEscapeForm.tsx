@@ -52,7 +52,6 @@ export default function FRA2MeansOfEscapeForm({
     inner_rooms_present: moduleInstance.data.inner_rooms_present || 'unknown',
     basement_present: moduleInstance.data.basement_present || 'unknown',
     exit_signage_adequacy: moduleInstance.data.exit_signage_adequacy || 'unknown',
-    emergency_lighting_dependency: moduleInstance.data.emergency_lighting_dependency || 'unknown',
     disabled_egress_arrangements: moduleInstance.data.disabled_egress_arrangements || 'unknown',
     notes: moduleInstance.data.notes || '',
   });
@@ -472,25 +471,6 @@ export default function FRA2MeansOfEscapeForm({
               </button>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Emergency lighting dependency
-              </label>
-              <select
-                value={formData.emergency_lighting_dependency}
-                onChange={(e) =>
-                  setFormData({ ...formData, emergency_lighting_dependency: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="unknown">Unknown</option>
-                <option value="yes">Yes - emergency lighting required</option>
-                <option value="no">No - adequate borrowed light</option>
-              </select>
-              <p className="text-xs text-neutral-500 mt-1">
-                Links to FRA-3 emergency lighting assessment
-              </p>
-            </div>
           </div>
         </div>
 

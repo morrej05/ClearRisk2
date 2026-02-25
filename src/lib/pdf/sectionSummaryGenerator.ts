@@ -486,11 +486,6 @@ function extractSection11Drivers(data: Record<string, any>): string[] {
     drivers.push('No hot work permit system in place despite contractor activities');
   }
 
-  // Emergency lighting testing
-  if (data.inspection_emergency_lighting_monthly === 'no') {
-    drivers.push('Monthly emergency lighting functional tests are not being conducted');
-  }
-
   // Inspection records
   if (data.inspection_records_available === 'no') {
     drivers.push('Fire safety inspection records are not available or not maintained');
@@ -900,9 +895,6 @@ function generateSection11Summary(module: ModuleInstance, document: Document): s
 
     if (data.inspection_alarm_weekly_test === 'no' || data.inspection_alarm_weekly_test === 'unknown') {
       missingRecords.push('fire alarm testing');
-    }
-    if (data.inspection_emergency_lighting_monthly === 'no' || data.inspection_emergency_lighting_monthly === 'unknown') {
-      missingRecords.push('emergency lighting');
     }
     if (data.inspection_extinguisher_annual === 'no' || data.inspection_extinguisher_annual === 'unknown') {
       missingRecords.push('extinguisher servicing');

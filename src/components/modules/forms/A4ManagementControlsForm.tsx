@@ -58,7 +58,6 @@ export default function A4ManagementControlsForm({
     ptw_confined_space: moduleInstance.data.ptw_confined_space || 'unknown',
     ptw_other_permits: moduleInstance.data.ptw_other_permits || '',
     inspection_alarm_weekly_test: moduleInstance.data.inspection_alarm_weekly_test || 'unknown',
-    inspection_emergency_lighting_monthly: moduleInstance.data.inspection_emergency_lighting_monthly || 'unknown',
     inspection_extinguishers_annual_service: moduleInstance.data.inspection_extinguishers_annual_service || 'unknown',
     inspection_fire_doors_frequency: moduleInstance.data.inspection_fire_doors_frequency || 'unknown',
     inspection_records_available: moduleInstance.data.inspection_records_available || 'unknown',
@@ -538,23 +537,6 @@ export default function A4ManagementControlsForm({
               >
                 <option value="unknown">Unknown</option>
                 <option value="yes">Yes - documented</option>
-                <option value="no">No</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Emergency lighting monthly test?
-              </label>
-              <select
-                value={formData.inspection_emergency_lighting_monthly}
-                onChange={(e) =>
-                  setFormData({ ...formData, inspection_emergency_lighting_monthly: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="unknown">Unknown</option>
-                <option value="yes">Yes</option>
                 <option value="no">No</option>
               </select>
             </div>

@@ -822,7 +822,7 @@ if (section.id === 5) {
         const fraModuleIds = Array.from(moduleToSectionMap.keys());
         const section13Actions = actionsWithRefs.filter(a => fraModuleIds.includes(a.module_instance_id));
 
-        yPosition = drawCleanAuditSection13({
+        const section13Result = drawCleanAuditSection13({
           page: cursor.page,
           fra4Module,
           actions: section13Actions,
@@ -835,7 +835,8 @@ if (section.id === 5) {
           totalPages,
           scoringResult,
         });
-        page = cursor.page;
+        page = section13Result.page;
+        yPosition = section13Result.yPosition;
       }
     } else {
       // Use section renderer if available, otherwise fallback to generic rendering

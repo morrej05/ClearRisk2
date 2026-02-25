@@ -47,7 +47,7 @@ export const PDF_THEME = {
     divider: rgb(0.9, 0.91, 0.92),
 
     accent: {
-      fra: rgb(0.65, 0.12, 0.12),
+      fra: rgb(0.55, 0.18, 0.18),
       fsd: rgb(0.5, 0.1, 0.15),
       dsear: rgb(0.78, 0.55, 0.1),
       re: rgb(0.12, 0.29, 0.55),
@@ -72,7 +72,7 @@ export const PDF_THEME = {
     radius: 6,
     badgePadX: 6,
     badgePadY: 3,
-    headerBarH: 18,
+    headerBarH: 28,
     stripeW: 5,
   },
 } as const;

@@ -55,7 +55,7 @@ function getPriorityColor(priority: string): ReturnType<typeof rgb> {
   }
 }
 
-export function drawCleanAuditSection13(options: CleanAuditOptions): number {
+export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDFPage; yPosition: number } {
   let { page, fra4Module, actions, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, scoringResult } = options;
 
   // Build context for severity engine
@@ -522,5 +522,5 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): number {
     yPosition -= 15;
   }
 
-  return yPosition;
+  return { page, yPosition };
 }

@@ -59,11 +59,15 @@ export function drawSectionHeaderBar(args: {
   });
 
   const text = sectionNo ? `${sectionNo}   ${title}` : title;
+  const fontSize = PDF_THEME.typography.section;
+
+  // Center text vertically in the bar
+  const textYOffset = (barH - fontSize) / 2 + 2;
 
   page.drawText(text, {
     x: x + 10,
-    y: y - barH + 4,
-    size: PDF_THEME.typography.section,
+    y: y - barH + textYOffset,
+    size: fontSize,
     font: fonts.bold,
     color: rgb(1, 1, 1),
   });

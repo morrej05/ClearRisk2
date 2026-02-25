@@ -1256,18 +1256,18 @@ export async function renderSection11Management(
 
     const hasEquipmentData = hasStructuredPortable || hasLegacyPortable;
 
-    ({ page, yPosition } = ensureSpace(72, page, yPosition, pdfDoc, isDraft, totalPages));
-
-    page.drawText(`${displayNum}.4 Portable Firefighting Equipment`, {
-      x: MARGIN,
-      y: yPosition,
-      size: 12,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-    yPosition -= 20;
-
+    // Only draw header if we have equipment data
     if (hasEquipmentData) {
+      ({ page, yPosition } = ensureSpace(72, page, yPosition, pdfDoc, isDraft, totalPages));
+
+      page.drawText(`${displayNum}.4 Portable Firefighting Equipment`, {
+        x: MARGIN,
+        y: yPosition,
+        size: 12,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 20;
       // Create a filtered module that only includes portable equipment data
       const portableOnlyModule = {
         ...fra8Module,
@@ -1305,16 +1305,8 @@ export async function renderSection11Management(
         actions, // Pass actions for action-linked evidence
         actionIdToSectionId // Pass action->section map for null module_instance_id fallback
       ));
-    } else {
-      page.drawText('No portable firefighting equipment data recorded.', {
-        x: MARGIN,
-        y: yPosition,
-        size: 11,
-        font,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-      yPosition -= 20;
     }
+    // No else block - if no equipment data, skip the subsection entirely
   }
 
   return { page, yPosition };

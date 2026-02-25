@@ -26,6 +26,7 @@ import {
   getModuleKeyLabel,
 } from '../../utils/actionRegister';
 import { Button, Card } from '../../components/ui/DesignSystem';
+import { subscribeActionsVersion, getActionsVersion } from '../../lib/actions/actionsInvalidation';
 
 export default function ActionRegisterPage() {
   const { organisation } = useAuth();
@@ -39,6 +40,7 @@ export default function ActionRegisterPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [documentTitle, setDocumentTitle] = useState<string | null>(null);
+  const [actionsVersion, setActionsVersion] = useState(getActionsVersion());
 
   const [filters, setFilters] = useState({
     status: [] as string[],
@@ -51,10 +53,15 @@ export default function ActionRegisterPage() {
   });
 
   useEffect(() => {
+    const unsubscribe = subscribeActionsVersion(() => setActionsVersion(getActionsVersion()));
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     if (organisation?.id) {
       fetchData();
     }
-  }, [organisation?.id]);
+  }, [organisation?.id, actionsVersion]);
 
   useEffect(() => {
     if (documentFilter && actions.length > 0) {

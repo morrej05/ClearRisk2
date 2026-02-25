@@ -159,19 +159,22 @@ export default function FRA4SignificantFindingsForm({
     setIsSaving(true);
 
     try {
-      const payload = sanitizeModuleInstancePayload({
-        data: {
-          computed: computedSummary,
-          override: {
-            enabled: overrideEnabled,
-            outcome: overrideEnabled ? overrideOutcome : null,
-            reason: overrideEnabled ? overrideReason : null,
-          },
-          commentary: {
-            executiveCommentary,
-            limitationsAssumptions,
-          },
+      const mergedData = {
+        ...(moduleInstance.data || {}),
+        computed: computedSummary,
+        override: {
+          enabled: overrideEnabled,
+          outcome: overrideEnabled ? overrideOutcome : null,
+          reason: overrideEnabled ? overrideReason : null,
         },
+        commentary: {
+          executiveCommentary,
+          limitationsAssumptions,
+        },
+      };
+
+      const payload = sanitizeModuleInstancePayload({
+        data: mergedData,
         outcome,
         assessor_notes: assessorNotes,
         updated_at: new Date().toISOString(),

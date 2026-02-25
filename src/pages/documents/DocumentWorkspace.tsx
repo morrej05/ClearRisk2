@@ -15,6 +15,7 @@ import { JurisdictionSelector } from '../../components/JurisdictionSelector';
 import DocumentStatusBadge from '../../components/documents/DocumentStatusBadge';
 import OverallGradeWidget from '../../components/re/OverallGradeWidget';
 import ActionDetailModal from '../../components/actions/ActionDetailModal';
+import { subscribeActionsVersion, getActionsVersion } from '../../lib/actions/actionsInvalidation';
 
 interface Document {
   id: string;
@@ -200,6 +201,7 @@ export default function DocumentWorkspace() {
   const [actionScope, setActionScope] = useState<'module' | 'document'>('module');
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [isActionsPanelCollapsed, setIsActionsPanelCollapsed] = useState(false);
+  const [actionsVersion, setActionsVersion] = useState(getActionsVersion());
 
   // Guard: Check for missing document ID
   useEffect(() => {
@@ -219,10 +221,15 @@ export default function DocumentWorkspace() {
   }, [id, organisation?.id]);
 
   useEffect(() => {
+    const unsubscribe = subscribeActionsVersion(() => setActionsVersion(getActionsVersion()));
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     if (id && selectedModuleId) {
       fetchActions();
     }
-  }, [id, selectedModuleId, actionScope]);
+  }, [id, selectedModuleId, actionScope, actionsVersion]);
 
   // Validate and correct module selection to only allow visible modules
   useEffect(() => {

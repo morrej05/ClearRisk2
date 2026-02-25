@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import AddActionModal from '../actions/AddActionModal';
 import ActionDetailModal from '../actions/ActionDetailModal';
 import FeedbackModal from '../FeedbackModal';
+import { bumpActionsVersion, subscribeActionsVersion, getActionsVersion } from '../../lib/actions/actionsInvalidation';
 
 interface Action {
   id: string;
@@ -55,6 +56,7 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
   const [documentType, setDocumentType] = useState<string | null>(null);
   const [actionToDelete, setActionToDelete] = useState<string | null>(null);
   const [moduleKey, setModuleKey] = useState<string | null>(null);
+  const [actionsVersion, setActionsVersion] = useState(getActionsVersion());
 
   const [feedback, setFeedback] = useState<{
     isOpen: boolean;
@@ -71,6 +73,11 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
   });
 
   useEffect(() => {
+    const unsubscribe = subscribeActionsVersion(() => setActionsVersion(getActionsVersion()));
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     if (!isValidUUID(documentId)) {
       console.warn('ModuleActions: Invalid documentId provided:', documentId);
       setIsLoading(false);
@@ -84,7 +91,7 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
     fetchActions();
     fetchDocumentStatus();
     fetchModuleKey();
-  }, [moduleInstanceId, documentId]);
+  }, [moduleInstanceId, documentId, actionsVersion]);
 
   const fetchActions = async () => {
     if (!isValidUUID(moduleInstanceId)) {
@@ -228,6 +235,7 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
 
       if (error) throw error;
 
+      bumpActionsVersion();
       setActionToDelete(null);
       fetchActions();
 

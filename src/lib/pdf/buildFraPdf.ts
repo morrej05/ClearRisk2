@@ -815,7 +815,7 @@ if (section.id === 5) {
         yPosition = drawCleanAuditSection13({
           page: cursor.page,
           fra4Module,
-          actions,
+          actions: actionsWithRefs,
           moduleInstances,
           font,
           fontBold,

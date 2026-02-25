@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadEvidenceFile, createAttachmentRow, getSignedUrl, isValidAttachment, deleteAttachment } from '../../lib/supabase/attachments';
 import ConfirmModal from '../ConfirmModal';
+import { bumpActionsVersion } from '../../lib/actions/actionsInvalidation';
 
 interface ActionDetailModalProps {
   action: {
@@ -142,6 +143,7 @@ export default function ActionDetailModal({
 
       if (error) throw error;
 
+      bumpActionsVersion();
       onActionUpdated();
       onClose();
       alert('Action deleted successfully');
@@ -179,6 +181,7 @@ export default function ActionDetailModal({
 
       if (error) throw error;
 
+      bumpActionsVersion();
       setStatus(newStatus);
       onActionUpdated();
     } catch (error) {
@@ -213,6 +216,7 @@ export default function ActionDetailModal({
 
       if (error) throw error;
 
+      bumpActionsVersion();
       setStatus('closed');
       setShowCloseModal(false);
       setClosureNotes('');

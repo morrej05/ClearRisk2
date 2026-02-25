@@ -10,6 +10,7 @@ import {
   type FraContext,
 } from '../../lib/modules/fra/severityEngine';
 import { deriveExplosionSeverity } from '../../lib/dsear/criticalityEngine';
+import { bumpActionsVersion } from '../../lib/actions/actionsInvalidation';
 
 interface AddActionModalProps {
   documentId: string;
@@ -307,6 +308,7 @@ export default function AddActionModal({
 
       if (actionError) throw actionError;
 
+      bumpActionsVersion();
       setCreatedActionId(action.id);
       setShowAttachmentPrompt(true);
       // DO NOT call onActionCreated() here - it will be called when user finishes with attachments

@@ -254,9 +254,9 @@ function extractSection6Drivers(data: Record<string, any>): string[] {
     drivers.push('Protected stairways have inadequate fire resistance or integrity');
   }
 
-  // Disabled egress
+  // Assisted evacuation physical provisions
   if (data.disabled_egress_arrangements === 'inadequate') {
-    drivers.push('Provision for disabled persons in emergency egress is inadequate');
+    drivers.push('Physical provisions for assisted evacuation are inadequate (refuges, equipment, communications)');
   }
 
   if (drivers.length === 0) {

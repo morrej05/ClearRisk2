@@ -203,14 +203,14 @@ export const section6Rules: KeyPointRule[] = [
     evidence: (data) => [{ field: 'exit_signage_adequacy', value: safeGet(data, 'exit_signage_adequacy') }],
   },
   {
-    id: 'disabled_egress_inadequate',
+    id: 'assisted_evacuation_physical_inadequate',
     type: 'weakness',
     weight: 75,
     when: (data) => {
       const val = safeGet(data, 'disabled_egress_arrangements');
       return val === 'inadequate' || val === 'missing';
     },
-    text: (data) => 'Disabled egress arrangements require improvement',
+    text: (data) => 'Physical provisions for assisted evacuation require improvement (refuges, equipment)',
     evidence: (data) => [{ field: 'disabled_egress_arrangements', value: safeGet(data, 'disabled_egress_arrangements') }],
   },
   {

@@ -269,13 +269,16 @@ export default function A5EmergencyArrangementsForm({
                 <option value="yes">Yes - clearly marked</option>
                 <option value="no">No</option>
               </select>
+              <p className="text-xs text-neutral-500 mt-1">
+                Muster point location defined, communicated, and signposted at safe distance from building
+              </p>
             </div>
 
             {formData.assembly_points_defined === 'no' && (
               <button
                 onClick={() =>
                   handleQuickAction({
-                    action: 'Define suitable assembly point(s) at safe distance from building. Install assembly point signage and ensure location is communicated to all occupants.',
+                    action: 'Install assembly point signage & communicate muster point: define suitable muster location at safe distance, install assembly point signs, brief all occupants on location',
                     likelihood: 5,
                     impact: 3,
                   })
@@ -283,7 +286,7 @@ export default function A5EmergencyArrangementsForm({
                 className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
-                Quick Add: Define assembly points
+                Quick Add: Install assembly point signage & communicate muster point
               </button>
             )}
 
@@ -364,7 +367,7 @@ export default function A5EmergencyArrangementsForm({
                 <option value="na">N/A - no vulnerable occupants identified</option>
               </select>
               <p className="text-xs text-neutral-500 mt-1">
-                Required for persons who may need assistance during evacuation
+                Procedural requirement: identify persons needing assistance, document PEEPs, brief staff, review periodically
               </p>
             </div>
 
@@ -372,7 +375,7 @@ export default function A5EmergencyArrangementsForm({
               <button
                 onClick={() =>
                   handleQuickAction({
-                    action: 'Implement Personal Emergency Evacuation Plan (PEEP) process including identification of vulnerable persons, individual risk assessment, buddy system assignment, and documentation of assistance requirements.',
+                    action: 'Implement Personal Emergency Evacuation Plan (PEEP) process: identify vulnerable persons, conduct individual risk assessment, assign buddy system, document assistance requirements, brief staff, establish review schedule',
                     likelihood: 4,
                     impact: 5,
                   })

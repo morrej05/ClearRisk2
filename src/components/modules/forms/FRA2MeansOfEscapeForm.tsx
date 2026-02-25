@@ -437,7 +437,7 @@ export default function FRA2MeansOfEscapeForm({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Exit signage adequacy
+                Escape-route wayfinding signage adequacy
               </label>
               <select
                 value={formData.exit_signage_adequacy}
@@ -447,11 +447,11 @@ export default function FRA2MeansOfEscapeForm({
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
               >
                 <option value="unknown">Unknown</option>
-                <option value="adequate">Adequate - BS 5499 compliant</option>
-                <option value="inadequate">Inadequate - missing or poor signage</option>
+                <option value="adequate">Adequate - BS 5499 compliant exit/directional signs</option>
+                <option value="inadequate">Inadequate - missing or poor exit wayfinding</option>
               </select>
               <p className="text-xs text-neutral-500 mt-1">
-                Consider quantity, visibility, consistency, and illumination
+                Exit and directional signs guiding to final exits - quantity, visibility, consistency, illumination
               </p>
             </div>
 
@@ -459,7 +459,7 @@ export default function FRA2MeansOfEscapeForm({
               <button
                 onClick={() =>
                   handleQuickAction({
-                    action: 'Upgrade escape signage to BS 5499 standard: install additional signs at decision points, ensure consistent direction, provide illuminated or photoluminescent signs where required',
+                    action: 'Upgrade escape-route wayfinding signage to BS 5499: install exit/directional signs at decision points, ensure consistent direction, provide illuminated or photoluminescent signs where required',
                     likelihood: 3,
                     impact: 3,
                   })
@@ -467,7 +467,7 @@ export default function FRA2MeansOfEscapeForm({
                 className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
-                Quick Add: Upgrade escape signage
+                Quick Add: Upgrade escape-route wayfinding signage
               </button>
             )}
 
@@ -481,7 +481,7 @@ export default function FRA2MeansOfEscapeForm({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Disabled egress arrangements
+                Assisted evacuation physical provisions
               </label>
               <select
                 value={formData.disabled_egress_arrangements}
@@ -491,12 +491,12 @@ export default function FRA2MeansOfEscapeForm({
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
               >
                 <option value="unknown">Unknown</option>
-                <option value="adequate">Adequate - refuges/evacuation lifts/assistance</option>
-                <option value="inadequate">Inadequate - no provision</option>
+                <option value="adequate">Adequate - refuges/evacuation lifts/equipment provided</option>
+                <option value="inadequate">Inadequate - no physical provisions</option>
                 <option value="na">N/A - ground floor only / no vulnerable occupants</option>
               </select>
               <p className="text-xs text-neutral-500 mt-1">
-                Consider refuges, evacuation lifts, PEEPs, and assistance arrangements
+                Physical enablers: refuges, evacuation lifts, evacuation chairs, communication devices
               </p>
             </div>
 
@@ -505,7 +505,7 @@ export default function FRA2MeansOfEscapeForm({
               <button
                 onClick={() =>
                   handleQuickAction({
-                    action: 'Confirm evacuation assistance arrangements for persons requiring assistance: identify refuge locations, implement PEEP process, provide evacuation chairs/devices, train staff in assistance procedures',
+                    action: 'Install physical provisions for assisted evacuation: provide refuge areas with 2-way communication, evacuation chairs/devices, evacuation lift (where applicable), visual/tactile wayfinding aids',
                     likelihood: 4,
                     impact: 5,
                   })

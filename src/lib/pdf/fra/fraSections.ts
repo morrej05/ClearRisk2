@@ -1077,7 +1077,7 @@ export async function renderSection11Management(
   );
 
   if (managementSystemsModule) {
-    ({ page, yPosition } = ensureSpace(80, page, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = ensureSpace(64, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText(`${displayNum}.1 Management Systems`, {
       x: MARGIN,

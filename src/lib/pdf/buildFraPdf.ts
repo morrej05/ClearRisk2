@@ -145,7 +145,7 @@ async function renderStandardSection(
   console.log('[FRA] renderStandardSection:', section.id, '→ display:', displayNum, sectionTitle);
 
   // Ensure space for section header
-  const spaceResult = ensureSpace(80, page, yPosition, pdfDoc, isDraft, totalPages);
+  const spaceResult = ensureSpace(56, page, yPosition, pdfDoc, isDraft, totalPages);
   page = spaceResult.page;
   yPosition = spaceResult.yPosition;
 

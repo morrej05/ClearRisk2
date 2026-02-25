@@ -420,6 +420,11 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
                     <div className="text-sm text-neutral-900 max-w-lg hover:text-neutral-600 transition-colors">
                       {action.recommended_action}
                     </div>
+                    {(action.carried_from_document_id || action.origin_action_id) && (
+                      <span className="inline-flex px-1.5 py-0.5 mt-1 text-xs font-medium rounded bg-purple-100 text-purple-700">
+                        Carried forward
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                     {formatDate(action.target_date)}

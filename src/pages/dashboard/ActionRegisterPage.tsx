@@ -428,6 +428,11 @@ export default function ActionRegisterPage() {
                         }`}>
                           {action.issue_status}
                         </span>
+                        {(action.carried_from_document_id || action.origin_action_id) && (
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                            Carried forward
+                          </span>
+                        )}
                       </div>
                       {action.module_key && (
                         <div className="text-xs text-neutral-500 mt-0.5">

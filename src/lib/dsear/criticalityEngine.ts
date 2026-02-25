@@ -30,23 +30,64 @@ interface ModuleInstance {
   data: Record<string, any>;
 }
 
+/**
+ * Normalize DSEAR module keys to canonical forms.
+ * Handles various aliases and legacy naming conventions.
+ */
+function normalizeDsearModuleKey(key: string): string {
+  const k = String(key || '').trim();
+
+  const map: Record<string, string> = {
+    // Substances
+    'DSEAR_1_DANGEROUS_SUBSTANCES': 'DSEAR_1_SUBSTANCES',
+    'DSEAR_1_SUBSTANCES_REGISTER': 'DSEAR_1_SUBSTANCES',
+
+    // HAC / zoning
+    'DSEAR_3_HAZARDOUS_AREA_CLASSIFICATION': 'DSEAR_3_HAC',
+    'DSEAR_3_HAC_ZONING': 'DSEAR_3_HAC',
+
+    // Mitigation / explosion protection
+    'DSEAR_5_MITIGATION': 'DSEAR_5_EXPLOSION_PROTECTION',
+
+    // Risk table
+    'DSEAR_6_RISK_TABLE': 'DSEAR_6_RISK_ASSESSMENT',
+
+    // Hierarchy of control
+    'DSEAR_10_HIERARCHY_OF_CONTROL': 'DSEAR_10_HIERARCHY_CONTROL',
+    'DSEAR_10_HIERARCHY_SUBSTITUTION': 'DSEAR_10_HIERARCHY_CONTROL',
+  };
+
+  return map[k] || k;
+}
+
+/**
+ * Normalize an array of module instances to use canonical module keys.
+ */
+function normalizeDsearModules(modules: ModuleInstance[]): ModuleInstance[] {
+  return modules.map(m => ({
+    ...m,
+    module_key: normalizeDsearModuleKey(m.module_key)
+  }));
+}
+
 export function computeExplosionSummary(context: {
   modules: ModuleInstance[];
 }): ExplosionSummary {
-  const { modules } = context;
+  // Normalize module keys to handle aliases and legacy naming
+  const normalized = normalizeDsearModules(context.modules);
   const flags: ExplosionFlag[] = [];
 
-  const dsear1 = modules.find((m) => m.module_key === 'DSEAR_1_SUBSTANCES');
-  const dsear2 = modules.find((m) => m.module_key === 'DSEAR_2_PROCESS_RELEASES');
-  const dsear3 = modules.find((m) => m.module_key === 'DSEAR_3_HAC');
-  const dsear4 = modules.find((m) => m.module_key === 'DSEAR_4_IGNITION_SOURCES');
-  const dsear5 = modules.find((m) => m.module_key === 'DSEAR_5_EXPLOSION_PROTECTION');
-  const dsear6 = modules.find((m) => m.module_key === 'DSEAR_6_RISK_ASSESSMENT');
-  const dsear10 = modules.find((m) => m.module_key === 'DSEAR_10_HIERARCHY_CONTROL');
+  const dsear1 = normalized.find((m) => m.module_key === 'DSEAR_1_SUBSTANCES');
+  const dsear2 = normalized.find((m) => m.module_key === 'DSEAR_2_PROCESS_RELEASES');
+  const dsear3 = normalized.find((m) => m.module_key === 'DSEAR_3_HAC');
+  const dsear4 = normalized.find((m) => m.module_key === 'DSEAR_4_IGNITION_SOURCES');
+  const dsear5 = normalized.find((m) => m.module_key === 'DSEAR_5_EXPLOSION_PROTECTION');
+  const dsear6 = normalized.find((m) => m.module_key === 'DSEAR_6_RISK_ASSESSMENT');
+  const dsear10 = normalized.find((m) => m.module_key === 'DSEAR_10_HIERARCHY_CONTROL');
 
   checkCriticalTriggers(flags, dsear1, dsear2, dsear3, dsear4, dsear5);
-  checkHighTriggers(flags, dsear2, dsear4, dsear6, modules);
-  checkModerateTriggers(flags, modules);
+  checkHighTriggers(flags, dsear2, dsear4, dsear6, normalized);
+  checkModerateTriggers(flags, normalized);
 
   flags.sort((a, b) => {
     const levelOrder: Record<string, number> = {
@@ -382,19 +423,20 @@ function determineOverallCriticality(
 export function deriveExplosionSeverity(context: {
   modules: ModuleInstance[];
 }): ExplosionSeverityResult {
-  const { modules } = context;
+  // Normalize module keys to handle aliases and legacy naming
+  const normalized = normalizeDsearModules(context.modules);
   const flags: ExplosionFlag[] = [];
 
-  const dsear1 = modules.find((m) => m.module_key === 'DSEAR_1_SUBSTANCES');
-  const dsear2 = modules.find((m) => m.module_key === 'DSEAR_2_PROCESS_RELEASES');
-  const dsear3 = modules.find((m) => m.module_key === 'DSEAR_3_HAC');
-  const dsear4 = modules.find((m) => m.module_key === 'DSEAR_4_IGNITION_SOURCES');
-  const dsear5 = modules.find((m) => m.module_key === 'DSEAR_5_EXPLOSION_PROTECTION');
-  const dsear6 = modules.find((m) => m.module_key === 'DSEAR_6_RISK_ASSESSMENT');
+  const dsear1 = normalized.find((m) => m.module_key === 'DSEAR_1_SUBSTANCES');
+  const dsear2 = normalized.find((m) => m.module_key === 'DSEAR_2_PROCESS_RELEASES');
+  const dsear3 = normalized.find((m) => m.module_key === 'DSEAR_3_HAC');
+  const dsear4 = normalized.find((m) => m.module_key === 'DSEAR_4_IGNITION_SOURCES');
+  const dsear5 = normalized.find((m) => m.module_key === 'DSEAR_5_EXPLOSION_PROTECTION');
+  const dsear6 = normalized.find((m) => m.module_key === 'DSEAR_6_RISK_ASSESSMENT');
 
   checkCriticalTriggers(flags, dsear1, dsear2, dsear3, dsear4, dsear5);
-  checkHighTriggers(flags, dsear2, dsear4, dsear6, modules);
-  checkModerateTriggers(flags, modules);
+  checkHighTriggers(flags, dsear2, dsear4, dsear6, normalized);
+  checkModerateTriggers(flags, normalized);
 
   flags.sort((a, b) => {
     const levelOrder: Record<string, number> = {

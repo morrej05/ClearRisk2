@@ -169,8 +169,8 @@ export default function DocumentOverview() {
         const modulesForEngine = modules.map(m => ({
           module_key: m.module_key,
           outcome: m.outcome,
-          assessor_notes: '',
-          data: {},
+          assessor_notes: m.assessor_notes || '',
+          data: m.data || {},
         }));
 
         const summary = computeExplosionSummary({ modules: modulesForEngine });

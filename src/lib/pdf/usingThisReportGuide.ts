@@ -13,6 +13,7 @@ import {
   CONTENT_WIDTH,
   wrapText,
   addNewPage,
+  sanitizePdfText,
 } from './pdfUtils';
 
 /**
@@ -31,7 +32,7 @@ export function drawUsingThisReportSection(
   let yPosition = PAGE_HEIGHT - MARGIN - 20;
 
   // Section title
-  page.drawText('Using This Report', {
+  page.drawText(sanitizePdfText('Using This Report'), {
     x: MARGIN,
     y: yPosition,
     size: 16,
@@ -59,7 +60,7 @@ export function drawUsingThisReportSection(
   yPosition -= 10;
 
   // Subsection 1: Report Structure
-  page.drawText('Report Structure', {
+  page.drawText(sanitizePdfText('Report Structure'), {
     x: MARGIN,
     y: yPosition,
     size: 12,
@@ -86,7 +87,7 @@ export function drawUsingThisReportSection(
 
   for (const item of structureItems) {
     // Draw label in bold
-    page.drawText(item.label, {
+    page.drawText(sanitizePdfText(item.label), {
       x: MARGIN + 10,
       y: yPosition,
       size: 10,
@@ -96,7 +97,7 @@ export function drawUsingThisReportSection(
 
     yPosition -= 14;
 
-    // Draw wrapped description
+    // Draw wrapped description (wrapText already sanitizes)
     const descLines = wrapText(item.text, CONTENT_WIDTH - 20, 10, font);
     for (const line of descLines) {
       page.drawText(line, {
@@ -115,7 +116,7 @@ export function drawUsingThisReportSection(
   yPosition -= 10;
 
   // Subsection 2: Priority Bands
-  page.drawText('Priority Bands', {
+  page.drawText(sanitizePdfText('Priority Bands'), {
     x: MARGIN,
     y: yPosition,
     size: 12,
@@ -145,8 +146,8 @@ export function drawUsingThisReportSection(
   ];
 
   for (const item of priorityItems) {
-    // Draw label in bold
-    page.drawText(item.label, {
+    // Draw label in bold (sanitize to convert → to ->)
+    page.drawText(sanitizePdfText(item.label), {
       x: MARGIN + 10,
       y: yPosition,
       size: 10,
@@ -156,7 +157,7 @@ export function drawUsingThisReportSection(
 
     yPosition -= 14;
 
-    // Draw wrapped description
+    // Draw wrapped description (wrapText already sanitizes)
     const descLines = wrapText(item.text, CONTENT_WIDTH - 20, 10, font);
     for (const line of descLines) {
       page.drawText(line, {
@@ -175,7 +176,7 @@ export function drawUsingThisReportSection(
   yPosition -= 10;
 
   // Subsection 3: Key Information Blocks
-  page.drawText('Key Information Blocks', {
+  page.drawText(sanitizePdfText('Key Information Blocks'), {
     x: MARGIN,
     y: yPosition,
     size: 12,
@@ -202,7 +203,7 @@ export function drawUsingThisReportSection(
 
   for (const item of infoBlocks) {
     // Draw label in bold
-    page.drawText(item.label, {
+    page.drawText(sanitizePdfText(item.label), {
       x: MARGIN + 10,
       y: yPosition,
       size: 10,
@@ -212,7 +213,7 @@ export function drawUsingThisReportSection(
 
     yPosition -= 14;
 
-    // Draw wrapped description
+    // Draw wrapped description (wrapText already sanitizes)
     const descLines = wrapText(item.text, CONTENT_WIDTH - 20, 10, font);
     for (const line of descLines) {
       page.drawText(line, {
@@ -231,7 +232,7 @@ export function drawUsingThisReportSection(
   yPosition -= 10;
 
   // Subsection 4: Recommended Actions
-  page.drawText('Recommended Actions', {
+  page.drawText(sanitizePdfText('Recommended Actions'), {
     x: MARGIN,
     y: yPosition,
     size: 12,
@@ -288,7 +289,7 @@ export function drawAssuranceGapsBlock(
   if (gaps.length === 0) return yPosition;
 
   // Title
-  page.drawText('Assurance Gaps', {
+  page.drawText(sanitizePdfText('Assurance Gaps'), {
     x: MARGIN,
     y: yPosition,
     size: 11,
@@ -301,7 +302,7 @@ export function drawAssuranceGapsBlock(
   // Draw up to 2 gaps as bullets
   for (const gap of gaps.slice(0, 2)) {
     // Bullet
-    page.drawText('•', {
+    page.drawText(sanitizePdfText('•'), {
       x: MARGIN + 5,
       y: yPosition,
       size: 10,
@@ -309,7 +310,7 @@ export function drawAssuranceGapsBlock(
       color: rgb(0.3, 0.3, 0.3),
     });
 
-    // Wrap gap text
+    // Wrap gap text (wrapText already sanitizes)
     const gapLines = wrapText(gap, CONTENT_WIDTH - 20, 10, font);
     for (let i = 0; i < gapLines.length; i++) {
       page.drawText(gapLines[i], {

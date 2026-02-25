@@ -34,7 +34,10 @@ export function sanitizePdfText(input: unknown): string {
     .replace(/¢/g, 'c')
     .replace(/™/g, '(TM)')
     .replace(/®/g, '(R)')
-    .replace(/©/g, '(C)');
+    .replace(/©/g, '(C)')
+    .replace(/→/g, '->')
+    .replace(/←/g, '<-')
+    .replace(/⇒/g, '=>');
 
   sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
 

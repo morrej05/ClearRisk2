@@ -99,10 +99,6 @@ export default function FRA1FireHazardsForm({
       eicr_notes: '',
       pat_in_place: 'unknown',
     },
-    hot_work_context: moduleInstance.data.hot_work_context || {
-      typical_frequency: null,
-      notes: '',
-    },
     lightning: moduleInstance.data.lightning || {
       lightning_protection_present: null,
       lightning_risk_assessment_completed: null,
@@ -811,63 +807,6 @@ export default function FRA1FireHazardsForm({
                 </button>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h3 className="text-lg font-bold text-neutral-900 mb-4">
-            Hot Work (Ignition Source Context)
-          </h3>
-          <p className="text-sm text-neutral-600 mb-4">
-            Basic context about hot work as an ignition source (detailed controls captured in Management Systems)
-          </p>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Typical frequency of hot work
-              </label>
-              <select
-                value={formData.hot_work_context.typical_frequency || ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    hot_work_context: {
-                      ...formData.hot_work_context,
-                      typical_frequency: e.target.value || null,
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              >
-                <option value="">Not stated</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="rare">Rare / Ad-hoc</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Hot work context notes
-              </label>
-              <textarea
-                value={formData.hot_work_context.notes}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    hot_work_context: {
-                      ...formData.hot_work_context,
-                      notes: e.target.value,
-                    },
-                  })
-                }
-                placeholder="Brief context about hot work activities and ignition risk (e.g., 'Welding in workshop', 'Occasional contractors')"
-                rows={2}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent resize-none"
-              />
-            </div>
           </div>
         </div>
 

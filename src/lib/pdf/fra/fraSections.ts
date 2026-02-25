@@ -780,14 +780,10 @@ if (d.electrical_safety && typeof d.electrical_safety === 'object') {
   }
 }
 
-  // Group 6: Hot work context, Lightning, Duct cleaning, DSEAR (screening)
-  const hotWorkContext = d.hot_work_context || {};
+  // Group 6: Lightning, Duct cleaning, DSEAR (screening)
   const lightning = d.lightning || {};
   const ductCleaning = d.duct_cleaning || {};
   const dsearScreen = d.dsear_screen || {};
-
-  const hwFreq = norm(hotWorkContext.typical_frequency);
-  const hwNotes = norm(hotWorkContext.notes);
 
   const lnProtection = norm(lightning.lightning_protection_present);
   const lnAssessment = norm(lightning.lightning_risk_assessment_completed);
@@ -806,18 +802,12 @@ if (d.electrical_safety && typeof d.electrical_safety === 'object') {
   const dsAssessor = norm(dsearScreen.assessor);
   const dsNotes = norm(dsearScreen.notes);
 
-  const hasHotWorkData = hwFreq || hwNotes;
   const hasLightningData = lnProtection || lnAssessment || lnDate || lnNotes;
   const hasDuctData = ductPresent || ductRisk || ductFreq || ductLast || ductNotes;
   const hasDsearData = dsFlam || dsAtmos || dsStatus || dsAssessor || dsNotes;
 
-  if (hasHotWorkData || hasLightningData || hasDuctData || hasDsearData) {
-    drawSubhead('Hot work context, lightning, duct cleaning, DSEAR (screening)');
-
-    if (hasHotWorkData) {
-      if (hwFreq) drawFact('Hot work frequency', titleCase(hwFreq));
-      if (hwNotes) drawFact('Hot work context', hwNotes);
-    }
+  if (hasLightningData || hasDuctData || hasDsearData) {
+    drawSubhead('Lightning, duct cleaning, DSEAR (screening)');
 
     if (hasLightningData) {
       if (lnProtection) drawFact('Lightning protection present', titleCase(lnProtection));

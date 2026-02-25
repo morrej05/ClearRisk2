@@ -219,11 +219,16 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   }
 
   // SECTION 8+: Module Sections
+  const MODULE_HEADER_KEEP = 56;
+  const MIN_MODULE_BODY = 56;
   const sortedModules = sortModules(moduleInstances);
   for (const module of sortedModules) {
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    // Conditional page: ensure header + minimal body fit, only create new page if needed
+    if (yPosition < MARGIN + MODULE_HEADER_KEEP + MIN_MODULE_BODY) {
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_HEIGHT - MARGIN;
+    }
     yPosition = drawModuleSection(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 

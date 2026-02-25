@@ -609,10 +609,12 @@ drawTableOfContents(page, font, fontBold);
     }
   }
 
-  // Guaranteed fresh page before section rendering (prevents undefined page errors)
-  const sectionStartResult = addNewPage(pdfDoc, isDraft, totalPages);
-  page = sectionStartResult.page;
-  yPosition = PAGE_TOP_Y;
+  // Conditional page: only create if we don't have one yet
+  if (!page) {
+    const sectionStartResult = addNewPage(pdfDoc, isDraft, totalPages);
+    page = sectionStartResult.page;
+    yPosition = PAGE_TOP_Y;
+  }
 
   // Section renderer map for explicit delegation
   const SECTION_RENDERERS: Record<number, (cursor: Cursor, modules: ModuleInstance[], doc: Document, f: any, fb: any, pdf: PDFDocument, draft: boolean, pages: PDFPage[], att?: any, eMap?: any, mInst?: ModuleInstance[], acts?: Action[], actToSec?: Map<string, number>) => Promise<Cursor> | Cursor> = {
@@ -666,22 +668,25 @@ drawTableOfContents(page, font, fontBold);
       }));
 
     let keyPoints: string[] = [];
-    // Hard page breaks only for sections 13 and 14
-    const needsHardPageBreak = section.id === 13 || section.id === 14;
-    if (needsHardPageBreak) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
+    // Keep-with-next for sections 13 and 14 (no forced breaks, just ensure header+body fit)
+    const SECTION_HEADER_KEEP = 56;
+    const MIN_SECTION_BODY = 56;
+    const needsKeepWithNext = section.id === 13 || section.id === 14;
+
+    if (needsKeepWithNext) {
+      // Ensure header + minimal body fit together
+      const spaceResult = ensureSpace(SECTION_HEADER_KEEP + MIN_SECTION_BODY, page, yPosition, pdfDoc, isDraft, totalPages);
+      page = spaceResult.page;
+      yPosition = spaceResult.yPosition;
     } else {
-      // Flowing layout: ensure space for section header + summary
+      // Flowing layout: ensure space for section header + summary with keep-with-next
       const isTechnical = section.id >= 5 && section.id <= 12;
       let requiredHeight = isTechnical
         ? PDF_STYLES.blocks.sectionHeaderWithSummary
         : PDF_STYLES.blocks.sectionHeader;
 
-      // Tighten blank-page threshold before Section 13 (which forces a hard page break)
-      // This prevents nearly-empty trailing pages before the significant findings section
-      const required = (section.id === 11 || section.id === 12) ? 180 : requiredHeight;
+      // Apply keep-with-next: header must stay with at least one line of content
+      const required = Math.max(requiredHeight, SECTION_HEADER_KEEP + MIN_SECTION_BODY);
 
       const spaceResult = ensureSpace(required, page, yPosition, pdfDoc, isDraft, totalPages);
       page = spaceResult.page;
@@ -871,7 +876,7 @@ if (section.id === 5) {
   // Render low-density sections in compact format
   if (lowDensitySections.length > 0) {
     // Ensure space for compact section header
-    const spaceResult = ensureSpace(100, page, yPosition, pdfDoc, isDraft, totalPages);
+    const spaceResult = ensureSpace(64, page, yPosition, pdfDoc, isDraft, totalPages);
     page = spaceResult.page;
     yPosition = spaceResult.yPosition;
 

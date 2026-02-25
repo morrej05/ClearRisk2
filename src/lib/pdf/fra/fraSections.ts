@@ -881,7 +881,7 @@ export async function renderSection7Detection(
   const section = FRA_REPORT_STRUCTURE.find(s => s.id === 7);
   const sectionTitle = section ? `${displayNum}. ${section.title}` : '7. Fire Detection, Alarm & Emergency Lighting';
 
-  ({ page, yPosition } = ensureSpace(80, page, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = ensureSpace(56, page, yPosition, pdfDoc, isDraft, totalPages));
   yPosition -= 20;
   page.drawText(sanitizePdfText(sectionTitle), {
     x: MARGIN,
@@ -981,7 +981,7 @@ export async function renderSection10Suppression(
   const section = FRA_REPORT_STRUCTURE.find(s => s.id === 10);
   const sectionTitle = section ? `${displayNum}. ${section.title}` : '9. Fixed Suppression Systems & Firefighting Facilities';
 
-  ({ page, yPosition } = ensureSpace(80, page, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = ensureSpace(56, page, yPosition, pdfDoc, isDraft, totalPages));
   yPosition -= 20;
   page.drawText(sanitizePdfText(sectionTitle), {
     x: MARGIN,
@@ -1060,7 +1060,7 @@ export async function renderSection11Management(
   const section = FRA_REPORT_STRUCTURE.find(s => s.id === 11);
   const sectionTitle = section ? `${displayNum}. ${section.title}` : '10. Fire Safety Management & Procedures';
 
-  ({ page, yPosition } = ensureSpace(80, page, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = ensureSpace(56, page, yPosition, pdfDoc, isDraft, totalPages));
   yPosition -= 20;
   page.drawText(sanitizePdfText(sectionTitle), {
     x: MARGIN,
@@ -1169,7 +1169,7 @@ export async function renderSection11Management(
   );
 
   if (emergencyArrangementsModule) {
-    ({ page, yPosition } = ensureSpace(100, page, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = ensureSpace(64, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText(`${displayNum}.2 Emergency Arrangements`, {
       x: MARGIN,
@@ -1206,7 +1206,7 @@ export async function renderSection11Management(
   const reviewAssuranceModule = sectionModules.find((m) => m.module_key === 'A7_REVIEW_ASSURANCE');
 
   if (reviewAssuranceModule) {
-    ({ page, yPosition } = ensureSpace(100, page, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = ensureSpace(64, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText(`${displayNum}.3 Review & Assurance`, {
       x: MARGIN,
@@ -1256,7 +1256,7 @@ export async function renderSection11Management(
 
     const hasEquipmentData = hasStructuredPortable || hasLegacyPortable;
 
-    ({ page, yPosition } = ensureSpace(120, page, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = ensureSpace(72, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText(`${displayNum}.4 Portable Firefighting Equipment`, {
       x: MARGIN,

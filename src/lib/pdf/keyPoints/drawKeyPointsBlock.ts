@@ -61,7 +61,13 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
     // strip common bullets including weird PDF substitutions
     .replace(/^([•\u2022\u25CF\u25A0\u25AA\-\*\u00B7]+)\s+/, '');
 
+  // Early return: don't reserve space or draw heading if no points
   if (!keyPoints?.length) return { page, yPosition };
+
+  // Filter out empty points
+  const validPoints = keyPoints.filter(p => normalizePoint(String(p ?? '')));
+  if (!validPoints.length) return { page, yPosition };
+
   // Typography + spacing constants (tuned for compact, premium feel)
   const headingSize = 10.5;
   const bulletSize = 10;
@@ -74,8 +80,8 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
   const textIndentX = MARGIN + 26;
   const maxWidth = CONTENT_WIDTH - (textIndentX - MARGIN);
 
-  // Ensure space for heading + at least 1–2 lines of bullets
-  ({ page, yPosition } = ensureSpace(55, page, yPosition, pdfDoc, isDraft, totalPages));
+  // Ensure space for heading + at least 1 line of bullet
+  ({ page, yPosition } = ensureSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
 
   // Top gap (small, consistent with other blocks)
   yPosition -= blockTopGap;
@@ -92,7 +98,7 @@ export function drawKeyPointsBlock(input: DrawKeyPointsBlockInput): DrawKeyPoint
   yPosition -= headingGap;
 
   // Bullets
-  for (const rawPoint of keyPoints) {
+  for (const rawPoint of validPoints) {
         const point = normalizePoint(String(rawPoint ?? ''));
 if (!point) continue;
 

@@ -36,7 +36,6 @@ interface QuickActionTemplate {
 
 const IGNITION_OPTIONS = [
   'smoking',
-  'hot_work',
   'electrical_equipment',
   'cooking',
   'portable_heaters',
@@ -57,7 +56,6 @@ const FUEL_OPTIONS = [
 ];
 
 const HIGH_RISK_ACTIVITIES = [
-  'hot_work',
   'lithium_ion_charging',
   'commercial_kitchens',
   'laundry_operations',
@@ -78,13 +76,13 @@ export default function FRA1FireHazardsForm({
   const actionsRefreshKey = getActionsRefreshKey(document.id, moduleInstance.id);
 
   const [formData, setFormData] = useState({
-    ignition_sources: moduleInstance.data.ignition_sources || [],
+    ignition_sources: (moduleInstance.data.ignition_sources || []).filter((x: string) => x !== 'hot_work'),
     ignition_other: moduleInstance.data.ignition_other || '',
     fuel_sources: moduleInstance.data.fuel_sources || [],
     fuel_other: moduleInstance.data.fuel_other || '',
     oxygen_enrichment: moduleInstance.data.oxygen_enrichment || 'none',
     oxygen_sources_notes: moduleInstance.data.oxygen_sources_notes || '',
-    high_risk_activities: moduleInstance.data.high_risk_activities || [],
+    high_risk_activities: (moduleInstance.data.high_risk_activities || []).filter((x: string) => x !== 'hot_work'),
     high_risk_other: moduleInstance.data.high_risk_other || '',
     arson_risk: moduleInstance.data.arson_risk || 'unknown',
     housekeeping_fire_load: moduleInstance.data.housekeeping_fire_load || 'unknown',
@@ -165,7 +163,6 @@ export default function FRA1FireHazardsForm({
 
     const issues = [
       formData.ignition_sources.includes('smoking') && 'Smoking controls needed',
-      formData.ignition_sources.includes('hot_work') && 'Hot work controls needed',
       formData.housekeeping_fire_load === 'high' && 'High fire load',
       formData.arson_risk === 'medium' && 'Moderate arson risk',
     ].filter(Boolean);
@@ -318,23 +315,20 @@ export default function FRA1FireHazardsForm({
             </div>
           )}
 
-          {(formData.ignition_sources.includes('smoking') ||
-            formData.ignition_sources.includes('hot_work')) && (
+          {formData.ignition_sources.includes('smoking') && (
             <div className="mt-4 pt-4 border-t border-neutral-200">
               <button
                 onClick={() =>
                   handleQuickAction({
-                    action: formData.ignition_sources.includes('hot_work')
-                      ? 'Strengthen ignition controls: implement hot work permit-to-work system with fire watch requirements, clearances, and extinguisher provision. Review smoking controls and ensure designated areas are away from combustibles.'
-                      : 'Strengthen smoking controls: designate smoking areas away from combustibles, provide cigarette bins, enforce no-smoking policy in high-risk areas, and ensure staff are briefed.',
-                    likelihood: formData.ignition_sources.includes('hot_work') ? 5 : 4,
+                    action: 'Strengthen smoking controls: designate smoking areas away from combustibles, provide cigarette bins, enforce no-smoking policy in high-risk areas, and ensure staff are briefed.',
+                    likelihood: 4,
                     impact: 4,
                   })
                 }
                 className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
-                Quick Add: Strengthen ignition controls
+                Quick Add: Strengthen smoking controls
               </button>
             </div>
           )}

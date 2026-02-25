@@ -685,9 +685,9 @@ export function renderSection5FireHazards(
   // Small divider after outcome/key points area
   drawLine();
 
-  const ignition = list(d.ignition_sources, d.ignition_other);
+  const ignition = list(d.ignition_sources, d.ignition_other).filter((x: string) => x !== 'hot_work');
   const fuels = list(d.fuel_sources, d.fuel_other);
-  const highRisk = list(d.high_risk_activities, d.high_risk_other);
+  const highRisk = list(d.high_risk_activities, d.high_risk_other).filter((x: string) => x !== 'hot_work');
 
   // Group 1: Sources
   if (ignition.length || fuels.length) {

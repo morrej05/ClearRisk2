@@ -258,14 +258,20 @@ export function drawModuleKeyDetails(
 
     case 'FRA_1_HAZARDS':
       if (data.ignition_sources && safeArray(data.ignition_sources).length > 0) {
-        keyDetails.push(['Ignition Sources', safeArray(data.ignition_sources).join(', ')]);
+        const ignitionFiltered = safeArray(data.ignition_sources).filter((x: string) => x !== 'hot_work');
+        if (ignitionFiltered.length > 0) {
+          keyDetails.push(['Ignition Sources', ignitionFiltered.join(', ')]);
+        }
       }
       if (data.fuel_sources && safeArray(data.fuel_sources).length > 0) {
         keyDetails.push(['Fuel Sources', safeArray(data.fuel_sources).join(', ')]);
       }
       if (data.oxygen_enrichment) keyDetails.push(['Oxygen Enrichment', data.oxygen_enrichment]);
       if (data.high_risk_activities && safeArray(data.high_risk_activities).length > 0) {
-        keyDetails.push(['High-Risk Activities', safeArray(data.high_risk_activities).join(', ')]);
+        const activitiesFiltered = safeArray(data.high_risk_activities).filter((x: string) => x !== 'hot_work');
+        if (activitiesFiltered.length > 0) {
+          keyDetails.push(['High-Risk Activities', activitiesFiltered.join(', ')]);
+        }
       }
       if (data.arson_risk) keyDetails.push(['Arson Risk', data.arson_risk]);
       if (data.housekeeping_fire_load) keyDetails.push(['Housekeeping Fire Load', data.housekeeping_fire_load]);

@@ -63,7 +63,7 @@ export default function A3PersonsAtRiskForm({
     if (formData.evacuation_assistance_required === 'yes' && formData.peeps_dependency !== 'yes') {
       return {
         outcome: 'material_def',
-        reason: 'Evacuation assistance required but PEEP process not confirmed',
+        reason: 'Evacuation assistance required but PEEPs not confirmed as documented',
       };
     }
 
@@ -401,7 +401,7 @@ export default function A3PersonsAtRiskForm({
               <button
                 onClick={() =>
                   handleQuickAction({
-                    action: 'Implement/confirm PEEP process for those requiring assistance and align to evacuation strategy.',
+                    action: 'Confirm PEEPs are documented for all persons requiring assistance and align to evacuation strategy.',
                     likelihood: 4,
                     impact: 5,
                   })
@@ -409,7 +409,7 @@ export default function A3PersonsAtRiskForm({
                 className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
-                Quick Add: Implement PEEP process (Critical)
+                Quick Add: Confirm PEEPs documented (Critical)
               </button>
             )}
           </div>

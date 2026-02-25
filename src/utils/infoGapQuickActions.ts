@@ -99,7 +99,7 @@ export function detectInfoGaps(
       if (moduleData.peeps_in_place === 'unknown' || !moduleData.peeps_in_place) {
         reasons.push('PEEPs status unknown');
         quickActions.push({
-          action: 'Confirm PEEP process and records for persons requiring assistance; implement where absent.',
+          action: 'Confirm PEEPs exist, are documented for those needing assistance, and records are available.',
           reason: 'Legal duty to ensure all persons can evacuate safely',
           priority: 'P2',
           defaultLikelihood: 4,

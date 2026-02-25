@@ -244,7 +244,6 @@ export function drawModuleKeyDetails(
         if (data.review.siteInspection === 'yes') checklist.push('Site inspection completed');
         if (data.review.photos === 'yes') checklist.push('Photos taken');
         if (data.review.alarmEvidence === 'yes') checklist.push('Alarm test evidence reviewed');
-        if (data.review.elEvidence === 'yes') checklist.push('EL test evidence reviewed');
         if (data.review.drillEvidence === 'yes') checklist.push('Drill evidence reviewed');
         if (data.review.maintenanceLogs === 'yes') checklist.push('Maintenance logs reviewed');
         if (data.review.rpInterview === 'yes') checklist.push('RP interview completed');
@@ -347,8 +346,6 @@ export function drawModuleKeyDetails(
         if (data.alarm_testing_evidence) keyDetails.push(['Alarm Testing Evidence', data.alarm_testing_evidence]);
         if (data.testing_maintenance) keyDetails.push(['Testing / Maintenance', data.testing_maintenance]);
         if (data.last_service_date) keyDetails.push(['Last Service Date', data.last_service_date]);
-        if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
-        if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
         if (data.notes) keyDetails.push(['Notes', data.notes]);
       }
       break;

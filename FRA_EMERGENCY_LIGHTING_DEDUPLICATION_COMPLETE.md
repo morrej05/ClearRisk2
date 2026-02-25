@@ -581,3 +581,272 @@ February 25, 2026
 **Impact:** Simplified forms, clearer structure, single source of truth
 **Risk:** None (legacy data ignored, no corruption, fully backwards compatible)
 **Benefit:** Professional report structure, reduced confusion, better UX, clear section ownership, no narrative duplication
+
+---
+
+# PHASE 2: PDF DE-DUPLICATION COMPLETE
+
+## Additional PDF Changes
+
+### PART 10: Removed elEvidence from A7 Review Checklist (PDF)
+
+**File:** `src/lib/pdf/fra/fraCoreDraw.ts`
+
+**Line 247:** Removed from A7_REVIEW_ASSURANCE checklist
+
+**Before:**
+```typescript
+case 'A7_REVIEW_ASSURANCE':
+  if (data.review) {
+    const checklist = [];
+    if (data.review.peerReview === 'yes') checklist.push('Peer review completed');
+    if (data.review.siteInspection === 'yes') checklist.push('Site inspection completed');
+    if (data.review.photos === 'yes') checklist.push('Photos taken');
+    if (data.review.alarmEvidence === 'yes') checklist.push('Alarm test evidence reviewed');
+    if (data.review.elEvidence === 'yes') checklist.push('EL test evidence reviewed');
+    if (data.review.drillEvidence === 'yes') checklist.push('Drill evidence reviewed');
+    if (data.review.maintenanceLogs === 'yes') checklist.push('Maintenance logs reviewed');
+    if (data.review.rpInterview === 'yes') checklist.push('RP interview completed');
+    if (checklist.length > 0) {
+      keyDetails.push(['Review Activities', checklist.join('; ')]);
+    }
+  }
+```
+
+**After:**
+```typescript
+case 'A7_REVIEW_ASSURANCE':
+  if (data.review) {
+    const checklist = [];
+    if (data.review.peerReview === 'yes') checklist.push('Peer review completed');
+    if (data.review.siteInspection === 'yes') checklist.push('Site inspection completed');
+    if (data.review.photos === 'yes') checklist.push('Photos taken');
+    if (data.review.alarmEvidence === 'yes') checklist.push('Alarm test evidence reviewed');
+    if (data.review.drillEvidence === 'yes') checklist.push('Drill evidence reviewed');
+    if (data.review.maintenanceLogs === 'yes') checklist.push('Maintenance logs reviewed');
+    if (data.review.rpInterview === 'yes') checklist.push('RP interview completed');
+    if (checklist.length > 0) {
+      keyDetails.push(['Review Activities', checklist.join('; ')]);
+    }
+  }
+```
+
+**Result:**
+- A7 review checklist in PDF no longer includes "EL test evidence reviewed"
+- Review activities focused on policy, training, alarm testing
+- No emergency lighting mention in Section 13
+
+### PART 11: Removed EL from FRA_3 Fallback Branch (PDF)
+
+**File:** `src/lib/pdf/fra/fraCoreDraw.ts`
+
+**Lines 349-350:** Removed from fallback/legacy rendering branch
+
+**Before:**
+```typescript
+case 'FRA_3_ACTIVE_SYSTEMS':
+  if (sectionId === 7) {
+    // Emergency Lighting
+    if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
+    if (data.emergency_lighting_testing_evidence) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing_evidence]);
+    if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
+  } else {
+    // Legacy/fallback rendering for other sections
+    if (data.alarm_present) keyDetails.push(['Alarm Present', data.alarm_present]);
+    // ... other fields ...
+    if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
+    if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
+  }
+```
+
+**After:**
+```typescript
+case 'FRA_3_ACTIVE_SYSTEMS':
+  if (sectionId === 7) {
+    // Emergency Lighting
+    if (data.emergency_lighting_present) keyDetails.push(['Emergency Lighting Present', data.emergency_lighting_present]);
+    if (data.emergency_lighting_testing_evidence) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing_evidence]);
+    if (data.emergency_lighting_testing) keyDetails.push(['Emergency Lighting Testing', data.emergency_lighting_testing]);
+  } else {
+    // Legacy/fallback rendering for other sections
+    if (data.alarm_present) keyDetails.push(['Alarm Present', data.alarm_present]);
+    // ... other fields ...
+    // Emergency lighting fields REMOVED from fallback branch
+  }
+```
+
+**Result:**
+- FRA_3_ACTIVE_SYSTEMS module can ONLY print emergency lighting when sectionId === 7
+- Fallback branch (used if module appears in other sections) no longer prints EL fields
+- Strict Section 7 enforcement at PDF rendering level
+
+### PART 12: Moved EL Critical Fields from Section 8 to Section 7
+
+**File:** `src/lib/pdf/fra/fraConstants.ts`
+
+**Line 13:** Removed Section 8 mapping, merged into Section 7
+
+**Before:**
+```typescript
+export const CRITICAL_FIELDS: Record<number, string[]> = {
+  5: ['eicr_evidence_seen', 'housekeeping_fire_load', 'arson_risk'],
+  6: ['travel_distances_compliant', 'escape_route_obstructions', 'final_exits_adequate'],
+  7: ['fire_alarm_present', 'alarm_testing_evidence', 'alarm_zoning_adequacy'],
+  8: ['emergency_lighting_present', 'emergency_lighting_testing_evidence', 'emergency_lighting_coverage'],
+  9: ['fire_doors_condition', 'compartmentation_condition', 'fire_stopping_confidence'],
+  10: ['sprinkler_present', 'extinguishers_present', 'hydrant_access'],
+  11: ['fire_safety_policy_exists', 'training_induction_provided', 'inspection_alarm_weekly_test'],
+  12: ['boundary_distances_adequate', 'external_wall_fire_resistance', 'cladding_concerns'],
+};
+```
+
+**After:**
+```typescript
+export const CRITICAL_FIELDS: Record<number, string[]> = {
+  5: ['eicr_evidence_seen', 'housekeeping_fire_load', 'arson_risk'],
+  6: ['travel_distances_compliant', 'escape_route_obstructions', 'final_exits_adequate'],
+  7: ['fire_alarm_present', 'alarm_testing_evidence', 'alarm_zoning_adequacy', 'emergency_lighting_present', 'emergency_lighting_testing_evidence', 'emergency_lighting_coverage'],
+  9: ['fire_doors_condition', 'compartmentation_condition', 'fire_stopping_confidence'],
+  10: ['sprinkler_present', 'extinguishers_present', 'hydrant_access'],
+  11: ['fire_safety_policy_exists', 'training_induction_provided', 'inspection_alarm_weekly_test'],
+  12: ['boundary_distances_adequate', 'external_wall_fire_resistance', 'cladding_concerns'],
+};
+```
+
+**Result:**
+- Section 8 removed (legacy section that was merged into Section 7)
+- Emergency lighting critical fields now part of Section 7 mapping
+- Reflects current architecture where Section 7 = Active Systems (alarm + EL)
+
+## Final Verification Results
+
+### ✅ Grep Verification Passed
+
+**Command:** `grep -rn "review\.elEvidence" src/lib/pdf/`
+**Result:** No matches found
+
+**Command:** `grep -rn "emergency_lighting" src/lib/pdf/`
+**Matches found ONLY in:**
+1. **fraCoreDraw.ts lines 333-335** - Inside `if (sectionId === 7)` block ✅
+2. **fraConstants.ts line 12** - Section 7 critical fields mapping ✅
+3. **keyPoints/rules.ts** - Inside `section7Rules` array ✅
+4. **sectionSummaryGenerator.ts** - Inside `extractSection7Drivers()` and `generateSection7Summary()` ✅
+5. **buildFraPdf.ts** - Reading from FRA_3 module to populate data structure ✅
+
+**All references correctly scoped to Section 7 contexts.**
+
+### ✅ Build Verification Passed
+
+**Command:** `npm run build`
+**Result:** ✓ built in 23.10s (no errors)
+
+## Complete PDF Changes Summary
+
+### Removed Emergency Lighting From:
+1. ✅ **Section 6 Key Details** - emergency_lighting_dependency row removed
+2. ✅ **Section 11 Drivers** - Monthly EL testing driver removed
+3. ✅ **Section 11 Missing Records** - EL not in missing records list
+4. ✅ **Section 13 Review Checklist** - elEvidence item removed
+5. ✅ **FRA_3 Fallback Branch** - EL fields stripped from non-Section 7 rendering
+
+### Preserved Emergency Lighting In:
+1. ✅ **Section 7 Key Details** - FRA_3_ACTIVE_SYSTEMS with sectionId === 7
+2. ✅ **Section 7 Drivers** - extractSection7Drivers() function
+3. ✅ **Section 7 Summary** - generateSection7Summary() function
+4. ✅ **Section 7 Key Points** - section7Rules array
+5. ✅ **Section 7 Critical Fields** - CRITICAL_FIELDS[7] mapping
+
+## Impact on PDF Output
+
+### Before This Change
+**Section 6 (Means of Escape):**
+- Key Details table showed "Emergency Lighting Dependency: Yes/No"
+
+**Section 7 (Active Fire Protection):**
+- Full emergency lighting assessment (present, testing, coverage)
+
+**Section 11 (Management):**
+- Drivers: "Monthly emergency lighting functional tests are not being conducted"
+- Missing records: "Records not evidenced: fire alarm testing, emergency lighting, extinguisher servicing"
+
+**Section 13 (Review/Assurance):**
+- Review Activities: "EL test evidence reviewed"
+
+### After This Change
+**Section 6 (Means of Escape):**
+- No emergency lighting reference
+
+**Section 7 (Active Fire Protection):**
+- Full emergency lighting assessment (present, testing, coverage)
+- Only location where EL appears
+
+**Section 11 (Management):**
+- No emergency lighting drivers
+- Missing records: "Records not evidenced: fire alarm testing, extinguisher servicing"
+
+**Section 13 (Review/Assurance):**
+- No emergency lighting reference
+
+## Professional Benefits
+
+### 1. Report Clarity
+- Emergency lighting mentioned once in its proper location
+- No confusion about where to find EL information
+- Clear section ownership
+
+### 2. Logical Structure
+- Active systems (alarm + EL) grouped together in Section 7
+- Escape provisions (routes, doors) separate in Section 6
+- Management controls (policy, training) separate in Section 11
+- Review quality separate in Section 13
+
+### 3. Reduced Redundancy
+- Single comprehensive EL assessment in Section 7
+- No duplicate narratives across sections
+- No conflicting statements
+
+### 4. Industry Alignment
+- Follows standard FRA structure
+- Active systems in active systems section
+- Consistent with professional fire safety reports
+
+## Testing Recommendations
+
+### PDF Generation Tests
+- [ ] Generate PDF with EL present='yes' and testing='current'
+- [ ] Verify EL mentioned ONLY in Section 7
+- [ ] Verify Section 6 shows no EL dependency
+- [ ] Verify Section 11 shows no EL testing narrative
+- [ ] Verify Section 13 shows no EL evidence item
+
+### Legacy Data Tests
+- [ ] Open old FRA with elEvidence='yes' in A7 data
+- [ ] Generate PDF
+- [ ] Verify A7 review checklist doesn't show EL item
+- [ ] Verify no errors or crashes
+
+### Edge Case Tests
+- [ ] FRA with FRA_3 module but sectionId != 7 (edge case)
+- [ ] Verify no EL fields print in fallback branch
+- [ ] Verify no console errors
+
+## Implementation Complete
+
+**Date:** February 25, 2026
+
+**Phase 1:** UI de-duplication (3 forms modified)
+**Phase 2:** PDF de-duplication (3 PDF files modified)
+
+**Total Files Modified:**
+- UI Forms: 3 (FRA2MeansOfEscapeForm, A4ManagementControlsForm, A7ReviewAssuranceForm)
+- PDF Code: 3 (fraCoreDraw.ts, sectionSummaryGenerator.ts, fraConstants.ts)
+- Database: 0 (no schema changes)
+
+**Result:** Complete emergency lighting de-duplication with zero data loss and full backwards compatibility.
+
+---
+
+**Scope:** Phase 2 PDF de-duplication complete
+**Impact:** Professional single-source PDF output, zero EL references outside Section 7
+**Risk:** None (section guarding prevents non-owner rendering, legacy data ignored)
+**Benefit:** Clear report structure, professional presentation, industry-standard format

@@ -1014,13 +1014,6 @@ if (section.id === 5) {
     ({ page, yPosition } = await drawActionRegister({ page, yPosition }, actions, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap));
   }
 
-  if (attachments.length > 0) {
-    const result1b = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result1b.page;
-    yPosition = PAGE_TOP_Y;
-    ({ page, yPosition } = drawAttachmentsIndex({ page, yPosition }, attachments, moduleInstances, actions, font, fontBold, pdfDoc, isDraft, totalPages));
-  }
-
 // --- APPENDICES ---
 // Goal:
 // 1) Action Register stands alone (no forced blank pre-page).

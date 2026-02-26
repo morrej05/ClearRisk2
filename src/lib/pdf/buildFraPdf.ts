@@ -1111,8 +1111,12 @@ function drawRiskSummaryPage(
   const fonts = { regular: font, bold: fontBold };
 
   const riskLabel = scoringResult.overallRisk;
-  const likelihoodLabel = scoringResult.likelihood;
-  const consequenceLabel = scoringResult.consequence;
+  const likelihoodLabel = sanitizePdfText(
+    normalizeDisplayValue(scoringResult?.likelihood ?? '')
+  ).trim();
+  const consequenceLabel = sanitizePdfText(
+    normalizeDisplayValue(scoringResult?.consequence ?? '')
+  ).trim();
 
   yPosition = drawExecutiveRiskHeader({
     page,

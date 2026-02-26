@@ -2378,8 +2378,16 @@ export function drawCleanAuditPage1(
 
   yPosition -= 10;
 
+  const likeText = sanitizePdfText(
+    normalizeDisplayValue(scoringResult?.likelihood ?? '')
+  ).trim();
+
+  const consText = sanitizePdfText(
+    normalizeDisplayValue(scoringResult?.consequence ?? '')
+  ).trim();
+
   // Auto narrative (wrapped)
-  const narrativeText = `The likelihood of fire is assessed as ${scoringResult.likelihood} and the potential consequences are assessed as ${scoringResult.consequence}. The overall risk to life is therefore assessed as ${scoringResult.overallRisk}.`;
+  const narrativeText = `The likelihood of fire is assessed as ${likeText} and the potential consequences are assessed as ${consText}. The overall risk to life is therefore assessed as ${scoringResult.overallRisk}.`;
   const narrativeLines = wrapText(narrativeText, CONTENT_WIDTH, 10, font);
   for (const line of narrativeLines) {
     page.drawText(line, {

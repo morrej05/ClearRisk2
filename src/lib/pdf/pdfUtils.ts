@@ -1332,8 +1332,12 @@ export function drawRecommendationsSection(
 
     yPosition -= 5;
 
+    const safeStatus = sanitizePdfText(
+      normalizeDisplayValue((action.status || '').replaceAll('_', ' '))
+    ).trim();
+
     const priorityText = `Priority: ${action.priority_band}`;
-    const statusText = `Status: ${action.status.replace('_', ' ')}`;
+    const statusText = `Status: ${safeStatus}`;
     const versionText = action.first_raised_in_version ? `First raised: Version ${action.first_raised_in_version}.0` : '';
 
     page.drawText(priorityText, {

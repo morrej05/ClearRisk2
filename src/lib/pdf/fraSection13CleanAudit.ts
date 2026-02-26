@@ -131,28 +131,26 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   const outcomeColor = outcomeColors[outcome];
 
   // Large outcome box
+  const safeOutcomeLabel = sanitizePdfText(outcomeLabel);
+  const padX = 20;
+  const textW = fontBold.widthOfTextAtSize(safeOutcomeLabel, 16);
+  const boxW = Math.min(CONTENT_WIDTH, Math.max(260, textW + padX * 2));
+
   page.drawRectangle({
     x: MARGIN,
     y: yPosition - 10,
-    const padX = 20;
-const textW = fontBold.widthOfTextAtSize(outcomeLabel, 16);
-const boxW = Math.min(CONTENT_WIDTH, textW + padX * 2);
+    width: boxW,
+    height: 40,
+    color: outcomeColor,
+  });
 
-page.drawRectangle({
-  x: MARGIN,
-  y: yPosition - 10,
-  width: boxW,
-  height: 40,
-  color: outcomeColor,
-});
-
-page.drawText(outcomeLabel, {
-  x: MARGIN + padX,
-  y: yPosition + 5,
-  size: 16,
-  font: fontBold,
-  color: rgb(1, 1, 1),
-});
+  page.drawText(safeOutcomeLabel, {
+    x: MARGIN + padX,
+    y: yPosition + 5,
+    size: 16,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
 
   yPosition -= 50;
 

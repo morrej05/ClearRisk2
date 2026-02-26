@@ -196,6 +196,21 @@ export function formatFieldValue(value: unknown, defaultText: string = ''): stri
   return String(value).trim();
 }
 
+export function normalizeDisplayValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+
+  const s = raw.toLowerCase();
+
+  if (['yes', 'y', 'true', '1'].includes(s)) return 'Yes';
+  if (['no', 'n', 'false', '0'].includes(s)) return 'No';
+  if (['na', 'n/a', 'not applicable', 'not_applicable'].includes(s)) return 'N/A';
+  if (['unknown', 'not known', 'not_known'].includes(s)) return 'Unknown';
+
+  return raw;
+}
+
 /**
  * Check if a subsection has any meaningful content
  * Used to determine whether to render subsection or show "No information recorded."
@@ -325,8 +340,8 @@ export function drawKeyValueRow(
   labelWidth: number = 210,
   gap: number = 14
 ): number {
-  const safeLabel = sanitizePdfText(label).trim();
-  const safeValue = sanitizePdfText(value).trim();
+  const safeLabel = sanitizePdfText(normalizeDisplayValue(label)).trim();
+  const safeValue = sanitizePdfText(normalizeDisplayValue(value)).trim();
 
   if (!safeLabel || !safeValue) {
     return y; // Skip empty rows

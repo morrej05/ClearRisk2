@@ -1021,12 +1021,63 @@ if (section.id === 5) {
     ({ page, yPosition } = drawAttachmentsIndex({ page, yPosition }, attachments, moduleInstances, actions, font, fontBold, pdfDoc, isDraft, totalPages));
   }
 
-// Only break if it won't fit
-({ page, yPosition } = ensureSpace(SECTION_HEADER_KEEP + MIN_SECTION_BODY, page, yPosition, pdfDoc, isDraft, totalPages));
+// --- APPENDICES ---
+// Goal:
+// 1) Action Register stands alone (no forced blank pre-page).
+// 2) Attachments & Evidence Index ALWAYS starts on a fresh page.
+// 3) Assumptions & Limitations follows on the SAME page as Attachments if there is space,
+//    otherwise it starts a new page.
 
-// now draw assumptions on current page
-  ({ page, yPosition } = drawAssumptionsAndLimitations({ page, yPosition }, document, fra4Module, font, fontBold, pdfDoc, isDraft, totalPages));
+const ASSUMPTIONS_MIN = 160; // header + a few lines (tune if needed)
 
+if (attachments.length > 0) {
+  // Start attachments on a fresh page (appendix-style)
+  const attStart = addNewPage(pdfDoc, isDraft, totalPages);
+  page = attStart.page;
+  yPosition = PAGE_TOP_Y;
+
+  ({ page, yPosition } = drawAttachmentsIndex(
+    { page, yPosition },
+    attachments,
+    moduleInstances,
+    actions,
+    font,
+    fontBold,
+    pdfDoc,
+    isDraft,
+    totalPages
+  ));
+
+  // Try to keep Assumptions & Limitations on the same page as the attachments index
+  ({ page, yPosition } = ensureSpace(ASSUMPTIONS_MIN, page, yPosition, pdfDoc, isDraft, totalPages));
+
+  ({ page, yPosition } = drawAssumptionsAndLimitations(
+    { page, yPosition },
+    document,
+    fra4Module,
+    font,
+    fontBold,
+    pdfDoc,
+    isDraft,
+    totalPages
+  ));
+} else {
+  // No attachments: render Assumptions & Limitations as normal (no attempt to share)
+  ({ page, yPosition } = ensureSpace(ASSUMPTIONS_MIN, page, yPosition, pdfDoc, isDraft, totalPages));
+
+  ({ page, yPosition } = drawAssumptionsAndLimitations(
+    { page, yPosition },
+    document,
+    fra4Module,
+    font,
+    fontBold,
+    pdfDoc,
+    isDraft,
+    totalPages
+  ));
+}
+
+// (footer logic continues below as you already have it)
   const today = new Date().toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',

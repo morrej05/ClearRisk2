@@ -11,6 +11,7 @@ import {
   sanitizePdfText,
   wrapText,
   addNewPage,
+  PAGE_TOP_Y,
   PAGE_HEIGHT,
   MARGIN,
   CONTENT_WIDTH,

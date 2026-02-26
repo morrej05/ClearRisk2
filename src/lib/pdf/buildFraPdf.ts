@@ -611,6 +611,10 @@ drawTableOfContents(page, font, fontBold);
 
   // Conditional page: only create if we don't have one yet
   if (!page) {
+    console.log(
+  '[PDF] addNewPage caller:',
+  new Error().stack?.split('\n').slice(1, 5).join(' | ')
+  );
     const sectionStartResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = sectionStartResult.page;
     yPosition = PAGE_TOP_Y;

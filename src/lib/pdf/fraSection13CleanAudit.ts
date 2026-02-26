@@ -152,7 +152,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
     if (yPosition < MARGIN + 80) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText('Note: Assessor professional judgement override applied', {
@@ -167,9 +167,9 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
     const overrideLines = wrapText(sanitizePdfText(overrideReason), CONTENT_WIDTH, 9, font);
     for (const line of overrideLines) {
       if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -263,9 +263,9 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   // 3. BASIS OF ASSESSMENT (3-5 Line Narrative)
   // ========================================================
   if (yPosition < MARGIN + 150) {
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN - 20;
+  const result = addNewPage(pdfDoc, isDraft, totalPages);
+  page = result.page;
+  yPosition = PAGE_TOP_Y;
   }
 
   page.drawText('Basis of Assessment', {
@@ -314,9 +314,9 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   const narrativeLines = wrapText(narrativeText, CONTENT_WIDTH, 11, font);
   for (const line of narrativeLines) {
     if (yPosition < MARGIN + 50) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_TOP_Y;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -362,9 +362,9 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
     const provisionalLines = wrapText(provisionalText, CONTENT_WIDTH, 11, font);
     for (const line of provisionalLines) {
       if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -384,9 +384,9 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   // ========================================================
   if (openActions.length > 0) {
     if (yPosition < MARGIN + 150) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_TOP_Y;
     }
 
     page.drawText('Priority Issues', {
@@ -424,9 +424,9 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
 
     for (const action of topActions) {
       if (yPosition < MARGIN + 70) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_TOP_Y;
       }
 
       const actionText = sanitizePdfText(action.recommended_action || '(No action text)');
@@ -488,9 +488,9 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   // ========================================================
   if (fra4Module.data.commentary?.executiveCommentary) {
     if (yPosition < MARGIN + 100) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = PAGE_TOP_Y;
     }
 
     page.drawText('Assessor Commentary', {

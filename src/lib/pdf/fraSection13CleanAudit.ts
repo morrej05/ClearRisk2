@@ -134,17 +134,27 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   page.drawRectangle({
     x: MARGIN,
     y: yPosition - 10,
-    width: Math.min(CONTENT_WIDTH, outcomeLabel.length * 8 + 40),
+    const padX = 20;
+      const textW = fontBold.widthOfTextAtSize(outcomeLabel, 16);
+      const boxW = Math.min(CONTENT_WIDTH, textW + padX * 2);
+      
+      page.drawRectangle({
+        x: MARGIN,
+        y: yPosition - 10,
+        width: boxW,
+        height: 40,
+        color: outcomeColor,
+      });
     height: 40,
     color: outcomeColor,
   });
   page.drawText(outcomeLabel, {
-    x: MARGIN + 15,
-    y: yPosition + 5,
-    size: 16,
-    font: fontBold,
-    color: rgb(1, 1, 1),
-  });
+  x: MARGIN + padX,
+  y: yPosition + 5,
+  size: 16,
+  font: fontBold,
+  color: rgb(1, 1, 1),
+});
 
   yPosition -= 50;
 

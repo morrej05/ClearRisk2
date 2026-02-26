@@ -4,6 +4,7 @@ export const PAGE_WIDTH = 595.28;
 export const PAGE_HEIGHT = 841.89;
 export const MARGIN = 50;
 export const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
+export const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN - 20;
 
 // PDF Debug Layout Mode - developer-only overlay for spacing/pagination tuning
 // export const PDF_DEBUG_LAYOUT = import.meta.env.VITE_PDF_DEBUG_LAYOUT === 'true';

@@ -1011,16 +1011,10 @@ if (section.id === 5) {
       (actions || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
     );
 
-    const result1 = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result1.page;
-    yPosition = PAGE_TOP_Y;
     ({ page, yPosition } = await drawActionRegister({ page, yPosition }, actions, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap));
   }
 
   if (attachments.length > 0) {
-    const result1b = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result1b.page;
-    yPosition = PAGE_TOP_Y;
     ({ page, yPosition } = drawAttachmentsIndex({ page, yPosition }, attachments, moduleInstances, actions, font, fontBold, pdfDoc, isDraft, totalPages));
   }
 

@@ -1021,9 +1021,10 @@ if (section.id === 5) {
     ({ page, yPosition } = drawAttachmentsIndex({ page, yPosition }, attachments, moduleInstances, actions, font, fontBold, pdfDoc, isDraft, totalPages));
   }
 
-  const result2 = addNewPage(pdfDoc, isDraft, totalPages);
-  page = result2.page;
-  yPosition = PAGE_TOP_Y;
+// Only break if it won't fit
+({ page, yPosition } = ensureSpace(SECTION_HEADER_KEEP + MIN_SECTION_BODY, page, yPosition, pdfDoc, isDraft, totalPages));
+
+// now draw assumptions on current page
   ({ page, yPosition } = drawAssumptionsAndLimitations({ page, yPosition }, document, fra4Module, font, fontBold, pdfDoc, isDraft, totalPages));
 
   const today = new Date().toLocaleDateString('en-GB', {

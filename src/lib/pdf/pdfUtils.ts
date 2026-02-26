@@ -208,6 +208,14 @@ export function normalizeDisplayValue(value: unknown): string {
   if (['na', 'n/a', 'not applicable', 'not_applicable'].includes(s)) return 'N/A';
   if (['unknown', 'not known', 'not_known'].includes(s)) return 'Unknown';
 
+  // Auto Title Case for fully lowercase words/phrases
+  if (/^[a-z\s]+$/.test(raw)) {
+    return raw
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+
   return raw;
 }
 
@@ -919,7 +927,9 @@ export async function drawDocumentControlPage(
       color: rgb(0, 0, 0),
     });
 
-    const valueText = sanitizePdfText(value);
+    const valueText = sanitizePdfText(
+      normalizeDisplayValue(value)
+    );
     page.drawText(valueText, {
       x: MARGIN + 150,
       y: yPosition,

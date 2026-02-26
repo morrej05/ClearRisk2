@@ -12,6 +12,7 @@ import {
   formatDate,
   addNewPage,
   drawKeyValueRow,
+  normalizeDisplayValue,
 } from '../pdfUtils';
 import { PAGE_TOP_Y } from '../pdfCursor';
 import { ensureSpace, ensureCursor } from './fraUtils';
@@ -209,8 +210,11 @@ console.log('[A2 DATA KEYS]', (a2Module as any)?.data ? Object.keys((a2Module as
       : v;
 
     const drawFact = (label: string, value: string) => {
+      const safeValue = sanitizePdfText(
+        normalizeDisplayValue(value)
+      ).trim();
       page.drawText(`${label}:`, { x: MARGIN, y: yPosition, size: 9, font: fontBold, color: rgb(0.42, 0.42, 0.42) });
-      page.drawText(value, { x: MARGIN + 140, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
+      page.drawText(safeValue, { x: MARGIN + 140, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
       yPosition -= 12;
     };
 
@@ -352,8 +356,11 @@ console.log('[A3 DATA FULL]', data);
       : v;
 
     const drawFact = (label: string, value: string) => {
+      const safeValue = sanitizePdfText(
+        normalizeDisplayValue(value)
+      ).trim();
       page.drawText(`${label}:`, { x: MARGIN, y: yPosition, size: 9, font: fontBold, color: rgb(0.42, 0.42, 0.42) });
-      page.drawText(value, { x: MARGIN + 140, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
+      page.drawText(safeValue, { x: MARGIN + 140, y: yPosition, size: 10, font, color: rgb(0.18, 0.18, 0.18) });
       yPosition -= 12;
     };
 

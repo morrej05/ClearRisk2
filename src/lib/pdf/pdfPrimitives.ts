@@ -1,6 +1,6 @@
 import { PDFPage, PDFFont, rgb } from 'pdf-lib';
 import { PDF_THEME, PdfProduct } from './pdfStyles';
-import { wrapText, PDF_DEBUG_LAYOUT, normalizeDisplayValue } from './pdfUtils';
+import { wrapText, PDF_DEBUG_LAYOUT, normalizeDisplayValue, sanitizePdfText } from './pdfUtils';
 
 type Fonts = { regular: PDFFont; bold: PDFFont };
 
@@ -284,8 +284,8 @@ export function drawLikelihoodConsequenceBlock(args: {
   const leftColW = Math.min(260, w * 0.58);
   const rightX = x + leftColW + 10;
 
-  const safeLikelihood = normalizeDisplayValue(likelihood);
-  const safeConsequence = normalizeDisplayValue(consequence);
+  const safeLikelihood = sanitizePdfText(normalizeDisplayValue(likelihood)).trim();
+  const safeConsequence = sanitizePdfText(normalizeDisplayValue(consequence)).trim();
 
   page.drawText('Likelihood of Fire:', {
     x,
@@ -457,7 +457,7 @@ export function drawActionCard(args: {
   cursorY -= gapBeforeMeta;
 
   // Meta row
-  const safeStatus = normalizeDisplayValue(status || '-');
+  const safeStatus = sanitizePdfText(normalizeDisplayValue(status || '-')).trim();
   const metaText = `Owner: ${owner || '(Unassigned)'}   |   Target: ${target || '-'}   |   Status: ${safeStatus}`;
   page.drawText(metaText, {
     x: textX,

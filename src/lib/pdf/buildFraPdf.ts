@@ -29,6 +29,7 @@ import {
   MARGIN,
   CONTENT_WIDTH,
   sanitizePdfText,
+  normalizeDisplayValue,
   wrapText,
   formatDate,
   getRatingColor,
@@ -1191,7 +1192,10 @@ function drawRiskSummaryPage(
 
   yPosition -= 20;
 
-  const determinationText = `The overall risk to life is assessed as ${scoringResult.overallRisk} based on the combination of ${scoringResult.likelihood} likelihood and ${scoringResult.consequence} consequence. ${scoringResult.provisional ? 'This assessment is provisional pending resolution of critical information gaps.' : 'This assessment is based on complete information gathered during the survey.'}`;
+  const likeText = sanitizePdfText(normalizeDisplayValue(scoringResult?.likelihood ?? ''));
+  const consText = sanitizePdfText(normalizeDisplayValue(scoringResult?.consequence ?? ''));
+
+  const determinationText = `The overall risk to life is assessed as ${scoringResult.overallRisk} based on the combination of ${likeText} likelihood and ${consText} consequence. ${scoringResult.provisional ? 'This assessment is provisional pending resolution of critical information gaps.' : 'This assessment is based on complete information gathered during the survey.'}`;
   const determinationLines = wrapText(determinationText, CONTENT_WIDTH, 10, font);
   for (const line of determinationLines) {
     page.drawText(line, {

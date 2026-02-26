@@ -505,8 +505,13 @@ export function renderSection4Legislation(
       color: rgb(0.35, 0.35, 0.35)
     });
 
+    // Normalize and sanitize value
+    const safeValue = sanitizePdfText(
+      normalizeDisplayValue(value)
+    ).trim();
+
     // Wrap value text to remaining width after VALUE_X
-    const valueLines = wrapText(value, CONTENT_WIDTH - 150, 10, font);
+    const valueLines = wrapText(safeValue, CONTENT_WIDTH - 150, 10, font);
 
     for (let i = 0; i < valueLines.length; i++) {
       if (i > 0) {

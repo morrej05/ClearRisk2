@@ -18,6 +18,7 @@ import {
   addNewPage,
   deriveAutoActionTitle,
   deriveSystemActionTitle,
+  normalizeDisplayValue,
 } from '../pdfUtils';
 import {
   drawExecutiveRiskHeader,
@@ -128,7 +129,12 @@ function drawTwoColumnRows(args: {
     if (!value || !String(value).trim()) continue;
 
     // --- Prevent label/value blocks splitting across pages ---
-    const safeValue = String(value ?? '');
+    const safeLabel = sanitizePdfText(
+      normalizeDisplayValue(label)
+    ).trim();
+    const safeValue = sanitizePdfText(
+      normalizeDisplayValue(value)
+    ).trim();
     const valueLinesForEstimate = wrapText(safeValue, valueWidth, 10, font);
 
     // label line + value lines + small padding
@@ -140,7 +146,7 @@ function drawTwoColumnRows(args: {
       yPosition = PAGE_TOP_Y;
     }
 
-    page.drawText(`${label}:`, {
+    page.drawText(`${safeLabel}:`, {
       x: labelX,
       y: yPosition,
       size: 10,

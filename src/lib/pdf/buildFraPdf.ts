@@ -1481,16 +1481,20 @@ function drawExecutiveSummary(
   });
 
   yPosition -= 25;
-  page.drawRectangle({
-    x: MARGIN,
-    y: yPosition - 5,
-    const padX = 14;
-    const textW = fontBold.widthOfTextAtSize(outcomeLabel, 14);
-    const boxW = Math.min(CONTENT_WIDTH, textW + padX * 2);
-    height: 30,
-    color: outcomeColor,
-  });
-  page.drawText(outcomeLabel, {
+
+const padX = 14;
+const textW = fontBold.widthOfTextAtSize(outcomeLabel, 14);
+const boxW = Math.min(CONTENT_WIDTH, textW + padX * 2);
+
+page.drawRectangle({
+  x: MARGIN,
+  y: yPosition - 5,
+  width: boxW,
+  height: 30,
+  color: outcomeColor,
+});
+
+page.drawText(outcomeLabel, {
   x: MARGIN + padX,
   y: yPosition + 3,
   size: 14,

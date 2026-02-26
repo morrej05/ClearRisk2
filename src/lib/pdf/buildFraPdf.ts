@@ -671,7 +671,7 @@ drawTableOfContents(page, font, fontBold);
     // Keep-with-next for sections 13 and 14 (no forced breaks, just ensure header+body fit)
     const SECTION_HEADER_KEEP = 56;
     const MIN_SECTION_BODY = 56;
-    const needsKeepWithNext = section.id === 13 || section.id === 14;
+    const needsKeepWithNext = section.id === 13;
 
     if (needsKeepWithNext) {
       // Ensure header + minimal body fit together

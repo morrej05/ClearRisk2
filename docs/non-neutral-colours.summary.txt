@@ -1,53 +1,52 @@
 === NON-NEUTRAL COLOUR USAGE SUMMARY ===
 
-Total non-neutral color matches: 2864
-Files with non-neutral colors: 161
-Unique non-neutral classes: 166
+Total non-neutral color matches: 2717
+Files with non-neutral colors: 160
+Unique non-neutral classes: 163
 
 Top 20 non-neutral classes:
-  bg-blue-50: 141
-  text-blue-700: 120
-  border-blue-200: 119
-  text-red-600: 113
-  bg-blue-100: 109
-  text-blue-600: 101
-  text-red-700: 95
-  bg-amber-50: 91
-  bg-red-50: 88
-  text-amber-700: 83
-  text-green-700: 80
+  bg-blue-50: 137
+  text-blue-700: 118
+  border-blue-200: 115
+  bg-blue-100: 108
+  text-red-600: 106
+  text-blue-600: 100
+  text-red-700: 86
+  bg-amber-50: 85
+  text-amber-700: 81
+  bg-red-50: 81
+  text-green-700: 74
   border-amber-200: 72
-  text-amber-600: 72
-  bg-blue-600: 60
-  text-amber-900: 60
-  text-green-600: 59
-  border-red-200: 58
-  text-amber-800: 58
-  bg-green-50: 56
+  text-amber-600: 65
+  bg-blue-600: 59
+  text-green-600: 58
+  text-amber-900: 58
+  border-red-200: 56
   text-blue-900: 54
+  text-amber-800: 53
+  bg-blue-700: 51
 
 By color family:
-  blue: 923
-  red: 576
-  amber: 555
-  green: 415
-  orange: 100
+  blue: 904
+  red: 532
+  amber: 517
+  green: 377
+  orange: 96
   primary: 87
   opacity: 53
   yellow: 48
-  violet: 33
+  violet: 31
   purple: 27
   success: 17
   emerald: 9
   warning: 6
   cyan: 4
   error: 3
-  teal: 3
   rose: 3
   indigo: 2
+  teal: 1
 
 Top 20 files with most non-neutral colors:
-   139  src/components/NewSurveyReport.tsx
     74  src/components/modules/forms/FRA4SignificantFindingsForm.tsx
     56  src/components/actions/ActionDetailModal.tsx
     53  src/components/modules/forms/RE09RecommendationsForm.tsx
@@ -67,3 +66,4 @@ Top 20 files with most non-neutral colors:
     36  src/components/RecommendationReport.tsx
     36  src/pages/ezirisk/RecommendationLibraryPage.tsx
     34  src/components/ui/DesignSystem.tsx
+    34  src/components/modules/ModuleActions.tsx

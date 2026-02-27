@@ -1164,9 +1164,9 @@ function drawRiskSummaryPage(
       y: yPosition - 40,
       width: CONTENT_WIDTH,
       height: 60 + (scoringResult.provisionalReasons.length * 15),
-      borderColor: rgb(0.9, 0.7, 0),
+      borderColor: PDF_THEME.colours.risk.medium.border,
       borderWidth: 1.5,
-      color: rgb(1, 0.98, 0.9),
+      color: PDF_THEME.colours.risk.medium.bg,
     });
 
     page.drawText('PROVISIONAL ASSESSMENT', {
@@ -1174,7 +1174,7 @@ function drawRiskSummaryPage(
       y: yPosition - 15,
       size: 12,
       font: fontBold,
-      color: rgb(0.6, 0.4, 0),
+      color: PDF_THEME.colours.risk.medium.fg,
     });
 
     yPosition -= 30;
@@ -1186,7 +1186,7 @@ function drawRiskSummaryPage(
         y: yPosition,
         size: 10,
         font,
-        color: rgb(0.4, 0.3, 0),
+        color: PDF_THEME.colours.risk.medium.fg,
       });
       yPosition -= 15;
     }
@@ -1321,7 +1321,7 @@ function drawCoverPage(
   let issueStatus = renderMode === 'issued' ? 'issued' : ((document as any).issue_status || document.status);
   const isIssued = issueStatus === 'issued';
   const isSuperseded = issueStatus === 'superseded';
-  const statusColor = isIssued ? rgb(0.13, 0.55, 0.13) : isSuperseded ? rgb(0.7, 0.5, 0) : rgb(0.5, 0.5, 0.5);
+  const statusColor = isIssued ? PDF_THEME.colours.risk.low.fg : isSuperseded ? PDF_THEME.colours.risk.medium.fg : PDF_THEME.colours.neutral[500];
   const statusText = sanitizePdfText(issueStatus ? issueStatus.toUpperCase() : 'DRAFT');
   const statusWidth = font.widthOfTextAtSize(statusText, 13) + 30;
 
@@ -1526,7 +1526,7 @@ page.drawText(outcomeLabel, {
       y: yPosition,
       size: 10,
       font: fontBold,
-      color: rgb(0.6, 0.4, 0),
+      color: PDF_THEME.colours.risk.medium.fg,
     });
 
     yPosition -= 16;
@@ -1542,7 +1542,7 @@ page.drawText(outcomeLabel, {
         y: yPosition,
         size: 9,
         font,
-        color: rgb(0.5, 0.3, 0),
+        color: PDF_THEME.colours.risk.medium.fg,
       });
       yPosition -= 14;
     }
@@ -1564,7 +1564,7 @@ page.drawText(outcomeLabel, {
       y: yPosition,
       size: 11,
       font: fontBold,
-      color: rgb(0.7, 0, 0),
+      color: PDF_THEME.colours.risk.high.fg,
     });
 
     yPosition -= 25;
@@ -1596,7 +1596,7 @@ page.drawText(outcomeLabel, {
     y: yPosition,
     size: 11,
     font,
-    color: rgb(0.8, 0.4, 0),
+    color: PDF_THEME.colours.risk.medium.fg,
   });
 
   yPosition -= 18;
@@ -1759,7 +1759,7 @@ page.drawText(outcomeLabel, {
     y: yPosition,
     size: 11,
     font,
-    color: infoGapCount > 0 ? rgb(0.6, 0.4, 0) : rgb(0, 0, 0),
+    color: infoGapCount > 0 ? PDF_THEME.colours.risk.medium.fg : rgb(0, 0, 0),
   });
 
   // Calculate and display Structural Complexity Score context

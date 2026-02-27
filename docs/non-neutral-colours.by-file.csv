@@ -1,5 +1,4 @@
 file,count
-"src/components/NewSurveyReport.tsx",139
 "src/components/modules/forms/FRA4SignificantFindingsForm.tsx",74
 "src/components/actions/ActionDetailModal.tsx",56
 "src/components/modules/forms/RE09RecommendationsForm.tsx",53
@@ -103,7 +102,6 @@ file,count
 "src/components/modules/forms/A7ReviewAssuranceForm.tsx",12
 "src/pages/ezirisk/AssessmentsPage.tsx",12
 "src/utils/theme.ts",11
-"src/pages/Dashboard.tsx",11
 "src/components/SectionGrade.tsx",11
 "src/components/ExternalLinkModal.tsx",11
 "src/components/ClientBrandingModal.tsx",11
@@ -139,6 +137,7 @@ file,count
 "src/components/actions/ActionCloseReopenModal.tsx",4
 "src/components/modules/forms/RE09ManagementForm.tsx",4
 "src/pages/re/FireProtectionPage.tsx",4
+"src/pages/Dashboard.tsx",3
 "src/components/ProgressBar.tsx",3
 "src/components/landing/WhoItsFor.tsx",3
 "src/pages/dashboard/ActionsDashboard.tsx",3

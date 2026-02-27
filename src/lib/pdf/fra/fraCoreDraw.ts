@@ -2410,9 +2410,9 @@ export function drawCleanAuditPage1(
       y: yPosition - 55,
       width: CONTENT_WIDTH - 40,
       height: 60,
-      borderColor: rgb(0.9, 0.7, 0),
+      borderColor: PDF_THEME.colours.risk.medium.border,
       borderWidth: 1,
-      color: rgb(1, 0.98, 0.9),
+      color: PDF_THEME.colours.risk.medium.bg,
     });
 
     page.drawText('PROVISIONAL ASSESSMENT', {
@@ -2420,7 +2420,7 @@ export function drawCleanAuditPage1(
       y: yPosition - 25,
       size: 11,
       font: fontBold,
-      color: rgb(0.6, 0.4, 0),
+      color: PDF_THEME.colours.risk.medium.fg,
     });
 
     page.drawText('This assessment is provisional pending resolution of critical information gaps.', {
@@ -2428,7 +2428,7 @@ export function drawCleanAuditPage1(
       y: yPosition - 42,
       size: 9,
       font,
-      color: rgb(0.5, 0.3, 0),
+      color: PDF_THEME.colours.risk.medium.fg,
     });
 
     yPosition -= 75;

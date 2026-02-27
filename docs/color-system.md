@@ -339,6 +339,40 @@ For questions or issues with the color system:
 3. Check `src/theme/semanticClasses.ts` for helper functions
 4. Review existing components for patterns
 
+## Migration Policy
+
+We are actively migrating legacy files to use semantic tokens. While migration is in progress:
+
+### DO NOT introduce new raw color utilities
+
+Use token-based classes and semantic helpers from `src/theme/semanticClasses.ts` for all new code.
+
+### Regression Prevention
+
+A color regression check prevents new raw non-neutral Tailwind utilities:
+
+```bash
+npm run check:colors
+```
+
+This script:
+- Scans for raw color utilities (e.g., `text-blue-600`, `bg-red-100`)
+- Compares count against baseline in `docs/non-neutral-colours.summary.txt`
+- Fails CI if new raw colors are introduced
+
+If you improve the codebase by removing raw colors:
+1. Update baseline: `python3 scripts/non_neutral_colours_report.py`
+2. Commit updated `docs/non-neutral-colours.*` files
+
+### Migration Progress
+
+Current scan results available in:
+- `docs/non-neutral-colours.by-file.csv` - Raw color count by file
+- `docs/non-neutral-colours.by-class.csv` - Raw color count by class
+- `docs/non-neutral-colours.summary.txt` - Overall statistics
+
+Priority files for migration listed in summary report.
+
 ## Maintenance
 
 When updating colors:

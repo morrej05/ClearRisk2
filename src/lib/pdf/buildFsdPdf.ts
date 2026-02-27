@@ -867,7 +867,7 @@ function drawInfoGapQuickActions(
         y: yPosition,
         size: 8,
         font,
-        color: rgb(0.6, 0.4, 0),
+        color: PDF_THEME.colours.risk.medium.fg,
       });
       yPosition -= 12;
     }
@@ -1457,7 +1457,7 @@ function drawComputedAssuranceSummary(
     y: yPosition,
     size: 11,
     font,
-    color: rgb(0.2, 0.6, 0.2),
+    color: PDF_THEME.colours.risk.low.fg,
   });
 
   yPosition -= 18;
@@ -1466,7 +1466,7 @@ function drawComputedAssuranceSummary(
     y: yPosition,
     size: 11,
     font,
-    color: rgb(0.9, 0.6, 0),
+    color: PDF_THEME.colours.risk.medium.fg,
   });
 
   yPosition -= 18;
@@ -1475,7 +1475,7 @@ function drawComputedAssuranceSummary(
     y: yPosition,
     size: 11,
     font,
-    color: rgb(0.8, 0.4, 0),
+    color: PDF_THEME.colours.risk.medium.fg,
   });
 
   yPosition -= 18;
@@ -1484,7 +1484,7 @@ function drawComputedAssuranceSummary(
     y: yPosition,
     size: 11,
     font,
-    color: summary.outcomeCounts.material_def > 0 ? rgb(0.7, 0, 0) : rgb(0, 0, 0),
+    color: summary.outcomeCounts.material_def > 0 ? PDF_THEME.colours.risk.high.fg : PDF_THEME.colours.text.primary,
   });
 
   yPosition -= 30;
@@ -1568,7 +1568,7 @@ function drawComputedAssuranceSummary(
         y: yPosition,
         size: 10,
         font,
-        color: rgb(0.5, 0.3, 0),
+        color: PDF_THEME.colours.risk.medium.fg,
       });
 
       yPosition -= 18;
@@ -1594,9 +1594,9 @@ function drawComputedAssuranceSummary(
     yPosition -= 22;
 
     const severityColors: Record<string, ReturnType<typeof rgb>> = {
-      critical: rgb(0.7, 0, 0),
-      major: rgb(0.9, 0.5, 0),
-      info: rgb(0, 0.5, 0.7),
+      critical: PDF_THEME.colours.risk.high.fg,
+      major: PDF_THEME.colours.risk.medium.fg,
+      info: PDF_THEME.colours.risk.info.fg,
     };
 
     const severityLabels: Record<string, string> = {
@@ -1851,14 +1851,14 @@ function drawAssuranceChecks(
       y: yPosition,
       size: 11,
       font,
-      color: rgb(0.2, 0.6, 0.2),
+      color: PDF_THEME.colours.risk.low.fg,
     });
     return page;
   }
 
   const severityColors: Record<string, ReturnType<typeof rgb>> = {
     critical: rgb(0.7, 0, 0),
-    major: rgb(0.9, 0.5, 0),
+    major: PDF_THEME.colours.risk.medium.fg,
     info: rgb(0, 0.5, 0.7),
   };
 

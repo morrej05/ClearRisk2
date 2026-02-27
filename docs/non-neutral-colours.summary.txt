@@ -1,3 +1,6 @@
+Generated at: 2026-02-27T17:21:20.023389+00:00
+Git commit: unknown
+
 === NON-NEUTRAL COLOUR USAGE SUMMARY ===
 
 Total non-neutral color matches: 2717

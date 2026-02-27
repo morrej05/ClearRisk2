@@ -1283,7 +1283,7 @@ function drawCoverPage(
     y: yPosition,
     size: 28,
     font: fontBold,
-    color: rgb(0.7, 0.1, 0.1), // Brand red for title
+    color: PDF_THEME.colours.text.primary,
   });
 
   // Site name
@@ -1587,7 +1587,7 @@ page.drawText(outcomeLabel, {
     y: yPosition,
     size: 11,
     font,
-    color: rgb(0.7, 0, 0),
+    color: PDF_THEME.colours.risk.high.fg,
   });
 
   yPosition -= 18;
@@ -1750,7 +1750,7 @@ page.drawText(outcomeLabel, {
     y: yPosition,
     size: 11,
     font,
-    color: materialDefCount > 0 ? rgb(0.7, 0, 0) : rgb(0, 0, 0),
+    color: materialDefCount > 0 ? PDF_THEME.colours.risk.high.fg : rgb(0, 0, 0),
   });
 
   yPosition -= 18;

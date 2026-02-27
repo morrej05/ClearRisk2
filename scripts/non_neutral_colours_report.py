@@ -7,7 +7,9 @@ Outputs summary, by-file, by-class, and occurrences reports.
 
 import os
 import re
+import subprocess
 from collections import defaultdict, Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Tailwind color utilities to scan for
@@ -22,6 +24,21 @@ NEUTRAL_FAMILIES = ['slate', 'gray', 'neutral', 'ui', 'brand', 'risk']
 
 # Non-color values (allowed)
 ALLOWED_VALUES = ['transparent', 'current', 'inherit', 'white', 'black']
+
+def get_git_commit():
+    """Get current git commit hash (short form)."""
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return 'unknown'
 
 def scan_file(filepath):
     """Scan a single file for non-neutral color classes."""
@@ -101,6 +118,12 @@ def generate_reports(matches, output_dir):
 
     # Generate summary
     with open(summary_path, 'w', encoding='utf-8') as f:
+        # Metadata header
+        generated_at = datetime.now(timezone.utc).isoformat()
+        git_commit = get_git_commit()
+        f.write(f"Generated at: {generated_at}\n")
+        f.write(f"Git commit: {git_commit}\n\n")
+
         f.write("=== NON-NEUTRAL COLOUR USAGE SUMMARY ===\n\n")
         f.write(f"Total non-neutral color matches: {len(matches)}\n")
         f.write(f"Files with non-neutral colors: {len(by_file)}\n")

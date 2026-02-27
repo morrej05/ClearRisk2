@@ -1523,7 +1523,7 @@ function drawComputedAssuranceSummary(
         y: yPosition,
         size: 10,
         font,
-        color: deviation.score < 4 ? rgb(0.7, 0, 0) : rgb(0.1, 0.1, 0.1),
+        color: deviation.score < 4 ? PDF_THEME.colours.risk.high.fg : PDF_THEME.colours.text.primary,
       });
 
       yPosition -= 20;
@@ -1803,7 +1803,7 @@ function drawDeviationRegister(
         y: yPosition,
         size: 10,
         font,
-        color: rgb(0.7, 0, 0),
+        color: PDF_THEME.colours.risk.high.fg,
       });
       yPosition -= 14;
     }
@@ -1857,9 +1857,9 @@ function drawAssuranceChecks(
   }
 
   const severityColors: Record<string, ReturnType<typeof rgb>> = {
-    critical: rgb(0.7, 0, 0),
+    critical: PDF_THEME.colours.risk.high.fg,
     major: PDF_THEME.colours.risk.medium.fg,
-    info: rgb(0, 0.5, 0.7),
+    info: PDF_THEME.colours.risk.info.fg,
   };
 
   const severityLabels: Record<string, string> = {

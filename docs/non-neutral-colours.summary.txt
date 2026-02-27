@@ -1,0 +1,69 @@
+=== NON-NEUTRAL COLOUR USAGE SUMMARY ===
+
+Total non-neutral color matches: 3009
+Files with non-neutral colors: 162
+Unique non-neutral classes: 170
+
+Top 20 non-neutral classes:
+  bg-blue-50: 147
+  text-blue-700: 122
+  border-blue-200: 122
+  text-red-600: 117
+  bg-blue-100: 113
+  text-blue-600: 111
+  text-red-700: 97
+  bg-amber-50: 95
+  bg-red-50: 89
+  text-amber-700: 87
+  ring-blue-500: 86
+  text-green-700: 82
+  border-amber-200: 77
+  text-amber-600: 77
+  text-green-600: 64
+  text-amber-900: 64
+  bg-blue-600: 64
+  text-blue-900: 61
+  border-red-200: 59
+  text-amber-800: 58
+
+By color family:
+  blue: 1007
+  red: 591
+  amber: 582
+  green: 431
+  orange: 103
+  primary: 87
+  opacity: 53
+  yellow: 48
+  violet: 33
+  purple: 27
+  success: 17
+  emerald: 9
+  warning: 6
+  cyan: 4
+  error: 3
+  teal: 3
+  rose: 3
+  indigo: 2
+
+Top 20 files with most non-neutral colors:
+   139  src/components/NewSurveyReport.tsx
+    79  src/components/modules/forms/RE06FireProtectionForm.tsx
+    77  src/pages/Dashboard.tsx
+    74  src/components/modules/forms/FRA4SignificantFindingsForm.tsx
+    56  src/components/actions/ActionDetailModal.tsx
+    53  src/components/modules/forms/RE09RecommendationsForm.tsx
+    51  src/pages/documents/DocumentOverview.tsx
+    48  src/components/SmartRecommendationsTable.tsx
+    48  src/components/modules/forms/RE14DraftOutputsForm.tsx
+    41  src/components/RecommendationCSVImport.tsx
+    41  src/components/modules/forms/FRA3FireProtectionForm.tsx
+    40  src/components/modules/forms/RE02ConstructionForm.tsx
+    39  src/components/RecommendationDraftModal.tsx
+    39  src/components/documents/ExecutiveSummaryPanel.tsx
+    39  src/pages/documents/DocumentEvidenceV2.tsx
+    38  src/components/RecommendationLibrary.tsx
+    37  src/pages/UpgradeSubscription.tsx
+    37  src/components/modules/forms/FRA1FireHazardsForm.tsx
+    36  src/components/RoleDebugWidget.tsx
+    36  src/components/RecommendationReport.tsx

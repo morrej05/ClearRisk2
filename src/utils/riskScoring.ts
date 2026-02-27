@@ -360,20 +360,22 @@ export function getGradePriorityLevel(grade: number): 'Critical' | 'High' | 'Med
   return 'Low';
 }
 
+/**
+ * Get risk band color classes - using token-based semantic mapping
+ * Very Poor/Poor → high, Tolerable → medium, Good/Very Good → low
+ */
 export function getRiskBandColor(band: string): string {
   switch (band) {
     case 'Very Good':
-      return 'text-green-700 bg-green-50 border-green-200';
     case 'Good':
-      return 'text-green-600 bg-green-50 border-green-200';
+      return 'text-risk-low-fg bg-risk-low-bg border border-risk-low-border';
     case 'Tolerable':
-      return 'text-amber-700 bg-amber-50 border-amber-200';
+      return 'text-risk-medium-fg bg-risk-medium-bg border border-risk-medium-border';
     case 'Poor':
-      return 'text-orange-700 bg-orange-50 border-orange-200';
     case 'Very Poor':
-      return 'text-red-700 bg-red-50 border-red-200';
+      return 'text-risk-high-fg bg-risk-high-bg border border-risk-high-border';
     default:
-      return 'text-slate-700 bg-slate-50 border-slate-200';
+      return 'text-risk-info-fg bg-risk-info-bg border border-risk-info-border';
   }
 }
 

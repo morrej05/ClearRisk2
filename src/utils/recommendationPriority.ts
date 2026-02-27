@@ -35,6 +35,10 @@ export function getPriorityForDimension(
   return calculatePriority(score);
 }
 
+/**
+ * Get priority color classes - using token-based semantic mapping
+ * Critical/High → high, Medium → medium, Low → low
+ */
 export function getPriorityColor(priority: RecommendationPriority | undefined): string {
   if (!priority) {
     return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
@@ -42,13 +46,12 @@ export function getPriorityColor(priority: RecommendationPriority | undefined): 
 
   switch (priority) {
     case 'Critical':
-      return 'bg-risk-high-bg text-risk-high-fg border border-risk-high-border';
     case 'High':
-      return 'bg-risk-medium-bg text-risk-medium-fg border border-risk-medium-border';
+      return 'bg-risk-high-bg text-risk-high-fg border border-risk-high-border';
     case 'Medium':
-      return 'bg-risk-low-bg text-risk-low-fg border border-risk-low-border';
+      return 'bg-risk-medium-bg text-risk-medium-fg border border-risk-medium-border';
     case 'Low':
-      return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
+      return 'bg-risk-low-bg text-risk-low-fg border border-risk-low-border';
     default:
       return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
   }

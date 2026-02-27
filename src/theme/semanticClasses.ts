@@ -1,50 +1,230 @@
 /**
- * Semantic Class Helpers
- * Provides consistent, token-based Tailwind class strings for semantic use cases
- * Prevents ad-hoc color usage and ensures design system compliance
+ * Semantic Class Mapping Layer - Single Source of Truth
+ *
+ * All color class mappings flow through this file to prevent drift.
+ * Uses ONLY token-based classes (ui, brand, risk).
+ * NO raw Tailwind families (blue-600, red-50, etc.)
+ *
+ * Based on Choice B palette: neutral + subtle slate accent + muted risk colors.
  */
 
 import { RiskLevel } from './tokens';
 
 /**
- * Get classes for risk badges (small status indicators)
- * Usage: Priority chips, status badges, risk labels
+ * Core Risk Token Classes by Variant
+ * Returns token-based classes for different UI contexts
  */
-export function getRiskBadgeClasses(level: RiskLevel | string): string {
-  const normalized = level.toLowerCase();
+export function riskTokenClasses(
+  token: 'high' | 'medium' | 'low' | 'info',
+  variant: 'badge' | 'chip' | 'rowMarker' | 'text' | 'softPanel'
+): string {
+  const baseClasses = {
+    high: {
+      badge: 'bg-risk-high-bg text-risk-high-fg border border-risk-high-border',
+      chip: 'bg-risk-high-bg text-risk-high-fg border border-risk-high-border rounded-full px-2.5 py-0.5 text-xs font-medium',
+      rowMarker: 'border-l-4 border-risk-high-fg',
+      text: 'text-risk-high-fg',
+      softPanel: 'bg-risk-high-bg border-l-4 border-risk-high-fg',
+    },
+    medium: {
+      badge: 'bg-risk-medium-bg text-risk-medium-fg border border-risk-medium-border',
+      chip: 'bg-risk-medium-bg text-risk-medium-fg border border-risk-medium-border rounded-full px-2.5 py-0.5 text-xs font-medium',
+      rowMarker: 'border-l-4 border-risk-medium-fg',
+      text: 'text-risk-medium-fg',
+      softPanel: 'bg-risk-medium-bg border-l-4 border-risk-medium-fg',
+    },
+    low: {
+      badge: 'bg-risk-low-bg text-risk-low-fg border border-risk-low-border',
+      chip: 'bg-risk-low-bg text-risk-low-fg border border-risk-low-border rounded-full px-2.5 py-0.5 text-xs font-medium',
+      rowMarker: 'border-l-4 border-risk-low-fg',
+      text: 'text-risk-low-fg',
+      softPanel: 'bg-risk-low-bg border-l-4 border-risk-low-fg',
+    },
+    info: {
+      badge: 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border',
+      chip: 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border rounded-full px-2.5 py-0.5 text-xs font-medium',
+      rowMarker: 'border-l-4 border-risk-info-fg',
+      text: 'text-risk-info-fg',
+      softPanel: 'bg-risk-info-bg border-l-4 border-risk-info-fg',
+    },
+  };
 
-  if (normalized === 'high' || normalized === 'critical' || normalized === 'material') {
-    return 'bg-risk-high-bg text-risk-high-fg border border-risk-high-border';
-  }
-  if (normalized === 'medium' || normalized === 'moderate' || normalized === 'minor') {
-    return 'bg-risk-medium-bg text-risk-medium-fg border border-risk-medium-border';
-  }
-  if (normalized === 'low' || normalized === 'compliant') {
-    return 'bg-risk-low-bg text-risk-low-fg border border-risk-low-border';
-  }
-  // Default to info for unknown/neutral states
-  return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
+  return baseClasses[token][variant];
 }
 
 /**
- * Get classes for priority badges (recommendation priorities)
- * Maps P1->high, P2->medium, P3->low, P4->info
+ * Action Status → Risk Token Mapping
+ * DB-canonical statuses: open, in_progress, closed, deferred, not_applicable, superseded
+ * Derived UI: overdue
+ */
+export function actionStatusClasses(status: string | null | undefined): string {
+  const normalized = (status || 'unknown').toLowerCase().trim();
+
+  // Mapping: action status → risk token
+  if (normalized === 'overdue' || normalized === 'open') {
+    return riskTokenClasses('high', 'badge');
+  }
+  if (normalized === 'in_progress' || normalized === 'deferred') {
+    return riskTokenClasses('medium', 'badge');
+  }
+  if (normalized === 'closed') {
+    return riskTokenClasses('low', 'badge');
+  }
+  if (normalized === 'not_applicable' || normalized === 'superseded') {
+    return riskTokenClasses('info', 'badge');
+  }
+
+  return riskTokenClasses('info', 'badge');
+}
+
+/**
+ * Action/FRA Priority → Risk Token Mapping
+ * P1, P2, P3, P4 (and numeric 1-4)
+ */
+export function actionPriorityClasses(priority: string | number | null | undefined): string {
+  if (!priority) {
+    return riskTokenClasses('info', 'badge');
+  }
+
+  const normalized = String(priority).toUpperCase().trim();
+
+  // P1 or 1 → high
+  if (normalized === 'P1' || normalized === '1') {
+    return riskTokenClasses('high', 'badge');
+  }
+  // P2 or 2 → medium
+  if (normalized === 'P2' || normalized === '2') {
+    return riskTokenClasses('medium', 'badge');
+  }
+  // P3, P4, 3, 4 → info
+  if (normalized === 'P3' || normalized === '3' || normalized === 'P4' || normalized === '4') {
+    return riskTokenClasses('info', 'badge');
+  }
+
+  return riskTokenClasses('info', 'badge');
+}
+
+/**
+ * Recommendation Legacy Status → Canonical → Risk Token Mapping
+ * Title-case legacy: Not Started, In Progress, Under Review, Completed, Rejected
+ * Canonical lowercase: open, in_progress, closed, deferred, not_applicable
+ */
+export function recommendationStatusClasses(status: string | null | undefined): string {
+  if (!status) {
+    return riskTokenClasses('info', 'badge');
+  }
+
+  const normalized = status.trim();
+
+  // Handle title-case legacy
+  if (normalized === 'Not Started') {
+    return riskTokenClasses('high', 'badge'); // → open → high
+  }
+  if (normalized === 'In Progress') {
+    return riskTokenClasses('medium', 'badge'); // → in_progress → medium
+  }
+  if (normalized === 'Under Review') {
+    return riskTokenClasses('info', 'badge'); // → in_progress (review) → info
+  }
+  if (normalized === 'Completed') {
+    return riskTokenClasses('low', 'badge'); // → closed → low
+  }
+  if (normalized === 'Rejected') {
+    return riskTokenClasses('info', 'badge'); // → closed (rejected) → info
+  }
+
+  // Handle lowercase canonical (reuse actionStatusClasses)
+  return actionStatusClasses(status);
+}
+
+/**
+ * Grade-Based Risk Band → Risk Token Mapping
+ * Critical, High, Medium, Low
+ */
+export function gradeRiskBandClasses(label: string | null | undefined, variant: 'badge' | 'chip' | 'rowMarker' | 'text' | 'softPanel' = 'badge'): string {
+  if (!label) {
+    return riskTokenClasses('info', variant);
+  }
+
+  const normalized = label.toLowerCase().trim();
+
+  // Critical or High → high
+  if (normalized === 'critical' || normalized === 'high') {
+    return riskTokenClasses('high', variant);
+  }
+  // Medium → medium
+  if (normalized === 'medium') {
+    return riskTokenClasses('medium', variant);
+  }
+  // Low → low
+  if (normalized === 'low') {
+    return riskTokenClasses('low', variant);
+  }
+
+  return riskTokenClasses('info', variant);
+}
+
+/**
+ * Legacy Score-Based Risk Band → Risk Token Mapping
+ * Very Poor, Poor, Tolerable, Good, Very Good
+ */
+export function scoreRiskBandClasses(label: string | null | undefined, variant: 'badge' | 'chip' | 'rowMarker' | 'text' | 'softPanel' = 'badge'): string {
+  if (!label) {
+    return riskTokenClasses('info', variant);
+  }
+
+  const normalized = label.toLowerCase().trim();
+
+  // Very Poor or Poor → high
+  if (normalized === 'very poor' || normalized === 'poor') {
+    return riskTokenClasses('high', variant);
+  }
+  // Tolerable → medium
+  if (normalized === 'tolerable') {
+    return riskTokenClasses('medium', variant);
+  }
+  // Good or Very Good → low
+  if (normalized === 'good' || normalized === 'very good') {
+    return riskTokenClasses('low', variant);
+  }
+
+  return riskTokenClasses('info', variant);
+}
+
+/**
+ * Focus Ring Class (brand accent)
+ */
+export function focusRingClass(): string {
+  return 'focus:ring-brand-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-ui-surface';
+}
+
+/**
+ * Legacy: Get classes for priority badges (recommendation priorities)
+ * Kept for backward compatibility - redirects to actionPriorityClasses
  */
 export function getPriorityBadgeClasses(priority: 'Critical' | 'High' | 'Medium' | 'Low' | string): string {
   const p = priority.toLowerCase();
-  if (p === 'critical' || p === 'p1') {
-    return 'bg-risk-high-bg text-risk-high-fg border border-risk-high-border';
+  if (p === 'critical') {
+    return riskTokenClasses('high', 'badge');
   }
-  if (p === 'high' || p === 'p2') {
-    return 'bg-risk-medium-bg text-risk-medium-fg border border-risk-medium-border';
+  if (p === 'high') {
+    return riskTokenClasses('medium', 'badge');
   }
-  if (p === 'medium' || p === 'p3') {
-    return 'bg-risk-low-bg text-risk-low-fg border border-risk-low-border';
+  if (p === 'medium') {
+    return riskTokenClasses('low', 'badge');
   }
-  if (p === 'low' || p === 'p4') {
-    return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
+  if (p === 'low') {
+    return riskTokenClasses('info', 'badge');
   }
-  return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
+  return riskTokenClasses('info', 'badge');
+}
+
+/**
+ * Legacy: Get classes for risk badges
+ * Kept for backward compatibility - redirects to gradeRiskBandClasses
+ */
+export function getRiskBadgeClasses(level: RiskLevel | string): string {
+  return gradeRiskBandClasses(level, 'badge');
 }
 
 /**

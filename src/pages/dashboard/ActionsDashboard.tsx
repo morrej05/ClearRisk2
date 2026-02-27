@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import AppLayout from '../../components/AppLayout';
 import ActionDetailModal from '../../components/actions/ActionDetailModal';
 import EvidencePanel from '../../components/actions/EvidencePanel';
+import { actionPriorityClasses, actionStatusClasses, focusRingClass } from '../../theme/semanticClasses';
 
 interface ActionOwner {
   id: string;
@@ -210,37 +211,8 @@ export default function ActionsDashboard() {
     return action.source === 'info_gap' || action.module_instance?.outcome === 'info_gap';
   };
 
-  const getPriorityColor = (priority: string | null) => {
-    switch (priority) {
-      case 'P1':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'P2':
-        return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'P3':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'P4':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      default:
-        return 'bg-neutral-100 text-neutral-600 border-neutral-200';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'bg-red-100 text-red-700';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-700';
-      case 'closed':
-        return 'bg-green-100 text-green-700';
-      case 'deferred':
-        return 'bg-amber-100 text-amber-700';
-      case 'not_applicable':
-        return 'bg-neutral-100 text-neutral-600';
-      default:
-        return 'bg-neutral-100 text-neutral-600';
-    }
-  };
+  // Removed: getPriorityColor and getStatusColor
+  // Now using semantic class helpers from theme layer
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '—';
@@ -314,13 +286,13 @@ export default function ActionsDashboard() {
             <div className="bg-white rounded-lg border border-neutral-200 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-neutral-600">Open P1 Actions</p>
-                  <p className="text-3xl font-bold text-red-600 mt-1">
+                  <p className="text-sm font-medium text-ui-muted">Open P1 Actions</p>
+                  <p className="text-3xl font-bold text-risk-high-fg mt-1">
                     {summaryMetrics.openP1}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                <div className="w-12 h-12 bg-risk-high-bg rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-risk-high-fg" />
                 </div>
               </div>
             </div>
@@ -342,13 +314,13 @@ export default function ActionsDashboard() {
             <div className="bg-white rounded-lg border border-neutral-200 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-neutral-600">Overdue Actions</p>
-                  <p className="text-3xl font-bold text-red-600 mt-1">
+                  <p className="text-sm font-medium text-ui-muted">Overdue Actions</p>
+                  <p className="text-3xl font-bold text-risk-high-fg mt-1">
                     {summaryMetrics.overdue}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <ClipboardList className="w-6 h-6 text-red-600" />
+                <div className="w-12 h-12 bg-risk-high-bg rounded-full flex items-center justify-center">
+                  <ClipboardList className="w-6 h-6 text-risk-high-fg" />
                 </div>
               </div>
             </div>
@@ -450,10 +422,10 @@ export default function ActionsDashboard() {
                       type="checkbox"
                       checked={infoGapFilter}
                       onChange={(e) => setInfoGapFilter(e.target.checked)}
-                      className="w-4 h-4 text-amber-600 border-neutral-300 rounded focus:ring-2 focus:ring-amber-500"
+                      className="w-4 h-4 text-risk-medium-fg border-ui-border rounded focus:ring-2 focus:ring-risk-medium-fg"
                     />
                     <span className="flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 text-amber-600" />
+                      <AlertCircle className="w-3 h-3 text-risk-medium-fg" />
                       Info gap only
                     </span>
                   </label>
@@ -533,7 +505,7 @@ export default function ActionsDashboard() {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-bold rounded border ${getPriorityColor(
+                            className={`inline-flex px-2 py-1 text-xs font-bold rounded border ${actionPriorityClasses(
                               action.priority_band
                             )}`}
                           >
@@ -541,13 +513,13 @@ export default function ActionsDashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-neutral-900 max-w-md">
+                          <div className="text-sm text-ui-ink max-w-md">
                             {action.recommended_action}
                           </div>
                           {isInfoGap(action) && (
                             <div className="flex items-center gap-1 mt-1">
-                              <AlertCircle className="w-3 h-3 text-amber-600" />
-                              <span className="text-xs text-amber-700 font-medium">⚠ Info gap</span>
+                              <AlertCircle className="w-3 h-3 text-risk-medium-fg" />
+                              <span className="text-xs text-risk-medium-fg font-medium">⚠ Info gap</span>
                             </div>
                           )}
                         </td>
@@ -570,7 +542,7 @@ export default function ActionsDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${actionStatusClasses(
                               action.status
                             )}`}
                           >
@@ -579,11 +551,11 @@ export default function ActionsDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-neutral-600">
+                            <span className="text-sm text-ui-muted">
                               {formatDate(action.target_date)}
                             </span>
                             {isOverdue(action) && (
-                              <span className="text-red-600 font-bold text-xs">OVERDUE</span>
+                              <span className="text-risk-high-fg font-bold text-xs">OVERDUE</span>
                             )}
                           </div>
                         </td>
@@ -592,7 +564,7 @@ export default function ActionsDashboard() {
                             <button
                               type="button"
                               onClick={(e) => handleEvidenceBadgeClick(e, action.id)}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-brand-accent-soft text-brand-accent rounded-full hover:bg-brand-accent hover:text-white transition-colors"
                               title="View evidence for this action"
                             >
                               <Paperclip className="w-3 h-3" />
@@ -601,7 +573,7 @@ export default function ActionsDashboard() {
                               </span>
                             </button>
                           ) : (
-                            <span className="text-xs text-neutral-400">—</span>
+                            <span className="text-xs text-ui-muted">—</span>
                           )}
                         </td>
                       </tr>

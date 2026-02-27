@@ -128,12 +128,13 @@ export function drawOutcomeBadge(args: {
 
 type RiskBandKey = 'trivial' | 'tolerable' | 'moderate' | 'substantial' | 'intolerable';
 
+// Risk band colors now derived from PDF_THEME (token-based)
 const RISK_BANDS: { key: RiskBandKey; label: string; color: any }[] = [
-  { key: 'trivial',      label: 'Trivial',      color: rgb(0.25, 0.55, 0.35) },
-  { key: 'tolerable',    label: 'Tolerable',    color: rgb(0.45, 0.65, 0.35) },
-  { key: 'moderate',     label: 'Moderate',     color: rgb(0.75, 0.65, 0.2)  },
-  { key: 'substantial',  label: 'Substantial',  color: rgb(156/255, 74/255, 26/255) },
-  { key: 'intolerable',  label: 'Intolerable',  color: rgb(0.65, 0.15, 0.15) },
+  { key: 'trivial',      label: 'Trivial',      color: PDF_THEME.colours.risk.low.fg },
+  { key: 'tolerable',    label: 'Tolerable',    color: PDF_THEME.colours.risk.low.fg },
+  { key: 'moderate',     label: 'Moderate',     color: PDF_THEME.colours.risk.medium.fg },
+  { key: 'substantial',  label: 'Substantial',  color: PDF_THEME.colours.risk.high.fg },
+  { key: 'intolerable',  label: 'Intolerable',  color: PDF_THEME.colours.risk.high.fg },
 ];
 
 function normalizeRiskBandKey(input: string): RiskBandKey {
@@ -383,12 +384,13 @@ export function drawActionCard(args: {
   const gapAfterHeader = 10;
   const gapBeforeMeta = 10;
 
+  // Priority stripe colors now derived from PDF_THEME (token-based)
   const p = (priority || '').toLowerCase();
-  let stripeColor = rgb(0.75, 0.45, 0.15);
-  if (p.includes('p1') || p.includes('critical')) stripeColor = rgb(0.65, 0.15, 0.15);
-  else if (p.includes('p2') || p.includes('high')) stripeColor = rgb(0.70, 0.35, 0.10);
-  else if (p.includes('p3') || p.includes('medium')) stripeColor = rgb(0.75, 0.65, 0.20);
-  else if (p.includes('p4') || p.includes('low')) stripeColor = rgb(0.12, 0.29, 0.55);
+  let stripeColor = PDF_THEME.colours.risk.medium.fg;
+  if (p.includes('p1') || p.includes('critical')) stripeColor = PDF_THEME.colours.risk.high.fg;
+  else if (p.includes('p2') || p.includes('high')) stripeColor = PDF_THEME.colours.risk.medium.fg;
+  else if (p.includes('p3') || p.includes('medium')) stripeColor = PDF_THEME.colours.risk.info.fg;
+  else if (p.includes('p4') || p.includes('low')) stripeColor = PDF_THEME.colours.risk.info.fg;
 
   const textX = x + stripeW + cardPadding;
   const maxTextW = w - stripeW - cardPadding * 2;

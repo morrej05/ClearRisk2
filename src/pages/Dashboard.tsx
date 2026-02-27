@@ -19,6 +19,7 @@ import { aggregatePortfolioMetrics } from '../utils/portfolioMetricsAggregation'
 import { ROLE_LABELS, getRolePermissions, UserRole } from '../utils/permissions';
 import { canAccessPillarB } from '../utils/entitlements';
 import { toggleDevForcePro } from '../utils/devFlags';
+import { scoreRiskBandClasses } from '../theme/semanticClasses';
 
 interface Survey {
   id: string;
@@ -191,21 +192,9 @@ export default function Dashboard() {
     return labels[framework] || framework;
   };
 
+  // Using semantic helper from theme layer
   const getRiskBandColor = (band: string) => {
-    switch (band) {
-      case 'Very Good':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'Good':
-        return 'bg-green-100 text-green-600 border-green-200';
-      case 'Tolerable':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'Poor':
-        return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'Very Poor':
-        return 'bg-red-100 text-red-700 border-red-200';
-      default:
-        return 'bg-slate-100 text-slate-600 border-slate-200';
-    }
+    return scoreRiskBandClasses(band, 'badge');
   };
 
   const calculateLegacyPortfolioMetrics = (surveysToAnalyze: Survey[]): PortfolioMetrics => {
@@ -511,18 +500,18 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-4">
               {import.meta.env.DEV && (
-                <label className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer">
+                <label className="flex items-center gap-2 px-3 py-1.5 bg-risk-medium-bg border border-risk-medium-border rounded-lg cursor-pointer">
                   <input
                     type="checkbox"
                     checked={tenant?.plan_id === 'team'}
                     onChange={handleToggleDevForcePro}
-                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    className="rounded border-risk-medium-border text-risk-medium-fg focus:ring-risk-medium-fg"
                   />
-                  <span className="text-xs font-medium text-amber-900">
+                  <span className="text-xs font-medium text-risk-medium-fg">
                     DEV: Toggle Team Plan
                   </span>
                   {tenant?.plan_id === 'team' && (
-                    <span className="px-1.5 py-0.5 bg-amber-200 text-amber-900 text-xs font-bold rounded">
+                    <span className="px-1.5 py-0.5 bg-risk-medium-border text-risk-medium-fg text-xs font-bold rounded">
                       TEAM
                     </span>
                   )}
@@ -531,7 +520,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-end">
                 <span className="text-sm text-slate-600">{user?.email}</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs ${roleError ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
+                  <span className={`text-xs ${roleError ? 'text-risk-high-fg font-semibold' : 'text-slate-500'}`}>
                     Role: {userRole ? ROLE_LABELS[userRole as UserRole] : roleError ? 'Error' : 'Loading...'}
                   </span>
                   {isPlatformAdmin && (
@@ -583,7 +572,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 border-b border-blue-800">
+      <div className="bg-ui-card border-b border-ui-divider border-l-4 border-l-brand-accent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -592,12 +581,12 @@ export default function Dashboard() {
               </div>
               <div>
                 <h3 className="text-white font-bold text-lg">New Dashboard Available</h3>
-                <p className="text-blue-100 text-sm">Access all your risk assessment modules from one place</p>
+                <p className="text-ui-muted text-sm">Access all your risk assessment modules from one place</p>
               </div>
             </div>
             <button
               onClick={() => navigate('/common-dashboard')}
-              className="px-6 py-2.5 bg-white text-blue-700 font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
+              className="px-6 py-2.5 bg-white text-brand-accent font-semibold rounded-lg hover:bg-brand-accent-soft transition-colors shadow-sm"
             >
               Go to Common Dashboard
             </button>
@@ -607,13 +596,13 @@ export default function Dashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {roleError && (
-          <div className="mb-6 bg-red-50 border-2 border-red-300 rounded-lg p-4">
+          <div className="mb-6 bg-risk-high-bg border-2 border-risk-high-border rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-6 h-6 text-risk-high-fg flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-red-900 mb-1">Role Loading Error</h3>
-                <p className="text-sm text-red-800 mb-2">{roleError}</p>
-                <p className="text-xs text-red-700">
+                <h3 className="text-lg font-semibold text-risk-high-fg mb-1">Role Loading Error</h3>
+                <p className="text-sm text-risk-high-fg mb-2">{roleError}</p>
+                <p className="text-xs text-risk-high-fg">
                   Please check the browser console (F12 → Console) for detailed error logs.
                   If the issue persists, contact support or check the RLS policies.
                 </p>
@@ -679,7 +668,7 @@ export default function Dashboard() {
                           <span className="text-xs font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.bestSite}>
                             {portfolioMetrics.bestSite}
                           </span>
-                          <span className="text-base font-bold text-green-600">{portfolioMetrics.bestScore}</span>
+                          <span className="text-base font-bold text-risk-low-fg">{portfolioMetrics.bestScore}</span>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
@@ -798,10 +787,10 @@ export default function Dashboard() {
 
             {surveys.length > 0 && permissions.canGeneratePortfolioSummary && (
               <div className="mb-6 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden max-h-[30vh] flex flex-col">
-                <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-6 py-4 border-b border-slate-200 flex-shrink-0">
+                <div className="bg-ui-surface px-6 py-4 border-b border-ui-divider flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <TrendingUp className="w-5 h-5 text-blue-600" />
+                      <TrendingUp className="w-5 h-5 text-brand-accent" />
                       <h3 className="text-lg font-bold text-slate-900">Portfolio Summary</h3>
                     </div>
                     {portfolioSummary && (
@@ -826,9 +815,9 @@ export default function Dashboard() {
                   {portfolioSummary ? (
                     <>
                       {isSummaryOutOfDate && (
-                        <div className="flex items-center gap-2 px-4 py-2.5 mb-4 bg-amber-50 border border-amber-200 rounded-lg">
-                          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                          <span className="text-sm text-amber-700 font-medium">
+                        <div className="flex items-center gap-2 px-4 py-2.5 mb-4 bg-risk-medium-bg border border-risk-medium-border rounded-lg">
+                          <AlertCircle className="w-4 h-4 text-risk-medium-fg flex-shrink-0" />
+                          <span className="text-sm text-risk-medium-fg font-medium">
                             Filters have changed. Click "Regenerate" to update the summary with current filters.
                           </span>
                         </div>
@@ -847,8 +836,8 @@ export default function Dashboard() {
                     </>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                        <Sparkles className="w-8 h-8 text-blue-600" />
+                      <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-accent-soft rounded-full mb-4">
+                        <Sparkles className="w-8 h-8 text-brand-accent" />
                       </div>
                       <h4 className="text-lg font-semibold text-slate-900 mb-2">No Summary Generated Yet</h4>
                       <p className="text-slate-600 mb-6 max-w-md mx-auto">
@@ -860,7 +849,7 @@ export default function Dashboard() {
                         className={`flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-lg transition-colors mx-auto ${
                           filteredSurveys.length < 2 || isGeneratingSummary
                             ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                            : 'bg-brand-accent text-white hover:bg-brand-accent-hover shadow-sm'
                         }`}
                         title={filteredSurveys.length < 2 ? 'At least 2 issued survey reports required' : 'Generate AI-powered portfolio summary'}
                       >
@@ -999,8 +988,8 @@ export default function Dashboard() {
                                     survey.report_status === 'Draft'
                                       ? 'bg-slate-100 text-slate-700'
                                       : survey.report_status === 'Internally Reviewed'
-                                      ? 'bg-amber-100 text-amber-700'
-                                      : 'bg-green-100 text-green-700'
+                                      ? 'bg-amber-100 text-risk-medium-fg'
+                                      : 'bg-risk-low-bg text-risk-low-fg'
                                   }`}
                                 >
                                   {survey.report_status || 'Draft'}
@@ -1026,7 +1015,7 @@ export default function Dashboard() {
   }
 }}
 
-                                    className="text-blue-600 hover:text-blue-900 transition-colors"
+                                    className="text-brand-accent hover:text-brand-accent-hover transition-colors"
                                     title="View Reports"
                                   >
                                     <Eye className="w-4 h-4" />
@@ -1058,7 +1047,7 @@ export default function Dashboard() {
                                 {permissions.canResurvey && survey.issued && (
                                   <button
                                     onClick={() => setResurveyConfirmId(survey.id)}
-                                    className="text-blue-600 hover:text-blue-900 transition-colors"
+                                    className="text-brand-accent hover:text-brand-accent-hover transition-colors"
                                     title="Resurvey Site"
                                   >
                                     <RefreshCw className="w-4 h-4" />
@@ -1076,7 +1065,7 @@ export default function Dashboard() {
                                 {permissions.canCreateSurveys && (
                                   <button
                                     onClick={() => setCloneSurveyId(survey.id)}
-                                    className="text-blue-600 hover:text-blue-900 transition-colors"
+                                    className="text-brand-accent hover:text-brand-accent-hover transition-colors"
                                     title="Clone Survey"
                                   >
                                     <Copy className="w-4 h-4" />
@@ -1085,7 +1074,7 @@ export default function Dashboard() {
                                 {canIssue && (
                                   <button
                                     onClick={() => setIssueConfirmId(survey.id)}
-                                    className="text-green-600 hover:text-green-900 transition-colors"
+                                    className="text-risk-low-fg hover:text-risk-low-fg transition-colors"
                                     title="Issue Report"
                                   >
                                     <CheckCircle2 className="w-4 h-4" />
@@ -1094,7 +1083,7 @@ export default function Dashboard() {
                                 {canDelete ? (
                                   <button
                                     onClick={() => setDeleteConfirmId(survey.id)}
-                                    className="text-red-600 hover:text-red-900 transition-colors"
+                                    className="text-risk-high-fg hover:text-risk-high-fg transition-colors"
                                     title="Delete Survey"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -1159,7 +1148,7 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={() => handleDeleteSurvey(deleteConfirmId)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                className="px-4 py-2 bg-risk-high-fg text-white rounded-lg hover:bg-risk-high-fg transition-colors font-medium"
               >
                 Delete Survey
               </button>
@@ -1184,7 +1173,7 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={() => handleIssueReport(issueConfirmId)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                className="px-4 py-2 bg-risk-low-fg text-white rounded-lg hover:bg-risk-low-fg transition-colors font-medium"
               >
                 Issue Report
               </button>
@@ -1213,7 +1202,7 @@ export default function Dashboard() {
                   const survey = surveys.find(s => s.id === resurveyConfirmId);
                   if (survey) handleResurvey(survey);
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent-hover transition-colors font-medium"
               >
                 Create Resurvey
               </button>

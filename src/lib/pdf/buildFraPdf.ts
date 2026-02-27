@@ -1226,11 +1226,12 @@ function drawRiskSummaryPage(
     yPosition -= 25;
 
     for (const action of priorityActions.slice(0, 5)) {
+      // Use PDF_THEME token-based colors for priority bands
       const priorityColor =
-        action.priority_band === 'P1' ? rgb(0.8, 0.1, 0.1) :
-        action.priority_band === 'P2' ? rgb(0.9, 0.5, 0) :
-        action.priority_band === 'P3' ? rgb(0.9, 0.7, 0) :
-        rgb(0.3, 0.6, 0.8);
+        action.priority_band === 'P1' ? PDF_THEME.colours.risk.high.fg :
+        action.priority_band === 'P2' ? PDF_THEME.colours.risk.medium.fg :
+        action.priority_band === 'P3' ? PDF_THEME.colours.risk.info.fg :
+        PDF_THEME.colours.risk.info.fg;
 
       page.drawRectangle({
         x: MARGIN,

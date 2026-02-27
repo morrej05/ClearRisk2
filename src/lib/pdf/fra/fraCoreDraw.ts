@@ -785,8 +785,9 @@ if (detection.quickActions.length > 0) {
   boxY -= 16;
 
   for (const quickAction of detection.quickActions) {
+    // Use PDF_THEME token-based colors for priority
     const priorityColor =
-      quickAction.priority === 'P2' ? rgb(0.9, 0.5, 0.13) : rgb(0.85, 0.65, 0.13);
+      quickAction.priority === 'P2' ? PDF_THEME.colours.risk.medium.fg : PDF_THEME.colours.risk.medium.fg;
 
     // badge
     page.drawRectangle({
@@ -2457,11 +2458,12 @@ export function drawCleanAuditPage1(
     const boxSpacing = 15;
     const startX = MARGIN + 20;
 
+    // Use PDF_THEME token-based colors for priority bands
     const priorities = [
-      { label: 'P1', count: p1Count, color: rgb(0.8, 0.1, 0.1) },
-      { label: 'P2', count: p2Count, color: rgb(0.9, 0.5, 0) },
-      { label: 'P3', count: p3Count, color: rgb(0.9, 0.7, 0) },
-      { label: 'P4', count: p4Count, color: rgb(0.3, 0.6, 0.8) }
+      { label: 'P1', count: p1Count, color: PDF_THEME.colours.risk.high.fg },
+      { label: 'P2', count: p2Count, color: PDF_THEME.colours.risk.medium.fg },
+      { label: 'P3', count: p3Count, color: PDF_THEME.colours.risk.info.fg },
+      { label: 'P4', count: p4Count, color: PDF_THEME.colours.risk.info.fg }
     ];
 
     priorities.forEach((p, idx) => {

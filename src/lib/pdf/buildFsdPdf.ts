@@ -793,8 +793,8 @@ function drawInfoGapQuickActions(
         yPosition = PAGE_HEIGHT - MARGIN - 20;
       }
 
-      // Priority badge
-      const priorityColor = quickAction.priority === 'P2' ? rgb(0.9, 0.5, 0.13) : rgb(0.85, 0.65, 0.13);
+      // Priority badge - use PDF_THEME token-based colors
+      const priorityColor = quickAction.priority === 'P2' ? PDF_THEME.colours.risk.medium.fg : PDF_THEME.colours.risk.medium.fg;
       page.drawRectangle({
         x: MARGIN + 10,
         y: yPosition - 3,
@@ -1388,15 +1388,16 @@ function drawComputedAssuranceSummary(
     material_def: 'MATERIAL DEVIATIONS IDENTIFIED',
   };
 
+  // Use PDF_THEME token-based colors for outcomes
   const outcomeColors: Record<string, ReturnType<typeof rgb>> = {
-    compliant: rgb(0.2, 0.6, 0.2),
-    minor_def: rgb(0.9, 0.6, 0),
-    info_gap: rgb(0.8, 0.4, 0),
-    material_def: rgb(0.7, 0, 0),
+    compliant: PDF_THEME.colours.risk.low.fg,
+    minor_def: PDF_THEME.colours.risk.medium.fg,
+    info_gap: PDF_THEME.colours.risk.medium.fg,
+    material_def: PDF_THEME.colours.risk.high.fg,
   };
 
   const outcomeLabel = outcomeLabels[summary.computedOutcome] || summary.computedOutcome.toUpperCase();
-  const outcomeColor = outcomeColors[summary.computedOutcome] || rgb(0.5, 0.5, 0.5);
+  const outcomeColor = outcomeColors[summary.computedOutcome] || PDF_THEME.colours.risk.info.fg;
 
   page.drawText('Overall Design Assurance Outcome:', {
     x: MARGIN,

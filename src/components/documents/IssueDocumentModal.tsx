@@ -238,80 +238,88 @@ export default function IssueDocumentModal({
 
           {!validated ? (
             <Callout variant="warning" title="Validation Required" className="mb-6">
-              <p className="mb-2">
-                Before issuing, the document must pass server-side validation checks including:
-              </p>
-              <ul className="space-y-1 ml-4">
-                <li>• Permissions verification</li>
-                <li>• Module completeness check</li>
-                <li>• Approval workflow compliance</li>
-                <li>• Lifecycle state validation</li>
-              </ul>
+              <div className="text-sm text-amber-900">
+                <p className="mb-2">
+                  Before issuing, the document must pass server-side validation checks including:
+                </p>
+                <ul className="space-y-1 ml-4">
+                  <li>• Permissions verification</li>
+                  <li>• Module completeness check</li>
+                  <li>• Approval workflow compliance</li>
+                  <li>• Lifecycle state validation</li>
+                </ul>
+              </div>
             </Callout>
           ) : !validationError ? (
             <>
               <Callout variant="success" title="Validation Passed" className="mb-6">
-                All required checks passed. This document is ready to be issued.
+                <p className="text-sm text-green-900">
+                  All required checks passed. This document is ready to be issued.
+                </p>
               </Callout>
               {validationWarnings.length > 0 && (
                 <Callout variant="warning" title="Optional Modules Incomplete" className="mb-6">
-                  <p className="mb-2 text-sm">
-                    The following optional modules have no data. You can still issue the document, but consider completing them:
-                  </p>
-                  <ul className="space-y-1 ml-4 text-sm">
-                    {validationWarnings.map((warning, idx) => (
-                      <li key={idx}>• {warning}</li>
-                    ))}
-                  </ul>
+                  <div className="text-amber-900">
+                    <p className="mb-2 text-sm">
+                      The following optional modules have no data. You can still issue the document, but consider completing them:
+                    </p>
+                    <ul className="space-y-1 ml-4 text-sm">
+                      {validationWarnings.map((warning, idx) => (
+                        <li key={idx}>• {warning}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </Callout>
               )}
             </>
           ) : (
             <Callout variant="danger" title="Cannot Issue Document" className="mb-6">
-              {missingRequiredModules.length > 0 ? (
-                <>
-                  <p className="mb-3 font-medium">
-                    This document can't be issued yet. The following required sections are incomplete:
-                  </p>
-                  <div className="space-y-2">
-                    {missingRequiredModules.map((moduleKey) => (
-                      <button
-                        key={moduleKey}
-                        onClick={() => handleNavigateToModule(moduleKey)}
-                        className="w-full flex items-center justify-between px-4 py-3 bg-white border border-red-200 rounded-md hover:bg-red-50 hover:border-red-300 transition-colors text-left group"
-                      >
-                        <span className="font-medium text-neutral-900">
-                          {getModuleName(moduleKey)}
-                        </span>
-                        <ArrowRight className="w-4 h-4 text-red-600 group-hover:translate-x-1 transition-transform" />
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-sm text-neutral-600">
-                    Click on a section above to complete it, then return here to issue.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="mb-2">{validationError}</p>
-                  {validationErrorCode === 'APPROVAL_REQUIRED' && (
-                    <p className="mt-2 text-sm">
-                      Go to Document Overview → Request Approval
+              <div className="text-red-900">
+                {missingRequiredModules.length > 0 ? (
+                  <>
+                    <p className="mb-3 font-medium text-sm">
+                      This document can't be issued yet. The following required sections are incomplete:
                     </p>
-                  )}
-                  {validationErrorCode === 'NO_PERMISSION' && (
-                    <p className="mt-2 text-sm">
-                      Only users with edit permissions can issue documents.
+                    <div className="space-y-2">
+                      {missingRequiredModules.map((moduleKey) => (
+                        <button
+                          key={moduleKey}
+                          onClick={() => handleNavigateToModule(moduleKey)}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white border border-red-200 rounded-md hover:bg-red-50 hover:border-red-300 transition-colors text-left group"
+                        >
+                          <span className="font-medium text-neutral-900">
+                            {getModuleName(moduleKey)}
+                          </span>
+                          <ArrowRight className="w-4 h-4 text-red-600 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm text-neutral-600">
+                      Click on a section above to complete it, then return here to issue.
                     </p>
-                  )}
-                </>
-              )}
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-2 text-sm">{validationError}</p>
+                    {validationErrorCode === 'APPROVAL_REQUIRED' && (
+                      <p className="mt-2 text-sm">
+                        Go to Document Overview → Request Approval
+                      </p>
+                    )}
+                    {validationErrorCode === 'NO_PERMISSION' && (
+                      <p className="mt-2 text-sm">
+                        Only users with edit permissions can issue documents.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             </Callout>
           )}
 
           {isIssuing && (
             <Callout variant="info" className="mb-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 text-blue-900">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
                 <div>
                   <p className="font-medium">Issuing Document...</p>
@@ -322,7 +330,7 @@ export default function IssueDocumentModal({
           )}
 
           <Callout variant="info" title="What happens when you issue:">
-            <ul className="space-y-1">
+            <ul className="space-y-1 text-sm text-blue-900">
               <li>• The document will be marked as issued with today's date</li>
               <li>• All editing will be locked to preserve integrity</li>
               <li>• Action reference numbers will be assigned</li>

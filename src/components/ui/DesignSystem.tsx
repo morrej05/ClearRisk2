@@ -78,17 +78,24 @@ interface CalloutProps {
 }
 
 export function Callout({ children, variant = 'info', title, className = '' }: CalloutProps) {
-  const variants = {
-    info: 'bg-blue-50 border-blue-200 text-blue-900',
-    warning: 'bg-amber-50 border-amber-200 text-amber-900',
-    danger: 'bg-red-50 border-red-200 text-red-900',
-    success: 'bg-green-50 border-green-200 text-green-900'
+  const containerVariants = {
+    info: 'bg-blue-50 border-blue-200',
+    warning: 'bg-amber-50 border-amber-200',
+    danger: 'bg-red-50 border-red-200',
+    success: 'bg-green-50 border-green-200'
+  };
+
+  const titleTextVariants = {
+    info: 'text-blue-900',
+    warning: 'text-amber-900',
+    danger: 'text-red-900',
+    success: 'text-green-900'
   };
 
   return (
-    <div className={`border rounded-lg p-4 ${variants[variant]} ${className}`}>
-      {title && <p className="font-semibold mb-2">{title}</p>}
-      <div className="text-sm">{children}</div>
+    <div className={`border rounded-lg p-4 ${containerVariants[variant]} ${className}`}>
+      {title && <p className={`font-semibold mb-2 ${titleTextVariants[variant]}`}>{title}</p>}
+      {children}
     </div>
   );
 }

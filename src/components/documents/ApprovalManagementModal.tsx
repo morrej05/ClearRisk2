@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Button } from '../ui/DesignSystem';
 import {
   requestApproval,
   approveDocument,
@@ -220,13 +221,14 @@ export default function ApprovalManagementModal({
                     <CheckCircle className="w-5 h-5" />
                     Approve Document
                   </button>
-                  <button
+                  <Button
+                    variant="destructive"
                     onClick={() => setAction('reject')}
-                    className="w-full px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-3 flex items-center justify-center gap-2"
                   >
                     <XCircle className="w-5 h-5" />
                     Reject Document
-                  </button>
+                  </Button>
                 </>
               )}
 
@@ -283,19 +285,20 @@ export default function ApprovalManagementModal({
                 >
                   Cancel
                 </button>
-                <button
+                <Button
+                  variant={action === 'reject' ? 'destructive' : 'primary'}
                   onClick={() => {
                     if (action === 'request') handleRequestApproval();
                     else if (action === 'approve') handleApprove();
                     else if (action === 'reject') handleReject();
                   }}
                   disabled={isProcessing || (action === 'reject' && !notes.trim())}
-                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`flex-1 ${
                     action === 'approve'
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : action === 'reject'
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-600'
+                      : action === 'request'
+                      ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-600'
+                      : ''
                   }`}
                 >
                   {isProcessing
@@ -305,7 +308,7 @@ export default function ApprovalManagementModal({
                     : action === 'approve'
                     ? 'Approve'
                     : 'Reject'}
-                </button>
+                </Button>
               </div>
             </div>
           )}

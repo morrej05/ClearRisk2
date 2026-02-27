@@ -1620,10 +1620,11 @@ try {
               >
                 Cancel
               </button>
-              <button
+              <Button
+                variant="destructive"
                 onClick={handleDeleteDocument}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="flex items-center gap-2"
               >
                 {isDeleting ? (
                   <>
@@ -1636,7 +1637,7 @@ try {
                     Delete
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

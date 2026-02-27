@@ -2,6 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    /* UI Neutrals - RGB values for alpha support */
+    --ui-ink: 17 24 39;
+    --ui-text: 55 65 81;
+    --ui-muted: 107 114 128;
+    --ui-surface: 249 250 251;
+    --ui-card: 255 255 255;
+    --ui-border: 229 231 235;
+    --ui-divider: 241 245 249;
+
+    /* Brand Accent */
+    --brand-accent: 47 62 78;
+    --brand-accent-hover: 30 41 59;
+    --brand-accent-soft: 238 242 247;
+
+    /* Risk - High (Red) */
+    --risk-high-fg: 155 28 28;
+    --risk-high-bg: 253 236 236;
+    --risk-high-border: 245 194 194;
+
+    /* Risk - Medium (Amber) */
+    --risk-medium-fg: 180 83 9;
+    --risk-medium-bg: 255 244 229;
+    --risk-medium-border: 250 215 181;
+
+    /* Risk - Low (Green) */
+    --risk-low-fg: 22 101 52;
+    --risk-low-bg: 234 247 238;
+    --risk-low-border: 183 228 199;
+
+    /* Risk - Info (Slate) */
+    --risk-info-fg: 71 85 105;
+    --risk-info-bg: 241 245 249;
+    --risk-info-border: 203 213 225;
+  }
+}
+
 html, body {
   overflow-x: hidden;
 }

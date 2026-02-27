@@ -5,9 +5,9 @@ interface DocumentStatusBadgeProps {
 
 export default function DocumentStatusBadge({ status, className = '' }: DocumentStatusBadgeProps) {
   const styles = {
-    draft: 'bg-slate-100 text-slate-700 border-slate-300',
-    issued: 'bg-green-100 text-green-800 border-green-300',
-    superseded: 'bg-orange-100 text-orange-800 border-orange-300',
+    draft: 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border',
+    issued: 'bg-risk-low-bg text-risk-low-fg border border-risk-low-border',
+    superseded: 'bg-risk-medium-bg text-risk-medium-fg border border-risk-medium-border',
   };
 
   const labels = {

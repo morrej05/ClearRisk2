@@ -45,17 +45,18 @@ export function drawSectionHeaderBar(args: {
   product: PdfProduct;
   fonts: Fonts;
 }) {
-  const { page, x, y, w, sectionNo, title, product, fonts } = args;
+  const { page, x, y, w, sectionNo, title, fonts } = args;
 
   const barH = PDF_THEME.shapes.headerBarH;
-  const accent = PDF_THEME.colours.accent[product] ?? PDF_THEME.colours.accent.combined;
 
+  // NEUTRAL section header - no colored background to avoid logo clashes
+  // Use white background with subtle divider line
   page.drawRectangle({
     x,
     y: y - barH,
     width: w,
     height: barH,
-    color: accent,
+    color: PDF_THEME.colours.card,
   });
 
   const text = sectionNo ? `${sectionNo}   ${title}` : title;
@@ -69,9 +70,10 @@ export function drawSectionHeaderBar(args: {
     y: y - barH + textYOffset,
     size: fontSize,
     font: fonts.bold,
-    color: rgb(1, 1, 1),
+    color: PDF_THEME.colours.ink,
   });
 
+  // Draw divider below header for separation
   drawDivider(page, x, y - barH - 6, w);
 
   return y - barH - PDF_THEME.rhythm.md;

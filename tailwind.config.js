@@ -4,6 +4,36 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Token-based color system
+        ui: {
+          ink: 'rgb(var(--ui-ink) / <alpha-value>)',
+          text: 'rgb(var(--ui-text) / <alpha-value>)',
+          muted: 'rgb(var(--ui-muted) / <alpha-value>)',
+          surface: 'rgb(var(--ui-surface) / <alpha-value>)',
+          card: 'rgb(var(--ui-card) / <alpha-value>)',
+          border: 'rgb(var(--ui-border) / <alpha-value>)',
+          divider: 'rgb(var(--ui-divider) / <alpha-value>)',
+        },
+        brand: {
+          accent: 'rgb(var(--brand-accent) / <alpha-value>)',
+          'accent-hover': 'rgb(var(--brand-accent-hover) / <alpha-value>)',
+          'accent-soft': 'rgb(var(--brand-accent-soft) / <alpha-value>)',
+        },
+        risk: {
+          'high-fg': 'rgb(var(--risk-high-fg) / <alpha-value>)',
+          'high-bg': 'rgb(var(--risk-high-bg) / <alpha-value>)',
+          'high-border': 'rgb(var(--risk-high-border) / <alpha-value>)',
+          'medium-fg': 'rgb(var(--risk-medium-fg) / <alpha-value>)',
+          'medium-bg': 'rgb(var(--risk-medium-bg) / <alpha-value>)',
+          'medium-border': 'rgb(var(--risk-medium-border) / <alpha-value>)',
+          'low-fg': 'rgb(var(--risk-low-fg) / <alpha-value>)',
+          'low-bg': 'rgb(var(--risk-low-bg) / <alpha-value>)',
+          'low-border': 'rgb(var(--risk-low-border) / <alpha-value>)',
+          'info-fg': 'rgb(var(--risk-info-fg) / <alpha-value>)',
+          'info-bg': 'rgb(var(--risk-info-bg) / <alpha-value>)',
+          'info-border': 'rgb(var(--risk-info-border) / <alpha-value>)',
+        },
+        // Legacy colors (kept for gradual migration)
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',

@@ -36,17 +36,21 @@ export function getPriorityForDimension(
 }
 
 export function getPriorityColor(priority: RecommendationPriority | undefined): string {
+  if (!priority) {
+    return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
+  }
+
   switch (priority) {
     case 'Critical':
-      return 'bg-red-100 text-red-700 border-red-200';
+      return 'bg-risk-high-bg text-risk-high-fg border border-risk-high-border';
     case 'High':
-      return 'bg-orange-100 text-orange-700 border-orange-200';
+      return 'bg-risk-medium-bg text-risk-medium-fg border border-risk-medium-border';
     case 'Medium':
-      return 'bg-amber-100 text-amber-700 border-amber-200';
+      return 'bg-risk-low-bg text-risk-low-fg border border-risk-low-border';
     case 'Low':
-      return 'bg-blue-100 text-blue-700 border-blue-200';
+      return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
     default:
-      return 'bg-slate-100 text-slate-600 border-slate-200';
+      return 'bg-risk-info-bg text-risk-info-fg border border-risk-info-border';
   }
 }
 

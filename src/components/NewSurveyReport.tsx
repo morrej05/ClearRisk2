@@ -22,6 +22,7 @@ import SectionGrade from './SectionGrade';
 import { INDUSTRY_SECTORS } from '../utils/industrySectors';
 import { migrateSurveyRecommendations } from '../utils/migrateRecommendations';
 import { canAccessSmartRecommendations } from '../utils/permissions';
+import { riskTokenClasses, gradeRiskBandClasses } from '../theme/semanticClasses';
 
 interface Hazard {
   id: string;
@@ -1767,12 +1768,12 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
         </div>
 
         {isIssued && (
-          <div className="mb-6 bg-amber-50 border-l-4 border-amber-400 p-6 rounded-r-lg">
+          <div className="mb-6 bg-risk-medium-bg border-l-4 border-risk-medium-border p-6 rounded-r-lg">
             <div className="flex items-start gap-3">
-              <Lock className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+              <Lock className="w-6 h-6 text-risk-medium-fg flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-lg font-bold text-amber-900 mb-1">THIS REPORT HAS BEEN ISSUED AND IS READ-ONLY</h3>
-                <p className="text-sm text-amber-800">
+                <h3 className="text-lg font-bold text-risk-medium-fg mb-1">THIS REPORT HAS BEEN ISSUED AND IS READ-ONLY</h3>
+                <p className="text-sm text-risk-medium-fg">
                   This report has been officially issued and cannot be edited or deleted. All form fields are locked to preserve the integrity of the issued document.
                   If you need to make changes, please create a new survey by using the "Resurvey Site" option from the dashboard.
                 </p>
@@ -1782,12 +1783,12 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
         )}
 
         {externalEditActive && (
-          <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-4 mb-6">
+          <div className="bg-risk-medium-bg border-2 border-risk-medium-border rounded-lg p-4 mb-6">
             <div className="flex items-start">
-              <AlertCircle className="w-6 h-6 text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-6 h-6 text-risk-medium-fg mr-3 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-lg font-semibold text-amber-900 mb-1">External Contributor Currently Editing</h3>
-                <p className="text-sm text-amber-800">
+                <h3 className="text-lg font-semibold text-risk-medium-fg mb-1">External Contributor Currently Editing</h3>
+                <p className="text-sm text-risk-medium-fg">
                   An external contributor is currently working on this survey. Your changes and their changes may conflict.
                   Please coordinate with the external party before making edits to avoid data loss.
                 </p>
@@ -1858,7 +1859,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 <p className="text-xs text-slate-500 mt-1.5 italic">
                   The selected sector adjusts risk score weightings to reflect typical loss drivers for this industry.
                   {sectorWeightings.some(w => w.is_custom) && (
-                    <span className="block mt-1 text-blue-700">* indicates custom sector weightings are applied</span>
+                    <span className="block mt-1 text-brand-accent">* indicates custom sector weightings are applied</span>
                   )}
                 </p>
               </div>
@@ -2037,7 +2038,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               const newDiscussions = formData.discussionsOnSite.filter((_, i) => i !== index);
                               setFormData({ ...formData, discussionsOnSite: newDiscussions });
                             }}
-                            className="px-3 py-2 text-red-600 hover:text-red-700 transition-colors"
+                            className="px-3 py-2 text-risk-high-fg hover:text-risk-high-fg transition-colors"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -2645,7 +2646,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                                 }}
                                 className={`w-16 px-2 py-1 border rounded text-center focus:ring-2 focus:border-transparent transition-all ${
                                   isExceeded
-                                    ? 'border-amber-400 focus:ring-amber-500'
+                                    ? 'border-risk-medium-border focus:ring-risk-medium-fg'
                                     : 'border-slate-300 focus:ring-slate-500'
                                 }`}
                                 placeholder="0"
@@ -2653,7 +2654,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               />
                               <div className="text-xs text-slate-500 mt-1">Max: {maxRequired}%</div>
                               {isExceeded && (
-                                <div className="text-xs text-amber-600 font-medium mt-1 whitespace-nowrap">
+                                <div className="text-xs text-risk-medium-fg font-medium mt-1 whitespace-nowrap">
                                   ⚠️ Too high
                                 </div>
                               )}
@@ -2680,7 +2681,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                                 }}
                                 className={`w-16 px-2 py-1 border rounded text-center focus:ring-2 focus:border-transparent transition-all ${
                                   isExceeded
-                                    ? 'border-amber-400 focus:ring-amber-500'
+                                    ? 'border-risk-medium-border focus:ring-risk-medium-fg'
                                     : 'border-slate-300 focus:ring-slate-500'
                                 }`}
                                 placeholder="0"
@@ -2688,7 +2689,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               />
                               <div className="text-xs text-slate-500 mt-1">Max: {maxRecommended}%</div>
                               {isExceeded && (
-                                <div className="text-xs text-amber-600 font-medium mt-1 whitespace-nowrap">
+                                <div className="text-xs text-risk-medium-fg font-medium mt-1 whitespace-nowrap">
                                   ⚠️ Too high
                                 </div>
                               )}
@@ -2703,9 +2704,9 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               key={rating}
                               className={`flex items-center gap-1 cursor-pointer px-2 py-1 rounded border transition-all ${
                                 building.fire_protection_summary.adequacy_rating === rating
-                                  ? rating === 'Adequate' ? 'bg-green-100 border-green-500' :
-                                    rating === 'Tolerable' ? 'bg-amber-100 border-amber-500' :
-                                    'bg-red-100 border-red-500'
+                                  ? rating === 'Adequate' ? 'bg-risk-low-bg border-risk-low-border' :
+                                    rating === 'Tolerable' ? 'bg-risk-medium-bg border-risk-medium-border' :
+                                    'bg-risk-high-bg border-risk-high-border'
                                   : 'border-slate-200 hover:border-slate-300'
                               }`}
                             >
@@ -2723,9 +2724,9 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               />
                               <div
                                 className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                  rating === 'Adequate' ? 'bg-green-500' :
-                                  rating === 'Tolerable' ? 'bg-amber-500' :
-                                  'bg-red-500'
+                                  rating === 'Adequate' ? 'bg-risk-low-fg' :
+                                  rating === 'Tolerable' ? 'bg-risk-medium-bg0' :
+                                  'bg-risk-high-fg'
                                 }`}
                               />
                               <span className="text-xs whitespace-nowrap">{rating}</span>
@@ -2743,7 +2744,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               key={rating}
                               className={`flex items-center gap-1 cursor-pointer px-2 py-1 rounded border transition-all ${
                                 building.water_supply_rating === rating
-                                  ? rating === 'Reliable' ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'
+                                  ? rating === 'Reliable' ? 'bg-risk-low-bg border-risk-low-border' : 'bg-risk-high-bg border-risk-high-border'
                                   : 'border-slate-200 hover:border-slate-300'
                               }`}
                             >
@@ -2761,7 +2762,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               />
                               <div
                                 className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                  rating === 'Reliable' ? 'bg-green-500' : 'bg-red-500'
+                                  rating === 'Reliable' ? 'bg-risk-low-fg' : 'bg-risk-high-fg'
                                 }`}
                               />
                               <span className="text-xs whitespace-nowrap">{rating}</span>
@@ -2863,8 +2864,8 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                         className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border-2 transition-all ${
                           formData.waterSupplyNotes_rating === rating
                             ? rating === 'Reliable'
-                              ? 'bg-green-50 border-green-500 text-green-700'
-                              : 'bg-red-50 border-red-500 text-red-700'
+                              ? 'bg-risk-low-bg border-risk-low-border text-risk-low-fg'
+                              : 'bg-risk-high-bg border-risk-high-border text-risk-high-fg'
                             : 'border-slate-300 hover:border-slate-400 text-slate-700'
                         }`}
                       >
@@ -2878,7 +2879,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                         />
                         <div
                           className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                            rating === 'Reliable' ? 'bg-green-500' : 'bg-red-500'
+                            rating === 'Reliable' ? 'bg-risk-low-fg' : 'bg-risk-high-fg'
                           }`}
                         />
                         <span className="font-medium">{rating}</span>
@@ -2938,7 +2939,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                       onClick={() => {
                         setSpecialHazards(specialHazards.filter((_, i) => i !== hazardIndex));
                       }}
-                      className="mt-7 text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all"
+                      className="mt-7 text-risk-high-fg hover:text-risk-high-fg hover:bg-risk-high-bg p-2 rounded-lg transition-all"
                       title="Remove hazard"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -2977,10 +2978,10 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                           className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border-2 transition-all flex-1 ${
                             hazard.rating === option.value
                               ? option.color === 'green'
-                                ? 'bg-green-50 border-green-500 text-green-700'
+                                ? 'bg-risk-low-bg border-risk-low-border text-risk-low-fg'
                                 : option.color === 'amber'
-                                ? 'bg-amber-50 border-amber-500 text-amber-700'
-                                : 'bg-red-50 border-red-500 text-red-700'
+                                ? 'bg-risk-medium-bg border-risk-medium-border text-risk-medium-fg'
+                                : 'bg-risk-high-bg border-risk-high-border text-risk-high-fg'
                               : 'border-slate-300 hover:border-slate-400 text-slate-700'
                           }`}
                         >
@@ -3297,9 +3298,9 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                     <h4 className="text-lg font-medium text-slate-900 mb-3">Business Interruption</h4>
 
                     {getTotalMonths() > parseFloat(indemnityPeriod || '0') && indemnityPeriod && (
-                      <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-lg flex items-start">
-                        <AlertCircle className="w-5 h-5 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-amber-800">
+                      <div className="mb-4 p-3 bg-risk-medium-bg border border-risk-medium-border rounded-lg flex items-start">
+                        <AlertCircle className="w-5 h-5 text-risk-medium-fg mr-2 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-risk-medium-fg">
                           <strong>Warning:</strong> Total months ({getTotalMonths()}) exceeds the indemnity period ({indemnityPeriod} months)
                         </div>
                       </div>
@@ -3456,9 +3457,9 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                     <h4 className="text-lg font-medium text-slate-900 mb-3">Business Interruption</h4>
 
                     {getNleAllRIsTotalMonths() > parseFloat(indemnityPeriod || '0') && indemnityPeriod && (
-                      <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-lg flex items-start">
-                        <AlertCircle className="w-5 h-5 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-amber-800">
+                      <div className="mb-4 p-3 bg-risk-medium-bg border border-risk-medium-border rounded-lg flex items-start">
+                        <AlertCircle className="w-5 h-5 text-risk-medium-fg mr-2 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-risk-medium-fg">
                           <strong>Warning:</strong> Total months ({getNleAllRIsTotalMonths()}) exceeds the indemnity period ({indemnityPeriod} months)
                         </div>
                       </div>
@@ -3576,7 +3577,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                       <button
                         type="button"
                         onClick={() => removeNaturalHazard(hazard.id)}
-                        className="text-red-600 hover:text-red-700 transition-colors"
+                        className="text-risk-high-fg hover:text-risk-high-fg transition-colors"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -3630,10 +3631,10 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                               className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border-2 transition-all flex-1 ${
                                 hazard.rating === option.value
                                   ? option.color === 'green'
-                                    ? 'bg-green-50 border-green-500 text-green-700'
+                                    ? 'bg-risk-low-bg border-risk-low-border text-risk-low-fg'
                                     : option.color === 'amber'
-                                    ? 'bg-amber-50 border-amber-500 text-amber-700'
-                                    : 'bg-red-50 border-red-500 text-red-700'
+                                    ? 'bg-risk-medium-bg border-risk-medium-border text-risk-medium-fg'
+                                    : 'bg-risk-high-bg border-risk-high-border text-risk-high-fg'
                                   : 'border-slate-300 hover:border-slate-400 text-slate-700'
                               }`}
                             >
@@ -3691,11 +3692,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
               </div>
               <div className="text-right">
                 <h3 className="text-sm font-medium text-slate-600 mb-2">Risk Band</h3>
-                <span className={`inline-block px-6 py-3 rounded-lg text-lg font-bold ${
-                  formData.riskBand === 'Critical' ? 'bg-red-100 text-red-800 border-2 border-red-300' :
-                  formData.riskBand === 'High' ? 'bg-orange-100 text-orange-800 border-2 border-orange-300' :
-                  formData.riskBand === 'Medium' ? 'bg-amber-100 text-amber-800 border-2 border-amber-300' :
-                  'bg-green-100 text-green-800 border-2 border-green-300'
+                <span className={`inline-block px-6 py-3 rounded-lg text-lg font-bold ${gradeRiskBandClasses(formData.riskBand || 'Unknown', 'card')}
                 }`}>
                   {formData.riskBand}
                 </span>
@@ -3727,8 +3724,8 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
             ) : surveyId ? (
               <SmartRecommendationsTable surveyId={surveyId} readonly={isIssued} surveyStatus={isIssued ? 'issued' : 'draft'} />
             ) : (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
+              <div className="bg-risk-info-bg border border-risk-info-border rounded-lg p-4">
+                <p className="text-sm text-risk-info-fg">
                   Save the survey first to manage recommendations using the smart table.
                 </p>
               </div>
@@ -3753,7 +3750,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                   <button
                     onClick={handleMigrateRecommendations}
                     disabled={isMigrating}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-4 py-2 bg-risk-low-fg text-white rounded-lg hover:bg-risk-low-fg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {isMigrating ? (
                       <>
@@ -3772,8 +3769,8 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
               {migrationMessage && (
                 <div className={`mb-4 p-3 rounded-lg ${
                   migrationMessage.includes('Success') || migrationMessage.includes('migrated')
-                    ? 'bg-green-50 border border-green-200 text-green-800'
-                    : 'bg-blue-50 border border-blue-200 text-blue-800'
+                    ? 'bg-risk-low-bg border border-risk-low-border text-risk-low-fg'
+                    : 'bg-risk-info-bg border border-risk-info-border text-risk-info-fg'
                 }`}>
                   <p className="text-sm">{migrationMessage}</p>
                 </div>
@@ -3785,12 +3782,12 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 const recommendationId = `${year}-${recommendationNumber}`;
 
                 return (
-                  <div key={comment.id} className={`p-4 border rounded-lg ${comment.isAutoGenerated ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-slate-50'}`}>
+                  <div key={comment.id} className={`p-4 border rounded-lg ${comment.isAutoGenerated ? 'border-risk-info-border bg-risk-info-bg' : 'border-slate-200 bg-slate-50'}`}>
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex flex-col gap-2">
                         <h3 className="text-lg font-medium text-slate-900">{recommendationId}</h3>
                         {comment.isAutoGenerated && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded-full border border-blue-200 w-fit">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-risk-info-fg bg-risk-info-bg rounded-full border border-risk-info-border w-fit">
                             <AlertCircle size={14} />
                             Auto-generated (editable)
                           </span>
@@ -3799,7 +3796,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                       <button
                         type="button"
                         onClick={() => removeOverallComment(comment.id)}
-                        className="text-red-600 hover:text-red-700 transition-colors"
+                        className="text-risk-high-fg hover:text-risk-high-fg transition-colors"
                         title="Delete recommendation"
                       >
                         <Trash2 size={18} />
@@ -3935,7 +3932,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                                   <option value="Low">Override: Low</option>
                                 </select>
                                 {isIssued && (
-                                  <p className="text-xs text-amber-600 mt-1 font-medium">Issued report – editing locked</p>
+                                  <p className="text-xs text-risk-medium-fg mt-1 font-medium">Issued report – editing locked</p>
                                 )}
                               </>
                             );
@@ -3963,7 +3960,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                                   <button
                                     type="button"
                                     onClick={() => removeRecommendationImage(comment.id, imageUrl)}
-                                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors opacity-0 group-hover:opacity-100"
+                                    className="absolute top-1 right-1 p-1 bg-risk-high-fg text-white rounded-full hover:bg-risk-high-fg transition-colors opacity-0 group-hover:opacity-100"
                                   >
                                     <X size={14} />
                                   </button>
@@ -4015,7 +4012,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                 <button
                   type="button"
                   onClick={() => setShowLibraryModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent-hover transition-colors"
                 >
                   <BookOpen size={20} />
                   Add from Library
@@ -4089,7 +4086,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                           <button
                             type="button"
                             onClick={() => removeFile(file.id, file.url)}
-                            className="absolute top-3 right-3 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            className="absolute top-3 right-3 p-1.5 bg-risk-high-fg text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-risk-high-fg"
                           >
                             <X size={16} />
                           </button>
@@ -4138,7 +4135,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                           <button
                             type="button"
                             onClick={() => removeFile(file.id, file.url)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                            className="p-1.5 text-risk-high-fg hover:bg-risk-high-bg rounded transition-colors flex-shrink-0"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -4168,7 +4165,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                         formData.reportStatus === status
                           ? status === 'Draft'
                             ? 'border-slate-400 bg-slate-50'
-                            : 'border-green-500 bg-green-50'
+                            : 'border-risk-low-border bg-risk-low-bg'
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
@@ -4186,7 +4183,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                             formData.reportStatus === status
                               ? status === 'Draft'
                                 ? 'text-slate-900'
-                                : 'text-green-900'
+                                : 'text-risk-low-fg'
                               : 'text-slate-700'
                           }`}>
                             {status}
@@ -4195,7 +4192,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                               status === 'Draft'
                                 ? 'bg-slate-200 text-slate-700'
-                                : 'bg-green-200 text-green-700'
+                                : 'bg-risk-low-border text-risk-low-fg'
                             }`}>
                               Selected
                             </span>
@@ -4214,7 +4211,7 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
               <div className={`p-4 rounded-lg border-2 ${
                 formData.reportStatus === 'Draft'
                   ? 'bg-slate-50 border-slate-300'
-                  : 'bg-green-50 border-green-300'
+                  : 'bg-risk-low-bg border-risk-low-border'
               }`}>
                 <h3 className="text-sm font-semibold text-slate-900 mb-2">Disclaimer</h3>
                 <div className="text-sm text-slate-700 leading-relaxed">
@@ -4236,43 +4233,43 @@ Report Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 
               </div>
 
               {submitStatus === 'success' && (
-                <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-4 bg-risk-low-bg border border-risk-low-border rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-risk-low-fg flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-green-800 font-medium">Survey report submitted successfully!</p>
-                    <p className="text-green-700 text-sm mt-1">Your report has been saved to the system.</p>
+                    <p className="text-risk-low-fg font-medium">Survey report submitted successfully!</p>
+                    <p className="text-risk-low-fg text-sm mt-1">Your report has been saved to the system.</p>
                   </div>
                 </div>
               )}
 
               {submitStatus === 'error' && (
-                <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-4 bg-risk-high-bg border border-risk-high-border rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-risk-high-fg flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-red-800 font-medium">Submission failed</p>
-                    <p className="text-red-700 text-sm mt-1">{errorMessage}</p>
+                    <p className="text-risk-high-fg font-medium">Submission failed</p>
+                    <p className="text-risk-high-fg text-sm mt-1">{errorMessage}</p>
                   </div>
                 </div>
               )}
 
               {saveStatus === 'success' && (
-                <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-4 bg-risk-info-bg border border-risk-info-border rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-risk-info-fg flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-blue-800 font-medium">
+                    <p className="text-risk-info-fg font-medium">
                       {currentSurveyId ? 'Survey updated successfully!' : 'Survey saved successfully!'}
                     </p>
-                    <p className="text-blue-700 text-sm mt-1">Your survey has been saved. You can generate the report later.</p>
+                    <p className="text-brand-accent text-sm mt-1">Your survey has been saved. You can generate the report later.</p>
                   </div>
                 </div>
               )}
 
               {saveStatus === 'error' && (
-                <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-4 bg-risk-high-bg border border-risk-high-border rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-risk-high-fg flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-red-800 font-medium">Save failed</p>
-                    <p className="text-red-700 text-sm mt-1">{saveErrorMessage}</p>
+                    <p className="text-risk-high-fg font-medium">Save failed</p>
+                    <p className="text-risk-high-fg text-sm mt-1">{saveErrorMessage}</p>
                   </div>
                 </div>
               )}

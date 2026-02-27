@@ -677,7 +677,7 @@ export default function Dashboard() {
                           <span className="text-xs font-medium text-slate-900 truncate max-w-[120px]" title={portfolioMetrics.worstSite}>
                             {portfolioMetrics.worstSite}
                           </span>
-                          <span className="text-base font-bold text-orange-600">{portfolioMetrics.worstScore}</span>
+                          <span className="text-base font-bold text-risk-high-fg">{portfolioMetrics.worstScore}</span>
                         </div>
                       </div>
                     </div>
@@ -988,14 +988,14 @@ export default function Dashboard() {
                                     survey.report_status === 'Draft'
                                       ? 'bg-slate-100 text-slate-700'
                                       : survey.report_status === 'Internally Reviewed'
-                                      ? 'bg-amber-100 text-risk-medium-fg'
+                                      ? 'bg-risk-medium-bg text-risk-medium-fg'
                                       : 'bg-risk-low-bg text-risk-low-fg'
                                   }`}
                                 >
                                   {survey.report_status || 'Draft'}
                                 </span>
                                 {survey.issued && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-risk-low-fg bg-risk-low-bg rounded-full">
                                     <Lock className="w-3 h-3" />
                                     ISSUED
                                   </span>
@@ -1024,7 +1024,7 @@ export default function Dashboard() {
                                 {(survey.survey_text || survey.recommendation_text) && permissions.canViewSurveys && (
                                   <button
                                     onClick={() => setTextReportSurveyId(survey.id)}
-                                    className="text-teal-600 hover:text-teal-900 transition-colors"
+                                    className="text-brand-accent hover:text-brand-accent-hover transition-colors"
                                     title="View Text Reports"
                                   >
                                     <FileEdit className="w-4 h-4" />
@@ -1056,7 +1056,7 @@ export default function Dashboard() {
                                 {permissions.canGenerateExternalLink && (
                                   <button
                                     onClick={() => setExternalLinkSurveyId(survey.id)}
-                                    className="text-violet-600 hover:text-violet-900 transition-colors"
+                                    className="text-brand-accent hover:text-brand-accent-hover transition-colors"
                                     title="Generate External Link"
                                   >
                                     <ExternalLink className="w-4 h-4" />

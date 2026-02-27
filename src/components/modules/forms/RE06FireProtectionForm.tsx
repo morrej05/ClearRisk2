@@ -14,6 +14,7 @@ import {
   calculateWaterScore,
 } from '../../../lib/re/fireProtectionModel';
 import FireProtectionRecommendations from '../../re/FireProtectionRecommendations';
+import { focusRingClass } from '../../../theme/semanticClasses';
 
 interface Document {
   id: string;
@@ -579,11 +580,11 @@ export default function RE06FireProtectionForm({
   if (buildings.length === 0) {
     return (
       <div className="p-8">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        <div className="bg-risk-info-bg border border-risk-info-border rounded-lg p-6 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-risk-info-fg flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-blue-900 mb-2">No Buildings Found</h3>
-            <p className="text-sm text-blue-800">
+            <h3 className="font-semibold text-risk-info-fg mb-2">No Buildings Found</h3>
+            <p className="text-sm text-risk-info-fg">
               Complete RE-02 Construction module first to define buildings before assessing fire protection.
             </p>
           </div>
@@ -596,8 +597,8 @@ export default function RE06FireProtectionForm({
     <div className="pb-24">
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Droplet className="w-5 h-5 text-blue-600" />
+          <div className="w-10 h-10 bg-risk-info-bg rounded-lg flex items-center justify-center">
+            <Droplet className="w-5 h-5 text-risk-info-fg" />
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-slate-900">Site Water & Fire Pumps</h2>
@@ -611,7 +612,7 @@ export default function RE06FireProtectionForm({
                   {[1, 2, 3, 4, 5].map((i) => (
                     <div
                       key={i}
-                      className={`w-6 h-6 rounded ${i <= assessorWaterScore ? 'bg-blue-600' : 'bg-slate-200'}`}
+                      className={`w-6 h-6 rounded ${i <= assessorWaterScore ? 'bg-risk-info-fg' : 'bg-slate-200'}`}
                     />
                   ))}
                 </div>
@@ -630,7 +631,7 @@ export default function RE06FireProtectionForm({
             <select
               value={siteWaterData.supports || 'Unknown'}
               onChange={(e) => updateSiteWater('supports', e.target.value as WaterSupports)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
             >
               <option value="Unknown">Unknown</option>
               <option value="Sprinklers">Sprinklers</option>
@@ -645,7 +646,7 @@ export default function RE06FireProtectionForm({
             <select
               value={siteWaterData.supply_type || ''}
               onChange={(e) => updateSiteWater('supply_type', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
             >
               <option value="">Select...</option>
               <option value="Town mains">Town mains</option>
@@ -670,7 +671,7 @@ export default function RE06FireProtectionForm({
                 value={siteWaterData.supply_type_other || ''}
                 onChange={(e) => updateSiteWater('supply_type_other', e.target.value)}
                 placeholder="Describe the supply type..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
               />
             </div>
           )}
@@ -687,7 +688,7 @@ export default function RE06FireProtectionForm({
                 <select
                   value={siteWaterData.hydrant_coverage || 'Unknown'}
                   onChange={(e) => updateSiteWater('hydrant_coverage', e.target.value as CoverageQuality)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                 >
                   <option value="Unknown">Unknown</option>
                   <option value="Good">Good</option>
@@ -701,7 +702,7 @@ export default function RE06FireProtectionForm({
                 <select
                   value={siteWaterData.fire_main_condition || 'Unknown'}
                   onChange={(e) => updateSiteWater('fire_main_condition', e.target.value as ConditionQuality)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                 >
                   <option value="Unknown">Unknown</option>
                   <option value="Good">Good</option>
@@ -714,7 +715,7 @@ export default function RE06FireProtectionForm({
                 <select
                   value={siteWaterData.hose_reels_present || 'Unknown'}
                   onChange={(e) => updateSiteWater('hose_reels_present', e.target.value as YesNoUnknown)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                 >
                   <option value="Unknown">Unknown</option>
                   <option value="Yes">Yes</option>
@@ -727,7 +728,7 @@ export default function RE06FireProtectionForm({
                 <select
                   value={siteWaterData.flow_test_evidence || 'Unknown'}
                   onChange={(e) => updateSiteWater('flow_test_evidence', e.target.value as TestEvidence)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                 >
                   <option value="Unknown">Unknown</option>
                   <option value="Documented">Documented</option>
@@ -741,7 +742,7 @@ export default function RE06FireProtectionForm({
                   type="date"
                   value={siteWaterData.flow_test_date || ''}
                   onChange={(e) => updateSiteWater('flow_test_date', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                 />
               </div>
 
@@ -754,7 +755,7 @@ export default function RE06FireProtectionForm({
             <select
               value={siteWaterData.pumps_present ? 'true' : 'false'}
               onChange={(e) => updateSiteWater('pumps_present', e.target.value === 'true')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
             >
               <option value="false">No</option>
               <option value="true">Yes</option>
@@ -766,7 +767,7 @@ export default function RE06FireProtectionForm({
             <select
               value={siteWaterData.pump_arrangement || 'Unknown'}
               onChange={(e) => updateSiteWater('pump_arrangement', e.target.value as PumpArrangement)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
             >
               <option value="Unknown">Unknown</option>
               <option value="None">None</option>
@@ -780,7 +781,7 @@ export default function RE06FireProtectionForm({
             <select
               value={siteWaterData.power_resilience || 'Unknown'}
               onChange={(e) => updateSiteWater('power_resilience', e.target.value as PowerResilience)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
             >
               <option value="Unknown">Unknown</option>
               <option value="Good">Good</option>
@@ -794,7 +795,7 @@ export default function RE06FireProtectionForm({
             <select
               value={siteWaterData.testing_regime || 'Unknown'}
               onChange={(e) => updateSiteWater('testing_regime', e.target.value as TestingRegime)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
             >
               <option value="Unknown">Unknown</option>
               <option value="Documented">Documented</option>
@@ -810,7 +811,7 @@ export default function RE06FireProtectionForm({
               onChange={(e) => updateSiteWater('key_weaknesses', e.target.value)}
               placeholder="Describe any key vulnerabilities or concerns..."
               rows={2}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass} resize-none"
             />
           </div>
 
@@ -821,7 +822,7 @@ export default function RE06FireProtectionForm({
               onChange={(e) => updateSiteComments(e.target.value)}
               placeholder="Additional notes on water supply and pumps..."
               rows={2}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass} resize-none"
             />
           </div>
 
@@ -838,7 +839,7 @@ export default function RE06FireProtectionForm({
               </div>
               <button
                 onClick={applySuggestedScore}
-                className="ml-3 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                className="ml-3 px-3 py-1.5 text-sm bg-risk-info-bg text-risk-info-fg rounded-lg hover:bg-risk-info-border transition-colors"
               >
                 Apply suggested score
               </button>
@@ -846,7 +847,7 @@ export default function RE06FireProtectionForm({
             <select
               value={assessorWaterScore === null || assessorWaterScore === undefined ? '' : assessorWaterScore}
               onChange={(e) => setAssessorWaterScore(e.target.value === '' ? null : Number(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
             >
               <option value="">Not rated</option>
               <option value="1">1 – Very Poor (Highly unreliable)</option>
@@ -858,8 +859,8 @@ export default function RE06FireProtectionForm({
           </div>
         </div>
 
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-900">
+        <div className="mt-4 p-3 bg-risk-info-bg rounded-lg">
+          <p className="text-sm text-risk-info-fg">
             <strong>Guidance:</strong> A rating of 3 may be acceptable when evidence is limited, but please select a rating explicitly. The suggested score is calculated from your inputs above.
           </p>
         </div>
@@ -890,7 +891,7 @@ export default function RE06FireProtectionForm({
                   onClick={() => handleBuildingSelect(building.id)}
                   className={`w-full text-left p-3 rounded-lg border transition-all ${
                     isSelected
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-risk-info-border bg-risk-info-bg'
                       : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
@@ -955,7 +956,7 @@ export default function RE06FireProtectionForm({
                       </span>
                     )}
                     {!saving && lastSavedAt && (
-                      <span className="text-xs text-green-600 flex items-center gap-1">
+                      <span className="text-xs text-risk-low-fg flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -963,7 +964,7 @@ export default function RE06FireProtectionForm({
                       </span>
                     )}
                     {saveError && (
-                      <span className="text-xs text-red-600">{saveError}</span>
+                      <span className="text-xs text-risk-high-fg">{saveError}</span>
                     )}
                   </div>
                 </div>
@@ -971,7 +972,7 @@ export default function RE06FireProtectionForm({
                   <div className="text-sm text-slate-600 flex items-center gap-1 justify-end">
                     Final Active Score
                     {(assessorWaterScore === null || assessorWaterScore === undefined) && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">provisional</span>
+                      <span className="text-xs bg-risk-medium-bg text-risk-medium-fg px-2 py-0.5 rounded">provisional</span>
                     )}
                   </div>
                   <div className="text-3xl font-bold text-slate-900">
@@ -983,7 +984,7 @@ export default function RE06FireProtectionForm({
                     {assessorWaterScore !== null && assessorWaterScore !== undefined ? (
                       `${assessorWaterScore}/5`
                     ) : (
-                      <span className="text-amber-600">~{suggestedWaterScore}/5</span>
+                      <span className="text-risk-medium-fg">~{suggestedWaterScore}/5</span>
                     )}
                   </div>
                 </div>
@@ -996,18 +997,18 @@ export default function RE06FireProtectionForm({
                       key={i}
                       className={`flex items-start gap-2 p-3 rounded-lg ${
                         flag.severity === 'warning'
-                          ? 'bg-amber-50 border border-amber-200'
-                          : 'bg-blue-50 border border-blue-200'
+                          ? 'bg-risk-medium-bg border border-risk-medium-border'
+                          : 'bg-risk-info-bg border border-risk-info-border'
                       }`}
                     >
                       {flag.severity === 'warning' ? (
-                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                        <AlertTriangle className="w-4 h-4 text-risk-medium-fg mt-0.5" />
                       ) : (
-                        <Info className="w-4 h-4 text-blue-600 mt-0.5" />
+                        <Info className="w-4 h-4 text-risk-info-fg mt-0.5" />
                       )}
                       <p
                         className={`text-sm ${
-                          flag.severity === 'warning' ? 'text-amber-900' : 'text-blue-900'
+                          flag.severity === 'warning' ? 'text-risk-medium-fg' : 'text-risk-info-fg'
                         }`}
                       >
                         {flag.message}
@@ -1026,7 +1027,7 @@ export default function RE06FireProtectionForm({
                     onChange={(e) =>
                       updateBuildingSprinkler('sprinklers_installed', e.target.value as SprinklersInstalled)
                     }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                   >
                     <option value="Unknown">Unknown</option>
                     <option value="Yes">Yes</option>
@@ -1066,7 +1067,7 @@ export default function RE06FireProtectionForm({
                               e.target.select();
                             }
                           }}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                         />
                       </div>
 
@@ -1091,7 +1092,7 @@ export default function RE06FireProtectionForm({
                               e.target.select();
                             }
                           }}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                         />
                       </div>
 
@@ -1124,7 +1125,7 @@ export default function RE06FireProtectionForm({
                       <select
                         value={selectedSprinklerData.system_type || 'Unknown'}
                         onChange={(e) => updateBuildingSprinkler('system_type', e.target.value as SystemType)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                       >
                         <option value="Unknown">Unknown</option>
                         <option value="Wet pipe">Wet pipe</option>
@@ -1142,7 +1143,7 @@ export default function RE06FireProtectionForm({
                         <select
                           value={selectedSprinklerData.standard || ''}
                           onChange={(e) => updateBuildingSprinkler('standard', e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                         >
                           <option value="">Select...</option>
                           <option value="EN 12845">EN 12845</option>
@@ -1167,7 +1168,7 @@ export default function RE06FireProtectionForm({
                             value={selectedSprinklerData.standard_other || ''}
                             onChange={(e) => updateBuildingSprinkler('standard_other', e.target.value)}
                             placeholder="Specify standard..."
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                           />
                         </div>
                       )}
@@ -1179,7 +1180,7 @@ export default function RE06FireProtectionForm({
                           value={selectedSprinklerData.hazard_class || ''}
                           onChange={(e) => updateBuildingSprinkler('hazard_class', e.target.value)}
                           placeholder="e.g., OH1, OH2, OH3, LH, HHP"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                         />
                       </div>
                     </div>
@@ -1193,7 +1194,7 @@ export default function RE06FireProtectionForm({
                           onChange={(e) =>
                             updateBuildingSprinkler('maintenance_status', e.target.value as MaintenanceStatus)
                           }
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                         >
                           <option value="Unknown">Unknown</option>
                           <option value="Good">Good</option>
@@ -1209,7 +1210,7 @@ export default function RE06FireProtectionForm({
                           onChange={(e) =>
                             updateBuildingSprinkler('sprinkler_adequacy', e.target.value as SprinklerAdequacy)
                           }
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                         >
                           <option value="Unknown">Unknown</option>
                           <option value="Adequate">Adequate</option>
@@ -1234,7 +1235,7 @@ export default function RE06FireProtectionForm({
                         onChange={(e) =>
                           updateBuildingSprinkler('localised_present', e.target.value as LocalisedPresent)
                         }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                       >
                         <option value="No">No</option>
                         <option value="Yes">Yes</option>
@@ -1253,7 +1254,7 @@ export default function RE06FireProtectionForm({
                           <select
                             value={selectedSprinklerData.localised_type || ''}
                             onChange={(e) => updateBuildingSprinkler('localised_type', e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                           >
                             <option value="">Select...</option>
                             <option value="Gas suppression">Gas suppression</option>
@@ -1272,7 +1273,7 @@ export default function RE06FireProtectionForm({
                             value={selectedSprinklerData.localised_protected_asset || ''}
                             onChange={(e) => updateBuildingSprinkler('localised_protected_asset', e.target.value)}
                             placeholder="e.g., Server room, Paint store, Battery room"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                           />
                         </div>
 
@@ -1283,7 +1284,7 @@ export default function RE06FireProtectionForm({
                             onChange={(e) => updateBuildingSprinkler('localised_comments', e.target.value)}
                             placeholder="Additional details on localised protection..."
                             rows={2}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass} resize-none"
                           />
                         </div>
                       </>
@@ -1305,7 +1306,7 @@ export default function RE06FireProtectionForm({
                         onChange={(e) =>
                           updateBuildingSprinkler('detection_installed', e.target.value as DetectionInstalled)
                         }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                       >
                         <option value="Unknown">Unknown</option>
                         <option value="No">No</option>
@@ -1360,7 +1361,7 @@ export default function RE06FireProtectionForm({
                               value={selectedSprinklerData.detection_type_other || ''}
                               onChange={(e) => updateBuildingSprinkler('detection_type_other', e.target.value)}
                               placeholder="Specify other detection type..."
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                             />
                           </div>
                         )}
@@ -1372,7 +1373,7 @@ export default function RE06FireProtectionForm({
                             onChange={(e) =>
                               updateBuildingSprinkler('alarm_monitoring', e.target.value as AlarmMonitoring)
                             }
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                           >
                             <option value="Unknown">Unknown</option>
                             <option value="Local only">Local only</option>
@@ -1391,7 +1392,7 @@ export default function RE06FireProtectionForm({
                                 e.target.value as DetectionTestingRegime
                               )
                             }
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                           >
                             <option value="Unknown">Unknown</option>
                             <option value="Documented">Documented</option>
@@ -1411,7 +1412,7 @@ export default function RE06FireProtectionForm({
                                 e.target.value as DetectionMaintenanceStatus
                               )
                             }
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                           >
                             <option value="Unknown">Unknown</option>
                             <option value="Good">Good</option>
@@ -1426,7 +1427,7 @@ export default function RE06FireProtectionForm({
                             onChange={(e) => updateBuildingSprinkler('detection_comments', e.target.value)}
                             placeholder="Additional details on fire detection system..."
                             rows={2}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass} resize-none"
                           />
                         </div>
                       </>
@@ -1447,7 +1448,7 @@ export default function RE06FireProtectionForm({
                           const val = e.target.value === 'null' ? null : Number(e.target.value);
                           updateBuildingSprinkler('detection_score_1_5', val);
                         }}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass}"
                       >
                         <option value="null">Not rated</option>
                         <option value="1">1 - Very Poor</option>
@@ -1474,7 +1475,7 @@ export default function RE06FireProtectionForm({
                         }
                         placeholder="Explain why full coverage is not required..."
                         rows={2}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass} resize-none"
                       />
                     </div>
                   )}
@@ -1486,7 +1487,7 @@ export default function RE06FireProtectionForm({
                     onChange={(e) => updateBuildingComments(e.target.value)}
                     placeholder="Additional notes on sprinkler system..."
                     rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${focusRingClass} resize-none"
                   />
                 </div>
 
@@ -1514,8 +1515,8 @@ export default function RE06FireProtectionForm({
 
       <div className="mt-6 bg-white rounded-lg shadow-sm border border-slate-200 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-green-600" />
+          <div className="w-10 h-10 bg-risk-low-bg rounded-lg flex items-center justify-center">
+            <TrendingUp className="w-5 h-5 text-risk-low-fg" />
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-slate-900">Site Fire Protection Roll-up</h3>
@@ -1578,10 +1579,10 @@ export default function RE06FireProtectionForm({
         </div>
 
         {siteRollup.someAreaMissing && siteRollup.buildingsAssessed > 0 && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="mt-4 p-3 bg-risk-info-bg rounded-lg border border-risk-info-border">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5" />
-              <p className="text-sm text-blue-900">
+              <AlertTriangle className="w-4 h-4 text-risk-info-fg mt-0.5" />
+              <p className="text-sm text-risk-info-fg">
                 Some buildings missing area; coverage based on {siteRollup.buildingsWithArea} building{siteRollup.buildingsWithArea !== 1 ? 's' : ''} with area data.
               </p>
             </div>
@@ -1589,10 +1590,10 @@ export default function RE06FireProtectionForm({
         )}
 
         {siteRollup.buildingsAssessed === 0 && (
-          <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="mt-4 p-3 bg-risk-medium-bg rounded-lg border border-risk-medium-border">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
-              <p className="text-sm text-amber-900">
+              <AlertTriangle className="w-4 h-4 text-risk-medium-fg mt-0.5" />
+              <p className="text-sm text-risk-medium-fg">
                 No buildings with required sprinklers found. Mark buildings with required_pct {'>'} 0 to include
                 in roll-up.
               </p>
@@ -1605,8 +1606,8 @@ export default function RE06FireProtectionForm({
       <div className="mt-6 bg-white rounded-lg shadow-sm border border-slate-200 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FileText className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-risk-info-bg rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-risk-info-fg" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-slate-900">Recommendations</h3>
@@ -1621,7 +1622,7 @@ export default function RE06FireProtectionForm({
               type="button"
               onClick={handleNavigateToRecommendations}
               disabled={!re09ModuleInstanceId}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-risk-info-fg text-white text-sm font-medium rounded-lg hover:bg-risk-info-fg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FileText className="w-4 h-4" />
               <span>Add recommendation</span>

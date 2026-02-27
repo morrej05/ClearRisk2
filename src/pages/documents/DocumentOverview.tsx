@@ -1520,9 +1520,8 @@ try {
         {document.issue_status === 'draft' && (
           <div className="mt-6 flex justify-end">
             <Button
-              variant="secondary"
+              variant="destructive"
               onClick={() => setShowDeleteConfirm(true)}
-              className="!text-red-600 hover:!text-red-700 hover:!bg-red-50"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete Draft

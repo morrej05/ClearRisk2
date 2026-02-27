@@ -960,7 +960,6 @@ try {
                   </div>
                   <Button
                     onClick={handleContinueAssessment}
-                    className="!bg-brand-accent !text-white hover:!bg-brand-accent-hover"
                   >
                     <Edit3 className="w-4 h-4 mr-2" />
                     Continue Assessment

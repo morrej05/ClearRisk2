@@ -29,7 +29,7 @@ export function Button({
   const baseStyles = 'px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2';
 
   const variants = {
-    primary: 'bg-brand-accent text-white hover:bg-brand-accent-hover focus:ring-brand-accent',
+    primary: '!bg-brand-accent !text-white hover:!bg-brand-accent-hover focus:ring-brand-accent',
     secondary: 'bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50 focus:ring-neutral-300',
     destructive: 'bg-risk-high-fg text-white hover:bg-risk-high-fg/90 focus:ring-risk-high-fg',
     ghost: 'text-neutral-700 hover:bg-neutral-100 focus:ring-neutral-300'

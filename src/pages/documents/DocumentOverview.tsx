@@ -958,7 +958,10 @@ try {
                       Next incomplete module: {getModuleName(firstIncomplete.module_key)}
                     </p>
                   </div>
-                  <Button onClick={handleContinueAssessment}>
+                  <Button
+                    onClick={handleContinueAssessment}
+                    className="!bg-brand-accent !text-white hover:!bg-brand-accent-hover !opacity-100 !filter-none"
+                  >
                     <Edit3 className="w-4 h-4 mr-2" />
                     Continue Assessment
                   </Button>
@@ -1522,6 +1525,7 @@ try {
             <Button
               variant="destructive"
               onClick={() => setShowDeleteConfirm(true)}
+              className="!bg-risk-high-fg !text-white hover:!bg-risk-high-fg/90 !opacity-100 !filter-none"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete Draft

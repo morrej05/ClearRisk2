@@ -49,14 +49,22 @@ export function drawSectionHeaderBar(args: {
 
   const barH = PDF_THEME.shapes.headerBarH;
 
-  // NEUTRAL section header - no colored background to avoid logo clashes
-  // Use white background with subtle divider line
+  // Subtle section header band with neutral fill
   page.drawRectangle({
     x,
     y: y - barH,
     width: w,
     height: barH,
-    color: PDF_THEME.colours.card,
+    color: PDF_THEME.colours.divider,
+  });
+
+  // Optional left accent rule
+  page.drawRectangle({
+    x,
+    y: y - barH,
+    width: 3,
+    height: barH,
+    color: PDF_THEME.colours.brand.accent,
   });
 
   const text = sectionNo ? `${sectionNo}   ${title}` : title;
@@ -72,9 +80,6 @@ export function drawSectionHeaderBar(args: {
     font: fonts.bold,
     color: PDF_THEME.colours.ink,
   });
-
-  // Draw divider below header for separation
-  drawDivider(page, x, y - barH - 6, w);
 
   return y - barH - PDF_THEME.rhythm.md;
 }

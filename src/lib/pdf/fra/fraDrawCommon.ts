@@ -28,27 +28,41 @@ export function drawSectionHeader(
 
   let yPosition = initialY - PDF_STYLES.spacing.lg;
 
-  const headerText = `${sectionId}. ${sectionTitle}`;
-  page.drawText(headerText, {
+  const headerBarH = 32;
+
+  // Subtle header band
+  page.drawRectangle({
     x: MARGIN,
-    y: yPosition,
+    y: yPosition - headerBarH,
+    width: CONTENT_WIDTH,
+    height: headerBarH,
+    color: PDF_STYLES.colours.divider,
+  });
+
+  // Left accent rule
+  page.drawRectangle({
+    x: MARGIN,
+    y: yPosition - headerBarH,
+    width: 3,
+    height: headerBarH,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+
+  const headerText = `${sectionId}. ${sectionTitle}`;
+
+  // Center text vertically in bar
+  const textYOffset = (headerBarH - PDF_STYLES.fontSizes.h1) / 2 + 2;
+
+  page.drawText(headerText, {
+    x: MARGIN + 10,
+    y: yPosition - headerBarH + textYOffset,
     size: PDF_STYLES.fontSizes.h1,
     font: fontBold,
     color: PDF_STYLES.colours.h1,
   });
 
-  // Divider
-  yPosition -= PDF_STYLES.spacing.sm;
-
-  page.drawLine({
-    start: { x: MARGIN, y: yPosition },
-    end: { x: MARGIN + CONTENT_WIDTH, y: yPosition },
-    thickness: 1,
-    color: PDF_STYLES.colours.divider,
-  });
-
   // Bottom spacing
-  yPosition -= PDF_STYLES.spacing.md;
+  yPosition -= headerBarH + PDF_STYLES.spacing.md;
 
   return { page, yPosition };
 }

@@ -960,7 +960,7 @@ try {
                   </div>
                   <Button
                     onClick={handleContinueAssessment}
-                    className="!bg-brand-accent !text-white hover:!bg-brand-accent-hover !opacity-100 !filter-none"
+                    className="!bg-brand-accent !text-white hover:!bg-brand-accent-hover"
                   >
                     <Edit3 className="w-4 h-4 mr-2" />
                     Continue Assessment
@@ -1525,7 +1525,7 @@ try {
             <Button
               variant="destructive"
               onClick={() => setShowDeleteConfirm(true)}
-              className="!bg-risk-high-fg !text-white hover:!bg-risk-high-fg/90 !opacity-100 !filter-none"
+              className="!bg-risk-high-fg !text-white hover:!bg-risk-high-fg/90"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete Draft

@@ -44,6 +44,7 @@ import {
   addExecutiveSummaryPages,
   drawActionPlanSnapshot,
   drawRecommendationsSection,
+  ensurePageSpace,
   type ActionForPdf,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
@@ -1820,12 +1821,15 @@ page.drawText(outcomeLabel, {
 
   // Preflight entire Building Complexity block
   const complexityLines = wrapText(complexityParagraph, CONTENT_WIDTH, 11, font);
-  const complexityBlockHeight = 20 + (complexityLines.length * 16);
-  if (yPosition - complexityBlockHeight < MARGIN + 50) {
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = result.yPosition;
-  }
+  const requiredHeight = 20 + 20 + (complexityLines.length * 16);
+  ({ page, yPosition } = ensurePageSpace(
+    requiredHeight,
+    page,
+    yPosition,
+    pdfDoc,
+    isDraft,
+    totalPages
+  ));
 
   page.drawText('Building Complexity:', {
     x: MARGIN,
@@ -1853,12 +1857,15 @@ page.drawText(outcomeLabel, {
 
     // Preflight entire Assessor Commentary block
     const commentaryLines = wrapText(fra4Module.data.commentary.executiveCommentary, CONTENT_WIDTH, 11, font);
-    const commentaryBlockHeight = 20 + (commentaryLines.length * 16);
-    if (yPosition - commentaryBlockHeight < MARGIN + 50) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = result.yPosition;
-    }
+    const requiredHeight = 20 + 20 + (commentaryLines.length * 16);
+    ({ page, yPosition } = ensurePageSpace(
+      requiredHeight,
+      page,
+      yPosition,
+      pdfDoc,
+      isDraft,
+      totalPages
+    ));
 
     page.drawText('Assessor Commentary:', {
       x: MARGIN,
@@ -1887,12 +1894,15 @@ page.drawText(outcomeLabel, {
 
     // Preflight entire Limitations and Assumptions block
     const limitationsLines = wrapText(fra4Module.data.commentary.limitationsAssumptions, CONTENT_WIDTH, 11, font);
-    const limitationsBlockHeight = 20 + (limitationsLines.length * 16);
-    if (yPosition - limitationsBlockHeight < MARGIN + 50) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = result.yPosition;
-    }
+    const requiredHeight = 20 + 20 + (limitationsLines.length * 16);
+    ({ page, yPosition } = ensurePageSpace(
+      requiredHeight,
+      page,
+      yPosition,
+      pdfDoc,
+      isDraft,
+      totalPages
+    ));
 
     page.drawText('Limitations and Assumptions:', {
       x: MARGIN,
@@ -1920,12 +1930,15 @@ page.drawText(outcomeLabel, {
 
     // Preflight entire Summary block
     const summaryLines = wrapText(fra4Module.data.executive_summary, CONTENT_WIDTH, 11, font);
-    const summaryBlockHeight = 20 + (summaryLines.length * 16);
-    if (yPosition - summaryBlockHeight < MARGIN + 50) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = result.yPosition;
-    }
+    const requiredHeight = 20 + 20 + (summaryLines.length * 16);
+    ({ page, yPosition } = ensurePageSpace(
+      requiredHeight,
+      page,
+      yPosition,
+      pdfDoc,
+      isDraft,
+      totalPages
+    ));
 
     page.drawText('Summary:', {
       x: MARGIN,
@@ -1953,12 +1966,15 @@ page.drawText(outcomeLabel, {
 
     // Preflight entire Review Recommendation block
     const reviewLines = wrapText(fra4Module.data.review_recommendation, CONTENT_WIDTH, 11, font);
-    const reviewBlockHeight = 20 + (reviewLines.length * 16);
-    if (yPosition - reviewBlockHeight < MARGIN + 50) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = result.yPosition;
-    }
+    const requiredHeight = 20 + 20 + (reviewLines.length * 16);
+    ({ page, yPosition } = ensurePageSpace(
+      requiredHeight,
+      page,
+      yPosition,
+      pdfDoc,
+      isDraft,
+      totalPages
+    ));
 
     page.drawText('Review Recommendation:', {
       x: MARGIN,

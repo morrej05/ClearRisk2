@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Background Test</title>
+    <link rel="stylesheet" href="dist/assets/index-DNRCa3ET.css">
+</head>
+<body class="p-8">
+    <h1 class="text-2xl font-bold mb-6">Button Background Test</h1>
+
+    <div class="space-y-4">
+        <div>
+            <h2 class="text-lg font-semibold mb-2">Primary Button (with !important utilities)</h2>
+            <button class="px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 !bg-brand-accent !text-white hover:!bg-brand-accent-hover focus:ring-brand-accent">
+                Primary Button Test
+            </button>
+        </div>
+
+        <div>
+            <h2 class="text-lg font-semibold mb-2">Primary Button WITHOUT !important (should be transparent)</h2>
+            <button class="px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 bg-brand-accent text-white hover:bg-brand-accent-hover focus:ring-brand-accent">
+                No !important Button
+            </button>
+        </div>
+
+        <div>
+            <h2 class="text-lg font-semibold mb-2">Computed Values</h2>
+            <div class="text-sm">
+                <p>--brand-accent: <span id="brand-accent-value"></span></p>
+                <p>--brand-accent-hover: <span id="brand-accent-hover-value"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Display CSS variable values
+        const root = getComputedStyle(document.documentElement);
+        document.getElementById('brand-accent-value').textContent = root.getPropertyValue('--brand-accent');
+        document.getElementById('brand-accent-hover-value').textContent = root.getPropertyValue('--brand-accent-hover');
+
+        // Log computed styles
+        const btn1 = document.querySelectorAll('button')[0];
+        const btn2 = document.querySelectorAll('button')[1];
+        console.log('Button 1 (!important):', getComputedStyle(btn1).backgroundColor);
+        console.log('Button 2 (no !important):', getComputedStyle(btn2).backgroundColor);
+    </script>
+</body>
+</html>

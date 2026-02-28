@@ -154,12 +154,6 @@ return buildFraExecutiveSummary(
 );
   }
 }
-function toTitleCase(str: string): string {
-  return str
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-}
 
 function buildFraSnapshotLines(modules: ModuleOutcome[]): string[] {
   const a2 = modules.find(m => m.module_key === 'A2_BUILDING_PROFILE')?.data || {};
@@ -167,21 +161,55 @@ function buildFraSnapshotLines(modules: ModuleOutcome[]): string[] {
   const a8 = modules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT')?.data || {};
   const a3Prot = modules.find(m => m.module_key === 'FRA_3_PROTECTION_ASIS')?.data || {};
 
+  const buildingUseLabels: Record<string, string> = {
+    hmo: 'HMO',
+    block_of_flats_purpose_built: 'Purpose-built block of flats',
+    converted_flats: 'Converted flats',
+    hotel_hostel: 'Hotel / hostel',
+    care_home: 'Care home',
+    office: 'Office',
+    retail: 'Retail',
+    industrial_warehouse: 'Industrial / warehouse',
+    educational: 'Educational',
+    healthcare_non_residential: 'Healthcare (non-residential)',
+    assembly_leisure: 'Assembly / leisure',
+    mixed_use: 'Mixed use',
+    other: 'Other',
+  };
+
+  const occupancyProfileLabels: Record<string, string> = {
+    office: 'Office',
+    industrial: 'Industrial',
+    public_access: 'Public access',
+    sleeping: 'Sleeping risk',
+    healthcare: 'Healthcare',
+    education: 'Education',
+    other: 'Other',
+  };
+
   const facts1: string[] = [];
   const facts2: string[] = [];
 
   // Use
-  if (a2.building_use_uk && a2.building_use_uk !== 'unknown') {
-    if (a2.building_use_uk === 'other' && a2.building_use_other) {
-      facts1.push(`Use: Other (${a2.building_use_other})`);
-    } else {
-      facts1.push(`Use: ${toTitleCase(a2.building_use_uk)}`);
+  const buildingUse = a2.building_use_uk;
+  if (buildingUse && buildingUse !== 'unknown') {
+    const label = buildingUseLabels[buildingUse];
+    if (label) {
+      if (buildingUse === 'other' && a2.building_use_other) {
+        facts1.push(`Use: ${label} (${a2.building_use_other})`);
+      } else {
+        facts1.push(`Use: ${label}`);
+      }
     }
   }
 
   // Occupancy (optional, only if present and not unknown)
-  if (a2.occupancy_profile && a2.occupancy_profile !== 'unknown') {
-    facts1.push(`Occupancy: ${toTitleCase(a2.occupancy_profile)}`);
+  const occupancyProfile = a3.occupancy_profile;
+  if (occupancyProfile && occupancyProfile !== 'unknown') {
+    const label = occupancyProfileLabels[occupancyProfile];
+    if (label) {
+      facts1.push(`Occupancy: ${label}`);
+    }
   }
 
   // Storeys
@@ -210,7 +238,7 @@ function buildFraSnapshotLines(modules: ModuleOutcome[]): string[] {
   }
 
   const snapshotLines: string[] = [];
-  if (facts1.length) snapshotLines.push(facts1.join(' | '));
+  if (facts1.length) snapshotLines.push(facts1.join(' • '));
   if (facts2.length) snapshotLines.push(facts2.join(' | '));
 
   return snapshotLines.slice(0, 2);

@@ -144,7 +144,55 @@ function buildExecutiveSummary(
     return buildFraExecutiveSummary(title, assessmentDate, scope, limitations, modules, actionCounts);
   }
 }
+function buildFraSnapshotLines(modules: ModuleOutcome[]): string[] {
+  const a2 = modules.find(m => m.module_key === 'A2_BUILDING_PROFILE')?.data || {};
+  const a3 = modules.find(m => m.module_key === 'A3_PERSONS_AT_RISK')?.data || {};
+  const a8 = modules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT')?.data || {};
+  const a3Prot = modules.find(m => m.module_key === 'FRA_3_PROTECTION_ASIS')?.data || {};
 
+  const facts1: string[] = [];
+  const facts2: string[] = [];
+
+  // Use
+  if (a2.building_use_uk && a2.building_use_uk !== 'unknown') {
+    if (a2.building_use_uk === 'other' && a2.building_use_other) {
+      facts1.push(`Use: Other (${a2.building_use_other})`);
+    } else {
+      facts1.push(`Use: ${a2.building_use_uk.replaceAll('_', ' ')}`);
+    }
+  }
+
+  // Storeys
+  if (a2.storeys_exact) {
+    facts2.push(`Storeys: ${a2.storeys_exact}`);
+  } else if (a2.storeys_band) {
+    facts2.push(`Storeys: ${a2.storeys_band}`);
+  }
+
+  // Sprinklers (nested preferred)
+  const sprinkler =
+    a8?.firefighting?.fixed_facilities?.sprinklers?.installed ??
+    a3Prot?.firefighting?.fixed_facilities?.sprinklers?.installed ??
+    a8?.sprinkler_present ??
+    null;
+
+  if (sprinkler === 'yes') facts2.push('Sprinklers: Present');
+  if (sprinkler === 'no') facts2.push('Sprinklers: Not present');
+
+  // Out of hours
+  if (a3.out_of_hours_occupation === 'yes') {
+    facts2.push('Out-of-hours occupation: Yes');
+  }
+  if (a3.out_of_hours_occupation === 'no') {
+    facts2.push('Out-of-hours occupation: No');
+  }
+
+  const snapshotLines: string[] = [];
+  if (facts1.length) snapshotLines.push(facts1.join(' • '));
+  if (facts2.length) snapshotLines.push(facts2.join(' • '));
+
+  return snapshotLines.slice(0, 2);
+}
 function buildFraExecutiveSummary(
   title: string,
   assessmentDate: string,

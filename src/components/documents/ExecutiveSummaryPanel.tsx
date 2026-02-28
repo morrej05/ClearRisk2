@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Edit3, FileText, X, ChevronDown, ChevronUp, AlertCircle, Lock, ArrowUpCircle, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Edit3, FileText, X, ChevronDown, ChevronUp, AlertCircle, Lock, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateExecutiveSummary } from '../../lib/ai/generateExecutiveSummary';
-import { canGenerateAiSummary, type Organisation } from '../../utils/entitlements';
+import { type Organisation } from '../../utils/entitlements';
 
 interface ExecutiveSummaryPanelProps {
   documentId: string;
@@ -28,7 +27,6 @@ export default function ExecutiveSummaryPanel({
   initialMode,
   onUpdate,
 }: ExecutiveSummaryPanelProps) {
-  const navigate = useNavigate();
   const [mode, setMode] = useState<SummaryMode>(initialMode);
   const [aiSummary, setAiSummary] = useState(initialAiSummary || '');
   const [authorSummary, setAuthorSummary] = useState(initialAuthorSummary || '');
@@ -39,7 +37,6 @@ export default function ExecutiveSummaryPanel({
   const [authorExpanded, setAuthorExpanded] = useState(!!initialAuthorSummary);
 
   const isDraft = issueStatus === 'draft';
-  const canUseAiSummary = canGenerateAiSummary(organisation);
 
   useEffect(() => {
     setMode(initialMode);
@@ -63,11 +60,11 @@ export default function ExecutiveSummaryPanel({
           onUpdate();
         }
       } else {
-        setError(result.error || 'Failed to generate AI summary');
+        setError(result.error || 'Failed to generate summary');
       }
     } catch (err: any) {
-      console.error('Error generating AI summary:', err);
-      setError(err.message || 'Failed to generate AI summary');
+      console.error('Error generating summary:', err);
+      setError(err.message || 'Failed to generate summary');
     } finally {
       setIsGenerating(false);
     }
@@ -263,62 +260,38 @@ export default function ExecutiveSummaryPanel({
           {(mode === 'ai' || mode === 'both') && (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-600" />
+                <label className="text-sm font-semibold text-neutral-700">
                   Executive Summary
                 </label>
-                {canUseAiSummary ? (
-                  <button
-                    onClick={handleGenerateAiSummary}
-                    disabled={isGenerating}
-                    className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-neutral-300 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4" />
-                        {aiSummary ? 'Regenerate' : 'Generate Summary'}
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => navigate('/upgrade')}
-                    className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-colors flex items-center gap-2"
-                  >
-                    <ArrowUpCircle className="w-4 h-4" />
-                    Upgrade to Professional
-                  </button>
-                )}
+                <button
+                  onClick={handleGenerateAiSummary}
+                  disabled={isGenerating}
+                  className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-neutral-300 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      {aiSummary ? 'Regenerate' : 'Generate Summary'}
+                    </>
+                  )}
+                </button>
               </div>
-              {!canUseAiSummary && !aiSummary && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-3">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-900 mb-1">Professional Feature</p>
-                      <p className="text-sm text-amber-700">
-                        Automatic executive summaries are available on the Professional plan. Upgrade to generate summaries automatically from your assessment data.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
               {aiSummary ? (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-neutral-700 whitespace-pre-wrap">{aiSummary}</p>
                 </div>
-              ) : canUseAiSummary ? (
+              ) : (
                 <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 text-center">
                   <p className="text-sm text-neutral-600">
                     Click "Generate Summary" to create a summary based on your assessment data
                   </p>
                 </div>
-              ) : null}
+              )}
             </div>
           )}
 

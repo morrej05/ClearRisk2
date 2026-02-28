@@ -1,4 +1,4 @@
-import { X, Download, Calendar, User, FileText, AlertTriangle, FileText as ReportIcon, List, Sparkles } from 'lucide-react';
+import { X, Download, Calendar, User, FileText, AlertTriangle, FileText as ReportIcon, List, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { ReportSection } from '../utils/reportGenerator';
 
@@ -127,10 +127,10 @@ Implementation of the recommendations outlined in this report will significantly
             <button
               onClick={handleGenerateAI}
               disabled={isGenerating}
-              className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium shadow-sm disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm disabled:opacity-50"
             >
-              <Sparkles className="w-4 h-4" />
-              {isGenerating ? 'Generating...' : 'Generate AI Summary'}
+              <RefreshCw className="w-4 h-4" />
+              {isGenerating ? 'Generating...' : 'Generate Summary'}
             </button>
             <button
               onClick={onClose}
@@ -203,8 +203,8 @@ Implementation of the recommendations outlined in this report will significantly
             {aiSummary && (
               <div className="p-8 border-b border-slate-200 bg-slate-50">
                 <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="w-5 h-5 text-violet-600" />
-                  <h2 className="text-lg font-bold text-slate-900">AI-Generated Summary</h2>
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <h2 className="text-lg font-bold text-slate-900">Executive Summary</h2>
                 </div>
                 <div className="prose prose-slate max-w-none">
                   <pre className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-sans bg-white p-4 rounded-lg border border-slate-200">

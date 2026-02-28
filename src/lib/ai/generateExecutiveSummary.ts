@@ -153,6 +153,29 @@ function buildFraExecutiveSummary(
   actionCounts: ActionCount
 ): string {
   const date = new Date(assessmentDate).toLocaleDateString('en-GB', {
+    const hasP1 = actionCounts.P1 > 0;
+    const hasP2 = actionCounts.P2 > 0;
+    const totalActions =
+      actionCounts.P1 +
+      actionCounts.P2 +
+      actionCounts.P3 +
+      actionCounts.P4;
+    
+    let closingStatement = '';
+    
+    if (hasP1) {
+      closingStatement =
+        'Immediate attention is required to address the material deficiencies identified. Priority should be given to the highest-rated actions to reduce life safety risk without delay.';
+    } else if (hasP2) {
+      closingStatement =
+        'Material improvements are required to address identified deficiencies. Actions should be implemented in accordance with their assigned priority to strengthen overall fire safety performance.';
+    } else if (totalActions > 0) {
+      closingStatement =
+        'The identified actions represent targeted improvements to enhance existing fire safety controls. Implementation should be managed in line with operational planning and risk prioritisation.';
+    } else {
+      closingStatement =
+        'No material deficiencies were identified at the time of assessment. Existing fire safety arrangements were found to be broadly appropriate to the use and occupancy.';
+    }
     day: 'numeric',
     month: 'long',
     year: 'numeric',

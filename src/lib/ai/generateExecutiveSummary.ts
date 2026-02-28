@@ -70,7 +70,7 @@ export async function generateExecutiveSummary(
 
     const { data: actions, error: actionsError } = await supabase
       .from('actions')
-      .select('priority')
+      .select('priority_band')
       .eq('document_id', documentId)
       .eq('status', 'open')
       .is('deleted_at', null);

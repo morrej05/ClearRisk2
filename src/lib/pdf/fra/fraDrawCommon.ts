@@ -5,8 +5,7 @@
 
 import { PDFDocument, PDFPage, rgb } from 'pdf-lib';
 import type { Cursor } from '../pdfCursor';
-import { MARGIN, CONTENT_WIDTH, sanitizePdfText, wrapText, addNewPage } from '../pdfUtils';
-import { PAGE_TOP_Y } from '../pdfCursor';
+import { MARGIN, CONTENT_WIDTH, PAGE_TOP_Y, sanitizePdfText, wrapText, addNewPage } from '../pdfUtils';
 import { PDF_STYLES } from '../pdfStyles';
 
 /**

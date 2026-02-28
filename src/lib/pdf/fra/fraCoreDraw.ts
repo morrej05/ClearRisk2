@@ -9,6 +9,7 @@ import {
   MARGIN,
   CONTENT_WIDTH,
   PAGE_WIDTH,
+  PAGE_TOP_Y,
   sanitizePdfText,
   wrapText,
   formatDate,
@@ -32,7 +33,6 @@ import {
   drawActionRegisterIntroBox,
   measureActionRegisterIntroBoxHeight,
 } from '../pdfPrimitives';
-import { PAGE_TOP_Y } from '../pdfCursor';
 import { CRITICAL_FIELDS } from './fraConstants';
 import { safeArray, mapModuleKeyToSectionName } from './fraUtils';
 import type { Cursor, Document, ModuleInstance, Action, ActionRating, Organisation } from './fraTypes';

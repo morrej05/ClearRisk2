@@ -4,6 +4,7 @@ import {
   PAGE_HEIGHT,
   MARGIN,
   CONTENT_WIDTH,
+  PAGE_TOP_Y,
   sanitizePdfText,
   wrapText,
   formatDate,
@@ -134,13 +135,13 @@ export async function buildReSurveyPdf(options: BuildPdfOptions): Promise<Uint8A
     : moduleInstances;
 
   let { page } = addNewPage(pdfDoc, isDraft, totalPages);
-  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+  let yPosition = PAGE_TOP_Y;
 
   for (const module of modulesToInclude) {
     // Ensure space for a header + a few lines
     if (yPosition < MARGIN + 140) {
       ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
 
     // Commercial header bar (use module_key as title for now)
@@ -160,7 +161,7 @@ export async function buildReSurveyPdf(options: BuildPdfOptions): Promise<Uint8A
       for (const line of lines) {
         if (yPosition < MARGIN + 40) {
           ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN,

@@ -4,7 +4,7 @@ export const PAGE_WIDTH = 595.28;
 export const PAGE_HEIGHT = 841.89;
 export const MARGIN = 50;
 export const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
-export const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN - 20;
+export const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN;
 
 // PDF Debug Layout Mode - developer-only overlay for spacing/pagination tuning
 // export const PDF_DEBUG_LAYOUT = import.meta.env.VITE_PDF_DEBUG_LAYOUT === 'true';
@@ -465,7 +465,7 @@ export function drawDebugLabel(page: PDFPage, x: number, y: number, text: string
   });
 }
 
-export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PDFPage[]): { page: PDFPage } {
+export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PDFPage[]): { page: PDFPage; yPosition: number } {
   // Defensive initialization - prevent crashes if totalPages is undefined
   if (!totalPages) {
     console.warn('[PDF] addNewPage: totalPages was undefined, using fallback empty array');
@@ -482,7 +482,7 @@ export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PD
 
   totalPages.push(page);
   // Status is shown prominently on cover page - no need for repeated watermark
-  return { page };
+  return { page, yPosition: PAGE_TOP_Y };
 }
 
 export function drawFooter(page: PDFPage, text: string, pageNum: number, totalPages: number, font: any) {
@@ -556,7 +556,7 @@ export function addExecutiveSummaryPages(
 
   if ((mode === 'ai' || mode === 'both') && aiSummary) {
     const { page } = addNewPage(pdfDoc, isDraft, totalPages);
-    let yPosition = PAGE_HEIGHT - MARGIN - 20;
+    let yPosition = PAGE_TOP_Y;
 
     page.drawText('Executive Summary', {
       x: MARGIN,
@@ -578,7 +578,7 @@ export function addExecutiveSummaryPages(
         if (yPosition < MARGIN + 40) {
           const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
           pagesAdded++;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
           page.drawText(line, {
             x: MARGIN,
             y: yPosition,
@@ -606,7 +606,7 @@ export function addExecutiveSummaryPages(
 
   if ((mode === 'author' || mode === 'both') && authorSummary) {
     const { page } = addNewPage(pdfDoc, isDraft, totalPages);
-    let yPosition = PAGE_HEIGHT - MARGIN - 20;
+    let yPosition = PAGE_TOP_Y;
 
     const heading = mode === 'both' ? 'Author Commentary' : 'Executive Summary';
 
@@ -630,7 +630,7 @@ export function addExecutiveSummaryPages(
         if (yPosition < MARGIN + 40) {
           const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
           pagesAdded++;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
           page.drawText(line, {
             x: MARGIN,
             y: yPosition,
@@ -884,7 +884,7 @@ export async function drawDocumentControlPage(
     issued_by_name: string | null;
   }>
 ): Promise<void> {
-  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+  let yPosition = PAGE_TOP_Y;
 
   page.drawText('DOCUMENT CONTROL & REVISION HISTORY', {
     x: MARGIN,
@@ -1116,7 +1116,7 @@ export function drawActionPlanSnapshot(
     // Check if we need a new page
     if (context.yPosition < MARGIN + 100) {
       context.page = addNewPage(pdfDoc, isDraft, totalPages).page;
-      context.yPosition = PAGE_HEIGHT - MARGIN - 20;
+      context.yPosition = PAGE_TOP_Y;
     }
 
     // Priority heading
@@ -1145,7 +1145,7 @@ export function drawActionPlanSnapshot(
     for (const action of displayActions) {
       if (context.yPosition < MARGIN + 40) {
         context.page = addNewPage(pdfDoc, isDraft, totalPages).page;
-        context.yPosition = PAGE_HEIGHT - MARGIN - 20;
+        context.yPosition = PAGE_TOP_Y;
       }
 
       // Derive ultra-short title for snapshot (70 char max for system actions)
@@ -1220,7 +1220,7 @@ export function drawRecommendationsSection(
 
   if (actions.length === 0) {
     const { page } = addNewPage(pdfDoc, isDraft, totalPages);
-    let yPosition = PAGE_HEIGHT - MARGIN - 20;
+    let yPosition = PAGE_TOP_Y;
 
     page.drawText('RECOMMENDATIONS', {
       x: MARGIN,
@@ -1274,7 +1274,7 @@ export function drawRecommendationsSection(
   let pagesAdded = 0;
   const { page: firstPage } = addNewPage(pdfDoc, isDraft, totalPages);
   let page = firstPage;
-  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+  let yPosition = PAGE_TOP_Y;
   pagesAdded++;
 
   page.drawText('RECOMMENDATIONS', {
@@ -1292,7 +1292,7 @@ export function drawRecommendationsSection(
     if (yPosition < MARGIN + spaceNeeded) {
       const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
       page = newPage;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
       pagesAdded++;
     }
 
@@ -1316,7 +1316,7 @@ export function drawRecommendationsSection(
       if (yPosition < MARGIN + 40) {
         const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
         page = newPage;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
         pagesAdded++;
       }
 

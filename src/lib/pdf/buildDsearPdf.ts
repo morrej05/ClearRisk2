@@ -15,6 +15,7 @@ import {
   PAGE_HEIGHT,
   MARGIN,
   CONTENT_WIDTH,
+  PAGE_TOP_Y,
   sanitizePdfText,
   wrapText,
   formatDate,
@@ -181,32 +182,32 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   const explosionSummary = computeExplosionSummary({ modules: moduleInstances });
   const critResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = critResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawExplosionCriticalitySummary(page, explosionSummary, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // SECTION 3: Purpose and Introduction (Neutral)
   const purposeResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = purposeResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawPurposeAndIntroduction(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // SECTION 4: Hazardous Area Classification Methodology (Canned Text)
   const hacResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = hacResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawHazardousAreaClassification(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // SECTION 5: Zone Definitions (Canned Text)
   const zoneResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = zoneResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawZoneDefinitions(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // SECTION 6: Scope
   if (document.scope_description) {
     const scopeResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = scopeResult.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
     yPosition = drawScope(page, document.scope_description, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
@@ -214,7 +215,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   if (document.limitations_assumptions) {
     const limResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = limResult.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
     yPosition = drawLimitations(page, document.limitations_assumptions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
@@ -227,7 +228,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     if (yPosition < MARGIN + MODULE_HEADER_KEEP + MIN_MODULE_BODY) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
     yPosition = drawModuleSection(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
@@ -235,28 +236,28 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   // SECTION 12: References and Compliance (Jurisdiction-specific)
   const refResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = refResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawReferencesAndCompliance(page, document.jurisdiction as Jurisdiction, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // SECTION 12.5: Compliance-Critical Findings
   if (explosionSummary.flags.length > 0) {
     const findResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = findResult.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
     yPosition = drawComplianceCriticalFindings(page, explosionSummary.flags, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
   // SECTION 13: Action Register
   const result2 = addNewPage(pdfDoc, isDraft, totalPages);
   page = result2.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawActionRegister(page, actions, actionRatings, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // SECTION 13.5: Attachments Index
   if (attachments.length > 0) {
     const result2b = addNewPage(pdfDoc, isDraft, totalPages);
     page = result2b.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
     yPosition = drawAttachmentsIndex(page, attachments, sortedModules, actions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
@@ -457,7 +458,7 @@ function drawExecutiveSummary(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
 
         const truncatedText = action.trigger_text!.length > 120
@@ -538,7 +539,7 @@ function drawModuleSection(
     if (yPosition < 150) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText(sanitizePdfText('Assessor Notes:'), {
@@ -555,7 +556,7 @@ function drawModuleSection(
       if (yPosition < 80) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(sanitizePdfText(line), {
         x: MARGIN,
@@ -627,7 +628,7 @@ function drawSubstancesTable(
     if (yPosition < 150) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText(sanitizePdfText(`${idx + 1}. ${substance.name || 'Unnamed'}`), {
@@ -688,7 +689,7 @@ function drawZonesTable(
       if (yPosition < 120) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       page.drawText(sanitizePdfText(`Zone ${zone.zone_type || '?'}: ${zone.extent_description || 'No description'}`), {
@@ -706,7 +707,7 @@ function drawZonesTable(
     if (yPosition < 80) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
     page.drawText(sanitizePdfText('Drawings Reference:'), {
       x: MARGIN,
@@ -757,7 +758,7 @@ function drawRiskAssessmentTable(
     if (yPosition < 150) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText(sanitizePdfText(`${idx + 1}. ${row.activity || 'Activity not specified'}`), {
@@ -793,7 +794,7 @@ function drawRiskAssessmentTable(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(sanitizePdfText(line), {
           x: MARGIN + 20,
@@ -827,7 +828,7 @@ function drawRiskAssessmentTable(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(sanitizePdfText(line), {
           x: MARGIN + 20,
@@ -873,7 +874,7 @@ function drawGenericModuleData(
     if (yPosition < 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     const value = data[key];
@@ -937,7 +938,7 @@ function drawActionRegister(
     if (yPosition < 120) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     const rating = actionRatings.find(r => r.action_id === action.id);
@@ -973,7 +974,7 @@ function drawActionRegister(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
 
         page.drawText(sanitizePdfText(line), {
@@ -1022,7 +1023,7 @@ function drawInfoGapQuickActions(
   if (yPosition < MARGIN + 200) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
   }
 
   yPosition -= 20;
@@ -1067,7 +1068,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       page.drawText(sanitizePdfText('•'), {
@@ -1083,7 +1084,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 18,
@@ -1103,7 +1104,7 @@ function drawInfoGapQuickActions(
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText('Recommended actions:', {
@@ -1120,7 +1121,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 100) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       // Priority badge
@@ -1148,7 +1149,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 15,
@@ -1167,7 +1168,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 15,
@@ -1190,7 +1191,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN + 10,
@@ -1247,7 +1248,7 @@ function drawAttachmentsIndex(
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
 
     const refNum = `E-${String(i + 1).padStart(3, '0')}`;
@@ -1267,7 +1268,7 @@ function drawAttachmentsIndex(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 10,
@@ -1364,7 +1365,7 @@ function drawHazardousAreaClassification(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN,
@@ -1415,7 +1416,7 @@ function drawZoneDefinitions(
         if (yPosition < MARGIN + 100) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
 
         page.drawText(heading, {
@@ -1434,7 +1435,7 @@ function drawZoneDefinitions(
             if (yPosition < MARGIN + 50) {
               const result = addNewPage(pdfDoc, isDraft, totalPages);
               page = result.page;
-              yPosition = PAGE_HEIGHT - MARGIN - 20;
+              yPosition = PAGE_TOP_Y;
             }
             page.drawText(line, {
               x: MARGIN,
@@ -1455,7 +1456,7 @@ function drawZoneDefinitions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN,
@@ -1502,7 +1503,7 @@ function drawScope(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -1544,7 +1545,7 @@ function drawPurposeAndIntroduction(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -1587,7 +1588,7 @@ function drawLimitations(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -1629,7 +1630,7 @@ function drawReferencesAndCompliance(
     if (yPosition < MARGIN + 80) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText(sanitizePdfText(`• ${ref.label}`), {
@@ -1647,7 +1648,7 @@ function drawReferencesAndCompliance(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 15,
@@ -1726,7 +1727,7 @@ function drawExplosionCriticalitySummary(
     if (yPosition < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
     page.drawText(line, {
       x: MARGIN,
@@ -1768,7 +1769,7 @@ function drawExplosionCriticalitySummary(
       if (yPosition < MARGIN + 80) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       const levelLabel = levelLabels[flag.level] || flag.level.toUpperCase();
@@ -1789,7 +1790,7 @@ function drawExplosionCriticalitySummary(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 20,
@@ -1906,7 +1907,7 @@ function drawComplianceCriticalFindings(
     if (yPosition < MARGIN + 120) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawRectangle({
@@ -1954,7 +1955,7 @@ function drawComplianceCriticalFindings(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN + 10,

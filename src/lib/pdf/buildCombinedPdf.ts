@@ -13,6 +13,7 @@ import {
   PAGE_HEIGHT,
   MARGIN,
   CONTENT_WIDTH,
+  PAGE_TOP_Y,
   sanitizePdfText,
   wrapText,
   formatDate,
@@ -218,7 +219,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   // Table of Contents
   const tocResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = tocResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawTableOfContents(page, font, fontBold, yPosition);
 
   // Common Sections (if any)
@@ -226,7 +227,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   if (commonModules.length > 0) {
     const commonResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = commonResult.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
 
     page.drawText('Common Sections', {
       x: MARGIN,
@@ -240,7 +241,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
     for (const module of commonModules) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
       yPosition = drawModuleSummary(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
     }
   }
@@ -248,20 +249,20 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   // Part 1: Fire Risk Assessment (FRA)
   const fraResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawPartHeader(page, 'Part 1: Fire Risk Assessment (FRA)', font, fontBold, yPosition);
 
   // FRA Regulatory Framework
   const fraRegResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraRegResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   const jurisdiction = (document.jurisdiction || 'UK') as 'UK' | 'IE';
   yPosition = drawTextSection(page, 'Regulatory Framework', fraRegulatoryFrameworkText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // FRA Responsible Person Duties
   const fraRespResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraRespResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawTextSection(page, 'Responsible Person Duties', fraResponsiblePersonDutiesText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // FRA Modules
@@ -275,20 +276,20 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   for (const module of fraModules) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
     yPosition = drawModuleSummary(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
   // Part 2: Fire Strategy Document (FSD)
   const fsdResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fsdResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawPartHeader(page, 'Part 2: Fire Strategy Document (FSD)', font, fontBold, yPosition);
 
   // FSD Purpose and Scope
   const fsdPurposeResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fsdPurposeResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawTextSection(page, 'Purpose and Scope', fsdPurposeAndScopeText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // FSD Modules
@@ -300,21 +301,21 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   for (const module of fsdModules) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
     yPosition = drawModuleSummary(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
   // Appendix: Action Register
   const actionsResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = actionsResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawActionRegister(page, actions, actionRatings, moduleInstances, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // Appendix: Attachments Index
   if (attachments.length > 0) {
     const attachResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = attachResult.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
     yPosition = drawAttachmentsIndex(page, attachments, moduleInstances, actions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
@@ -322,14 +323,14 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   if (document.scope_description || document.limitations_assumptions) {
     const limResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = limResult.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
     yPosition = drawAssumptionsAndLimitations(page, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
   }
 
   // Add FSD Limitations
   const fsdLimResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fsdLimResult.page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
   yPosition = drawTextSection(page, 'Fire Strategy Limitations', fsdLimitationsText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   if (isIssuedMode && actions.length > 0) {
@@ -569,7 +570,7 @@ function drawTextSection(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       page.drawText(line, {
@@ -643,7 +644,7 @@ function drawModuleSummary(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       page.drawText(line, {
@@ -693,7 +694,7 @@ function drawInfoGapQuickActions(
   if (yPosition < MARGIN + 200) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN - 20;
+    yPosition = PAGE_TOP_Y;
   }
 
   yPosition -= 20;
@@ -738,7 +739,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
 
       page.drawText(sanitizePdfText('•'), {
@@ -754,7 +755,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 18,
@@ -774,7 +775,7 @@ function drawInfoGapQuickActions(
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText('Recommended actions:', {
@@ -791,7 +792,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 100) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
 
       // Priority badge
@@ -819,7 +820,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 15,
@@ -838,7 +839,7 @@ function drawInfoGapQuickActions(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN - 20;
+          yPosition = PAGE_TOP_Y;
         }
         page.drawText(line, {
           x: MARGIN + 15,
@@ -861,7 +862,7 @@ function drawInfoGapQuickActions(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN + 10,
@@ -919,7 +920,7 @@ function drawActionRegister(
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     const priorityColor = getPriorityColor(action.priority_band);
@@ -988,7 +989,7 @@ function drawAttachmentsIndex(
     if (yPosition < MARGIN + 60) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText(`${i + 1}. ${sanitizePdfText(att.filename)}`, {
@@ -1052,7 +1053,7 @@ function drawAssumptionsAndLimitations(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       page.drawText(line, {
@@ -1082,7 +1083,7 @@ function drawAssumptionsAndLimitations(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       page.drawText(line, {

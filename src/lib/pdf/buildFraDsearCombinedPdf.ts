@@ -7,6 +7,7 @@ import {
   PAGE_HEIGHT,
   MARGIN,
   CONTENT_WIDTH,
+  PAGE_TOP_Y,
   sanitizePdfText,
   wrapText,
   formatDate,
@@ -103,7 +104,7 @@ function drawModuleSection(
   if (yPosition < 150) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
   }
 
   // Module heading
@@ -180,7 +181,7 @@ function drawModuleSection(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(sanitizePdfText(line), {
         x: MARGIN + 10,
@@ -211,7 +212,7 @@ function drawModuleSection(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       // Format key (convert snake_case to Title Case)
@@ -283,7 +284,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   // Add cover page
   let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   totalPages.push(page);
-  let yPosition = PAGE_HEIGHT - MARGIN;
+  let yPosition = PAGE_TOP_Y;
 
   // Cover page title
   page.drawText(sanitizePdfText('Combined Fire + Explosion Report'), {
@@ -381,7 +382,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   // Add combined executive summary
   page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   totalPages.push(page);
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
 
   yPosition = drawCombinedExecutiveSummary(
     page,
@@ -422,7 +423,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   if (fraModules.length > 0) {
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
 
     yPosition = drawSectionHeaderBar({
       page,
@@ -473,7 +474,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   if (dsearModules.length > 0) {
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
-    yPosition = PAGE_HEIGHT - MARGIN;
+    yPosition = PAGE_TOP_Y;
 
     yPosition = drawSectionHeaderBar({
       page,
@@ -510,7 +511,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   // Combined action register (deduplicated)
   page = addNewPage(pdfDoc, isDraft, totalPages).page;
-  yPosition = PAGE_HEIGHT - MARGIN;
+  yPosition = PAGE_TOP_Y;
 
   yPosition = drawCombinedActionRegister(
     page,
@@ -683,7 +684,7 @@ function drawCombinedExecutiveSummary(
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN;
+        yPosition = PAGE_TOP_Y;
       }
 
       const truncated = action.trigger_text!.length > 100
@@ -766,7 +767,7 @@ function drawCombinedActionRegister(
     if (yPosition < 120) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN;
+      yPosition = PAGE_TOP_Y;
     }
 
     const rating = actionRatings.find(r => r.action_id === action.id);
@@ -808,7 +809,7 @@ function drawCombinedActionRegister(
         if (yPosition < MARGIN + 50) {
           const result = addNewPage(pdfDoc, isDraft, totalPages);
           page = result.page;
-          yPosition = PAGE_HEIGHT - MARGIN;
+          yPosition = PAGE_TOP_Y;
         }
 
         page.drawText(sanitizePdfText(line), {

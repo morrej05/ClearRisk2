@@ -7,6 +7,7 @@ import { PDFDocument, PDFPage, rgb } from 'pdf-lib';
 import {
   MARGIN,
   CONTENT_WIDTH,
+  PAGE_TOP_Y,
   sanitizePdfText,
   wrapText,
   formatDate,
@@ -14,7 +15,6 @@ import {
   drawKeyValueRow,
   normalizeDisplayValue,
 } from '../pdfUtils';
-import { PAGE_TOP_Y } from '../pdfCursor';
 import { ensureSpace, ensureCursor } from './fraUtils';
 import {
   drawModuleContent,

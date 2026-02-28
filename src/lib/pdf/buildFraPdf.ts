@@ -28,6 +28,7 @@ import {
   PAGE_HEIGHT,
   MARGIN,
   CONTENT_WIDTH,
+  PAGE_TOP_Y,
   sanitizePdfText,
   normalizeDisplayValue,
   wrapText,
@@ -63,7 +64,7 @@ import {
   getDisplayableOwner,
 } from './reportQualityGates';
 import { drawUsingThisReportSection, drawAssuranceGapsBlock } from './usingThisReportGuide';
-import { Cursor, ensureCursor, ensureSpace as ensureSpaceCursor, PAGE_TOP_Y } from './pdfCursor';
+import { Cursor, ensureCursor, ensureSpace as ensureSpaceCursor } from './pdfCursor';
 import { drawSectionHeader as drawSectionHeaderCommon } from './fra/fraDrawCommon';
 import { PDF_STYLES } from './pdfStyles';
 

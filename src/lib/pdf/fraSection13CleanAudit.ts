@@ -197,7 +197,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   if (yPosition < MARGIN + 120) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
     page = result.page;
-    yPosition = PAGE_HEIGHT - MARGIN - 20;
+    yPosition = PAGE_TOP_Y;
   }
 
   page.drawText('Likelihood and Consequence', {
@@ -345,7 +345,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
     if (yPosition < MARGIN + 100) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_HEIGHT - MARGIN - 20;
+      yPosition = PAGE_TOP_Y;
     }
 
     page.drawText('Provisional Assessment', {
@@ -514,7 +514,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
       if (yPosition < MARGIN + 50) {
         const result = addNewPage(pdfDoc, isDraft, totalPages);
         page = result.page;
-        yPosition = PAGE_HEIGHT - MARGIN - 20;
+        yPosition = PAGE_TOP_Y;
       }
       page.drawText(line, {
         x: MARGIN,

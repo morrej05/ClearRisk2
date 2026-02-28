@@ -11,6 +11,7 @@ import {
   PAGE_HEIGHT,
   MARGIN,
   CONTENT_WIDTH,
+  PAGE_TOP_Y,
   wrapText,
   addNewPage,
   sanitizePdfText,
@@ -29,7 +30,7 @@ export function drawUsingThisReportSection(
   // Add new page for this section
   const result = addNewPage(pdfDoc, isDraft, totalPages);
   let page = result.page;
-  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+  let yPosition = PAGE_TOP_Y;
 
   // Section title
   page.drawText(sanitizePdfText('Using This Report'), {

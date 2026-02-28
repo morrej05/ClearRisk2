@@ -1,5 +1,5 @@
 import { PDFDocument, PDFPage } from 'pdf-lib';
-import { addNewPage, PAGE_HEIGHT, MARGIN, PDF_DEBUG_LAYOUT, drawDebugLabel } from './pdfUtils';
+import { addNewPage, PAGE_HEIGHT, MARGIN, PAGE_TOP_Y, PDF_DEBUG_LAYOUT, drawDebugLabel } from './pdfUtils';
 
 /**
  * Cursor type for tracking current page and Y position during PDF layout.
@@ -9,12 +9,6 @@ import { addNewPage, PAGE_HEIGHT, MARGIN, PDF_DEBUG_LAYOUT, drawDebugLabel } fro
  * INVARIANT: page is NEVER undefined. All functions guarantee this.
  */
 export type Cursor = { page: PDFPage; yPosition: number };
-
-/**
- * Consistent Y position for page-top resets after addNewPage().
- * Provides standard top margin + small offset for first content.
- */
-export const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN;
 
 /**
  * Ensures we have a valid Cursor with non-undefined page.

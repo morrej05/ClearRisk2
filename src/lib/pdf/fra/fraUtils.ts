@@ -5,8 +5,7 @@
 
 import { PDFDocument, PDFPage } from 'pdf-lib';
 import { detectInfoGaps } from '../../../utils/infoGapQuickActions';
-import { addNewPage, MARGIN } from '../pdfUtils';
-import { PAGE_TOP_Y } from '../pdfCursor';
+import { addNewPage, MARGIN, PAGE_TOP_Y } from '../pdfUtils';
 import { FRA_REPORT_STRUCTURE } from '../fraReportStructure';
 import type { Document, ModuleInstance, Organisation } from './fraTypes';
 

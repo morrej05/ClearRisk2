@@ -4,6 +4,7 @@ import {
   PAGE_HEIGHT,
   MARGIN,
   CONTENT_WIDTH,
+  PAGE_TOP_Y,
   sanitizePdfText,
   wrapText,
   formatDate,
@@ -128,7 +129,7 @@ export async function buildReLpPdf(options: BuildPdfOptions): Promise<Uint8Array
 
   // Add comprehensive analysis section
   const { page: analysisPage } = addNewPage(pdfDoc, isDraft, totalPages);
-  let yPosition = PAGE_HEIGHT - MARGIN - 20;
+  let yPosition = PAGE_TOP_Y;
 
   analysisPage.drawText('Loss Prevention Analysis', {
     x: MARGIN,

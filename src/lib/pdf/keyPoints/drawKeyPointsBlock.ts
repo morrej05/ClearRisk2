@@ -9,6 +9,7 @@ import {
   MARGIN,
   CONTENT_WIDTH,
   PAGE_HEIGHT,
+  PAGE_TOP_Y,
   wrapText,
   sanitizePdfText,
   addNewPage,
@@ -43,7 +44,7 @@ function ensureSpace(
 ): { page: PDFPage; yPosition: number } {
   if (currentY - requiredHeight < MARGIN + 50) {
     const result = addNewPage(pdfDoc, isDraft, totalPages);
-    return { page: result.page, yPosition: PAGE_HEIGHT - MARGIN };
+    return { page: result.page, yPosition: PAGE_TOP_Y };
   }
   return { page: currentPage, yPosition: currentY };
 }

@@ -1071,9 +1071,10 @@ export function drawActionPlanSnapshot(
   const p4Actions = openActions.filter(a => a.priority_band === 'P4');
 
   // Use mutable object to track current page and yPosition
+  const result = addNewPage(pdfDoc, isDraft, totalPages);
   const context = {
-    page: addNewPage(pdfDoc, isDraft, totalPages).page,
-    yPosition: PAGE_HEIGHT - MARGIN - 20,
+    page: result.page,
+    yPosition: result.yPosition,
   };
 
   // Section title

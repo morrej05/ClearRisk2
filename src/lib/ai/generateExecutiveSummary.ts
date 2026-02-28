@@ -379,7 +379,7 @@ function buildDsearExecutiveSummary(
   const bullets: string[] = [];
 
   bullets.push(
-    `Assessment Date: ${date}${scope ? ` covering ${scope.toLowerCase()}` : ''}.`
+    `Assessment Date: ${date}${scope ? ` covering ${scope.trim()}` : ''}.`
   );
 
   bullets.push(
@@ -505,7 +505,7 @@ function buildFsdExecutiveSummary(
   const bullets: string[] = [];
 
   bullets.push(
-    `Design Review Date: ${date}${scope ? ` for ${scope.toLowerCase()}` : ''}.`
+    `Design Review Date: ${date}${scope ? ` for ${scope.trim()}` : ''}.`
   );
 
   bullets.push(

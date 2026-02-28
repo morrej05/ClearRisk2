@@ -153,29 +153,6 @@ function buildFraExecutiveSummary(
   actionCounts: ActionCount
 ): string {
   const date = new Date(assessmentDate).toLocaleDateString('en-GB', {
-    const hasP1 = actionCounts.P1 > 0;
-    const hasP2 = actionCounts.P2 > 0;
-    const totalActions =
-      actionCounts.P1 +
-      actionCounts.P2 +
-      actionCounts.P3 +
-      actionCounts.P4;
-    
-    let closingStatement = '';
-    
-    if (hasP1) {
-      closingStatement =
-        'Immediate attention is required to address the material deficiencies identified. Priority should be given to the highest-rated actions to reduce life safety risk without delay.';
-    } else if (hasP2) {
-      closingStatement =
-        'Material improvements are required to address identified deficiencies. Actions should be implemented in accordance with their assigned priority to strengthen overall fire safety performance.';
-    } else if (totalActions > 0) {
-      closingStatement =
-        'The identified actions represent targeted improvements to enhance existing fire safety controls. Implementation should be managed in line with operational planning and risk prioritisation.';
-    } else {
-      closingStatement =
-        'No material deficiencies were identified at the time of assessment. Existing fire safety arrangements were found to be broadly appropriate to the use and occupancy.';
-    }
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -186,9 +163,7 @@ function buildFraExecutiveSummary(
 
   const compliantCount = modules.filter((m) => m.outcome === 'compliant').length;
   const minorDefCount = modules.filter((m) => m.outcome === 'minor_def').length;
-  const materialDefCount = modules.filter(
-    (m) => m.outcome === 'material_def'
-  ).length;
+  const materialDefCount = modules.filter((m) => m.outcome === 'material_def').length;
   const infoGapCount = modules.filter((m) => m.outcome === 'info_gap').length;
   const totalModules = modules.length;
 
@@ -199,24 +174,18 @@ function buildFraExecutiveSummary(
   );
 
   bullets.push(
-    `${totalModules} key area${
-      totalModules !== 1 ? 's' : ''
-    } of fire safety were examined to identify hazards, evaluate controls, and determine necessary actions.`
+    `${totalModules} key area${totalModules !== 1 ? 's' : ''} of fire safety were examined to identify hazards, evaluate controls, and determine necessary actions.`
   );
 
   if (materialDefCount > 0) {
     bullets.push(
-      `${materialDefCount} area${
-        materialDefCount > 1 ? 's' : ''
-      } with material deficiencies requiring immediate attention were identified.`
+      `${materialDefCount} area${materialDefCount > 1 ? 's' : ''} with material deficiencies requiring immediate attention were identified.`
     );
   }
 
   if (minorDefCount > 0) {
     bullets.push(
-      `${minorDefCount} area${
-        minorDefCount > 1 ? 's' : ''
-      } with minor deficiencies were found.`
+      `${minorDefCount} area${minorDefCount > 1 ? 's' : ''} with minor deficiencies were found.`
     );
   }
 
@@ -228,14 +197,13 @@ function buildFraExecutiveSummary(
 
   if (infoGapCount > 0) {
     bullets.push(
-      `${infoGapCount} area${
-        infoGapCount > 1 ? 's' : ''
-      } where further information is required to complete the assessment.`
+      `${infoGapCount} area${infoGapCount > 1 ? 's' : ''} where further information is required to complete the assessment.`
     );
   }
 
   if (totalActions > 0) {
     const actionParts: string[] = [];
+
     if (actionCounts.P1 > 0) {
       actionParts.push(
         `${actionCounts.P1} high priority (P1) action${actionCounts.P1 > 1 ? 's' : ''}`
@@ -243,9 +211,7 @@ function buildFraExecutiveSummary(
     }
     if (actionCounts.P2 > 0) {
       actionParts.push(
-        `${actionCounts.P2} medium-high priority (P2) action${
-          actionCounts.P2 > 1 ? 's' : ''
-        }`
+        `${actionCounts.P2} medium-high priority (P2) action${actionCounts.P2 > 1 ? 's' : ''}`
       );
     }
     if (actionCounts.P3 > 0) {
@@ -255,16 +221,12 @@ function buildFraExecutiveSummary(
     }
     if (actionCounts.P4 > 0) {
       actionParts.push(
-        `${actionCounts.P4} lower priority (P4) improvement${
-          actionCounts.P4 > 1 ? 's' : ''
-        }`
+        `${actionCounts.P4} lower priority (P4) improvement${actionCounts.P4 > 1 ? 's' : ''}`
       );
     }
 
     bullets.push(
-      `${totalActions} recommendation${
-        totalActions > 1 ? 's have' : ' has'
-      } been made: ${actionParts.join(', ')}.`
+      `${totalActions} recommendation${totalActions > 1 ? 's have' : ' has'} been made: ${actionParts.join(', ')}.`
     );
   } else {
     bullets.push(
@@ -274,33 +236,36 @@ function buildFraExecutiveSummary(
 
   if (limitations) {
     bullets.push(
-      `Assessment limitations: ${limitations.slice(0, 150)}${
-        limitations.length > 150 ? '...' : ''
-      }`
+      `Assessment limitations: ${limitations.slice(0, 150)}${limitations.length > 150 ? '...' : ''}`
     );
   }
 
+  // Severity-aware closing statement (deterministic)
   let closing = '';
 
-const hasP1 = actionCounts.P1 > 0;
-const hasP2 = actionCounts.P2 > 0;
+  const hasP1 = actionCounts.P1 > 0;
+  const hasP2 = actionCounts.P2 > 0;
 
-if (hasP1) {
-  closing =
-    'Immediate attention is required to address the highest-priority actions identified. These items should be progressed without delay to reduce life safety risk and support compliance with applicable fire safety duties.';
-} else if (hasP2) {
-  closing =
-    'Material improvements are required to address identified deficiencies. Actions should be implemented in line with their assigned priority to strengthen overall fire safety performance.';
-} else if (totalActions > 0) {
-  closing =
-    'The identified actions represent targeted improvements to enhance existing fire safety controls. Implementation should be managed in line with operational planning and risk prioritisation.';
-} else {
-  closing =
-    'No material deficiencies were identified at the time of assessment. Existing fire safety arrangements were found to be broadly appropriate to the use and occupancy.';
+  if (hasP1) {
+    closing =
+      'Immediate attention is required to address the highest-priority actions identified. These items should be progressed without delay to reduce life safety risk and support compliance with applicable fire safety duties.';
+  } else if (hasP2) {
+    closing =
+      'Material improvements are required to address identified deficiencies. Actions should be implemented in line with their assigned priority to strengthen overall fire safety performance.';
+  } else if (totalActions > 0) {
+    closing =
+      'The identified actions represent targeted improvements to enhance existing fire safety controls. Implementation should be managed in line with operational planning and risk prioritisation.';
+  } else {
+    closing =
+      'No material deficiencies were identified at the time of assessment. Existing fire safety arrangements were found to be broadly appropriate to the use and occupancy.';
+  }
+
+  closing +=
+    ' Full details of the assessment findings and recommendations are provided within the main body of this report.';
+
+  const bulletSection = bullets.map((b) => `• ${b}`).join('\n');
+  return `${bulletSection}\n\n${closing}`;
 }
-
-closing +=
-  ' Full details of the assessment findings and recommendations are provided within the main body of this report.';
 
 function buildDsearExecutiveSummary(
   title: string,

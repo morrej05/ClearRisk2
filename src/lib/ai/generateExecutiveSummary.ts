@@ -141,7 +141,17 @@ function buildExecutiveSummary(
   } else if (documentType === 'FSD') {
     return buildFsdExecutiveSummary(title, assessmentDate, scope, limitations, modules, actionCounts);
   } else {
-    return buildFraExecutiveSummary(title, assessmentDate, scope, limitations, modules, actionCounts);
+    const snapshotLines = buildFraSnapshotLines(modules);
+
+return buildFraExecutiveSummary(
+  title,
+  assessmentDate,
+  scope,
+  limitations,
+  modules,
+  actionCounts,
+  snapshotLines
+);
   }
 }
 function buildFraSnapshotLines(modules: ModuleOutcome[]): string[] {
@@ -199,7 +209,8 @@ function buildFraExecutiveSummary(
   scope: string | null,
   limitations: string | null,
   modules: ModuleOutcome[],
-  actionCounts: ActionCount
+  actionCounts: ActionCount,
+  snapshotLines?: string[]
 ): string {
   const date = new Date(assessmentDate).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -218,9 +229,15 @@ function buildFraExecutiveSummary(
 
   const bullets: string[] = [];
 
-  bullets.push(
-    `Assessment Date: ${date}${scope ? ` covering ${scope.toLowerCase()}` : ''}.`
-  );
+// Snapshot first (if available)
+if (snapshotLines && snapshotLines.length > 0) {
+  bullets.push(...snapshotLines);
+}
+
+// Then standard intro line
+bullets.push(
+  `Assessment Date: ${date}${scope ? ` covering ${scope.toLowerCase()}` : ''}.`
+);
 
   bullets.push(
     `${totalModules} key area${totalModules !== 1 ? 's' : ''} of fire safety were examined to identify hazards, evaluate controls, and determine necessary actions.`

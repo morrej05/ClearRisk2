@@ -281,17 +281,26 @@ function buildFraExecutiveSummary(
   }
 
   let closing = '';
-  if (actionCounts.P1 > 0) {
-    closing = `High priority recommendations should be implemented without delay to address significant fire safety concerns and reduce risk to acceptable levels. These actions are essential to ensuring the safety of occupants and compliance with fire safety legislation. Full details of the assessment methodology, specific findings, and detailed recommendations are provided in the main body of this report.`;
-  } else if (totalActions > 0) {
-    closing = `Implementation of the recommended actions will enhance fire safety standards and ensure continued compliance with regulatory requirements. Priority should be given to higher-rated recommendations to address the most significant areas for improvement. Full details of the assessment methodology, specific findings, and detailed recommendations are provided in the main body of this report.`;
-  } else {
-    closing = `This executive summary provides an overview of the key findings. Full details of the assessment methodology and current fire safety arrangements are provided in the main body of this report.`;
-  }
 
-  const bulletSection = bullets.map((b) => `• ${b}`).join('\n');
-  return `${bulletSection}\n\n${closing}`;
+const hasP1 = actionCounts.P1 > 0;
+const hasP2 = actionCounts.P2 > 0;
+
+if (hasP1) {
+  closing =
+    'Immediate attention is required to address the highest-priority actions identified. These items should be progressed without delay to reduce life safety risk and support compliance with applicable fire safety duties.';
+} else if (hasP2) {
+  closing =
+    'Material improvements are required to address identified deficiencies. Actions should be implemented in line with their assigned priority to strengthen overall fire safety performance.';
+} else if (totalActions > 0) {
+  closing =
+    'The identified actions represent targeted improvements to enhance existing fire safety controls. Implementation should be managed in line with operational planning and risk prioritisation.';
+} else {
+  closing =
+    'No material deficiencies were identified at the time of assessment. Existing fire safety arrangements were found to be broadly appropriate to the use and occupancy.';
 }
+
+closing +=
+  ' Full details of the assessment findings and recommendations are provided within the main body of this report.';
 
 function buildDsearExecutiveSummary(
   title: string,

@@ -61,7 +61,7 @@ export async function generateExecutiveSummary(
 
     const { data: modules, error: modulesError } = await supabase
       .from('module_instances')
-      .select('module_key, outcome')
+      .select('module_key, outcome, data')
       .eq('document_id', documentId);
 
     if (modulesError) {

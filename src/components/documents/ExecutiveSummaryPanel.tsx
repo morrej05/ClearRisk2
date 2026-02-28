@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Edit3, FileText, X, ChevronDown, ChevronUp, AlertCircle, Lock, ArrowUpCircle } from 'lucide-react';
+import { Edit3, FileText, X, ChevronDown, ChevronUp, AlertCircle, Lock, ArrowUpCircle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { generateExecutiveSummary } from '../../lib/ai/generateExecutiveSummary';
@@ -219,8 +219,8 @@ export default function ExecutiveSummaryPanel({
                 : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300'
             }`}
           >
-            <Sparkles className="w-4 h-4 mx-auto mb-1" />
-            AI summary
+            <FileText className="w-4 h-4 mx-auto mb-1" />
+            Auto summary
           </button>
           <button
             onClick={() => handleModeChange('author')}
@@ -264,8 +264,8 @@ export default function ExecutiveSummaryPanel({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <label className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  AI-Generated Summary
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Executive Summary
                 </label>
                 {canUseAiSummary ? (
                   <button
@@ -280,8 +280,8 @@ export default function ExecutiveSummaryPanel({
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4" />
-                        {aiSummary ? 'Regenerate' : 'Generate AI Summary'}
+                        <RefreshCw className="w-4 h-4" />
+                        {aiSummary ? 'Regenerate' : 'Generate Summary'}
                       </>
                     )}
                   </button>
@@ -302,7 +302,7 @@ export default function ExecutiveSummaryPanel({
                     <div>
                       <p className="text-sm font-medium text-amber-900 mb-1">Professional Feature</p>
                       <p className="text-sm text-amber-700">
-                        AI executive summaries are available on the Professional plan. Upgrade to generate intelligent summaries automatically from your assessment data.
+                        Automatic executive summaries are available on the Professional plan. Upgrade to generate summaries automatically from your assessment data.
                       </p>
                     </div>
                   </div>
@@ -315,7 +315,7 @@ export default function ExecutiveSummaryPanel({
               ) : canUseAiSummary ? (
                 <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 text-center">
                   <p className="text-sm text-neutral-600">
-                    Click "Generate AI Summary" to create a summary based on your assessment data
+                    Click "Generate Summary" to create a summary based on your assessment data
                   </p>
                 </div>
               ) : null}
@@ -346,7 +346,7 @@ export default function ExecutiveSummaryPanel({
                     onChange={(e) => handleAuthorSummaryChange(e.target.value)}
                     placeholder={
                       mode === 'both'
-                        ? 'Add optional commentary to supplement the AI summary...'
+                        ? 'Add optional commentary to supplement the executive summary...'
                         : 'Write your executive summary...'
                     }
                     rows={8}
@@ -354,7 +354,7 @@ export default function ExecutiveSummaryPanel({
                   />
                   <p className="text-xs text-neutral-500 mt-2">
                     {mode === 'both'
-                      ? 'This will appear after the AI summary in the report'
+                      ? 'This will appear after the executive summary in the report'
                       : 'This will be the only executive summary in the report'}
                   </p>
                 </>

@@ -154,6 +154,13 @@ return buildFraExecutiveSummary(
 );
   }
 }
+function toTitleCase(str: string): string {
+  return str
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 function buildFraSnapshotLines(modules: ModuleOutcome[]): string[] {
   const a2 = modules.find(m => m.module_key === 'A2_BUILDING_PROFILE')?.data || {};
   const a3 = modules.find(m => m.module_key === 'A3_PERSONS_AT_RISK')?.data || {};
@@ -168,8 +175,13 @@ function buildFraSnapshotLines(modules: ModuleOutcome[]): string[] {
     if (a2.building_use_uk === 'other' && a2.building_use_other) {
       facts1.push(`Use: Other (${a2.building_use_other})`);
     } else {
-      facts1.push(`Use: ${a2.building_use_uk.replaceAll('_', ' ')}`);
+      facts1.push(`Use: ${toTitleCase(a2.building_use_uk)}`);
     }
+  }
+
+  // Occupancy (optional, only if present and not unknown)
+  if (a2.occupancy_profile && a2.occupancy_profile !== 'unknown') {
+    facts1.push(`Occupancy: ${toTitleCase(a2.occupancy_profile)}`);
   }
 
   // Storeys
@@ -198,8 +210,8 @@ function buildFraSnapshotLines(modules: ModuleOutcome[]): string[] {
   }
 
   const snapshotLines: string[] = [];
-  if (facts1.length) snapshotLines.push(facts1.join(' • '));
-  if (facts2.length) snapshotLines.push(facts2.join(' • '));
+  if (facts1.length) snapshotLines.push(facts1.join(' | '));
+  if (facts2.length) snapshotLines.push(facts2.join(' | '));
 
   return snapshotLines.slice(0, 2);
 }
@@ -235,12 +247,13 @@ if (snapshotLines && snapshotLines.length > 0) {
 }
 
 // Then standard intro line
+const trimmedScope = scope?.trim().replace(/[.,;]+$/, '') || '';
 bullets.push(
-  `Assessment Date: ${date}${scope ? ` covering ${scope.toLowerCase()}` : ''}.`
+  `Assessment Date: ${date}${trimmedScope ? ` covering ${trimmedScope}` : ''}.`
 );
 
   bullets.push(
-    `${totalModules} key area${totalModules !== 1 ? 's' : ''} of fire safety were examined to identify hazards, evaluate controls, and determine necessary actions.`
+    `${totalModules} key area${totalModules !== 1 ? 's' : ''} of fire safety were assessed.`
   );
 
   if (materialDefCount > 0) {
@@ -291,8 +304,13 @@ bullets.push(
       );
     }
 
+    const joinedActions =
+      actionParts.length === 1 ? actionParts[0] :
+      actionParts.length === 2 ? `${actionParts[0]} and ${actionParts[1]}` :
+      actionParts.slice(0, -1).join(', ') + ', and ' + actionParts[actionParts.length - 1];
+
     bullets.push(
-      `${totalActions} recommendation${totalActions > 1 ? 's have' : ' has'} been made: ${actionParts.join(', ')}.`
+      `${totalActions} recommendation${totalActions > 1 ? 's have' : ' has'} been made: ${joinedActions}.`
     );
   } else {
     bullets.push(

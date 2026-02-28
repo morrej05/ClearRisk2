@@ -389,22 +389,6 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   // 5. TOP 3 PRIORITY ISSUES
   // ========================================================
   if (openActions.length > 0) {
-    if (yPosition < MARGIN + 150) {
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_TOP_Y;
-    }
-
-    page.drawText('Priority Issues', {
-      x: MARGIN,
-      y: yPosition,
-      size: 12,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-
-    yPosition -= 22;
-
     // Sort and get top 3
     const sortedActions = [...openActions].sort((a, b) => {
       const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4 };
@@ -428,11 +412,56 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
 
     const topActions = sortedActions.slice(0, 3);
 
-    for (const action of topActions) {
-      if (yPosition < MARGIN + 70) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
+    // Compute first item height for heading preflight
+    if (topActions.length > 0) {
+      const firstAction = topActions[0];
+      let firstItemHeight = 18; // badge + action text line
+      if ((firstAction.priority_band === 'P1' || firstAction.priority_band === 'P2') && firstAction.trigger_text) {
+        firstItemHeight += 14; // reason line
+      }
+      firstItemHeight += 6; // item spacing
+
+      // Preflight heading + first item together
+      const requiredHeight = 20 + 22 + firstItemHeight;
+      ({ page, yPosition } = ensurePageSpace(
+        requiredHeight,
+        page,
+        yPosition,
+        pdfDoc,
+        isDraft,
+        totalPages
+      ));
+    }
+
+    page.drawText('Priority Issues', {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+
+    yPosition -= 22;
+
+    for (let i = 0; i < topActions.length; i++) {
+      const action = topActions[i];
+
+      // Compute item height for preflight (skip first item, already preflighted with heading)
+      if (i > 0) {
+        let itemHeight = 18; // badge + action text line
+        if ((action.priority_band === 'P1' || action.priority_band === 'P2') && action.trigger_text) {
+          itemHeight += 14; // reason line
+        }
+        itemHeight += 6; // item spacing
+
+        ({ page, yPosition } = ensurePageSpace(
+          itemHeight,
+          page,
+          yPosition,
+          pdfDoc,
+          isDraft,
+          totalPages
+        ));
       }
 
       const actionText = sanitizePdfText(action.recommended_action || '(No action text)');

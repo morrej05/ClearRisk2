@@ -69,25 +69,30 @@ export async function generateExecutiveSummary(
     }
 
     const { data: actions, error: actionsError } = await supabase
-      .from('actions')
-      .select('priority_band')
-      .eq('document_id', documentId)
-      .eq('status', 'open')
-      .is('deleted_at', null);
+  .from('actions')
+  .select('priority_band, status')
+  .eq('document_id', documentId)
+  .is('deleted_at', null);
 
     if (actionsError) {
       return { success: false, error: 'Failed to fetch action data' };
     }
-
+    
+    const openActions = (actions ?? []).filter(
+      (a) => String(a?.status ?? '').toLowerCase() === 'open'
+    );
+    
     const moduleOutcomes = (modules || []) as ModuleOutcome[];
-
+    
     const actionCounts: ActionCount = { P1: 0, P2: 0, P3: 0, P4: 0 };
-    (actions || []).forEach((action: any) => {
-      if (action.priority in actionCounts) {
-        actionCounts[action.priority as keyof ActionCount]++;
+    
+    openActions.forEach((action: any) => {
+      const band = action.priority_band;
+      if (band && band in actionCounts) {
+        actionCounts[band as keyof ActionCount]++;
       }
     });
-
+    
     const summary = buildExecutiveSummary(
       document.document_type,
       document.title,

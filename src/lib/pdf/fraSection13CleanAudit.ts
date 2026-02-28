@@ -11,6 +11,7 @@ import {
   sanitizePdfText,
   wrapText,
   addNewPage,
+  ensurePageSpace,
   PAGE_TOP_Y,
   PAGE_HEIGHT,
   MARGIN,
@@ -319,12 +320,16 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
 
   const narrativeText = narrativeParts.join(' ');
   const narrativeLines = wrapText(narrativeText, CONTENT_WIDTH, 11, font);
+  const requiredHeight = (narrativeLines.length * 16) + 15;
+  ({ page, yPosition } = ensurePageSpace(
+    requiredHeight,
+    page,
+    yPosition,
+    pdfDoc,
+    isDraft,
+    totalPages
+  ));
   for (const line of narrativeLines) {
-    if (yPosition < MARGIN + 50) {
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_TOP_Y;
-    }
     page.drawText(line, {
       x: MARGIN,
       y: yPosition,
@@ -342,11 +347,24 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   // ========================================================
   const isProvisional = scoringResult?.provisional || infoGapCount > 0;
   if (isProvisional) {
-    if (yPosition < MARGIN + 100) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
+    // Use specific reasons from scoring engine if available, otherwise generic text
+    let provisionalText: string;
+    if (scoringResult?.provisionalReasons && scoringResult.provisionalReasons.length > 0) {
+      provisionalText = `This assessment is provisional due to: ${scoringResult.provisionalReasons.join('; ')}. The overall risk rating may change once complete information is obtained and these areas are fully assessed.`;
+    } else {
+      provisionalText = `This assessment is provisional in ${infoGapCount} area${infoGapCount > 1 ? 's' : ''} due to missing information or restricted access. The overall risk rating may change once complete information is obtained and these areas are fully assessed.`;
     }
+
+    const provisionalLines = wrapText(provisionalText, CONTENT_WIDTH, 11, font);
+    const requiredHeight = 20 + 20 + (provisionalLines.length * 16) + 15;
+    ({ page, yPosition } = ensurePageSpace(
+      requiredHeight,
+      page,
+      yPosition,
+      pdfDoc,
+      isDraft,
+      totalPages
+    ));
 
     page.drawText('Provisional Assessment', {
       x: MARGIN,
@@ -358,21 +376,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
 
     yPosition -= 20;
 
-    // Use specific reasons from scoring engine if available, otherwise generic text
-    let provisionalText: string;
-    if (scoringResult?.provisionalReasons && scoringResult.provisionalReasons.length > 0) {
-      provisionalText = `This assessment is provisional due to: ${scoringResult.provisionalReasons.join('; ')}. The overall risk rating may change once complete information is obtained and these areas are fully assessed.`;
-    } else {
-      provisionalText = `This assessment is provisional in ${infoGapCount} area${infoGapCount > 1 ? 's' : ''} due to missing information or restricted access. The overall risk rating may change once complete information is obtained and these areas are fully assessed.`;
-    }
-
-    const provisionalLines = wrapText(provisionalText, CONTENT_WIDTH, 11, font);
     for (const line of provisionalLines) {
-      if (yPosition < MARGIN + 50) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-      }
       page.drawText(line, {
         x: MARGIN,
         y: yPosition,
@@ -494,11 +498,16 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   // 6. ASSESSOR COMMENTARY (If Provided)
   // ========================================================
   if (fra4Module.data.commentary?.executiveCommentary) {
-    if (yPosition < MARGIN + 100) {
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_TOP_Y;
-    }
+    const commentaryLines = wrapText(fra4Module.data.commentary.executiveCommentary, CONTENT_WIDTH, 11, font);
+    const requiredHeight = 20 + 20 + (commentaryLines.length * 16) + 15;
+    ({ page, yPosition } = ensurePageSpace(
+      requiredHeight,
+      page,
+      yPosition,
+      pdfDoc,
+      isDraft,
+      totalPages
+    ));
 
     page.drawText('Assessor Commentary', {
       x: MARGIN,
@@ -509,13 +518,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
     });
 
     yPosition -= 20;
-    const commentaryLines = wrapText(fra4Module.data.commentary.executiveCommentary, CONTENT_WIDTH, 11, font);
     for (const line of commentaryLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
       page.drawText(line, {
         x: MARGIN,
         y: yPosition,

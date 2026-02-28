@@ -9,6 +9,7 @@ interface GenerateExecutiveSummaryOptions {
 interface ModuleOutcome {
   module_key: string;
   outcome: string | null;
+  data?: any;
 }
 
 interface ActionCount {

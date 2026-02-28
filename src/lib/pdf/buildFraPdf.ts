@@ -1818,6 +1818,15 @@ page.drawText(outcomeLabel, {
     }
   }
 
+  // Preflight entire Building Complexity block
+  const complexityLines = wrapText(complexityParagraph, CONTENT_WIDTH, 11, font);
+  const complexityBlockHeight = 20 + (complexityLines.length * 16);
+  if (yPosition - complexityBlockHeight < MARGIN + 50) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    page = result.page;
+    yPosition = result.yPosition;
+  }
+
   page.drawText('Building Complexity:', {
     x: MARGIN,
     y: yPosition,
@@ -1827,13 +1836,7 @@ page.drawText(outcomeLabel, {
   });
 
   yPosition -= 20;
-  const complexityLines = wrapText(complexityParagraph, CONTENT_WIDTH, 11, font);
   for (const line of complexityLines) {
-    if (yPosition < MARGIN + 50) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
     page.drawText(line, {
       x: MARGIN,
       y: yPosition,
@@ -1848,10 +1851,13 @@ page.drawText(outcomeLabel, {
   if (fra4Module.data.commentary?.executiveCommentary) {
     yPosition -= 20;
 
-    if (yPosition < 200) {
+    // Preflight entire Assessor Commentary block
+    const commentaryLines = wrapText(fra4Module.data.commentary.executiveCommentary, CONTENT_WIDTH, 11, font);
+    const commentaryBlockHeight = 20 + (commentaryLines.length * 16);
+    if (yPosition - commentaryBlockHeight < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_TOP_Y;
+      yPosition = result.yPosition;
     }
 
     page.drawText('Assessor Commentary:', {
@@ -1863,13 +1869,7 @@ page.drawText(outcomeLabel, {
     });
 
     yPosition -= 20;
-    const commentaryLines = wrapText(fra4Module.data.commentary.executiveCommentary, CONTENT_WIDTH, 11, font);
     for (const line of commentaryLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
       page.drawText(line, {
         x: MARGIN,
         y: yPosition,
@@ -1885,10 +1885,13 @@ page.drawText(outcomeLabel, {
   if (fra4Module.data.commentary?.limitationsAssumptions) {
     yPosition -= 20;
 
-    if (yPosition < 200) {
+    // Preflight entire Limitations and Assumptions block
+    const limitationsLines = wrapText(fra4Module.data.commentary.limitationsAssumptions, CONTENT_WIDTH, 11, font);
+    const limitationsBlockHeight = 20 + (limitationsLines.length * 16);
+    if (yPosition - limitationsBlockHeight < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_TOP_Y;
+      yPosition = result.yPosition;
     }
 
     page.drawText('Limitations and Assumptions:', {
@@ -1900,13 +1903,7 @@ page.drawText(outcomeLabel, {
     });
 
     yPosition -= 20;
-    const limitationsLines = wrapText(fra4Module.data.commentary.limitationsAssumptions, CONTENT_WIDTH, 11, font);
     for (const line of limitationsLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
       page.drawText(line, {
         x: MARGIN,
         y: yPosition,
@@ -1921,10 +1918,13 @@ page.drawText(outcomeLabel, {
   if (fra4Module.data.executive_summary) {
     yPosition -= 30;
 
-    if (yPosition < 200) {
+    // Preflight entire Summary block
+    const summaryLines = wrapText(fra4Module.data.executive_summary, CONTENT_WIDTH, 11, font);
+    const summaryBlockHeight = 20 + (summaryLines.length * 16);
+    if (yPosition - summaryBlockHeight < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_TOP_Y;
+      yPosition = result.yPosition;
     }
 
     page.drawText('Summary:', {
@@ -1936,13 +1936,7 @@ page.drawText(outcomeLabel, {
     });
 
     yPosition -= 20;
-    const summaryLines = wrapText(fra4Module.data.executive_summary, CONTENT_WIDTH, 11, font);
     for (const line of summaryLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
       page.drawText(line, {
         x: MARGIN,
         y: yPosition,
@@ -1957,10 +1951,13 @@ page.drawText(outcomeLabel, {
   if (fra4Module.data.review_recommendation) {
     yPosition -= 20;
 
-    if (yPosition < 200) {
+    // Preflight entire Review Recommendation block
+    const reviewLines = wrapText(fra4Module.data.review_recommendation, CONTENT_WIDTH, 11, font);
+    const reviewBlockHeight = 20 + (reviewLines.length * 16);
+    if (yPosition - reviewBlockHeight < MARGIN + 50) {
       const result = addNewPage(pdfDoc, isDraft, totalPages);
       page = result.page;
-      yPosition = PAGE_TOP_Y;
+      yPosition = result.yPosition;
     }
 
     page.drawText('Review Recommendation:', {
@@ -1972,13 +1969,7 @@ page.drawText(outcomeLabel, {
     });
 
     yPosition -= 20;
-    const reviewLines = wrapText(fra4Module.data.review_recommendation, CONTENT_WIDTH, 11, font);
     for (const line of reviewLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
       page.drawText(line, {
         x: MARGIN,
         y: yPosition,

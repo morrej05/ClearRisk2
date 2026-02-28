@@ -49,7 +49,7 @@ export async function generateExecutiveSummary(
     if (!canGenerateAiSummary(organisation)) {
       return {
         success: false,
-        error: 'AI executive summaries are available on the Professional plan. Upgrade to access this feature.',
+        error: 'Executive summaries are available on the Professional plan. Upgrade to access this feature.',
       };
     }
 

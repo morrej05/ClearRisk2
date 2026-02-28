@@ -564,3 +564,109 @@ export function drawContentsRow(
 
   return y - 18;
 }
+
+// Action Register Intro Box Constants (private to this module)
+const ACTION_REGISTER_INTRO_TITLE = "Action Register";
+const ACTION_REGISTER_INTRO_BODY = "The following actions arise from the findings of this Fire Risk Assessment. Each action has been prioritised based on potential life safety impact and overall risk. Recommended timescales should be considered alongside operational constraints and statutory obligations.";
+const AR_INTRO_PADDING = 12;
+const AR_INTRO_TITLE_GAP = 6;
+const AR_INTRO_TITLE_SIZE = 12;
+const AR_INTRO_BODY_SIZE = 10.5;
+const AR_INTRO_BOX_COLOR = rgb(0.94, 0.94, 0.94);
+
+/**
+ * Measure Action Register intro box height deterministically
+ * Must match exact rendering logic in drawActionRegisterIntroBox
+ */
+export function measureActionRegisterIntroBoxHeight(args: {
+  w: number;
+  fonts: Fonts;
+}): {
+  height: number;
+  bodyLines: string[];
+  titleLineHeight: number;
+  bodyLineHeight: number;
+} {
+  const { w, fonts } = args;
+  const innerW = w - 2 * AR_INTRO_PADDING;
+
+  // Wrap body text
+  const bodyLines = wrapText(
+    ACTION_REGISTER_INTRO_BODY,
+    innerW,
+    AR_INTRO_BODY_SIZE,
+    fonts.regular
+  );
+
+  // Calculate line heights
+  const titleLineHeight = PDF_THEME.typography.lineHeight(AR_INTRO_TITLE_SIZE);
+  const bodyLineHeight = PDF_THEME.typography.lineHeight(AR_INTRO_BODY_SIZE);
+
+  // Calculate total body height
+  const bodyHeight = bodyLines.length * bodyLineHeight;
+
+  // Total height: top padding + title + gap + body + bottom padding
+  const height = AR_INTRO_PADDING + titleLineHeight + AR_INTRO_TITLE_GAP + bodyHeight + AR_INTRO_PADDING;
+
+  return { height, bodyLines, titleLineHeight, bodyLineHeight };
+}
+
+/**
+ * Draw Action Register intro box
+ * Rendering logic must match measurement in measureActionRegisterIntroBoxHeight
+ */
+export function drawActionRegisterIntroBox(args: {
+  page: PDFPage;
+  x: number;
+  y: number;
+  w: number;
+  fonts: Fonts;
+  product: PdfProduct;
+}): { y: number; height: number } {
+  const { page, x, y, w, fonts } = args;
+
+  // Measure first to get exact dimensions
+  const measurement = measureActionRegisterIntroBoxHeight({ w, fonts });
+  const { height, bodyLines, titleLineHeight, bodyLineHeight } = measurement;
+
+  // Draw background rectangle
+  page.drawRectangle({
+    x,
+    y: y - height,
+    width: w,
+    height,
+    color: AR_INTRO_BOX_COLOR,
+  });
+
+  // Draw text using top-down cursor that EXACTLY matches measurement
+  const textX = x + AR_INTRO_PADDING;
+  let cursorY = y - AR_INTRO_PADDING;
+
+  // Draw title
+  cursorY -= titleLineHeight;
+  page.drawText(ACTION_REGISTER_INTRO_TITLE, {
+    x: textX,
+    y: cursorY,
+    size: AR_INTRO_TITLE_SIZE,
+    font: fonts.bold,
+    color: PDF_THEME.colours.text,
+  });
+
+  // Gap after title
+  cursorY -= AR_INTRO_TITLE_GAP;
+
+  // Draw body lines
+  for (const line of bodyLines) {
+    cursorY -= bodyLineHeight;
+    page.drawText(line, {
+      x: textX,
+      y: cursorY,
+      size: AR_INTRO_BODY_SIZE,
+      font: fonts.regular,
+      color: PDF_THEME.colours.text,
+    });
+  }
+
+  // Return bottom Y position and height
+  return { y: y - height, height };
+}

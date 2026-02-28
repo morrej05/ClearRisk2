@@ -29,6 +29,8 @@ import {
   drawPageTitle,
   drawSectionTitle,
   drawContentsRow,
+  drawActionRegisterIntroBox,
+  measureActionRegisterIntroBoxHeight,
 } from '../pdfPrimitives';
 import { PAGE_TOP_Y } from '../pdfCursor';
 import { CRITICAL_FIELDS } from './fraConstants';
@@ -1516,7 +1518,8 @@ export async function drawActionRegister(
   isDraft: boolean,
   totalPages: PDFPage[],
   attachments?: Attachment[],
-  evidenceRefMap?: Map<string, string>
+  evidenceRefMap?: Map<string, string>,
+  options?: { showIntroBox?: boolean }
 ): Promise<{ page: PDFPage; yPosition: number }> {
   let { page, yPosition } = cursor;
   yPosition -= 20;
@@ -1524,7 +1527,45 @@ export async function drawActionRegister(
   // Use Arup-style page title
   yPosition = drawPageTitle(page, MARGIN, yPosition, 'Action Register', { regular: font, bold: fontBold });
 
-  yPosition -= 12;
+  // Action Register intro box with preflight
+  const INTRO_BOX_GAP_AFTER = 12;
+  const MIN_FIRST_ACTION_HEIGHT = 110;
+  const PAGE_BOTTOM_Y = MARGIN;
+  const showIntroBox = options?.showIntroBox !== false;
+
+  if (showIntroBox) {
+    // Measure intro box height deterministically
+    const intro = measureActionRegisterIntroBoxHeight({
+      w: CONTENT_WIDTH,
+      fonts: { regular: font, bold: fontBold },
+    });
+
+    // Preflight: check if intro + gap + first action will fit
+    const required = intro.height + INTRO_BOX_GAP_AFTER + MIN_FIRST_ACTION_HEIGHT;
+
+    if (yPosition - required < PAGE_BOTTOM_Y) {
+      // Won't fit, start new page
+      const result = addNewPage(pdfDoc, isDraft, totalPages);
+      page = result.page;
+      yPosition = PAGE_TOP_Y;
+    }
+
+    // Draw intro box
+    const drawn = drawActionRegisterIntroBox({
+      page,
+      x: MARGIN,
+      y: yPosition,
+      w: CONTENT_WIDTH,
+      fonts: { regular: font, bold: fontBold },
+      product: 'fra',
+    });
+
+    // Set cursor with fixed gap after intro box
+    yPosition = drawn.y - INTRO_BOX_GAP_AFTER;
+  } else {
+    // Preserve old behavior when intro disabled
+    yPosition -= 12;
+  }
 
   // Build rating map (latest per action)
   const ratingMap = new Map<string, ActionRating>();

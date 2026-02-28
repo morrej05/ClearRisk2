@@ -270,22 +270,6 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   // ========================================================
   // 3. BASIS OF ASSESSMENT (3-5 Line Narrative)
   // ========================================================
-  if (yPosition < MARGIN + 150) {
-  const result = addNewPage(pdfDoc, isDraft, totalPages);
-  page = result.page;
-  yPosition = PAGE_TOP_Y;
-  }
-
-  page.drawText('Basis of Assessment', {
-    x: MARGIN,
-    y: yPosition,
-    size: 12,
-    font: fontBold,
-    color: rgb(0.1, 0.1, 0.1),
-  });
-
-  yPosition -= 20;
-
   // Generate professional narrative based on context
   const p1Count = openActions.filter((a) => a.priority_band === 'P1').length;
   const p2Count = openActions.filter((a) => a.priority_band === 'P2').length;
@@ -320,7 +304,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
 
   const narrativeText = narrativeParts.join(' ');
   const narrativeLines = wrapText(narrativeText, CONTENT_WIDTH, 11, font);
-  const requiredHeight = (narrativeLines.length * 16) + 15;
+  const requiredHeight = 20 + 20 + (narrativeLines.length * 16) + 15;
   ({ page, yPosition } = ensurePageSpace(
     requiredHeight,
     page,
@@ -329,6 +313,17 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
     isDraft,
     totalPages
   ));
+
+  page.drawText('Basis of Assessment', {
+    x: MARGIN,
+    y: yPosition,
+    size: 12,
+    font: fontBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  yPosition -= 20;
+
   for (const line of narrativeLines) {
     page.drawText(line, {
       x: MARGIN,

@@ -485,6 +485,39 @@ export function addNewPage(pdfDoc: PDFDocument, isDraft: boolean, totalPages: PD
   return { page, yPosition: PAGE_TOP_Y };
 }
 
+/**
+ * Ensure sufficient vertical space remains on current page for upcoming content block.
+ * Creates a new page if required height would overflow into bottom margin threshold.
+ *
+ * @param requiredHeight - Total height needed for the content block (including heading, lines, spacing)
+ * @param page - Current PDF page
+ * @param yPosition - Current vertical cursor position
+ * @param pdfDoc - PDF document instance
+ * @param isDraft - Whether document is in draft mode
+ * @param totalPages - Array tracking all pages in document
+ * @returns Updated page and yPosition (new page if overflow, unchanged if sufficient space)
+ */
+export function ensurePageSpace(
+  requiredHeight: number,
+  page: PDFPage,
+  yPosition: number,
+  pdfDoc: PDFDocument,
+  isDraft: boolean,
+  totalPages: PDFPage[]
+): { page: PDFPage; yPosition: number } {
+  const BOTTOM_THRESHOLD = MARGIN + 50;
+
+  if (yPosition - requiredHeight < BOTTOM_THRESHOLD) {
+    const result = addNewPage(pdfDoc, isDraft, totalPages);
+    return {
+      page: result.page,
+      yPosition: PAGE_TOP_Y,
+    };
+  }
+
+  return { page, yPosition };
+}
+
 export function drawFooter(page: PDFPage, text: string, pageNum: number, totalPages: number, font: any) {
   const sanitizedText = sanitizePdfText(text);
   page.drawText(sanitizedText, {

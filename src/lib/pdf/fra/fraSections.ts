@@ -1360,14 +1360,14 @@ export function renderSection14Review(
 
   yPosition -= 20;
 
-  const reviewText = `This fire risk assessment should be reviewed and updated:
+  const reviewText = `This fire risk assessment should be reviewed and, where necessary, updated:
 
-• When there are significant changes to the building, occupancy, or use
-• Following any fire or near-miss incident
-• When enforcement action is taken by the fire authority
-• As part of the ongoing fire safety management regime
+• following any significant change to the building, occupancy, or use
+• following a fire, alarm activation, or near-miss incident
+• following enforcement action or formal notification by the fire authority
+• as part of the ongoing fire safety management programme
 
-Next formal reassessment recommended: ${document.review_date ? formatDate(document.review_date) : 'To be determined by duty holder'}`;
+Next formal reassessment recommended: ${document.review_date ? formatDate(document.review_date) : 'To be set by the duty holder'}`;
 
   const reviewLines = wrapText(reviewText, CONTENT_WIDTH, 11, font);
   for (const line of reviewLines) {

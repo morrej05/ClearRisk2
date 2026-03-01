@@ -300,7 +300,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   } else if (openActions.length > 0) {
     narrativeParts.push(`${openActions.length} improvement action${openActions.length > 1 ? 's' : ''} ${openActions.length > 1 ? 'have' : 'has'} been identified to enhance overall fire safety provisions.`);
   } else {
-    narrativeParts.push('No significant deficiencies were identified during the assessment.');
+    narrativeParts.push('No significant deficiencies were identified at the time of assessment.');
   }
 
   // Material deficiency context

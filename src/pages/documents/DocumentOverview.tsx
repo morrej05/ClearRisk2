@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle, Circle, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -1376,11 +1376,15 @@ try {
                     return (
                       <tr
                         key={action.id}
-                        onClick={() => setSelectedAction(action)}
-                        className="hover:bg-neutral-50 cursor-pointer transition-colors"
+                        className="hover:bg-neutral-50 transition-colors"
                       >
                         <td className="px-4 py-3 text-sm font-mono text-neutral-900">
-                          {refNumber}
+                          <Link
+                            to={`/documents/${action.document_id}/workspace?openAction=${action.id}`}
+                            className="hover:underline"
+                          >
+                            {refNumber}
+                          </Link>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded border ${getPriorityColor(action.priority_band)}`}>
@@ -1394,9 +1398,12 @@ try {
                           {action.module_key ? getModuleName(action.module_key) : '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-neutral-900 max-w-md">
-                          <div className="truncate">
+                          <Link
+                            to={`/documents/${action.document_id}/workspace?openAction=${action.id}`}
+                            className="block truncate hover:underline"
+                          >
                             {action.recommended_action || '—'}
-                          </div>
+                          </Link>
                         </td>
                         <td className="px-4 py-3 text-sm text-neutral-600">
                           {action.owner_name || '—'}

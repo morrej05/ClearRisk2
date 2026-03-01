@@ -240,6 +240,12 @@ export default function DocumentWorkspace() {
     if (modules.length === 0) return;
 
     const moduleParam = searchParams.get('m');
+    const openActionId = searchParams.get('openAction');
+    const deferModuleSync = Boolean(openActionId);
+
+    // Defer module sync if openAction is present - let it process first
+    if (deferModuleSync) return;
+
     const savedModuleId = id ? localStorage.getItem(`ezirisk:lastModule:${id}`) : null;
 
     // Try URL param first, then localStorage, then null
@@ -257,7 +263,11 @@ export default function DocumentWorkspace() {
       }
       // Ensure URL and localStorage are in sync
       if (moduleParam !== requestedModule.id) {
-        setSearchParams({ m: requestedModule.id }, { replace: true });
+        setSearchParams((current) => {
+          const next = new URLSearchParams(current);
+          next.set('m', requestedModule.id);
+          return next;
+        }, { replace: true });
       }
       if (id && savedModuleId !== requestedModule.id) {
         localStorage.setItem(`ezirisk:lastModule:${id}`, requestedModule.id);
@@ -275,7 +285,11 @@ export default function DocumentWorkspace() {
       }
 
       // Force update URL and localStorage with valid module
-      setSearchParams({ m: targetModule.id }, { replace: true });
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.set('m', targetModule.id);
+        return next;
+      }, { replace: true });
       if (id) {
         localStorage.setItem(`ezirisk:lastModule:${id}`, targetModule.id);
       }
@@ -501,7 +515,11 @@ const fetchModules = async () => {
 
   const handleModuleSelect = (moduleId: string) => {
     setSelectedModuleId(moduleId);
-    setSearchParams({ m: moduleId });
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('m', moduleId);
+      return next;
+    });
     setIsMobileMenuOpen(false); // Close mobile menu on selection
 
     // Save last visited module to localStorage
@@ -520,17 +538,23 @@ const fetchModules = async () => {
     const openActionId = searchParams.get('openAction');
     if (!openActionId || !id || isLoading || isModulesLoading) return;
 
+    // First ensure we're in document scope
     if (actionScope !== 'document') {
       setActionScope('document');
       return;
     }
 
+    // Wait for actions to load before trying to open
+    if (actions.length === 0) return;
+
+    // Open the action modal
     handleOpenAction(openActionId);
 
-    setSearchParams((currentParams) => {
-      const nextParams = new URLSearchParams(currentParams);
-      nextParams.delete('openAction');
-      return nextParams;
+    // Remove openAction param but preserve others (like m)
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('openAction');
+      return next;
     }, { replace: true });
   }, [id, isLoading, isModulesLoading, searchParams, actionScope, actions]);
   const handleModuleSaved = async (moduleId?: string, updatedData?: any) => {

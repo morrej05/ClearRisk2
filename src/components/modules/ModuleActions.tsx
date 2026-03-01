@@ -364,10 +364,7 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
         </div>
       ) : (
         <div className="overflow-x-auto">
-           <div style={{ background: 'red', color: 'white', padding: 4 }}>
-    DEBUG MODULEACTIONS
-  </div>
-          <table className="min-w-full divide-y divide-neutral-200">
+           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">

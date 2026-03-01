@@ -1367,7 +1367,7 @@ export function renderSection14Review(
 • following enforcement action or formal notification by the fire authority
 • as part of the ongoing fire safety management programme
 
-Next formal reassessment recommended: ${document.review_date ? formatDate(document.review_date) : 'To be set by the duty holder'}`;
+Next formal reassessment recommended: ${document.review_date ? formatDate(document.review_date) : 'To be determined by the duty holder based on risk profile and material change'}`;
 
   const reviewLines = wrapText(reviewText, CONTENT_WIDTH, 11, font);
   for (const line of reviewLines) {

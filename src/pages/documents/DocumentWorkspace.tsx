@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, AlertCircle, List, FileCheck, Menu, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, AlertCircle, List, FileCheck, Menu, FileText, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { sortModulesByOrder, getModuleKeysForDocType, getModuleNavigationPath, getReModulesForDocument, normalizeReModuleKey, filterDeprecatedModuleKeysForNavigation } from '../../lib/modules/moduleCatalog';
 import ModuleRenderer from '../../components/modules/ModuleRenderer';
@@ -58,10 +58,14 @@ interface Action {
   target_date: string | null;
   owner_user_id: string | null;
   updated_at: string;
+  source: string | null;
+  document_id: string;
+  module_instance_id: string | null;
   owner: {
     id: string;
     name: string | null;
   } | null;
+  attachment_count?: number;
 }
 
 const getDocumentTypeLabel = (document: Document): string => {
@@ -199,7 +203,7 @@ export default function DocumentWorkspace() {
   const [actions, setActions] = useState<Action[]>([]);
   const [isLoadingActions, setIsLoadingActions] = useState(false);
   const [actionScope, setActionScope] = useState<'module' | 'document'>('module');
-  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const [selectedAction, setSelectedAction] = useState<Action | null>(null);
   const [isActionsPanelCollapsed, setIsActionsPanelCollapsed] = useState(false);
   const [actionsVersion, setActionsVersion] = useState(getActionsVersion());
 
@@ -435,7 +439,8 @@ const fetchModules = async () => {
         .from('actions')
         .select(`
           *,
-          owner:user_profiles(id,name)
+          owner:user_profiles(id,name),
+          attachment_count:attachments(count)
         `)
         .eq('document_id', id)
         .is('deleted_at', null)
@@ -450,7 +455,14 @@ const fetchModules = async () => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setActions((data || []) as Action[]);
+
+      // Transform attachment_count from array to number
+      const transformedData = (data || []).map((action: any) => ({
+        ...action,
+        attachment_count: action.attachment_count?.[0]?.count || 0,
+      }));
+
+      setActions(transformedData as Action[]);
     } catch (error) {
       console.error('Error fetching actions:', error);
       setActions([]);
@@ -498,24 +510,29 @@ const fetchModules = async () => {
     }
   };
   const handleOpenAction = (actionId: string) => {
-      setSelectedAction(actionId);
-    };
-  
-    useEffect(() => {
-      const openActionId = searchParams.get('openAction');
-      if (!openActionId || !id || isLoading || isModulesLoading) return;
-  
-      if (actionScope !== 'document') {
-        setActionScope('document');
-      }
-      handleOpenAction(openActionId);
-  
-      setSearchParams((currentParams) => {
-        const nextParams = new URLSearchParams(currentParams);
-        nextParams.delete('openAction');
-        return nextParams;
-      }, { replace: true });
-    }, [id, isLoading, isModulesLoading, searchParams, actionScope, setSearchParams]);
+    const action = actions.find(a => a.id === actionId);
+    if (action) {
+      setSelectedAction(action);
+    }
+  };
+
+  useEffect(() => {
+    const openActionId = searchParams.get('openAction');
+    if (!openActionId || !id || isLoading || isModulesLoading) return;
+
+    if (actionScope !== 'document') {
+      setActionScope('document');
+      return;
+    }
+
+    handleOpenAction(openActionId);
+
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams);
+      nextParams.delete('openAction');
+      return nextParams;
+    }, { replace: true });
+  }, [id, isLoading, isModulesLoading, searchParams, actionScope, actions]);
   const handleModuleSaved = async (moduleId?: string, updatedData?: any) => {
     console.log('[DocumentWorkspace] handleModuleSaved CALLED', {
       moduleId,
@@ -895,13 +912,26 @@ const fetchModules = async () => {
 
       {selectedAction && user?.id && organisation?.id && (
         <ActionDetailModal
-          actionId={selectedAction}
-          userId={user.id}
-          organisationId={organisation.id}
-          onClose={() => {
-            setSelectedAction(null);
-            fetchActions();
+          action={{
+            ...selectedAction,
+            document: document ? {
+              id: document.id,
+              title: document.title,
+              document_type: document.document_type,
+            } : null,
+            module_instance: selectedAction.module_instance_id
+              ? modules.find(m => m.id === selectedAction.module_instance_id)
+                ? {
+                    id: modules.find(m => m.id === selectedAction.module_instance_id)!.id,
+                    module_key: modules.find(m => m.id === selectedAction.module_instance_id)!.module_key,
+                    outcome: modules.find(m => m.id === selectedAction.module_instance_id)!.outcome,
+                  }
+                : null
+              : null,
+            attachment_count: selectedAction.attachment_count || 0,
           }}
+          onClose={() => setSelectedAction(null)}
+          onActionUpdated={() => fetchActions()}
         />
       )}
     </div>

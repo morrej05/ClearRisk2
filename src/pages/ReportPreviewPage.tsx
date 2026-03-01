@@ -170,11 +170,15 @@ export default function ReportPreviewPage() {
   };
 
   const handleRevisionChange = (revNumber: number | null) => {
-    if (revNumber === null) {
-      setSearchParams({});
-    } else {
-      setSearchParams({ rev: revNumber.toString() });
-    }
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (revNumber === null) {
+        next.delete('rev');
+      } else {
+        next.set('rev', revNumber.toString());
+      }
+      return next;
+    });
   };
 
   const handleIssue = async () => {

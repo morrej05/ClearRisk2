@@ -241,10 +241,13 @@ export default function DocumentWorkspace() {
 
     const moduleParam = searchParams.get('m');
     const openActionId = searchParams.get('openAction');
-    const deferModuleSync = Boolean(openActionId);
+    const hasOpenAction = Boolean(openActionId);
 
-    // Defer module sync if openAction is present - let it process first
-    if (deferModuleSync) return;
+    // CRITICAL: Defer module sync if openAction is present - let it process first
+    if (hasOpenAction) {
+      console.debug('[DocumentWorkspace.moduleSync] Deferred due to openAction', { openActionId });
+      return;
+    }
 
     const savedModuleId = id ? localStorage.getItem(`ezirisk:lastModule:${id}`) : null;
 
@@ -259,10 +262,12 @@ export default function DocumentWorkspace() {
     if (requestedModule) {
       // Valid module - set it
       if (selectedModuleId !== requestedModule.id) {
+        console.debug('[DocumentWorkspace.moduleSync] Setting valid module', { moduleId: requestedModule.id });
         setSelectedModuleId(requestedModule.id);
       }
       // Ensure URL and localStorage are in sync
       if (moduleParam !== requestedModule.id) {
+        console.debug('[DocumentWorkspace.moduleSync] Syncing URL with valid module', { moduleId: requestedModule.id });
         setSearchParams((current) => {
           const next = new URLSearchParams(current);
           next.set('m', requestedModule.id);
@@ -279,12 +284,13 @@ export default function DocumentWorkspace() {
 
       if (selectedModuleId !== targetModule.id) {
         console.warn(
-          `[DocumentWorkspace] Invalid module selection (${requestedModuleId}). Auto-correcting to first visible module (${targetModule.id})`
+          `[DocumentWorkspace.moduleSync] Invalid module selection (${requestedModuleId}). Auto-correcting to first visible module (${targetModule.id})`
         );
         setSelectedModuleId(targetModule.id);
       }
 
       // Force update URL and localStorage with valid module
+      console.debug('[DocumentWorkspace.moduleSync] Auto-selecting first module', { moduleId: targetModule.id });
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
         next.set('m', targetModule.id);
@@ -534,21 +540,73 @@ const fetchModules = async () => {
     }
   };
 
+  // Handle deep-linking to actions via ?openAction=<id>
   useEffect(() => {
     const openActionId = searchParams.get('openAction');
-    if (!openActionId || !id || isLoading || isModulesLoading) return;
 
-    // First ensure we're in document scope
+    // No openAction param - nothing to do
+    if (!openActionId) return;
+
+    console.debug('[DocumentWorkspace.openAction] Processing openAction', {
+      openActionId,
+      hasId: !!id,
+      isLoading,
+      isModulesLoading,
+      actionScope,
+      actionsCount: actions.length
+    });
+
+    // Wait for basic data to load
+    if (!id || isLoading || isModulesLoading) {
+      console.debug('[DocumentWorkspace.openAction] Waiting for data to load');
+      return;
+    }
+
+    // Ensure we're in document scope (actions are scoped by module or document)
     if (actionScope !== 'document') {
+      console.debug('[DocumentWorkspace.openAction] Switching to document scope');
       setActionScope('document');
       return;
     }
 
-    // Wait for actions to load before trying to open
-    if (actions.length === 0) return;
+    // Try to find the action in loaded actions
+    const action = actions.find(a => a.id === openActionId);
 
-    // Open the action modal
-    handleOpenAction(openActionId);
+    if (!action) {
+      // Actions haven't loaded yet or action doesn't exist
+      // If we're currently loading actions, wait for them
+      if (isLoadingActions) {
+        console.debug('[DocumentWorkspace.openAction] Waiting for actions to load');
+        return;
+      }
+
+      // If actions are loaded but action not found, it might not exist or not be in scope
+      // Still wait a bit in case actions are still loading
+      if (actions.length === 0) {
+        console.debug('[DocumentWorkspace.openAction] No actions loaded yet, waiting...');
+        return;
+      }
+
+      console.warn('[DocumentWorkspace.openAction] Action not found in loaded actions', {
+        openActionId,
+        actionsCount: actions.length
+      });
+
+      // Action doesn't exist - remove the param
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete('openAction');
+        return next;
+      }, { replace: true });
+      return;
+    }
+
+    // Success! Found the action - open the modal
+    console.debug('[DocumentWorkspace.openAction] Opening action modal', {
+      actionId: action.id,
+      actionTitle: action.recommended_action.substring(0, 50)
+    });
+    setSelectedAction(action);
 
     // Remove openAction param but preserve others (like m)
     setSearchParams((current) => {
@@ -556,7 +614,7 @@ const fetchModules = async () => {
       next.delete('openAction');
       return next;
     }, { replace: true });
-  }, [id, isLoading, isModulesLoading, searchParams, actionScope, actions]);
+  }, [id, isLoading, isModulesLoading, searchParams, actionScope, actions, isLoadingActions]);
   const handleModuleSaved = async (moduleId?: string, updatedData?: any) => {
     console.log('[DocumentWorkspace] handleModuleSaved CALLED', {
       moduleId,

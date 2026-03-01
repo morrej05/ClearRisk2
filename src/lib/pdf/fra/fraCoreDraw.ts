@@ -1941,7 +1941,7 @@ export function drawRegulatoryFramework(
 }
 
 /**
- * Draw Responsible Person Duties
+ * Draw Responsible Person Duties (jurisdiction-aware)
  */
 export function drawResponsiblePersonDuties(
   cursor: Cursor,
@@ -1954,7 +1954,12 @@ export function drawResponsiblePersonDuties(
 ): { page: PDFPage; yPosition: number } {
   let { page, yPosition } = cursor;
   yPosition -= 20;
-  page.drawText('WHAT IS REQUIRED OF THE RESPONSIBLE PERSON', {
+
+  // Get jurisdiction-specific configuration
+  const jurisdictionConfig = getJurisdictionConfig(document.jurisdiction);
+
+  // Use jurisdiction-aware heading
+  page.drawText(jurisdictionConfig.dutyholderHeading, {
     x: MARGIN,
     y: yPosition,
     size: 16,
@@ -1963,9 +1968,6 @@ export function drawResponsiblePersonDuties(
   });
 
   yPosition -= 30;
-
-  // Get jurisdiction-specific configuration
-  const jurisdictionConfig = getJurisdictionConfig(document.jurisdiction);
 
   // Draw key duties as bullet points
   for (const duty of jurisdictionConfig.responsiblePersonDuties) {

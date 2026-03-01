@@ -220,11 +220,19 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
     { bold: fontBold, regular: font }
   );
 
+  // Get jurisdiction config early for TOC
+  const jurisdiction = normalizeJurisdiction(document.jurisdiction);
+  const jurisdictionConfig = getJurisdictionConfig(jurisdiction);
+  const dutyholderSectionHeading = jurisdictionConfig.dutyholderHeading
+    .split(' ')
+    .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(' ');
+
   // Table of Contents
   const tocResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = tocResult.page;
   yPosition = PAGE_TOP_Y;
-  yPosition = drawTableOfContents(page, font, fontBold, yPosition);
+  yPosition = drawTableOfContents(page, font, fontBold, yPosition, dutyholderSectionHeading);
 
   // Common Sections (if any)
   const commonModules = moduleInstances.filter(m => COMMON_MODULES.includes(m.module_key));
@@ -260,8 +268,6 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   const fraRegResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraRegResult.page;
   yPosition = PAGE_TOP_Y;
-  const jurisdiction = normalizeJurisdiction(document.jurisdiction);
-  const jurisdictionConfig = getJurisdictionConfig(jurisdiction);
 
   yPosition = drawTextSection(
     page,
@@ -275,7 +281,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
     totalPages
   );
 
-  // FRA Responsible Person Duties - using config from canonical adapter
+  // FRA Dutyholder Duties - using config from canonical adapter
   const fraRespResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraRespResult.page;
   yPosition = PAGE_TOP_Y;
@@ -284,7 +290,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   const dutiesText = jurisdictionConfig.responsiblePersonDuties.join('\n\n');
   yPosition = drawTextSection(
     page,
-    'Responsible Person Duties',
+    dutyholderSectionHeading,
     dutiesText,
     font,
     fontBold,
@@ -500,7 +506,8 @@ function drawTableOfContents(
   page: PDFPage,
   font: any,
   fontBold: any,
-  yPosition: number
+  yPosition: number,
+  dutyholderSectionHeading: string
 ): number {
   page.drawText('Table of Contents', {
     x: MARGIN,
@@ -514,7 +521,7 @@ function drawTableOfContents(
   const sections = [
     'Part 1: Fire Risk Assessment (FRA)',
     '  - Regulatory Framework',
-    '  - Responsible Person Duties',
+    `  - ${dutyholderSectionHeading}`,
     '  - Fire Hazards',
     '  - Management Controls',
     '  - Emergency Arrangements',

@@ -6,10 +6,12 @@ import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
+import { normalizeJurisdiction } from '../../../lib/jurisdictions';
 
 interface Document {
   id: string;
   title: string;
+  jurisdiction?: string;
 }
 
 interface ModuleInstance {
@@ -252,13 +254,17 @@ export default function FRA2MeansOfEscapeForm({
             {(formData.travel_distances_compliant === 'unknown' ||
               formData.travel_distances_compliant === 'no') && (
               <button
-                onClick={() =>
+                onClick={() => {
+                  const jurisdiction = normalizeJurisdiction(document.jurisdiction);
+                  const standards = jurisdiction === 'england_wales'
+                    ? 'BS 9999, Approved Document B, HTM, or sector-specific guidance'
+                    : 'BS 9999, applicable building regulations, or sector-specific guidance';
                   handleQuickAction({
-                    action: 'Verify travel distances against appropriate standards (BS 9999, Approved Document B, HTM, or sector-specific guidance) and identify any remedial measures required for non-compliant routes',
+                    action: `Verify travel distances against appropriate standards (${standards}) and identify any remedial measures required for non-compliant routes`,
                     likelihood: 4,
                     impact: 4,
-                  })
-                }
+                  });
+                }}
                 className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />

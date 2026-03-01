@@ -424,10 +424,7 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
                       {formatStatus(action.status)}
                     </span>
                   </td>
-                  <td
-                    className="px-4 py-3 cursor-pointer"
-                    onClick={() => setSelectedAction(action)}
-                  >
+                  <td className="px-4 py-3">
                     <div className="text-sm text-neutral-900 max-w-lg hover:text-neutral-600 transition-colors">
                       {action.recommended_action}
                     </div>

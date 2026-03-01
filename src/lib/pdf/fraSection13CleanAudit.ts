@@ -293,7 +293,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   if (p1Count > 0) {
     narrativeParts.push(`${p1Count} immediate priority issue${p1Count > 1 ? 's' : ''} ${p1Count > 1 ? 'have' : 'has'} been identified and require${p1Count > 1 ? '' : 's'} urgent attention.`);
   } else if (p2Count > 0) {
-    narrativeParts.push(`${p2Count} urgent priority issue${p2Count > 1 ? 's' : ''} requiring prompt attention ${p2Count > 1 ? 'have' : 'has'} been identified.`);
+    narrativeParts.push(`${p1Count} immediate priority issue${p1Count > 1 ? 's' : ''} ${p1Count > 1 ? 'have' : 'has'} been identified and require${p1Count > 1 ? '' : 's'} urgent attention.`);
   } else if (openActions.length > 0) {
     narrativeParts.push(`${openActions.length} improvement action${openActions.length > 1 ? 's' : ''} ${openActions.length > 1 ? 'have' : 'has'} been identified to enhance fire safety provisions.`);
   } else {

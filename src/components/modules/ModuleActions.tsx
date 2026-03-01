@@ -440,7 +440,10 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
                   <td className="px-4 py-3 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => setSelectedAction(action)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedAction(action);
+                        }}
                         className="p-1.5 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded transition-colors"
                         title="View details"
                       >

@@ -1867,7 +1867,7 @@ page.drawText(outcomeLabel, {
       totalPages
     ));
 
-    page.drawText('Assessor Commentary:', {
+    page.drawText('Assessor Commentary', {
       x: MARGIN,
       y: yPosition,
       size: 12,

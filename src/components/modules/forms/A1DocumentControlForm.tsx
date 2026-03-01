@@ -5,6 +5,7 @@ import OutcomePanel from '../OutcomePanel';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { updateDocumentMeta } from '../../../lib/documents/updateDocumentMeta';
 import { useAuth } from '../../../contexts/AuthContext';
+import { normalizeJurisdiction } from '../../../lib/jurisdictions';
 
 interface Document {
   id: string;
@@ -64,7 +65,7 @@ export default function A1DocumentControlForm({
     scopeDescription: document.scope_description || '',
     limitationsAssumptions: document.limitations_assumptions || '',
     standardsSelected: document.standards_selected || [],
-    jurisdiction: document.jurisdiction || 'UK',
+    jurisdiction: normalizeJurisdiction(document.jurisdiction),
   });
 
   const [moduleData, setModuleData] = useState({
@@ -114,7 +115,7 @@ export default function A1DocumentControlForm({
       scopeDescription: document.scope_description || '',
       limitationsAssumptions: document.limitations_assumptions || '',
       standardsSelected: document.standards_selected || [],
-      jurisdiction: document.jurisdiction || 'UK',
+      jurisdiction: normalizeJurisdiction(document.jurisdiction),
     });
   }, [document]);
 

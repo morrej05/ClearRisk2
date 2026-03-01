@@ -3,11 +3,15 @@ import { getModuleName } from '../modules/moduleCatalog';
 import { detectInfoGaps } from '../../utils/infoGapQuickActions';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import {
-  fraRegulatoryFrameworkText,
-  fraResponsiblePersonDutiesText,
   fsdPurposeAndScopeText,
   fsdLimitationsText,
 } from '../reportText';
+import {
+  normalizeJurisdiction,
+  getJurisdictionConfig,
+  getJurisdictionLabel,
+  type Jurisdiction,
+} from '../jurisdictions';
 import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
@@ -51,7 +55,7 @@ interface Document {
   executive_summary_author?: string | null;
   executive_summary_mode?: string | null;
   enabled_modules?: string[];
-  jurisdiction?: 'UK' | 'IE';
+  jurisdiction?: string;
 }
 
 interface ModuleInstance {
@@ -252,18 +256,43 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   yPosition = PAGE_TOP_Y;
   yPosition = drawPartHeader(page, 'Part 1: Fire Risk Assessment (FRA)', font, fontBold, yPosition);
 
-  // FRA Regulatory Framework
+  // FRA Regulatory Framework - using canonical 4-way jurisdiction model
   const fraRegResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraRegResult.page;
   yPosition = PAGE_TOP_Y;
-  const jurisdiction = (document.jurisdiction || 'UK') as 'UK' | 'IE';
-  yPosition = drawTextSection(page, 'Regulatory Framework', fraRegulatoryFrameworkText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  const jurisdiction = normalizeJurisdiction(document.jurisdiction);
+  const jurisdictionConfig = getJurisdictionConfig(jurisdiction);
 
-  // FRA Responsible Person Duties
+  yPosition = drawTextSection(
+    page,
+    'Regulatory Framework',
+    jurisdictionConfig.regulatoryFrameworkText,
+    font,
+    fontBold,
+    yPosition,
+    pdfDoc,
+    isDraft,
+    totalPages
+  );
+
+  // FRA Responsible Person Duties - using config from canonical adapter
   const fraRespResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fraRespResult.page;
   yPosition = PAGE_TOP_Y;
-  yPosition = drawTextSection(page, 'Responsible Person Duties', fraResponsiblePersonDutiesText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+
+  // Format duties as paragraphs
+  const dutiesText = jurisdictionConfig.responsiblePersonDuties.join('\n\n');
+  yPosition = drawTextSection(
+    page,
+    'Responsible Person Duties',
+    dutiesText,
+    font,
+    fontBold,
+    yPosition,
+    pdfDoc,
+    isDraft,
+    totalPages
+  );
 
   // FRA Modules
   const allFraModules = moduleInstances.filter(m => m.module_key.startsWith('FRA_') && !COMMON_MODULES.includes(m.module_key));
@@ -290,7 +319,8 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   const fsdPurposeResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fsdPurposeResult.page;
   yPosition = PAGE_TOP_Y;
-  yPosition = drawTextSection(page, 'Purpose and Scope', fsdPurposeAndScopeText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  // Use legacy helper for FSD (it's jurisdiction-aware)
+  yPosition = drawTextSection(page, 'Purpose and Scope', fsdPurposeAndScopeText(jurisdiction as any), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   // FSD Modules
   const fsdModules = sortModulesByOrder(
@@ -331,7 +361,7 @@ export async function buildCombinedPdf(options: BuildPdfOptions): Promise<Uint8A
   const fsdLimResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = fsdLimResult.page;
   yPosition = PAGE_TOP_Y;
-  yPosition = drawTextSection(page, 'Fire Strategy Limitations', fsdLimitationsText(jurisdiction), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+  yPosition = drawTextSection(page, 'Fire Strategy Limitations', fsdLimitationsText(jurisdiction as any), font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
   if (isIssuedMode && actions.length > 0) {
     const actionsForPdf = actions.map((action: any) => ({

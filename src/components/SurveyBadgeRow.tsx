@@ -1,8 +1,9 @@
 import { AlertCircle } from 'lucide-react';
+import { type Jurisdiction, getJurisdictionLabel } from '../lib/jurisdictions';
 
 interface SurveyBadgeRowProps {
   status: 'draft' | 'in_review' | 'approved' | 'issued';
-  jurisdiction: 'UK' | 'IE';
+  jurisdiction: Jurisdiction | string;
   enabledModules?: string[];
   className?: string;
 }
@@ -22,15 +23,19 @@ export function SurveyBadgeRow({ status, jurisdiction, enabledModules, className
     issued: 'Issued',
   };
 
-  const jurisdictionColors = {
-    UK: 'bg-slate-100 text-slate-700 border-slate-300',
-    IE: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+  // Get jurisdiction label from canonical adapter
+  const jurisdictionLabel = getJurisdictionLabel(jurisdiction);
+
+  // Color mapping by normalized jurisdiction
+  const getJurisdictionColor = (jur: string) => {
+    const label = getJurisdictionLabel(jur);
+    if (label.includes('Scotland')) return 'bg-blue-100 text-blue-700 border-blue-300';
+    if (label.includes('Northern Ireland')) return 'bg-indigo-100 text-indigo-700 border-indigo-300';
+    if (label.includes('Republic') || label.includes('Ireland')) return 'bg-emerald-100 text-emerald-700 border-emerald-300';
+    return 'bg-slate-100 text-slate-700 border-slate-300'; // England & Wales
   };
 
-  const jurisdictionLabels = {
-    UK: 'UK',
-    IE: 'Ireland',
-  };
+  const jurisdictionColor = getJurisdictionColor(jurisdiction);
 
   const hasFRA = enabledModules?.some(m => m.startsWith('FRA_'));
   const hasFSD = enabledModules?.some(m => m.startsWith('FSD_'));
@@ -64,9 +69,9 @@ export function SurveyBadgeRow({ status, jurisdiction, enabledModules, className
 
       {showJurisdiction && (
         <span
-          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${jurisdictionColors[jurisdiction]}`}
+          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${jurisdictionColor}`}
         >
-          {jurisdictionLabels[jurisdiction]}
+          {jurisdictionLabel}
         </span>
       )}
 

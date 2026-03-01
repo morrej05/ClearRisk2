@@ -39,7 +39,7 @@ interface Document {
   executive_summary_author?: string | null;
   executive_summary_mode?: string | null;
   enabled_modules?: string[];
-  jurisdiction?: 'UK' | 'IE';
+  jurisdiction?: string;
   meta?: any;
 }
 

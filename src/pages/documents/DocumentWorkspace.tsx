@@ -16,6 +16,7 @@ import DocumentStatusBadge from '../../components/documents/DocumentStatusBadge'
 import OverallGradeWidget from '../../components/re/OverallGradeWidget';
 import ActionDetailModal from '../../components/actions/ActionDetailModal';
 import { subscribeActionsVersion, getActionsVersion } from '../../lib/actions/actionsInvalidation';
+import { normalizeJurisdiction } from '../../lib/jurisdictions';
 
 interface Document {
   id: string;
@@ -788,7 +789,7 @@ const fetchModules = async () => {
         <div className="max-w-[1800px] mx-auto flex items-center justify-between pt-3">
           <SurveyBadgeRow
             status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
-            jurisdiction={document.jurisdiction as 'UK' | 'IE'}
+            jurisdiction={normalizeJurisdiction(document.jurisdiction)}
             enabledModules={document.enabled_modules}
           />
           {/* Risk Engineering is jurisdiction-neutral - hide selector for pure RE documents */}
@@ -796,7 +797,7 @@ const fetchModules = async () => {
            document.enabled_modules?.some(m => m.startsWith('FRA_') || m.startsWith('FSD_') || m.startsWith('DSEAR_')) ? (
             <JurisdictionSelector
               documentId={document.id}
-              currentJurisdiction={document.jurisdiction as 'UK' | 'IE'}
+              currentJurisdiction={normalizeJurisdiction(document.jurisdiction)}
               status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
               onUpdate={fetchDocument}
             />

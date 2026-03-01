@@ -17,6 +17,7 @@ import { getReModulesForDocument } from '../../lib/modules/moduleCatalog';
 import { migrateLegacyFraActions } from '../../lib/modules/fra/migrateLegacyFraActions';
 import type { FraContext } from '../../lib/modules/fra/severityEngine';
 import { assignActionReferenceNumbers } from '../../utils/actionReferenceNumbers';
+import { normalizeJurisdiction } from '../../lib/jurisdictions';
 
 type OutputMode = 'FRA' | 'FSD' | 'DSEAR' | 'COMBINED' | 'FIRE_EXPLOSION_COMBINED';
 type ReReportTab = 're_survey' | 're_lp';
@@ -542,7 +543,7 @@ export default function DocumentPreviewPage() {
           <div className="mb-4">
             <SurveyBadgeRow
               status={document.issue_status as 'draft' | 'in_review' | 'approved' | 'issued'}
-              jurisdiction={document.jurisdiction as 'UK' | 'IE'}
+              jurisdiction={normalizeJurisdiction(document.jurisdiction)}
               enabledModules={document.enabled_modules}
             />
           </div>

@@ -391,22 +391,36 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
               {actions.map((action) => (
                 <tr
                   key={action.id}
-                  className="hover:bg-neutral-50 transition-colors cursor-pointer"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedAction(action)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedAction(action);
-                    }
-                  }}>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  className="hover:bg-neutral-50 transition-colors"
+                >
+                  <td
+                    className="px-4 py-3 whitespace-nowrap cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedAction(action)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedAction(action);
+                      }
+                    }}
+                  >
                     <span className="text-sm font-mono text-neutral-900">
                       {action.reference_number ?? '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td
+                    className="px-4 py-3 whitespace-nowrap cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedAction(action)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedAction(action);
+                      }
+                    }}
+                  >
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-bold rounded border ${getPriorityColor(
                         action.priority_band
@@ -415,7 +429,18 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
                       {action.priority_band || '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td
+                    className="px-4 py-3 whitespace-nowrap cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedAction(action)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedAction(action);
+                      }
+                    }}
+                  >
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
                         action.status
@@ -424,7 +449,18 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
                       {formatStatus(action.status)}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td
+                    className="px-4 py-3 cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedAction(action)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedAction(action);
+                      }
+                    }}
+                  >
                     <div className="text-sm text-neutral-900 max-w-lg hover:text-neutral-600 transition-colors">
                       {action.recommended_action}
                     </div>
@@ -434,7 +470,18 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                  <td
+                    className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600 cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedAction(action)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedAction(action);
+                      }
+                    }}
+                  >
                     {formatDate(action.target_date)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-right">

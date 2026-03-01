@@ -641,7 +641,7 @@ export function addExecutiveSummaryPages(
     const { page } = addNewPage(pdfDoc, isDraft, totalPages);
     let yPosition = PAGE_TOP_Y;
 
-    const heading = mode === 'both' ? 'Author Commentary' : 'Executive Summary';
+    const heading = 'Executive Summary';
 
     page.drawText(heading, {
       x: MARGIN,

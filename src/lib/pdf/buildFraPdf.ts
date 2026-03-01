@@ -3,10 +3,6 @@ import { getModuleName } from '../modules/moduleCatalog';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import { type Jurisdiction, getJurisdictionConfig, getJurisdictionLabel } from '../jurisdictions';
 import {
-  fraRegulatoryFrameworkText,
-  fraResponsiblePersonDutiesText,
-} from '../reportText';
-import {
   deriveExecutiveOutcome,
   checkMaterialDeficiency,
   type FraContext,
@@ -49,7 +45,6 @@ import {
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { FRA_REPORT_STRUCTURE, getSectionTitle } from './fraReportStructure';
-import { getJurisdictionTemplate, getRegulatoryFrameworkText } from './jurisdictionTemplates';
 import {
   drawSectionHeaderBar,
   drawExecutiveRiskHeader,

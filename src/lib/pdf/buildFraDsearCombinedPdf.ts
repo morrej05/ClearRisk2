@@ -2,6 +2,7 @@ import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import { getModuleName } from '../modules/moduleCatalog';
+import { normalizeJurisdiction, getJurisdictionLabel } from '../jurisdictions';
 import {
   PAGE_WIDTH,
   PAGE_HEIGHT,

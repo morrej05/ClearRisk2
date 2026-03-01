@@ -1,37 +1,15 @@
-export type Jurisdiction = 'UK' | 'IE';
+import { type Jurisdiction, normalizeJurisdiction } from '../jurisdictions';
 
 export interface ReferenceItem {
   label: string;
   detail?: string;
 }
 
-export function getExplosiveAtmospheresReferences(jurisdiction: Jurisdiction): ReferenceItem[] {
-  if (jurisdiction === 'UK') {
-    return [
-      {
-        label: 'Dangerous Substances and Explosive Atmospheres Regulations 2002 (DSEAR)',
-        detail: 'Primary UK legislation governing the control of risks from fire, explosion and similar events arising from dangerous substances used or present in the workplace.'
-      },
-      {
-        label: 'Health and Safety at Work etc. Act 1974',
-        detail: 'Primary duty of care for employers to ensure, so far as is reasonably practicable, the health, safety and welfare of employees and others who may be affected by work activities.'
-      },
-      {
-        label: 'Equipment and Protective Systems Intended for Use in Potentially Explosive Atmospheres Regulations 2016',
-        detail: 'UK implementation of ATEX equipment requirements (Directive 2014/34/EU).'
-      },
-      {
-        label: 'BS EN 60079-10-1:2015',
-        detail: 'Classification of areas - Explosive gas atmospheres.'
-      },
-      {
-        label: 'BS EN 60079-10-2:2015',
-        detail: 'Classification of areas - Explosive dust atmospheres.'
-      }
-    ];
-  }
+export function getExplosiveAtmospheresReferences(jurisdiction: Jurisdiction | string): ReferenceItem[] {
+  const j = normalizeJurisdiction(jurisdiction);
 
-  if (jurisdiction === 'IE') {
+  // Ireland uses Irish/European standards
+  if (j === 'ireland') {
     return [
       {
         label: 'Safety, Health and Welfare at Work Act 2005',
@@ -56,5 +34,27 @@ export function getExplosiveAtmospheresReferences(jurisdiction: Jurisdiction): R
     ];
   }
 
-  return [];
+  // UK (England & Wales, Scotland, Northern Ireland) - all use UK/British standards
+  return [
+    {
+      label: 'Dangerous Substances and Explosive Atmospheres Regulations 2002 (DSEAR)',
+      detail: 'Primary UK legislation governing the control of risks from fire, explosion and similar events arising from dangerous substances used or present in the workplace.'
+    },
+    {
+      label: 'Health and Safety at Work etc. Act 1974',
+      detail: 'Primary duty of care for employers to ensure, so far as is reasonably practicable, the health, safety and welfare of employees and others who may be affected by work activities.'
+    },
+    {
+      label: 'Equipment and Protective Systems Intended for Use in Potentially Explosive Atmospheres Regulations 2016',
+      detail: 'UK implementation of ATEX equipment requirements (Directive 2014/34/EU).'
+    },
+    {
+      label: 'BS EN 60079-10-1:2015',
+      detail: 'Classification of areas - Explosive gas atmospheres.'
+    },
+    {
+      label: 'BS EN 60079-10-2:2015',
+      detail: 'Classification of areas - Explosive dust atmospheres.'
+    }
+  ];
 }

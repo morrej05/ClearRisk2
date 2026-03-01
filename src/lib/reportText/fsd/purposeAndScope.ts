@@ -1,9 +1,12 @@
-export type Jurisdiction = 'UK' | 'IE';
+import { type Jurisdiction, normalizeJurisdiction } from '../../jurisdictions';
 
-export function fsdPurposeAndScopeText(jurisdiction: Jurisdiction = 'UK'): string {
-  const complianceRef = jurisdiction === 'UK'
-    ? 'the Building Regulations Approved Document B (Fire Safety) and associated guidance'
-    : 'applicable building regulations and fire safety standards';
+export function fsdPurposeAndScopeText(jurisdiction: Jurisdiction | string = 'england_wales'): string {
+  const j = normalizeJurisdiction(jurisdiction);
+
+  // Ireland uses generic "applicable building regulations" terminology
+  const complianceRef = j === 'ireland'
+    ? 'applicable building regulations and fire safety standards'
+    : 'the Building Regulations Approved Document B (Fire Safety) and associated guidance';
 
   return `This Fire Strategy document has been prepared to demonstrate compliance with ${complianceRef}, or equivalent approved standards and regulations applicable to the building type and jurisdiction. The document provides a comprehensive overview of the fire safety design principles, life safety provisions, and protective measures incorporated into the building design to ensure the safety of occupants and facilitate effective firefighting operations.
 

@@ -1,13 +1,16 @@
-export type Jurisdiction = 'UK' | 'IE';
+import { type Jurisdiction, normalizeJurisdiction } from '../../jurisdictions';
 
-export function fsdLimitationsText(jurisdiction: Jurisdiction = 'UK'): string {
-  const standards = jurisdiction === 'UK'
-    ? 'relevant British Standards'
-    : 'relevant standards and guidance';
+export function fsdLimitationsText(jurisdiction: Jurisdiction | string = 'england_wales'): string {
+  const j = normalizeJurisdiction(jurisdiction);
 
-  const legislationRef = jurisdiction === 'UK'
-    ? 'the Regulatory Reform (Fire Safety) Order 2005 or equivalent legislation'
-    : 'applicable fire safety legislation';
+  // Ireland uses Irish/European standards terminology
+  const standards = j === 'ireland'
+    ? 'relevant standards and guidance'
+    : 'relevant British Standards';
+
+  const legislationRef = j === 'ireland'
+    ? 'applicable fire safety legislation'
+    : 'the Regulatory Reform (Fire Safety) Order 2005 or equivalent legislation';
 
   return `This fire strategy is based upon the design information available at the time of preparation. As the design develops, further detail will emerge that may necessitate updates to the fire strategy. Any significant changes to the building layout, structural design, proposed occupancy, or fire safety systems should be reviewed to ensure continued compliance with the fire strategy principles and applicable regulations.
 

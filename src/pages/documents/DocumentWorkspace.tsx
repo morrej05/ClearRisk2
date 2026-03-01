@@ -497,7 +497,25 @@ const fetchModules = async () => {
       localStorage.setItem(`ezirisk:lastModule:${id}`, moduleId);
     }
   };
-
+  const handleOpenAction = (actionId: string) => {
+      setSelectedAction(actionId);
+    };
+  
+    useEffect(() => {
+      const openActionId = searchParams.get('openAction');
+      if (!openActionId || !id || isLoading || isModulesLoading) return;
+  
+      if (actionScope !== 'document') {
+        setActionScope('document');
+      }
+      handleOpenAction(openActionId);
+  
+      setSearchParams((currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+        nextParams.delete('openAction');
+        return nextParams;
+      }, { replace: true });
+    }, [id, isLoading, isModulesLoading, searchParams, actionScope, setSearchParams]);
   const handleModuleSaved = async (moduleId?: string, updatedData?: any) => {
     console.log('[DocumentWorkspace] handleModuleSaved CALLED', {
       moduleId,
@@ -805,7 +823,7 @@ const fetchModules = async () => {
                           {actions.slice(0, 5).map((action) => (
                             <button
                               key={action.id}
-                              onClick={() => setSelectedAction(action.id)}
+                              onClick={() => handleOpenAction(action.id)}
                               className="w-full text-left px-3 py-2 rounded border border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300 transition-colors"
                             >
                               <div className="flex items-start gap-2">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, AlertCircle, List, FileCheck, Menu, FileText, ChevronDown, ChevronUp, X } from 'lucide-react';
@@ -207,6 +207,39 @@ export default function DocumentWorkspace() {
   const [isActionsPanelCollapsed, setIsActionsPanelCollapsed] = useState(false);
   const [actionsVersion, setActionsVersion] = useState(getActionsVersion());
 
+  // Compute openAction at render scope
+  const openActionId = searchParams.get('openAction');
+
+  // Compute which action should be displayed in the modal
+  const modalAction = useMemo(() => {
+    // Explicit user selection takes precedence
+    if (selectedAction) {
+      console.debug('[DocumentWorkspace.modalAction] Using selectedAction', { id: selectedAction.id });
+      return selectedAction;
+    }
+
+    // Then check for deep-link via URL
+    if (!openActionId) return null;
+
+    const action = actions.find(a => a.id === openActionId);
+    if (action) {
+      console.debug('[DocumentWorkspace.modalAction] Found action from openAction param', { id: action.id });
+    } else if (actions.length > 0) {
+      console.debug('[DocumentWorkspace.modalAction] Action not found', { openActionId, actionsCount: actions.length });
+    }
+    return action ?? null;
+  }, [selectedAction, openActionId, actions]);
+
+  // Compute the module associated with the modal action
+  const modalModule = useMemo(() => {
+    if (!modalAction?.module_instance_id) return null;
+    const module = modules.find(m => m.id === modalAction.module_instance_id);
+    if (module) {
+      console.debug('[DocumentWorkspace.modalModule] Found module for action', { moduleId: module.id });
+    }
+    return module ?? null;
+  }, [modalAction, modules]);
+
   // Guard: Check for missing document ID
   useEffect(() => {
     if (!id) {
@@ -229,25 +262,29 @@ export default function DocumentWorkspace() {
     return unsubscribe;
   }, []);
 
+  // Fetch actions based on scope (module requires selectedModuleId, document doesn't)
   useEffect(() => {
-    if (id && selectedModuleId) {
-      fetchActions();
-    }
+    if (!id) return;
+
+    // For module scope, we need a selected module
+    if (actionScope === 'module' && !selectedModuleId) return;
+
+    // For document scope, we can fetch all actions
+    console.debug('[DocumentWorkspace.fetchActions] Trigger', { actionScope, selectedModuleId });
+    fetchActions();
   }, [id, selectedModuleId, actionScope, actionsVersion]);
 
   // Validate and correct module selection to only allow visible modules
   useEffect(() => {
+    // CRITICAL: Defer module sync if openAction is present - let it process first
+    if (searchParams.get('openAction')) {
+      console.debug('[DocumentWorkspace.moduleSync] Deferred due to openAction present');
+      return;
+    }
+
     if (modules.length === 0) return;
 
     const moduleParam = searchParams.get('m');
-    const openActionId = searchParams.get('openAction');
-    const hasOpenAction = Boolean(openActionId);
-
-    // CRITICAL: Defer module sync if openAction is present - let it process first
-    if (hasOpenAction) {
-      console.debug('[DocumentWorkspace.moduleSync] Deferred due to openAction', { openActionId });
-      return;
-    }
 
     const savedModuleId = id ? localStorage.getItem(`ezirisk:lastModule:${id}`) : null;
 
@@ -541,80 +578,19 @@ const fetchModules = async () => {
   };
 
   // Handle deep-linking to actions via ?openAction=<id>
+  // Step 1: Switch to document scope immediately when openAction is present
   useEffect(() => {
     const openActionId = searchParams.get('openAction');
-
-    // No openAction param - nothing to do
     if (!openActionId) return;
 
-    console.debug('[DocumentWorkspace.openAction] Processing openAction', {
-      openActionId,
-      hasId: !!id,
-      isLoading,
-      isModulesLoading,
-      actionScope,
-      actionsCount: actions.length
-    });
+    console.debug('[DocumentWorkspace.openAction] Detected openAction, ensuring document scope', { openActionId });
 
-    // Wait for basic data to load
-    if (!id || isLoading || isModulesLoading) {
-      console.debug('[DocumentWorkspace.openAction] Waiting for data to load');
-      return;
-    }
-
-    // Ensure we're in document scope (actions are scoped by module or document)
+    // Switch to document scope so actions fetch without needing selectedModuleId
     if (actionScope !== 'document') {
       console.debug('[DocumentWorkspace.openAction] Switching to document scope');
       setActionScope('document');
-      return;
     }
-
-    // Try to find the action in loaded actions
-    const action = actions.find(a => a.id === openActionId);
-
-    if (!action) {
-      // Actions haven't loaded yet or action doesn't exist
-      // If we're currently loading actions, wait for them
-      if (isLoadingActions) {
-        console.debug('[DocumentWorkspace.openAction] Waiting for actions to load');
-        return;
-      }
-
-      // If actions are loaded but action not found, it might not exist or not be in scope
-      // Still wait a bit in case actions are still loading
-      if (actions.length === 0) {
-        console.debug('[DocumentWorkspace.openAction] No actions loaded yet, waiting...');
-        return;
-      }
-
-      console.warn('[DocumentWorkspace.openAction] Action not found in loaded actions', {
-        openActionId,
-        actionsCount: actions.length
-      });
-
-      // Action doesn't exist - remove the param
-      setSearchParams((current) => {
-        const next = new URLSearchParams(current);
-        next.delete('openAction');
-        return next;
-      }, { replace: true });
-      return;
-    }
-
-    // Success! Found the action - open the modal
-    console.debug('[DocumentWorkspace.openAction] Opening action modal', {
-      actionId: action.id,
-      actionTitle: action.recommended_action.substring(0, 50)
-    });
-    setSelectedAction(action);
-
-    // Remove openAction param but preserve others (like m)
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete('openAction');
-      return next;
-    }, { replace: true });
-  }, [id, isLoading, isModulesLoading, searchParams, actionScope, actions, isLoadingActions]);
+  }, [searchParams, actionScope]);
   const handleModuleSaved = async (moduleId?: string, updatedData?: any) => {
     console.log('[DocumentWorkspace] handleModuleSaved CALLED', {
       moduleId,
@@ -992,27 +968,32 @@ const fetchModules = async () => {
         />
       )}
 
-      {selectedAction && user?.id && organisation?.id && (
+      {modalAction && user?.id && organisation?.id && (
         <ActionDetailModal
           action={{
-            ...selectedAction,
+            ...modalAction,
             document: document ? {
               id: document.id,
               title: document.title,
               document_type: document.document_type,
             } : null,
-            module_instance: selectedAction.module_instance_id
-              ? modules.find(m => m.id === selectedAction.module_instance_id)
-                ? {
-                    id: modules.find(m => m.id === selectedAction.module_instance_id)!.id,
-                    module_key: modules.find(m => m.id === selectedAction.module_instance_id)!.module_key,
-                    outcome: modules.find(m => m.id === selectedAction.module_instance_id)!.outcome,
-                  }
-                : null
-              : null,
-            attachment_count: selectedAction.attachment_count || 0,
+            module_instance: modalModule ? {
+              id: modalModule.id,
+              module_key: modalModule.module_key,
+              outcome: modalModule.outcome,
+            } : null,
+            attachment_count: modalAction.attachment_count || 0,
           }}
-          onClose={() => setSelectedAction(null)}
+          onClose={() => {
+            console.debug('[DocumentWorkspace.onClose] Closing action modal and removing openAction from URL');
+            setSelectedAction(null);
+            // CRITICAL: Remove openAction from URL to prevent re-opening
+            setSearchParams((cur) => {
+              const next = new URLSearchParams(cur);
+              next.delete('openAction');
+              return next;
+            }, { replace: true });
+          }}
           onActionUpdated={() => fetchActions()}
         />
       )}

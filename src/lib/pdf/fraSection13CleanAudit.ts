@@ -289,6 +289,9 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
 
   narrativeParts.push(complexityText);
 
+  narrativeParts.push(
+  'This assessment reflects conditions observed at the time of inspection and the information made available during the assessment process.'
+);
   // Findings context
   if (p1Count > 0) {
     narrativeParts.push(`${p1Count} immediate priority issue${p1Count > 1 ? 's' : ''} ${p1Count > 1 ? 'have' : 'has'} been identified and require${p1Count > 1 ? '' : 's'} urgent attention.`);

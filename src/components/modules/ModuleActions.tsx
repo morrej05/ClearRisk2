@@ -389,7 +389,18 @@ export default function ModuleActions({ documentId, moduleInstanceId, buttonLabe
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
               {actions.map((action) => (
-                <tr key={action.id} className="hover:bg-neutral-50 transition-colors">
+                <tr
+                  key={action.id}
+                  className="hover:bg-neutral-50 transition-colors cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedAction(action)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedAction(action);
+                    }
+                  }}>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="text-sm font-mono text-neutral-900">
                       {action.reference_number ?? '—'}

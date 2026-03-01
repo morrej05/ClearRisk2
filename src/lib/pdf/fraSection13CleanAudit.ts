@@ -295,7 +295,7 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
   } else if (p2Count > 0) {
     narrativeParts.push(`${p2Count} urgent priority issue${p2Count > 1 ? 's' : ''} ${p2Count > 1 ? 'have' : 'has'} been identified and require${p2Count > 1 ? '' : 's'} prompt attention.`);
   } else if (openActions.length > 0) {
-    narrativeParts.push(`${openActions.length} improvement action${openActions.length > 1 ? 's' : ''} ${openActions.length > 1 ? 'have' : 'has'} been identified to enhance fire safety provisions.`);
+    narrativeParts.push(`${openActions.length} improvement action${openActions.length > 1 ? 's' : ''} ${openActions.length > 1 ? 'have' : 'has'} been identified to enhance overall fire safety provisions.`);
   } else {
     narrativeParts.push('No significant deficiencies were identified during the assessment.');
   }

@@ -279,10 +279,13 @@ export function drawCleanAuditSection13(options: CleanAuditOptions): { page: PDF
 
   // Complexity context
   const complexityText = fra4Module.data.computed?.toneParagraph ||
-    (scs.band === 'VeryHigh' ? 'The premises comprises a complex building with significant reliance on structural and active fire protection systems.' :
-     scs.band === 'High' ? 'The building presents structural and occupancy complexity which increases reliance on fire protection measures.' :
-     scs.band === 'Moderate' ? 'The premises is of moderate complexity requiring structured fire safety management.' :
-     'The premises is of relatively straightforward layout and use.');
+    (scs.band === 'VeryHigh'
+  ? 'The premises is complex and places greater reliance on both structural and active fire protection measures.'
+: scs.band === 'High'
+  ? 'The premises has structural and occupancy complexity which increases reliance on fire protection measures and effective management controls.'
+: scs.band === 'Moderate'
+  ? 'The premises is of moderate complexity and requires structured fire safety management to maintain risk controls.'
+: 'The premises is of a relatively straightforward layout and use.');
 
   narrativeParts.push(complexityText);
 

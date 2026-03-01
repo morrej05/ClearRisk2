@@ -368,6 +368,18 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   });
   yPosition -= 20;
 
+  // Jurisdiction
+  const j = normalizeJurisdiction(document.jurisdiction);
+  const jurisdictionLabel = getJurisdictionLabel(j);
+  page.drawText(sanitizePdfText(`Jurisdiction: ${jurisdictionLabel}`), {
+    x: MARGIN,
+    y: yPosition,
+    size: 11,
+    font: font,
+    color: rgb(0, 0, 0),
+  });
+  yPosition -= 20;
+
   // Assessor
   if (document.assessor_name) {
     page.drawText(sanitizePdfText(`Assessor: ${document.assessor_name}`), {

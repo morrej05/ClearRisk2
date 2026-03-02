@@ -22,7 +22,14 @@ import {
   ensurePageSpace,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
-import { drawSectionHeaderBar } from './pdfPrimitives';
+import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
+import {
+  explosiveAtmospheresPurposeText,
+  hazardousAreaClassificationText,
+  zoneDefinitionsText,
+  getExplosiveAtmospheresReferences,
+  type Jurisdiction,
+} from '../reportText';
 
 interface Document {
   id: string;
@@ -361,116 +368,102 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     return moduleName.replace(/^DSEAR-\d+\s*-\s*/, '');
   };
 
-  // Add issued report pages if needed
-  if (renderMode === 'issued') {
-    await addIssuedReportPages(pdfDoc, document, organisation, totalPages);
-  }
-
-  // Add cover page
-  let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  totalPages.push(page);
-  let yPosition = PAGE_TOP_Y;
-
   // TOC tracking array
   const tocEntries: Array<{ title: string; pageNo: number }> = [];
   const recordToc = (title: string) => tocEntries.push({ title, pageNo: totalPages.length });
 
-  // Cover page title
-  page.drawText(sanitizePdfText('Combined Fire + Explosion Report'), {
-    x: MARGIN,
-    y: yPosition,
-    size: 20,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 30;
+  let page: PDFPage;
+  let yPosition = PAGE_TOP_Y;
 
-  page.drawText(sanitizePdfText(document.title || 'Untitled'), {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: font,
-    color: rgb(0.3, 0.3, 0.3),
-  });
-  yPosition -= 40;
+  // Add issued report pages if needed (cover + doc control)
+  if (renderMode === 'issued') {
+    const { coverPage, docControlPage } = await addIssuedReportPages({
+      pdfDoc,
+      document,
+      organisation,
+      client: document.meta?.client || null,
+      fonts: { bold: fontBold, regular: font }
+    });
+    totalPages.push(coverPage, docControlPage);
+    page = docControlPage; // Start from doc control page
+  } else {
+    // Draft mode: create simple cover page
+    page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    totalPages.push(page);
 
-  // Client
-  const clientName = document.meta?.client?.name || document.responsible_person || '';
-  if (clientName) {
-    page.drawText(sanitizePdfText(`Client: ${clientName}`), {
+    // Cover page title
+    page.drawText(sanitizePdfText('Combined Fire + Explosion Report'), {
       x: MARGIN,
       y: yPosition,
-      size: 11,
-      font: font,
+      size: 20,
+      font: fontBold,
       color: rgb(0, 0, 0),
     });
-    yPosition -= 20;
-  }
+    yPosition -= 30;
 
-  // Site
-  const siteName = document.meta?.site?.name || document.scope_description || '';
-  if (siteName) {
-    page.drawText(sanitizePdfText(`Site: ${siteName}`), {
+    page.drawText(sanitizePdfText(document.title || 'Untitled'), {
       x: MARGIN,
       y: yPosition,
-      size: 11,
+      size: 14,
       font: font,
-      color: rgb(0, 0, 0),
+      color: rgb(0.3, 0.3, 0.3),
     });
-    yPosition -= 20;
-  }
+    yPosition -= 40;
 
-  // Address
-  const address = document.meta?.site?.address;
-  if (address) {
-    const formattedAddress = formatAddress(address);
-    if (formattedAddress) {
-      page.drawText(sanitizePdfText(`Address: ${formattedAddress}`), {
+    // Client
+    const clientName = document.meta?.client?.name || document.responsible_person || '';
+    if (clientName) {
+      page.drawText(sanitizePdfText(`Client: ${clientName}`), {
         x: MARGIN,
         y: yPosition,
-        size: 10,
+        size: 11,
         font: font,
-        color: rgb(0.3, 0.3, 0.3),
+        color: rgb(0, 0, 0),
       });
       yPosition -= 20;
     }
-  }
 
-  // Organisation
-  page.drawText(sanitizePdfText(`Assessment Organisation: ${organisation.name}`), {
-    x: MARGIN,
-    y: yPosition,
-    size: 10,
-    font: font,
-    color: rgb(0.3, 0.3, 0.3),
-  });
-  yPosition -= 25;
+    // Site
+    const siteName = document.meta?.site?.name || document.scope_description || '';
+    if (siteName) {
+      page.drawText(sanitizePdfText(`Site: ${siteName}`), {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= 20;
+    }
 
-  // Assessment date
-  page.drawText(sanitizePdfText(`Assessment Date: ${formatDate(document.assessment_date)}`), {
-    x: MARGIN,
-    y: yPosition,
-    size: 11,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 20;
+    // Address
+    const address = document.meta?.site?.address;
+    if (address) {
+      const formattedAddress = formatAddress(address);
+      if (formattedAddress) {
+        page.drawText(sanitizePdfText(`Address: ${formattedAddress}`), {
+          x: MARGIN,
+          y: yPosition,
+          size: 10,
+          font: font,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPosition -= 20;
+      }
+    }
 
-  // Jurisdiction
-  const j = normalizeJurisdiction(document.jurisdiction);
-  const jurisdictionLabel = getJurisdictionLabel(j);
-  page.drawText(sanitizePdfText(`Jurisdiction: ${jurisdictionLabel}`), {
-    x: MARGIN,
-    y: yPosition,
-    size: 11,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 20;
+    // Organisation
+    page.drawText(sanitizePdfText(`Assessment Organisation: ${organisation.name}`), {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPosition -= 25;
 
-  // Assessor
-  if (document.assessor_name) {
-    page.drawText(sanitizePdfText(`Assessor: ${document.assessor_name}`), {
+    // Assessment date
+    page.drawText(sanitizePdfText(`Assessment Date: ${formatDate(document.assessment_date)}`), {
       x: MARGIN,
       y: yPosition,
       size: 11,
@@ -478,6 +471,30 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       color: rgb(0, 0, 0),
     });
     yPosition -= 20;
+
+    // Jurisdiction
+    const j = normalizeJurisdiction(document.jurisdiction);
+    const jurisdictionLabel = getJurisdictionLabel(j);
+    page.drawText(sanitizePdfText(`Jurisdiction: ${jurisdictionLabel}`), {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 20;
+
+    // Assessor
+    if (document.assessor_name) {
+      page.drawText(sanitizePdfText(`Assessor: ${document.assessor_name}`), {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= 20;
+    }
   }
 
   // Reserve TOC page immediately after cover (will be populated after all sections are rendered)
@@ -529,7 +546,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   if (fraModules.length > 0) {
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
-    recordToc('Fire Risk Assessment');
+    recordToc('Part 1 — Fire Risk Assessment');
     yPosition = PAGE_TOP_Y;
 
     yPosition = drawSectionHeaderBar({
@@ -537,8 +554,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       x: MARGIN,
       y: yPosition,
       w: CONTENT_WIDTH,
-      sectionNo: 'SECTION 1',
-      title: 'Fire Risk Assessment',
+      sectionNo: '',
+      title: 'Part 1 — Fire Risk Assessment',
       product: 'fra',
       fonts: { regular: font, bold: fontBold },
     });
@@ -584,8 +601,11 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   const dsearModules = moduleInstances.filter(m => m.module_key.startsWith('DSEAR'));
 
   if (dsearModules.length > 0) {
+    // Compute explosion summary for criticality and flags
+    const explosionSummary = computeExplosionSummary(moduleInstances, actions);
+
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
-    recordToc('Explosive Atmospheres (DSEAR)');
+    recordToc('Part 2 — Explosive Atmospheres Assessment');
     yPosition = PAGE_TOP_Y;
 
     yPosition = drawSectionHeaderBar({
@@ -593,11 +613,166 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       x: MARGIN,
       y: yPosition,
       w: CONTENT_WIDTH,
-      sectionNo: 'SECTION 2',
-      title: 'Explosive Atmospheres (DSEAR)',
+      sectionNo: '',
+      title: 'Part 2 — Explosive Atmospheres Assessment',
       product: 'dsear',
       fonts: { regular: font, bold: fontBold },
     });
+
+    let dsearSectionNumber = 2.1;
+
+    // 2.1 Explosion Criticality Assessment
+    page = addNewPage(pdfDoc, isDraft, totalPages).page;
+    recordToc('2.1 Explosion Criticality Assessment');
+    yPosition = PAGE_TOP_Y;
+    const criticalityTitle = '2.1 Explosion Criticality Assessment';
+    yPosition = drawPageTitle(page, MARGIN, yPosition, criticalityTitle, { regular: font, bold: fontBold });
+    yPosition -= 20;
+
+    // Render explosion criticality summary (simplified inline version)
+    const criticalityLevel = explosionSummary.overallCriticality;
+    const criticalityColors: Record<string, ReturnType<typeof rgb>> = {
+      Critical: rgb(0.8, 0, 0),
+      High: rgb(0.9, 0.5, 0),
+      Moderate: rgb(0.9, 0.7, 0),
+      Low: rgb(0.2, 0.7, 0.2),
+    };
+    page.drawText(`Overall Criticality: ${criticalityLevel}`, {
+      x: MARGIN,
+      y: yPosition,
+      size: 12,
+      font: fontBold,
+      color: criticalityColors[criticalityLevel] || rgb(0, 0, 0),
+    });
+    yPosition -= 30;
+
+    // 2.2 Purpose and Introduction
+    page = addNewPage(pdfDoc, isDraft, totalPages).page;
+    dsearSectionNumber = 2.2;
+    recordToc('2.2 Purpose and Introduction');
+    yPosition = PAGE_TOP_Y;
+    const purposeTitle = '2.2 Purpose and Introduction';
+    yPosition = drawPageTitle(page, MARGIN, yPosition, purposeTitle, { regular: font, bold: fontBold });
+    yPosition -= 20;
+
+    const sanitizedPurpose = sanitizePdfText(explosiveAtmospheresPurposeText);
+    const purposeLines = wrapText(sanitizedPurpose, CONTENT_WIDTH, 11, font);
+    for (const line of purposeLines) {
+      ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 16;
+    }
+
+    // 2.3 Hazardous Area Classification Methodology
+    page = addNewPage(pdfDoc, isDraft, totalPages).page;
+    dsearSectionNumber = 2.3;
+    recordToc('2.3 Hazardous Area Classification Methodology');
+    yPosition = PAGE_TOP_Y;
+    const hacTitle = '2.3 Hazardous Area Classification Methodology';
+    yPosition = drawPageTitle(page, MARGIN, yPosition, hacTitle, { regular: font, bold: fontBold });
+    yPosition -= 20;
+
+    const paragraphs = hazardousAreaClassificationText.split('\n\n');
+    for (const paragraph of paragraphs) {
+      if (!paragraph.trim()) continue;
+      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
+      const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
+      for (const line of lines) {
+        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 16;
+      }
+      yPosition -= 10;
+    }
+
+    // 2.4 Zone Definitions
+    page = addNewPage(pdfDoc, isDraft, totalPages).page;
+    dsearSectionNumber = 2.4;
+    recordToc('2.4 Zone Definitions');
+    yPosition = PAGE_TOP_Y;
+    const zoneTitle = '2.4 Zone Definitions';
+    yPosition = drawPageTitle(page, MARGIN, yPosition, zoneTitle, { regular: font, bold: fontBold });
+    yPosition -= 20;
+
+    const zoneParagraphs = zoneDefinitionsText.split('\n\n');
+    for (const paragraph of zoneParagraphs) {
+      if (!paragraph.trim()) continue;
+      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
+      const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
+      for (const line of lines) {
+        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 16;
+      }
+      yPosition -= 10;
+    }
+
+    // 2.5 Scope (if present)
+    dsearSectionNumber = 2.5;
+    if (document.scope_description?.trim()) {
+      page = addNewPage(pdfDoc, isDraft, totalPages).page;
+      recordToc('2.5 Scope');
+      yPosition = PAGE_TOP_Y;
+      const scopeTitle = '2.5 Scope';
+      yPosition = drawPageTitle(page, MARGIN, yPosition, scopeTitle, { regular: font, bold: fontBold });
+      yPosition -= 20;
+
+      const scopeLines = wrapText(document.scope_description, CONTENT_WIDTH, 11, font);
+      for (const line of scopeLines) {
+        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 16;
+      }
+      dsearSectionNumber = 2.6;
+    }
+
+    // 2.X Limitations and Assumptions (if present)
+    if (document.limitations_assumptions?.trim()) {
+      page = addNewPage(pdfDoc, isDraft, totalPages).page;
+      recordToc(`${dsearSectionNumber.toFixed(1)} Limitations and Assumptions`);
+      yPosition = PAGE_TOP_Y;
+      const limTitle = `${dsearSectionNumber.toFixed(1)} Limitations and Assumptions`;
+      yPosition = drawPageTitle(page, MARGIN, yPosition, limTitle, { regular: font, bold: fontBold });
+      yPosition -= 20;
+
+      const limLines = wrapText(document.limitations_assumptions, CONTENT_WIDTH, 11, font);
+      for (const line of limLines) {
+        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 16;
+      }
+      dsearSectionNumber += 0.1;
+    }
 
     // Sort modules by DSEAR order
     const sortedDsearModules = dsearModules.sort((a, b) => {
@@ -606,11 +781,18 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
     });
 
-    // Render each DSEAR module
+    // Render each DSEAR module with section numbers
     for (const module of sortedDsearModules) {
       const moduleName = getModuleName(module.module_key);
       const displayName = stripDsearPrefix(moduleName);
-      recordToc(`  ${displayName}`); // Indent DSEAR modules
+      const numberedModuleName = `${dsearSectionNumber.toFixed(1)} ${displayName}`;
+      recordToc(numberedModuleName);
+
+      page = addNewPage(pdfDoc, isDraft, totalPages).page;
+      yPosition = PAGE_TOP_Y;
+      yPosition = drawPageTitle(page, MARGIN, yPosition, numberedModuleName, { regular: font, bold: fontBold });
+      yPosition -= 10;
+
       ({ page, yPosition } = drawModuleSection(
         page,
         module,
@@ -623,6 +805,61 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
         totalPages,
         'DSEAR'
       ));
+      dsearSectionNumber += 0.1;
+    }
+
+    // 2.X References and Compliance
+    page = addNewPage(pdfDoc, isDraft, totalPages).page;
+    recordToc(`${dsearSectionNumber.toFixed(1)} References and Compliance`);
+    yPosition = PAGE_TOP_Y;
+    const refTitle = `${dsearSectionNumber.toFixed(1)} References and Compliance`;
+    yPosition = drawPageTitle(page, MARGIN, yPosition, refTitle, { regular: font, bold: fontBold });
+    yPosition -= 20;
+
+    const jurisdiction = normalizeJurisdiction(document.jurisdiction);
+    const references = getExplosiveAtmospheresReferences(jurisdiction);
+    for (const ref of references) {
+      ({ page, yPosition } = ensurePageSpace(18, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawText(sanitizePdfText(`• ${ref}`), {
+        x: MARGIN,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 18;
+    }
+    dsearSectionNumber += 0.1;
+
+    // 2.X Compliance-Critical Findings (if present)
+    if (explosionSummary.flags.length > 0) {
+      page = addNewPage(pdfDoc, isDraft, totalPages).page;
+      recordToc(`${dsearSectionNumber.toFixed(1)} Compliance-Critical Findings`);
+      yPosition = PAGE_TOP_Y;
+      const ccfTitle = `${dsearSectionNumber.toFixed(1)} Compliance-Critical Findings`;
+      yPosition = drawPageTitle(page, MARGIN, yPosition, ccfTitle, { regular: font, bold: fontBold });
+      yPosition -= 20;
+
+      page.drawText('The following compliance issues have been identified:', {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPosition -= 30;
+
+      for (const flag of explosionSummary.flags.slice(0, 5)) {
+        ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(sanitizePdfText(`• ${flag.description}`), {
+          x: MARGIN,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.8, 0, 0),
+        });
+        yPosition -= 40;
+      }
     }
   }
 
@@ -643,6 +880,43 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     isDraft,
     totalPages
   ));
+
+  // Attachments Index (if present)
+  if (attachments.length > 0) {
+    page = addNewPage(pdfDoc, isDraft, totalPages).page;
+    recordToc('Attachments Index');
+    yPosition = PAGE_TOP_Y;
+
+    page.drawText('Attachments Index', {
+      x: MARGIN,
+      y: yPosition,
+      size: 18,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 30;
+
+    page.drawText(`Total attachments: ${attachments.length}`, {
+      x: MARGIN,
+      y: yPosition,
+      size: 11,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPosition -= 30;
+
+    for (const attachment of attachments) {
+      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawText(sanitizePdfText(`• ${attachment.file_name}`), {
+        x: MARGIN,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 20;
+    }
+  }
 
   // Now render the TOC with collected entries
   drawTableOfContents(tocPage, tocEntries, font, fontBold);

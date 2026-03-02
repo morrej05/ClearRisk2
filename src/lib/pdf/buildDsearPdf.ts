@@ -1203,31 +1203,46 @@ function drawInfoGapQuickActions(
     for (const quickAction of detection.quickActions) {
       ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
+      // Capture baseline Y for this action line
+      const lineY = yPosition;
+
       // Priority badge
       const priorityColor = quickAction.priority === 'P2' ? rgb(0.9, 0.5, 0.13) : rgb(0.85, 0.65, 0.13);
       page.drawRectangle({
         x: MARGIN + 10,
-        y: yPosition - 3,
+        y: lineY - 3,
         width: 25,
         height: 14,
         color: priorityColor,
       });
       page.drawText(quickAction.priority, {
         x: MARGIN + 13,
-        y: yPosition,
+        y: lineY,
         size: 8,
         font: fontBold,
         color: rgb(1, 1, 1),
       });
 
-      yPosition -= 18;
+      // Action text - draw FIRST line aligned horizontally with badge
+      const actionLines = wrapText(quickAction.action, CONTENT_WIDTH - 55, 10, font);
+      if (actionLines.length > 0) {
+        page.drawText(actionLines[0], {
+          x: MARGIN + 42,
+          y: lineY,
+          size: 10,
+          font: fontBold,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+      }
 
-      // Action text
-      const actionLines = wrapText(quickAction.action, CONTENT_WIDTH - 30, 10, font);
-      for (const line of actionLines) {
+      // Move down after badge + first line
+      yPosition = lineY - 14;
+
+      // Draw remaining lines (if any) below the badge
+      for (let i = 1; i < actionLines.length; i++) {
         ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
 
-        page.drawText(line, {
+        page.drawText(actionLines[i], {
           x: MARGIN + 15,
           y: yPosition,
           size: 10,

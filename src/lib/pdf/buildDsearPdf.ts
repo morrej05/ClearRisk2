@@ -1093,7 +1093,13 @@ function drawInfoGapQuickActions(
     module.outcome,
     {
       responsible_person: document.responsible_person || undefined,
-      standards_selected: document.standards_selected || []
+      standards_selected: document.standards_selected || [],
+      document_type: 'DSEAR',
+      jurisdiction: document.jurisdiction
+    },
+    {
+      documentType: 'DSEAR',
+      jurisdiction: document.jurisdiction
     }
   );
 

@@ -18,6 +18,7 @@ import {
   addNewPage,
   drawFooter,
   addSupersededWatermark,
+  ensurePageSpace,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar } from './pdfPrimitives';
@@ -100,13 +101,9 @@ function drawModuleSection(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
-  // Check if we need a new page
-  if (yPosition < 150) {
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_TOP_Y;
-  }
+): { page: PDFPage; yPosition: number } {
+  // Ensure space for module header
+  ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
   // Module heading
   const moduleName = getModuleName(module.module_key);
@@ -168,6 +165,8 @@ function drawModuleSection(
 
   // Assessor notes if present
   if (module.assessor_notes && module.assessor_notes.trim()) {
+    ({ page, yPosition } = ensurePageSpace(24, page, yPosition, pdfDoc, isDraft, totalPages));
+
     page.drawText('Notes:', {
       x: MARGIN,
       y: yPosition,
@@ -179,11 +178,8 @@ function drawModuleSection(
 
     const notesLines = wrapText(module.assessor_notes, CONTENT_WIDTH, 9, font);
     for (const line of notesLines.slice(0, 5)) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
+      ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+
       page.drawText(sanitizePdfText(line), {
         x: MARGIN + 10,
         y: yPosition,
@@ -198,6 +194,8 @@ function drawModuleSection(
 
   // Key data summary from module.data
   if (module.data && Object.keys(module.data).length > 0) {
+    ({ page, yPosition } = ensurePageSpace(24, page, yPosition, pdfDoc, isDraft, totalPages));
+
     page.drawText('Key Data:', {
       x: MARGIN,
       y: yPosition,
@@ -210,11 +208,7 @@ function drawModuleSection(
     let itemCount = 0;
     for (const [key, value] of Object.entries(module.data)) {
       if (itemCount >= 8) break; // Limit to 8 items per module
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
+      ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
 
       // Format key (convert snake_case to Title Case)
       const formattedKey = key
@@ -251,7 +245,7 @@ function drawModuleSection(
   }
 
   yPosition -= 15; // Space between modules
-  return yPosition;
+  return { page, yPosition };
 }
 
 export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promise<Uint8Array> {

@@ -490,15 +490,21 @@ export function drawPageTitle(
   title: string,
   fonts: { regular: PDFFont; bold: PDFFont }
 ): number {
-  page.drawText(title, {
-    x,
-    y,
-    size: 26,
-    font: fonts.bold,
-    color: PDF_THEME.colours.charcoal,
-  });
+  const titleLines = wrapText(sanitizePdfText(title), 495, 26, fonts.bold);
+  let cursorY = y;
 
-  const ruleY = y - 10;
+  for (const line of titleLines) {
+    page.drawText(line, {
+      x,
+      y: cursorY,
+      size: 26,
+      font: fonts.bold,
+      color: PDF_THEME.colours.charcoal,
+    });
+    cursorY -= 30;
+  }
+
+  const ruleY = cursorY + 10;
   page.drawLine({
     start: { x, y: ruleY },
     end: { x: x + 495, y: ruleY },

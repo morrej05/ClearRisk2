@@ -372,7 +372,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
 
   // Add footers to all pages
   totalPages.forEach((p, idx) => {
-    drawFooter(p, idx + 1, totalPages.length, document.title, font);
+    drawFooter(p, document.title, idx + 1, totalPages.length, font);
   });
 
   if (document.issue_status === 'superseded') {

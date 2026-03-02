@@ -335,6 +335,15 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   yPosition = PAGE_TOP_Y;
   ({ page, yPosition } = drawReferencesAndCompliance(page, document.jurisdiction as Jurisdiction, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
+  // Compliance-Critical Findings (if present)
+  if (explosionSummary.flags.length > 0) {
+    const ccfResult = addNewPage(pdfDoc, isDraft, totalPages);
+    page = ccfResult.page;
+    recordToc(`${nextSectionNumber}. Compliance-Critical Findings`);
+    yPosition = PAGE_TOP_Y;
+    ({ page, yPosition } = drawComplianceCriticalFindings(page, explosionSummary.flags, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, nextSectionNumber++));
+  }
+
   // Action Register
   const result2 = addNewPage(pdfDoc, isDraft, totalPages);
   page = result2.page;
@@ -1835,19 +1844,15 @@ function drawComplianceCriticalFindings(
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  sectionNumber: number
 ): { page: PDFPage; yPosition: number } {
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  page.drawText('COMPLIANCE-CRITICAL FINDINGS', {
-    x: MARGIN,
-    y: yPosition,
-    size: 18,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. Compliance-Critical Findings`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 25;
+  yPosition -= 10;
 
   page.drawText('The following compliance issues have been identified through automated checks:', {
     x: MARGIN,

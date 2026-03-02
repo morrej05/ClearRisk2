@@ -371,10 +371,6 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   totalPages.push(page);
   let yPosition = PAGE_TOP_Y;
 
-  // Reserve TOC page (will be populated after all sections are rendered)
-  const tocPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  totalPages.push(tocPage);
-
   // TOC tracking array
   const tocEntries: Array<{ title: string; pageNo: number }> = [];
   const recordToc = (title: string) => tocEntries.push({ title, pageNo: totalPages.length });
@@ -483,6 +479,10 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     });
     yPosition -= 20;
   }
+
+  // Reserve TOC page immediately after cover (will be populated after all sections are rendered)
+  const tocPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  totalPages.push(tocPage);
 
   // Add combined executive summary
   page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);

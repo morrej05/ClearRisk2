@@ -27,6 +27,7 @@ import {
   drawFooter,
   addExecutiveSummaryPages,
   addSupersededWatermark,
+  ensurePageSpace,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar } from './pdfPrimitives';
@@ -230,7 +231,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
       page = result.page;
       yPosition = PAGE_TOP_Y;
     }
-    yPosition = drawModuleSection(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
+    ({ page, yPosition } = drawModuleSection(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
   }
 
   // SECTION 12: References and Compliance (Jurisdiction-specific)
@@ -518,8 +519,11 @@ function drawModuleSection(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
+): { page: PDFPage; yPosition: number } {
   const moduleName = getModuleName(module.module_key);
+
+  // Ensure space for section header bar (requires ~60px)
+  ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
   yPosition = drawSectionHeaderBar({
     page,
@@ -536,11 +540,8 @@ function drawModuleSection(
 
   // Draw assessor notes
   if (module.assessor_notes) {
-    if (yPosition < 150) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
+    // Ensure space for "Assessor Notes:" label (requires ~25px)
+    ({ page, yPosition } = ensurePageSpace(25, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText(sanitizePdfText('Assessor Notes:'), {
       x: MARGIN,
@@ -552,12 +553,10 @@ function drawModuleSection(
     yPosition -= 15;
 
     const wrappedNotes = wrapText(module.assessor_notes, CONTENT_WIDTH, 9, font);
-    wrappedNotes.forEach(line => {
-      if (yPosition < 80) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
+    for (const line of wrappedNotes) {
+      // Ensure space for each note line (requires ~14px)
+      ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+
       page.drawText(sanitizePdfText(line), {
         x: MARGIN,
         y: yPosition,
@@ -566,13 +565,16 @@ function drawModuleSection(
         color: rgb(0.3, 0.3, 0.3),
       });
       yPosition -= 12;
-    });
+    }
   }
+
+  // Ensure space for info gap quick actions header (requires ~60px, conservative)
+  ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
   // Draw info gap quick actions if detected
   yPosition = drawInfoGapQuickActions(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 function drawModuleContent(

@@ -108,9 +108,12 @@ function drawModuleSection(
   // Ensure space for module header
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  // Module heading
+  // Module heading - strip DSEAR prefix if DSEAR module
   const moduleName = getModuleName(module.module_key);
-  page.drawText(sanitizePdfText(moduleName), {
+  const displayName = module.module_key.startsWith('DSEAR')
+    ? moduleName.replace(/^DSEAR-\d+\s*-\s*/, '')
+    : moduleName;
+  page.drawText(sanitizePdfText(displayName), {
     x: MARGIN,
     y: yPosition,
     size: 14,
@@ -353,6 +356,11 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   const isDraft = renderMode === 'preview';
   const totalPages: PDFPage[] = [];
 
+  // Helper: Strip "DSEAR-<n> - " prefix from module names
+  const stripDsearPrefix = (moduleName: string): string => {
+    return moduleName.replace(/^DSEAR-\d+\s*-\s*/, '');
+  };
+
   // Add issued report pages if needed
   if (renderMode === 'issued') {
     await addIssuedReportPages(pdfDoc, document, organisation, totalPages);
@@ -362,6 +370,14 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   totalPages.push(page);
   let yPosition = PAGE_TOP_Y;
+
+  // Reserve TOC page (will be populated after all sections are rendered)
+  const tocPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  totalPages.push(tocPage);
+
+  // TOC tracking array
+  const tocEntries: Array<{ title: string; pageNo: number }> = [];
+  const recordToc = (title: string) => tocEntries.push({ title, pageNo: totalPages.length });
 
   // Cover page title
   page.drawText(sanitizePdfText('Combined Fire + Explosion Report'), {
@@ -471,6 +487,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   // Add combined executive summary
   page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   totalPages.push(page);
+  recordToc('Executive Summary');
   yPosition = PAGE_TOP_Y;
 
   ({ page, yPosition } = drawCombinedExecutiveSummary(
@@ -512,6 +529,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   if (fraModules.length > 0) {
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
+    recordToc('Fire Risk Assessment');
     yPosition = PAGE_TOP_Y;
 
     yPosition = drawSectionHeaderBar({
@@ -534,6 +552,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
     // Render each FRA module
     for (const module of sortedFraModules) {
+      const moduleName = getModuleName(module.module_key);
+      recordToc(`  ${moduleName}`); // Indent FRA modules
       ({ page, yPosition } = drawModuleSection(
         page,
         module,
@@ -565,6 +585,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   if (dsearModules.length > 0) {
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
+    recordToc('Explosive Atmospheres (DSEAR)');
     yPosition = PAGE_TOP_Y;
 
     yPosition = drawSectionHeaderBar({
@@ -573,7 +594,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       y: yPosition,
       w: CONTENT_WIDTH,
       sectionNo: 'SECTION 2',
-      title: 'Explosion Risk Assessment (DSEAR)',
+      title: 'Explosive Atmospheres (DSEAR)',
       product: 'dsear',
       fonts: { regular: font, bold: fontBold },
     });
@@ -587,6 +608,9 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
     // Render each DSEAR module
     for (const module of sortedDsearModules) {
+      const moduleName = getModuleName(module.module_key);
+      const displayName = stripDsearPrefix(moduleName);
+      recordToc(`  ${displayName}`); // Indent DSEAR modules
       ({ page, yPosition } = drawModuleSection(
         page,
         module,
@@ -604,6 +628,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   // Combined action register (deduplicated)
   page = addNewPage(pdfDoc, isDraft, totalPages).page;
+  recordToc('Action Register (Fire + Explosion)');
   yPosition = PAGE_TOP_Y;
 
   ({ page, yPosition } = drawCombinedActionRegister(
@@ -618,6 +643,9 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     isDraft,
     totalPages
   ));
+
+  // Now render the TOC with collected entries
+  drawTableOfContents(tocPage, tocEntries, font, fontBold);
 
   // Apply watermarks if needed
   if (isDraft) {
@@ -634,6 +662,61 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   });
 
   return await pdfDoc.save();
+}
+
+/**
+ * Draw Table of Contents for Combined PDF with actual page numbers
+ */
+function drawTableOfContents(
+  tocPage: PDFPage,
+  tocEntries: Array<{ title: string; pageNo: number }>,
+  font: any,
+  fontBold: any
+): void {
+  let yPosition = PAGE_TOP_Y - 40;
+
+  // Title
+  tocPage.drawText(sanitizePdfText('Contents'), {
+    x: MARGIN,
+    y: yPosition,
+    size: 18,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+  yPosition -= 40;
+
+  // Render TOC entries with page numbers
+  for (const entry of tocEntries) {
+    if (yPosition < MARGIN + 50) break; // Stop if we run out of space
+
+    // Determine if this is an indented entry (module-level)
+    const isIndented = entry.title.startsWith('  ');
+    const displayTitle = entry.title.trim();
+    const xOffset = isIndented ? MARGIN + 30 : MARGIN + 10;
+
+    // Draw section title (left-aligned)
+    const sanitizedTitle = sanitizePdfText(displayTitle);
+    tocPage.drawText(sanitizedTitle, {
+      x: xOffset,
+      y: yPosition,
+      size: isIndented ? 10 : 11,
+      font: isIndented ? font : fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    // Draw page number (right-aligned)
+    const pageNumText = entry.pageNo.toString();
+    const pageNumWidth = font.widthOfTextAtSize(pageNumText, 11);
+    tocPage.drawText(pageNumText, {
+      x: PAGE_WIDTH - MARGIN - pageNumWidth,
+      y: yPosition,
+      size: 11,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= isIndented ? 14 : 16;
+  }
 }
 
 function drawCombinedExecutiveSummary(

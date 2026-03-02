@@ -140,65 +140,46 @@ function getModuleSectionNumber(moduleKey: string, sortedModules: ModuleInstance
 }
 
 /**
- * Draw Table of Contents for DSEAR PDF
+ * Draw Table of Contents for DSEAR PDF with actual page numbers
  */
 function drawTableOfContents(
-  page: PDFPage,
-  sortedModules: ModuleInstance[],
-  hasScope: boolean,
-  hasLimitations: boolean,
-  hasAttachments: boolean,
+  tocPage: PDFPage,
+  tocEntries: Array<{ title: string; pageNo: number }>,
   font: any,
   fontBold: any
 ): void {
   let yPosition = PAGE_TOP_Y - 40;
 
-  // Title - using Arup-style page title
-  yPosition = drawPageTitle(page, MARGIN, yPosition, 'Contents', { regular: font, bold: fontBold });
+  // Title
+  yPosition = drawPageTitle(tocPage, MARGIN, yPosition, 'Contents', { regular: font, bold: fontBold });
   yPosition -= 12;
 
-  let sectionNumber = 1;
-
-  // Section 1: Explosion Criticality Assessment
-  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Explosion Criticality Assessment', { regular: font, bold: fontBold });
-
-  // Section 2: Purpose and Introduction
-  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Purpose and Introduction', { regular: font, bold: fontBold });
-
-  // Section 3: Hazardous Area Classification Methodology
-  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Hazardous Area Classification Methodology', { regular: font, bold: fontBold });
-
-  // Section 4: Zone Definitions
-  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Zone Definitions', { regular: font, bold: fontBold });
-
-  // Section 5: Scope (if present)
-  if (hasScope) {
-    yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Scope', { regular: font, bold: fontBold });
-  }
-
-  // Section 6: Limitations (if present)
-  if (hasLimitations) {
-    yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Limitations and Assumptions', { regular: font, bold: fontBold });
-  }
-
-  // Module sections (start at section 7 or adjusted based on scope/limitations)
-  for (const module of sortedModules) {
+  // Render TOC entries with page numbers
+  for (const entry of tocEntries) {
     if (yPosition < MARGIN + 50) break; // Stop if we run out of space
 
-    const moduleName = getModuleName(module.module_key);
-    const displayName = stripDsearPrefix(moduleName);
-    yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, displayName, { regular: font, bold: fontBold });
-  }
+    // Draw section title (left-aligned)
+    const sanitizedTitle = sanitizePdfText(entry.title);
+    tocPage.drawText(sanitizedTitle, {
+      x: MARGIN + 20,
+      y: yPosition,
+      size: 11,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
 
-  // References and Compliance
-  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'References and Compliance', { regular: font, bold: fontBold });
+    // Draw page number (right-aligned)
+    const pageNumText = entry.pageNo.toString();
+    const pageNumWidth = font.widthOfTextAtSize(pageNumText, 11);
+    tocPage.drawText(pageNumText, {
+      x: PAGE_WIDTH - MARGIN - pageNumWidth,
+      y: yPosition,
+      size: 11,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
 
-  // Action Register
-  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Action Register', { regular: font, bold: fontBold });
-
-  // Attachments Index (if present)
-  if (hasAttachments) {
-    yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Attachments Index', { regular: font, bold: fontBold });
+    yPosition -= 16;
   }
 }
 
@@ -256,18 +237,13 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   // Sort modules once for consistency across Contents and module sections
   const sortedModules = sortModules(moduleInstances);
 
-  // Add Table of Contents
+  // Reserve TOC page (will be populated after all sections are rendered)
   const tocResult = addNewPage(pdfDoc, isDraft, totalPages);
-  page = tocResult.page;
-  drawTableOfContents(
-    page,
-    sortedModules,
-    !!document.scope_description,
-    !!document.limitations_assumptions,
-    attachments.length > 0,
-    font,
-    fontBold
-  );
+  const tocPage = tocResult.page;
+
+  // TOC tracking array
+  const tocEntries: Array<{ title: string; pageNo: number }> = [];
+  const recordToc = (title: string) => tocEntries.push({ title, pageNo: totalPages.length });
 
   // SECTION 2: Executive Summary (AI/Author/Both/None)
   addExecutiveSummaryPages(
@@ -284,24 +260,28 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   const explosionSummary = computeExplosionSummary({ modules: moduleInstances });
   const critResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = critResult.page;
+  recordToc('1. Explosion Criticality Assessment');
   yPosition = PAGE_TOP_Y;
   ({ page, yPosition } = drawExplosionCriticalitySummary(page, explosionSummary, 1, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
   // SECTION 2: Purpose and Introduction (Neutral)
   const purposeResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = purposeResult.page;
+  recordToc('2. Purpose and Introduction');
   yPosition = PAGE_TOP_Y;
   ({ page, yPosition } = drawPurposeAndIntroduction(page, 2, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
   // SECTION 3: Hazardous Area Classification Methodology (Canned Text)
   const hacResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = hacResult.page;
+  recordToc('3. Hazardous Area Classification Methodology');
   yPosition = PAGE_TOP_Y;
   ({ page, yPosition } = drawHazardousAreaClassification(page, 3, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
   // SECTION 4: Zone Definitions (Canned Text)
   const zoneResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = zoneResult.page;
+  recordToc('4. Zone Definitions');
   yPosition = PAGE_TOP_Y;
   ({ page, yPosition } = drawZoneDefinitions(page, 4, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
@@ -312,6 +292,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   if (document.scope_description) {
     const scopeResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = scopeResult.page;
+    recordToc(`${nextSectionNumber}. Scope`);
     yPosition = PAGE_TOP_Y;
     ({ page, yPosition } = drawScope(page, document.scope_description, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
   }
@@ -320,6 +301,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   if (document.limitations_assumptions) {
     const limResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = limResult.page;
+    recordToc(`${nextSectionNumber}. Limitations and Assumptions`);
     yPosition = PAGE_TOP_Y;
     ({ page, yPosition } = drawLimitations(page, document.limitations_assumptions, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
   }
@@ -327,13 +309,19 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   // SECTION 8+: Module Sections
   const MODULE_HEADER_KEEP = 56;
   const MIN_MODULE_BODY = 56;
-  // moduleSectionStart is now set by nextSectionNumber above
 
   for (let i = 0; i < sortedModules.length; i++) {
     const module = sortedModules[i];
     const sectionNumber = nextSectionNumber + i;
+    const moduleName = getModuleName(module.module_key);
+    const displayName = stripDsearPrefix(moduleName);
+
     // Conditional page: ensure header + minimal body fit, only create new page if needed
     ({ page, yPosition } = ensurePageSpace(MODULE_HEADER_KEEP + MIN_MODULE_BODY, page, yPosition, pdfDoc, isDraft, totalPages));
+
+    // Record TOC entry BEFORE drawing section (ensures correct page number)
+    recordToc(`${sectionNumber}. ${displayName}`);
+
     ({ page, yPosition } = drawModuleSection(page, module, document, sectionNumber, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, sortedModules));
   }
 
@@ -343,12 +331,14 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   // References and Compliance (Jurisdiction-specific)
   const refResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = refResult.page;
+  recordToc(`${nextSectionNumber}. References and Compliance`);
   yPosition = PAGE_TOP_Y;
   ({ page, yPosition } = drawReferencesAndCompliance(page, document.jurisdiction as Jurisdiction, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
   // Action Register
   const result2 = addNewPage(pdfDoc, isDraft, totalPages);
   page = result2.page;
+  recordToc(`${nextSectionNumber}. Action Register`);
   yPosition = PAGE_TOP_Y;
   ({ page, yPosition } = drawActionRegister(page, actions, actionRatings, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
@@ -356,9 +346,13 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   if (attachments.length > 0) {
     const result2b = addNewPage(pdfDoc, isDraft, totalPages);
     page = result2b.page;
+    recordToc(`${nextSectionNumber}. Attachments Index`);
     yPosition = PAGE_TOP_Y;
     ({ page, yPosition } = drawAttachmentsIndex(page, attachments, sortedModules, actions, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
   }
+
+  // Now render the TOC with collected entries
+  drawTableOfContents(tocPage, tocEntries, font, fontBold);
 
   // Add footers to all pages
   totalPages.forEach((p, idx) => {

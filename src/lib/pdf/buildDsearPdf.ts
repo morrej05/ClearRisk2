@@ -234,8 +234,15 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   let page: PDFPage;
   let yPosition: number;
 
+  // Filter modules for DSEAR-only context: exclude A2, A3, and other non-DSEAR modules
+  // Keep A1_DOC_CONTROL for governance, keep all DSEAR_* modules
+  const filteredModules = moduleInstances.filter(m =>
+    m.module_key.startsWith('DSEAR_') ||
+    m.module_key === 'A1_DOC_CONTROL'
+  );
+
   // Sort modules once for consistency across Contents and module sections
-  const sortedModules = sortModules(moduleInstances);
+  const sortedModules = sortModules(filteredModules);
 
   // Reserve TOC page (will be populated after all sections are rendered)
   const tocResult = addNewPage(pdfDoc, isDraft, totalPages);

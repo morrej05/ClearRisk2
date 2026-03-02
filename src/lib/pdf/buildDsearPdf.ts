@@ -30,7 +30,7 @@ import {
   ensurePageSpace,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
-import { drawSectionHeaderBar } from './pdfPrimitives';
+import { drawSectionHeaderBar, drawPageTitle, drawContentsRow } from './pdfPrimitives';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
 
 interface Document {
@@ -117,6 +117,91 @@ const MODULE_ORDER = [
   'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE',
 ];
 
+/**
+ * Strip "DSEAR-<n> - " prefix from module display names for PDF output
+ */
+function stripDsearPrefix(moduleName: string): string {
+  // Remove patterns like "DSEAR-1 - ", "DSEAR-10 - ", etc.
+  return moduleName.replace(/^DSEAR-\d+\s*-\s*/, '');
+}
+
+/**
+ * Get section number for a module based on its position in MODULE_ORDER
+ * Canned sections get numbers 1-6, modules start at 7
+ */
+function getModuleSectionNumber(moduleKey: string, sortedModules: ModuleInstance[]): number {
+  // Find the module's position in the sorted list
+  const moduleIndex = sortedModules.findIndex(m => m.module_key === moduleKey);
+  if (moduleIndex === -1) return 0;
+
+  // Canned sections: 1-6
+  // Modules start at section 7
+  return 7 + moduleIndex;
+}
+
+/**
+ * Draw Table of Contents for DSEAR PDF
+ */
+function drawTableOfContents(
+  page: PDFPage,
+  sortedModules: ModuleInstance[],
+  hasScope: boolean,
+  hasLimitations: boolean,
+  hasAttachments: boolean,
+  font: any,
+  fontBold: any
+): void {
+  let yPosition = PAGE_TOP_Y - 40;
+
+  // Title - using Arup-style page title
+  yPosition = drawPageTitle(page, MARGIN, yPosition, 'Contents', { regular: font, bold: fontBold });
+  yPosition -= 12;
+
+  let sectionNumber = 1;
+
+  // Section 1: Explosion Criticality Assessment
+  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Explosion Criticality Assessment', { regular: font, bold: fontBold });
+
+  // Section 2: Purpose and Introduction
+  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Purpose and Introduction', { regular: font, bold: fontBold });
+
+  // Section 3: Hazardous Area Classification Methodology
+  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Hazardous Area Classification Methodology', { regular: font, bold: fontBold });
+
+  // Section 4: Zone Definitions
+  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Zone Definitions', { regular: font, bold: fontBold });
+
+  // Section 5: Scope (if present)
+  if (hasScope) {
+    yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Scope', { regular: font, bold: fontBold });
+  }
+
+  // Section 6: Limitations (if present)
+  if (hasLimitations) {
+    yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Limitations and Assumptions', { regular: font, bold: fontBold });
+  }
+
+  // Module sections (start at section 7 or adjusted based on scope/limitations)
+  for (const module of sortedModules) {
+    if (yPosition < MARGIN + 50) break; // Stop if we run out of space
+
+    const moduleName = getModuleName(module.module_key);
+    const displayName = stripDsearPrefix(moduleName);
+    yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, displayName, { regular: font, bold: fontBold });
+  }
+
+  // References and Compliance
+  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'References and Compliance', { regular: font, bold: fontBold });
+
+  // Action Register
+  yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Action Register', { regular: font, bold: fontBold });
+
+  // Attachments Index (if present)
+  if (hasAttachments) {
+    yPosition = drawContentsRow(page, MARGIN + 20, yPosition, sectionNumber++, 'Attachments Index', { regular: font, bold: fontBold });
+  }
+}
+
 export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Array> {
   const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
 
@@ -168,6 +253,22 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   let page: PDFPage;
   let yPosition: number;
 
+  // Sort modules once for consistency across Contents and module sections
+  const sortedModules = sortModules(moduleInstances);
+
+  // Add Table of Contents
+  const tocResult = addNewPage(pdfDoc, isDraft, totalPages);
+  page = tocResult.page;
+  drawTableOfContents(
+    page,
+    sortedModules,
+    !!document.scope_description,
+    !!document.limitations_assumptions,
+    attachments.length > 0,
+    font,
+    fontBold
+  );
+
   // SECTION 2: Executive Summary (AI/Author/Both/None)
   addExecutiveSummaryPages(
     pdfDoc,
@@ -179,83 +280,84 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
     { bold: fontBold, regular: font }
   );
 
-  // SECTION 2.5: Computed Explosion Criticality Summary
+  // SECTION 1: Computed Explosion Criticality Summary
   const explosionSummary = computeExplosionSummary({ modules: moduleInstances });
   const critResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = critResult.page;
   yPosition = PAGE_TOP_Y;
-  ({ page, yPosition } = drawExplosionCriticalitySummary(page, explosionSummary, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = drawExplosionCriticalitySummary(page, explosionSummary, 1, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
-  // SECTION 3: Purpose and Introduction (Neutral)
+  // SECTION 2: Purpose and Introduction (Neutral)
   const purposeResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = purposeResult.page;
   yPosition = PAGE_TOP_Y;
-  ({ page, yPosition } = drawPurposeAndIntroduction(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = drawPurposeAndIntroduction(page, 2, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
-  // SECTION 4: Hazardous Area Classification Methodology (Canned Text)
+  // SECTION 3: Hazardous Area Classification Methodology (Canned Text)
   const hacResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = hacResult.page;
   yPosition = PAGE_TOP_Y;
-  ({ page, yPosition } = drawHazardousAreaClassification(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = drawHazardousAreaClassification(page, 3, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
-  // SECTION 5: Zone Definitions (Canned Text)
+  // SECTION 4: Zone Definitions (Canned Text)
   const zoneResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = zoneResult.page;
   yPosition = PAGE_TOP_Y;
-  ({ page, yPosition } = drawZoneDefinitions(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = drawZoneDefinitions(page, 4, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
-  // SECTION 6: Scope
+  // Dynamic section numbering for Scope and Limitations
+  let nextSectionNumber = 5;
+
+  // SECTION 5 (or skipped): Scope
   if (document.scope_description) {
     const scopeResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = scopeResult.page;
     yPosition = PAGE_TOP_Y;
-    ({ page, yPosition } = drawScope(page, document.scope_description, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = drawScope(page, document.scope_description, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
   }
 
-  // SECTION 7: Limitations and Assumptions
+  // SECTION 6 (or 5/skipped): Limitations and Assumptions
   if (document.limitations_assumptions) {
     const limResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = limResult.page;
     yPosition = PAGE_TOP_Y;
-    ({ page, yPosition } = drawLimitations(page, document.limitations_assumptions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = drawLimitations(page, document.limitations_assumptions, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
   }
 
   // SECTION 8+: Module Sections
   const MODULE_HEADER_KEEP = 56;
   const MIN_MODULE_BODY = 56;
-  const sortedModules = sortModules(moduleInstances);
-  for (const module of sortedModules) {
+  // moduleSectionStart is now set by nextSectionNumber above
+
+  for (let i = 0; i < sortedModules.length; i++) {
+    const module = sortedModules[i];
+    const sectionNumber = nextSectionNumber + i;
     // Conditional page: ensure header + minimal body fit, only create new page if needed
     ({ page, yPosition } = ensurePageSpace(MODULE_HEADER_KEEP + MIN_MODULE_BODY, page, yPosition, pdfDoc, isDraft, totalPages));
-    ({ page, yPosition } = drawModuleSection(page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = drawModuleSection(page, module, document, sectionNumber, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, sortedModules));
   }
 
-  // SECTION 12: References and Compliance (Jurisdiction-specific)
+  // Update section number after all modules
+  nextSectionNumber += sortedModules.length;
+
+  // References and Compliance (Jurisdiction-specific)
   const refResult = addNewPage(pdfDoc, isDraft, totalPages);
   page = refResult.page;
   yPosition = PAGE_TOP_Y;
-  ({ page, yPosition } = drawReferencesAndCompliance(page, document.jurisdiction as Jurisdiction, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = drawReferencesAndCompliance(page, document.jurisdiction as Jurisdiction, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
-  // SECTION 12.5: Compliance-Critical Findings
-  if (explosionSummary.flags.length > 0) {
-    const findResult = addNewPage(pdfDoc, isDraft, totalPages);
-    page = findResult.page;
-    yPosition = PAGE_TOP_Y;
-    ({ page, yPosition } = drawComplianceCriticalFindings(page, explosionSummary.flags, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
-  }
-
-  // SECTION 13: Action Register
+  // Action Register
   const result2 = addNewPage(pdfDoc, isDraft, totalPages);
   page = result2.page;
   yPosition = PAGE_TOP_Y;
-  ({ page, yPosition } = drawActionRegister(page, actions, actionRatings, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = drawActionRegister(page, actions, actionRatings, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
-  // SECTION 13.5: Attachments Index
+  // Attachments Index (if present)
   if (attachments.length > 0) {
     const result2b = addNewPage(pdfDoc, isDraft, totalPages);
     page = result2b.page;
     yPosition = PAGE_TOP_Y;
-    ({ page, yPosition } = drawAttachmentsIndex(page, attachments, sortedModules, actions, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = drawAttachmentsIndex(page, attachments, sortedModules, actions, nextSectionNumber++, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
   }
 
   // Add footers to all pages
@@ -513,24 +615,30 @@ function drawModuleSection(
   page: PDFPage,
   module: ModuleInstance,
   document: Document,
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  sortedModules: ModuleInstance[]
 ): { page: PDFPage; yPosition: number } {
   const moduleName = getModuleName(module.module_key);
+  const displayName = stripDsearPrefix(moduleName);
 
   // Ensure space for section header bar (requires ~60px)
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
+
+  // Add section number prefix to module title
+  const numberedTitle = `${sectionNumber}. ${displayName}`;
 
   yPosition = drawSectionHeaderBar({
     page,
     x: MARGIN,
     y: yPosition,
     w: CONTENT_WIDTH,
-    title: sanitizePdfText(moduleName),
+    title: sanitizePdfText(numberedTitle),
     product: 'dsear',
     fonts: { regular: font, bold: fontBold },
   });
@@ -883,6 +991,7 @@ function drawActionRegister(
   page: PDFPage,
   actions: Action[],
   actionRatings: ActionRating[],
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -893,14 +1002,9 @@ function drawActionRegister(
   // Ensure space for header
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  page.drawText(sanitizePdfText('Action Register'), {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 25;
+  const sectionTitle = `${sectionNumber}. Action Register`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
+  yPosition -= 15;
 
   if (actions.length === 0) {
     page.drawText(sanitizePdfText('No actions recorded'), {
@@ -1163,6 +1267,7 @@ function drawAttachmentsIndex(
   attachments: Attachment[],
   moduleInstances: ModuleInstance[],
   actions: Action[],
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1172,16 +1277,10 @@ function drawAttachmentsIndex(
 ): { page: PDFPage; yPosition: number } {
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  yPosition -= 20;
-  page.drawText('ATTACHMENTS & EVIDENCE INDEX', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. Attachments Index`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 30;
+  yPosition -= 20;
 
   if (attachments.length === 0) {
     page.drawText('No attachments recorded.', {
@@ -1283,6 +1382,7 @@ function drawAttachmentsIndex(
 
 function drawHazardousAreaClassification(
   page: PDFPage,
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1290,16 +1390,10 @@ function drawHazardousAreaClassification(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  yPosition -= 20;
-  page.drawText('HAZARDOUS AREA CLASSIFICATION METHODOLOGY', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. Hazardous Area Classification Methodology`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 30;
+  yPosition -= 20;
 
   const paragraphs = hazardousAreaClassificationText.split('\n\n');
   for (const paragraph of paragraphs) {
@@ -1329,6 +1423,7 @@ function drawHazardousAreaClassification(
 
 function drawZoneDefinitions(
   page: PDFPage,
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1336,16 +1431,10 @@ function drawZoneDefinitions(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  yPosition -= 20;
-  page.drawText('ZONE DEFINITIONS', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. Zone Definitions`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 30;
+  yPosition -= 20;
 
   const paragraphs = zoneDefinitionsText.split('\n\n');
   for (const paragraph of paragraphs) {
@@ -1414,6 +1503,7 @@ function drawZoneDefinitions(
 function drawScope(
   page: PDFPage,
   scopeText: string,
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1421,16 +1511,10 @@ function drawScope(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  yPosition -= 20;
-  page.drawText('SCOPE', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. Scope`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 30;
+  yPosition -= 20;
 
   const sanitized = sanitizePdfText(scopeText);
   const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
@@ -1453,6 +1537,7 @@ function drawScope(
 
 function drawPurposeAndIntroduction(
   page: PDFPage,
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1460,16 +1545,10 @@ function drawPurposeAndIntroduction(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  yPosition -= 20;
-  page.drawText('PURPOSE AND INTRODUCTION', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. Purpose and Introduction`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 30;
+  yPosition -= 20;
 
   const sanitized = sanitizePdfText(explosiveAtmospheresPurposeText);
   const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
@@ -1492,6 +1571,7 @@ function drawPurposeAndIntroduction(
 function drawLimitations(
   page: PDFPage,
   limitationsText: string,
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1499,16 +1579,10 @@ function drawLimitations(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  yPosition -= 20;
-  page.drawText('LIMITATIONS AND ASSUMPTIONS', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. Limitations and Assumptions`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 30;
+  yPosition -= 20;
 
   const sanitized = sanitizePdfText(limitationsText);
   const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
@@ -1531,6 +1605,7 @@ function drawLimitations(
 function drawReferencesAndCompliance(
   page: PDFPage,
   jurisdiction: Jurisdiction,
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1540,16 +1615,10 @@ function drawReferencesAndCompliance(
 ): { page: PDFPage; yPosition: number } {
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  yPosition -= 20;
-  page.drawText('REFERENCES AND COMPLIANCE', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. References and Compliance`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 30;
+  yPosition -= 20;
 
   const references = getExplosiveAtmospheresReferences(jurisdiction);
 
@@ -1590,6 +1659,7 @@ function drawReferencesAndCompliance(
 function drawExplosionCriticalitySummary(
   page: PDFPage,
   explosionSummary: ReturnType<typeof computeExplosionSummary>,
+  sectionNumber: number,
   font: any,
   fontBold: any,
   yPosition: number,
@@ -1599,15 +1669,10 @@ function drawExplosionCriticalitySummary(
 ): { page: PDFPage; yPosition: number } {
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  page.drawText('EXPLOSION CRITICALITY ASSESSMENT', {
-    x: MARGIN,
-    y: yPosition,
-    size: 18,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  const sectionTitle = `${sectionNumber}. Explosion Criticality Assessment`;
+  yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 30;
+  yPosition -= 20;
 
   const criticalityColors: Record<string, ReturnType<typeof rgb>> = {
     Critical: rgb(0.8, 0, 0),

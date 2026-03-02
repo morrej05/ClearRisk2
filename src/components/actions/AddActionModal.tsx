@@ -33,6 +33,18 @@ const TIMESCALE_OPTIONS = [
   { value: 'custom', label: 'Custom' },
 ];
 
+const DSEAR_TRIGGERS = [
+  { id: 'noHac', label: 'Hazardous area classification not completed / not available', category: 'HAC' },
+  { id: 'zone0_20Present', label: 'Zone 0 / Zone 20 present', category: 'HAC' },
+  { id: 'zone1_21Present', label: 'Zone 1 / Zone 21 present', category: 'HAC' },
+  { id: 'exEquipNotConfirmed', label: 'Ex equipment suitability/certification not confirmed for zone/group/temp class', category: 'Equipment' },
+  { id: 'hotWorkControlsWeak', label: 'Hot work controls inadequate for classified areas', category: 'Controls' },
+  { id: 'staticBondingMissing', label: 'Bonding/earthing/static control not confirmed', category: 'Controls' },
+  { id: 'ventilationInadequate', label: 'Ventilation adequacy not assessed / likely inadequate for releases', category: 'Controls' },
+  { id: 'dsrIncomplete', label: 'Dangerous substances register/SDS incomplete', category: 'Management' },
+  { id: 'dustHousekeeping', label: 'Combustible dust accumulation / housekeeping inadequate', category: 'Management' },
+];
+
 export default function AddActionModal({
   documentId,
   moduleInstanceId,
@@ -59,6 +71,7 @@ export default function AddActionModal({
   const [formData, setFormData] = useState({
     recommendedAction: defaultAction,
     category: 'Other' as FraFindingCategory,
+    // FRA triggers
     finalExitLocked: false,
     finalExitObstructed: false,
     noFireDetection: false,
@@ -68,6 +81,17 @@ export default function AddActionModal({
     singleStairCompromised: false,
     highRiskRoomToEscapeRoute: false,
     noFraEvidenceOrReview: false,
+    // DSEAR triggers
+    noHac: false,
+    zone0_20Present: false,
+    zone1_21Present: false,
+    exEquipNotConfirmed: false,
+    hotWorkControlsWeak: false,
+    staticBondingMissing: false,
+    ventilationInadequate: false,
+    dsrIncomplete: false,
+    dustHousekeeping: false,
+    // Common fields
     timescale: 'next_review',
     overrideJustification: '',
     targetDate: '',
@@ -140,13 +164,35 @@ export default function AddActionModal({
   let triggerText: string;
 
   if (documentType === 'DSEAR') {
-    const explosionResult = deriveExplosionSeverity({ modules: moduleInstances });
-    priorityBand = explosionResult.priority;
-    severityTier = explosionResult.level === 'critical' ? 'T4' :
-                   explosionResult.level === 'high' ? 'T3' :
-                   explosionResult.level === 'moderate' ? 'T2' : 'T1';
-    triggerId = explosionResult.triggerId;
-    triggerText = explosionResult.triggerText;
+    // Check for manual DSEAR triggers to determine priority
+    const hasCriticalTrigger = formData.noHac || formData.zone0_20Present;
+    const hasHighTrigger = formData.zone1_21Present || formData.exEquipNotConfirmed ||
+                           formData.hotWorkControlsWeak || formData.staticBondingMissing;
+    const hasModerateTrigger = formData.ventilationInadequate || formData.dsrIncomplete ||
+                               formData.dustHousekeeping;
+
+    if (hasCriticalTrigger) {
+      priorityBand = 'P1';
+      severityTier = 'T4';
+      triggerId = 'EX-MANUAL-CRITICAL';
+      triggerText = 'Critical explosion hazard trigger identified by assessor.';
+    } else if (hasHighTrigger) {
+      priorityBand = 'P2';
+      severityTier = 'T3';
+      triggerId = 'EX-MANUAL-HIGH';
+      triggerText = 'High explosion hazard trigger identified by assessor.';
+    } else if (hasModerateTrigger) {
+      priorityBand = 'P3';
+      severityTier = 'T2';
+      triggerId = 'EX-MANUAL-MODERATE';
+      triggerText = 'Moderate explosion hazard trigger identified by assessor.';
+    } else {
+      // Default to low priority
+      priorityBand = 'P4';
+      severityTier = 'T1';
+      triggerId = 'EX-MANUAL-LOW';
+      triggerText = 'Advisory improvement identified during DSEAR assessment.';
+    }
   } else {
     const severityResult = deriveSeverity(actionInput, fraContext);
     priorityBand = severityResult.priority;
@@ -554,100 +600,120 @@ export default function AddActionModal({
               Critical Triggers (check if applicable)
             </label>
             <div className="space-y-2">
-              {(formData.category === 'MeansOfEscape' || formData.category === 'Other') && (
+              {documentType === 'DSEAR' ? (
                 <>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.finalExitLocked}
-                      onChange={(e) => setFormData({ ...formData, finalExitLocked: e.target.checked })}
-                      className="mt-1"
-                    />
-                    <span className="text-sm text-neutral-700">Final exit locked / secured</span>
-                  </label>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.finalExitObstructed}
-                      onChange={(e) => setFormData({ ...formData, finalExitObstructed: e.target.checked })}
-                      className="mt-1"
-                    />
-                    <span className="text-sm text-neutral-700">Final exit obstructed</span>
-                  </label>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.singleStairCompromised}
-                      onChange={(e) => setFormData({ ...formData, singleStairCompromised: e.target.checked })}
-                      className="mt-1"
-                    />
-                    <span className="text-sm text-neutral-700">Single stair compromised (multi-storey)</span>
-                  </label>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.highRiskRoomToEscapeRoute}
-                      onChange={(e) => setFormData({ ...formData, highRiskRoomToEscapeRoute: e.target.checked })}
-                      className="mt-1"
-                    />
-                    <span className="text-sm text-neutral-700">High-risk room opens onto escape route</span>
-                  </label>
+                  {/* DSEAR Triggers */}
+                  {DSEAR_TRIGGERS.map((trigger) => (
+                    <label key={trigger.id} className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData[trigger.id as keyof typeof formData] as boolean}
+                        onChange={(e) => setFormData({ ...formData, [trigger.id]: e.target.checked })}
+                        className="mt-1"
+                      />
+                      <span className="text-sm text-neutral-700">{trigger.label}</span>
+                    </label>
+                  ))}
                 </>
-              )}
-              {(formData.category === 'DetectionAlarm' || formData.category === 'Other') && (
+              ) : (
                 <>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.noFireDetection}
-                      onChange={(e) => setFormData({ ...formData, noFireDetection: e.target.checked })}
-                      className="mt-1"
-                    />
-                    <span className="text-sm text-neutral-700">No fire detection system present</span>
-                  </label>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.detectionInadequateCoverage}
-                      onChange={(e) => setFormData({ ...formData, detectionInadequateCoverage: e.target.checked })}
-                      className="mt-1"
-                    />
-                    <span className="text-sm text-neutral-700">Detection coverage inadequate</span>
-                  </label>
+                  {/* FRA Triggers */}
+                  {(formData.category === 'MeansOfEscape' || formData.category === 'Other') && (
+                    <>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.finalExitLocked}
+                          onChange={(e) => setFormData({ ...formData, finalExitLocked: e.target.checked })}
+                          className="mt-1"
+                        />
+                        <span className="text-sm text-neutral-700">Final exit locked / secured</span>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.finalExitObstructed}
+                          onChange={(e) => setFormData({ ...formData, finalExitObstructed: e.target.checked })}
+                          className="mt-1"
+                        />
+                        <span className="text-sm text-neutral-700">Final exit obstructed</span>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.singleStairCompromised}
+                          onChange={(e) => setFormData({ ...formData, singleStairCompromised: e.target.checked })}
+                          className="mt-1"
+                        />
+                        <span className="text-sm text-neutral-700">Single stair compromised (multi-storey)</span>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.highRiskRoomToEscapeRoute}
+                          onChange={(e) => setFormData({ ...formData, highRiskRoomToEscapeRoute: e.target.checked })}
+                          className="mt-1"
+                        />
+                        <span className="text-sm text-neutral-700">High-risk room opens onto escape route</span>
+                      </label>
+                    </>
+                  )}
+                  {(formData.category === 'DetectionAlarm' || formData.category === 'Other') && (
+                    <>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.noFireDetection}
+                          onChange={(e) => setFormData({ ...formData, noFireDetection: e.target.checked })}
+                          className="mt-1"
+                        />
+                        <span className="text-sm text-neutral-700">No fire detection system present</span>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.detectionInadequateCoverage}
+                          onChange={(e) => setFormData({ ...formData, detectionInadequateCoverage: e.target.checked })}
+                          className="mt-1"
+                        />
+                        <span className="text-sm text-neutral-700">Detection coverage inadequate</span>
+                      </label>
+                    </>
+                  )}
+                  {(formData.category === 'EmergencyLighting' || formData.category === 'Other') && (
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.noEmergencyLighting}
+                        onChange={(e) => setFormData({ ...formData, noEmergencyLighting: e.target.checked })}
+                        className="mt-1"
+                      />
+                      <span className="text-sm text-neutral-700">No emergency lighting present (multi-storey)</span>
+                    </label>
+                  )}
+                  {(formData.category === 'Compartmentation' || formData.category === 'Other') && (
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.seriousCompartmentationFailure}
+                        onChange={(e) => setFormData({ ...formData, seriousCompartmentationFailure: e.target.checked })}
+                        className="mt-1"
+                      />
+                      <span className="text-sm text-neutral-700">Serious compartmentation failure</span>
+                    </label>
+                  )}
+                  {(formData.category === 'Management' || formData.category === 'Other') && (
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.noFraEvidenceOrReview}
+                        onChange={(e) => setFormData({ ...formData, noFraEvidenceOrReview: e.target.checked })}
+                        className="mt-1"
+                      />
+                      <span className="text-sm text-neutral-700">No FRA evidence / overdue review</span>
+                    </label>
+                  )}
                 </>
-              )}
-              {(formData.category === 'EmergencyLighting' || formData.category === 'Other') && (
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.noEmergencyLighting}
-                    onChange={(e) => setFormData({ ...formData, noEmergencyLighting: e.target.checked })}
-                    className="mt-1"
-                  />
-                  <span className="text-sm text-neutral-700">No emergency lighting present (multi-storey)</span>
-                </label>
-              )}
-              {(formData.category === 'Compartmentation' || formData.category === 'Other') && (
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.seriousCompartmentationFailure}
-                    onChange={(e) => setFormData({ ...formData, seriousCompartmentationFailure: e.target.checked })}
-                    className="mt-1"
-                  />
-                  <span className="text-sm text-neutral-700">Serious compartmentation failure</span>
-                </label>
-              )}
-              {(formData.category === 'Management' || formData.category === 'Other') && (
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.noFraEvidenceOrReview}
-                    onChange={(e) => setFormData({ ...formData, noFraEvidenceOrReview: e.target.checked })}
-                    className="mt-1"
-                  />
-                  <span className="text-sm text-neutral-700">No FRA evidence / overdue review</span>
-                </label>
               )}
             </div>
           </div>

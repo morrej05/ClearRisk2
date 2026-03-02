@@ -6,10 +6,12 @@ import ModuleActions from '../ModuleActions';
 import AddActionModal from '../../actions/AddActionModal';
 import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanitizer';
 import { getActionsRefreshKey } from '../../../utils/actionsRefreshKey';
+import { isEnglandWales } from '../../../lib/jurisdictions';
 
 interface Document {
   id: string;
   title: string;
+  jurisdiction?: string;
 }
 
 interface ModuleInstance {
@@ -186,7 +188,11 @@ export default function FSD3MeansOfEscapeDesignForm({
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
               >
                 <option value="unknown">Unknown</option>
-                <option value="ADB">Approved Document B</option>
+                {isEnglandWales(document.jurisdiction) ? (
+                  <option value="ADB">Approved Document B</option>
+                ) : (
+                  <option value="ADB">Applicable building regulations</option>
+                )}
                 <option value="BS9999">BS 9999</option>
                 <option value="engineered">Fire Engineered</option>
                 <option value="other">Other</option>

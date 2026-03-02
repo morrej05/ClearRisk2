@@ -195,7 +195,7 @@ function checkGuidanceRouteConsistency(
           severity: 'info',
           title: 'Prescriptive route but strategy relies on engineered measures',
           detail:
-            'Regulatory framework is Approved Document B (prescriptive route), but the strategy appears to rely on engineered measures (mechanical smoke control or sprinklers). Ensure justification for this approach is documented.',
+            'Regulatory framework is prescriptive (building regulations compliance route), but the strategy appears to rely on engineered measures (mechanical smoke control or sprinklers). Ensure justification for this approach is documented.',
           relatedModules: ['FSD_1_REG_BASIS'],
         });
       }

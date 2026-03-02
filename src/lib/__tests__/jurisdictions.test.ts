@@ -8,6 +8,8 @@ import {
   getJurisdictionLabel,
   getJurisdictionConfig,
   getAvailableJurisdictions,
+  isEnglandWales,
+  getStandardsOptions,
   type Jurisdiction,
 } from '../jurisdictions';
 
@@ -404,5 +406,127 @@ describe('Regression tests for jurisdiction content', () => {
     expect(scotHasADB).toBe(false);
     expect(niHasADB).toBe(false);
     expect(ieHasADB).toBe(false);
+  });
+
+  it('only england_wales should reference Approved Document B in regulatory framework text', () => {
+    const ewConfig = getJurisdictionConfig('england_wales');
+    const scotConfig = getJurisdictionConfig('scotland');
+    const niConfig = getJurisdictionConfig('northern_ireland');
+    const ieConfig = getJurisdictionConfig('ireland');
+
+    const ewHasADB = ewConfig.regulatoryFrameworkText.includes('Approved Document B');
+    const scotHasADB = scotConfig.regulatoryFrameworkText.includes('Approved Document B');
+    const niHasADB = niConfig.regulatoryFrameworkText.includes('Approved Document B');
+    const ieHasADB = ieConfig.regulatoryFrameworkText.includes('Approved Document B');
+
+    expect(ewHasADB).toBe(false);
+    expect(scotHasADB).toBe(false);
+    expect(niHasADB).toBe(false);
+    expect(ieHasADB).toBe(false);
+  });
+
+  it('only england_wales should reference Approved Document B in responsible person duties', () => {
+    const ewConfig = getJurisdictionConfig('england_wales');
+    const scotConfig = getJurisdictionConfig('scotland');
+    const niConfig = getJurisdictionConfig('northern_ireland');
+    const ieConfig = getJurisdictionConfig('ireland');
+
+    const ewHasADB = ewConfig.responsiblePersonDuties.some(duty => duty.includes('Approved Document B'));
+    const scotHasADB = scotConfig.responsiblePersonDuties.some(duty => duty.includes('Approved Document B'));
+    const niHasADB = niConfig.responsiblePersonDuties.some(duty => duty.includes('Approved Document B'));
+    const ieHasADB = ieConfig.responsiblePersonDuties.some(duty => duty.includes('Approved Document B'));
+
+    expect(ewHasADB).toBe(false);
+    expect(scotHasADB).toBe(false);
+    expect(niHasADB).toBe(false);
+    expect(ieHasADB).toBe(false);
+  });
+
+  it('only england_wales should reference Approved Document B in references', () => {
+    const ewConfig = getJurisdictionConfig('england_wales');
+    const scotConfig = getJurisdictionConfig('scotland');
+    const niConfig = getJurisdictionConfig('northern_ireland');
+    const ieConfig = getJurisdictionConfig('ireland');
+
+    const ewHasADB = ewConfig.references.some(ref => ref.includes('Approved Document B'));
+    const scotHasADB = scotConfig.references.some(ref => ref.includes('Approved Document B'));
+    const niHasADB = niConfig.references.some(ref => ref.includes('Approved Document B'));
+    const ieHasADB = ieConfig.references.some(ref => ref.includes('Approved Document B'));
+
+    expect(ewHasADB).toBe(false);
+    expect(scotHasADB).toBe(false);
+    expect(niHasADB).toBe(false);
+    expect(ieHasADB).toBe(false);
+  });
+});
+
+describe('Jurisdiction-aware standards options', () => {
+  it('should include Approved Document B for england_wales', () => {
+    const options = getStandardsOptions('england_wales');
+    expect(options).toContain('Approved Document B');
+    expect(options).not.toContain('Applicable building regulations and guidance');
+  });
+
+  it('should NOT include Approved Document B for scotland', () => {
+    const options = getStandardsOptions('scotland');
+    expect(options).not.toContain('Approved Document B');
+    expect(options).toContain('Applicable building regulations and guidance');
+  });
+
+  it('should NOT include Approved Document B for northern_ireland', () => {
+    const options = getStandardsOptions('northern_ireland');
+    expect(options).not.toContain('Approved Document B');
+    expect(options).toContain('Applicable building regulations and guidance');
+  });
+
+  it('should NOT include Approved Document B for ireland', () => {
+    const options = getStandardsOptions('ireland');
+    expect(options).not.toContain('Approved Document B');
+    expect(options).toContain('Applicable building regulations and guidance');
+  });
+
+  it('should default to england_wales when jurisdiction is null', () => {
+    const options = getStandardsOptions(null);
+    expect(options).toContain('Approved Document B');
+  });
+
+  it('should default to england_wales when jurisdiction is undefined', () => {
+    const options = getStandardsOptions(undefined);
+    expect(options).toContain('Approved Document B');
+  });
+});
+
+describe('isEnglandWales helper', () => {
+  it('should return true for england_wales', () => {
+    expect(isEnglandWales('england_wales')).toBe(true);
+  });
+
+  it('should return false for scotland', () => {
+    expect(isEnglandWales('scotland')).toBe(false);
+  });
+
+  it('should return false for northern_ireland', () => {
+    expect(isEnglandWales('northern_ireland')).toBe(false);
+  });
+
+  it('should return false for ireland', () => {
+    expect(isEnglandWales('ireland')).toBe(false);
+  });
+
+  it('should default to true for null (defaults to england_wales)', () => {
+    expect(isEnglandWales(null)).toBe(true);
+  });
+
+  it('should default to true for undefined (defaults to england_wales)', () => {
+    expect(isEnglandWales(undefined)).toBe(true);
+  });
+
+  it('should normalize legacy UK codes', () => {
+    expect(isEnglandWales('UK')).toBe(true);
+    expect(isEnglandWales('UK-EN')).toBe(true);
+  });
+
+  it('should normalize Ireland code', () => {
+    expect(isEnglandWales('IE')).toBe(false);
   });
 });

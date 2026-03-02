@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { canAccessRiskEngineering } from '../../utils/entitlements';
 import { updateDocumentMeta } from '../../lib/documents/updateDocumentMeta';
+import { getStandardsOptions } from '../../lib/jurisdictions';
 
 interface CreateDocumentModalProps {
   onClose: () => void;
@@ -54,17 +55,6 @@ const MODULE_SKELETONS = {
     'DSEAR_11_EXPLOSION_EMERGENCY_RESPONSE',
   ],
 };
-
-const STANDARDS_OPTIONS = [
-  'BS 9999:2017',
-  'BS 9991:2015',
-  'Approved Document B',
-  'BS 5588 (legacy)',
-  'BS 7974 (fire engineering)',
-  'PD 7974',
-  'NFPA 101',
-  'Other',
-];
 
 export default function CreateDocumentModal({ onClose, onDocumentCreated, allowedTypes }: CreateDocumentModalProps) {
   const navigate = useNavigate();
@@ -461,7 +451,7 @@ export default function CreateDocumentModal({ onClose, onDocumentCreated, allowe
               Standards & References
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {STANDARDS_OPTIONS.map((standard) => (
+              {getStandardsOptions(formData.jurisdiction).map((standard) => (
                 <label
                   key={standard}
                   className="flex items-center gap-2 px-3 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer"

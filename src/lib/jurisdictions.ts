@@ -226,3 +226,30 @@ export function getAvailableJurisdictions(): Array<{ value: Jurisdiction; label:
     { value: 'ireland', label: 'Republic of Ireland' },
   ];
 }
+
+/**
+ * Check if jurisdiction is England & Wales
+ * Used for conditional display of England/Wales-specific content like "Approved Document B"
+ */
+export function isEnglandWales(jurisdiction: Jurisdiction | string | null | undefined): boolean {
+  return normalizeJurisdiction(jurisdiction) === 'england_wales';
+}
+
+/**
+ * Get jurisdiction-appropriate standards list
+ * Replaces "Approved Document B" with neutral alternatives for non-EW jurisdictions
+ */
+export function getStandardsOptions(jurisdiction: Jurisdiction | string | null | undefined): string[] {
+  const isEW = isEnglandWales(jurisdiction);
+
+  return [
+    'BS 9999:2017',
+    'BS 9991:2015',
+    isEW ? 'Approved Document B' : 'Applicable building regulations and guidance',
+    'BS 5588 (legacy)',
+    'BS 7974 (fire engineering)',
+    'PD 7974',
+    'NFPA 101',
+    'Other',
+  ];
+}

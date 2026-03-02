@@ -3,6 +3,7 @@ import { computeExplosionSummary } from '../dsear/criticalityEngine';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import { getModuleName } from '../modules/moduleCatalog';
 import { normalizeJurisdiction, getJurisdictionLabel } from '../jurisdictions';
+import { detectInfoGapsForModule } from '../../utils/infoGapQuickActions';
 import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
@@ -95,12 +96,14 @@ interface BuildPdfOptions {
 function drawModuleSection(
   page: PDFPage,
   module: ModuleInstance,
+  document: Document,
   font: any,
   fontBold: any,
   yPosition: number,
   pdfDoc: PDFDocument,
   isDraft: boolean,
-  totalPages: PDFPage[]
+  totalPages: PDFPage[],
+  contextDocumentType?: 'FRA' | 'DSEAR'
 ): { page: PDFPage; yPosition: number } {
   // Ensure space for module header
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
@@ -241,6 +244,85 @@ function drawModuleSection(
         yPosition -= 11;
         itemCount++;
       }
+    }
+  }
+
+  // Info-gap quick actions detection
+  const detection = detectInfoGapsForModule(
+    module,
+    {
+      responsible_person: document.responsible_person || undefined,
+      standards_selected: document.standards_selected || [],
+      document_type: contextDocumentType || document.document_type,
+      jurisdiction: document.jurisdiction
+    },
+    {
+      documentType: contextDocumentType || document.document_type || 'FRA',
+      jurisdiction: document.jurisdiction || 'GB-ENG'
+    }
+  );
+
+  if (detection.hasInfoGap && detection.quickActions.length > 0) {
+    ({ page, yPosition } = ensurePageSpace(80, page, yPosition, pdfDoc, isDraft, totalPages));
+
+    // Info gap heading
+    page.drawText('Information Gaps:', {
+      x: MARGIN,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.9, 0.5, 0.1),
+    });
+    yPosition -= 16;
+
+    // Render quick actions
+    for (const action of detection.quickActions) {
+      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
+
+      // Priority badge
+      const priorityColor = action.priority === 'P2' ? rgb(0.9, 0.3, 0.1) : rgb(0.95, 0.7, 0.2);
+      page.drawRectangle({
+        x: MARGIN + 10,
+        y: yPosition - 2,
+        width: 24,
+        height: 14,
+        color: priorityColor,
+      });
+      page.drawText(action.priority, {
+        x: MARGIN + 14,
+        y: yPosition,
+        size: 8,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+      });
+
+      // Action text
+      const actionLines = wrapText(action.action, CONTENT_WIDTH - 50, 9, font);
+      for (let i = 0; i < Math.min(actionLines.length, 2); i++) {
+        page.drawText(sanitizePdfText(actionLines[i]), {
+          x: MARGIN + 40,
+          y: yPosition - (i * 11),
+          size: 9,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+      }
+      yPosition -= Math.min(actionLines.length, 2) * 11 + 6;
+
+      // Reason (smaller, indented)
+      const reasonLines = wrapText(`Why: ${action.reason}`, CONTENT_WIDTH - 50, 8, font);
+      for (let i = 0; i < Math.min(reasonLines.length, 2); i++) {
+        ({ page, yPosition } = ensurePageSpace(12, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(sanitizePdfText(reasonLines[i]), {
+          x: MARGIN + 40,
+          y: yPosition,
+          size: 8,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+        yPosition -= 10;
+      }
+      yPosition -= 8;
     }
   }
 
@@ -452,16 +534,18 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
     // Render each FRA module
     for (const module of sortedFraModules) {
-      yPosition = drawModuleSection(
+      ({ page, yPosition } = drawModuleSection(
         page,
         module,
+        document,
         font,
         fontBold,
         yPosition,
         pdfDoc,
         isDraft,
-        totalPages
-      );
+        totalPages,
+        'FRA'
+      ));
     }
   }
 
@@ -503,16 +587,18 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
     // Render each DSEAR module
     for (const module of sortedDsearModules) {
-      yPosition = drawModuleSection(
+      ({ page, yPosition } = drawModuleSection(
         page,
         module,
+        document,
         font,
         fontBold,
         yPosition,
         pdfDoc,
         isDraft,
-        totalPages
-      );
+        totalPages,
+        'DSEAR'
+      ));
     }
   }
 

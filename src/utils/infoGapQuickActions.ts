@@ -19,6 +19,35 @@ export interface InfoGapContext {
   framework?: 'FRA' | 'DSEAR' | 'COMBINED';
 }
 
+/**
+ * Wrapper API for detectInfoGaps that accepts module and document objects.
+ * Provides cleaner interface for common use cases while maintaining backward compatibility.
+ */
+export function detectInfoGapsForModule(
+  module: { module_key: string; data: Record<string, any>; outcome: string | null },
+  document?: {
+    responsible_person?: string;
+    standards_selected?: string[];
+    document_type?: string;
+    jurisdiction?: string
+  },
+  context?: InfoGapContext
+): InfoGapDetection {
+  // Build effective context with proper defaults
+  const effectiveContext: InfoGapContext = context || {
+    documentType: document?.document_type || 'FRA',
+    jurisdiction: document?.jurisdiction || 'GB-ENG',
+  };
+
+  return detectInfoGaps(
+    module.module_key,
+    module.data,
+    module.outcome,
+    document,
+    effectiveContext
+  );
+}
+
 export function detectInfoGaps(
   moduleKey: string,
   moduleData: Record<string, any>,

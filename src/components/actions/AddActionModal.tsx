@@ -19,8 +19,6 @@ interface AddActionModalProps {
   onClose: () => void;
   onActionCreated: () => void;
   defaultAction?: string;
-  defaultLikelihood?: number;
-  defaultImpact?: number;
   source?: 'manual' | 'info_gap' | 'recommendation' | 'system';
   sourceModuleKey?: string;
 }
@@ -51,8 +49,6 @@ export default function AddActionModal({
   onClose,
   onActionCreated,
   defaultAction = '',
-  defaultLikelihood = 3,
-  defaultImpact = 3,
   source,
   sourceModuleKey,
 }: AddActionModalProps) {
@@ -63,6 +59,7 @@ export default function AddActionModal({
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
   const [documentType, setDocumentType] = useState<string | null>(null);
+  const [enabledModules, setEnabledModules] = useState<string[]>([]);
   const [moduleInstances, setModuleInstances] = useState<any[]>([]);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
   const [userEditedActionText, setUserEditedActionText] = useState(false);
@@ -109,22 +106,21 @@ export default function AddActionModal({
       try {
         const { data: doc, error: docError } = await supabase
           .from('documents')
-          .select('document_type')
+          .select('document_type, enabled_modules')
           .eq('id', documentId)
           .single();
 
         if (docError) throw docError;
         setDocumentType(doc.document_type);
+        setEnabledModules(doc.enabled_modules || [doc.document_type]);
 
-        if (doc.document_type === 'DSEAR') {
-          const { data: modules, error: modulesError } = await supabase
-            .from('module_instances')
-            .select('module_key, outcome, assessor_notes, data')
-            .eq('document_id', documentId);
+        const { data: modules, error: modulesError } = await supabase
+          .from('module_instances')
+          .select('module_key, outcome, assessor_notes, data')
+          .eq('document_id', documentId);
 
-          if (modulesError) throw modulesError;
-          setModuleInstances(modules || []);
-        }
+        if (modulesError) throw modulesError;
+        setModuleInstances(modules || []);
       } catch (error) {
         console.error('Error fetching context:', error);
       } finally {
@@ -142,6 +138,64 @@ export default function AddActionModal({
     storeys: 2,
   };
 
+  // Helper: Compute explosion trigger severity from state
+  const computeExplosionTriggerSeverity = (): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'NONE' => {
+    const hasCritical = formData.noHac || formData.zone0_20Present;
+    const hasHigh = formData.zone1_21Present || formData.exEquipNotConfirmed ||
+                    formData.hotWorkControlsWeak || formData.staticBondingMissing;
+    const hasModerate = formData.ventilationInadequate || formData.dsrIncomplete;
+    const hasLow = formData.dustHousekeeping;
+
+    if (hasCritical) return 'CRITICAL';
+    if (hasHigh) return 'HIGH';
+    if (hasModerate) return 'MODERATE';
+    if (hasLow) return 'LOW';
+    return 'NONE';
+  };
+
+  // Helper: Build human-readable trigger text
+  const buildTriggerText = (): string => {
+    const fireLabels: string[] = [];
+    const explosionLabels: string[] = [];
+
+    // Collect selected FRA triggers
+    const FRA_TRIGGER_MAP = [
+      { key: 'finalExitLocked', label: 'Final exit locked/secured' },
+      { key: 'finalExitObstructed', label: 'Final exit obstructed' },
+      { key: 'noFireDetection', label: 'No fire detection system' },
+      { key: 'detectionInadequateCoverage', label: 'Detection coverage inadequate' },
+      { key: 'noEmergencyLighting', label: 'No emergency lighting' },
+      { key: 'seriousCompartmentationFailure', label: 'Serious compartmentation failure' },
+      { key: 'singleStairCompromised', label: 'Single stair compromised' },
+      { key: 'highRiskRoomToEscapeRoute', label: 'High-risk room to escape route' },
+      { key: 'noFraEvidenceOrReview', label: 'No FRA evidence/overdue review' },
+    ];
+
+    for (const trigger of FRA_TRIGGER_MAP) {
+      if (formData[trigger.key as keyof typeof formData]) {
+        fireLabels.push(trigger.label);
+      }
+    }
+
+    // Collect selected DSEAR triggers
+    for (const trigger of DSEAR_TRIGGERS) {
+      if (formData[trigger.id as keyof typeof formData]) {
+        explosionLabels.push(trigger.label);
+      }
+    }
+
+    // Build combined text
+    const parts: string[] = [];
+    if (fireLabels.length > 0) {
+      parts.push(`Fire triggers: ${fireLabels.join(', ')}`);
+    }
+    if (explosionLabels.length > 0) {
+      parts.push(`Explosion triggers: ${explosionLabels.join(', ')}`);
+    }
+
+    return parts.join('; ');
+  };
+
   // Build action input for severity engine
   const actionInput: FraActionInput = {
     category: formData.category,
@@ -157,48 +211,79 @@ export default function AddActionModal({
     assessorMarkedCritical: formData.escalateToP1,
   };
 
-  // Derive priority from appropriate severity engine based on document type
+  // Derive priority from appropriate severity engine(s) - deterministic combined logic
   let priorityBand: string;
   let severityTier: string;
   let triggerId: string;
   let triggerText: string;
 
-  if (documentType === 'DSEAR') {
-    // Check for manual DSEAR triggers to determine priority
-    const hasCriticalTrigger = formData.noHac || formData.zone0_20Present;
-    const hasHighTrigger = formData.zone1_21Present || formData.exEquipNotConfirmed ||
-                           formData.hotWorkControlsWeak || formData.staticBondingMissing;
-    const hasModerateTrigger = formData.ventilationInadequate || formData.dsrIncomplete ||
-                               formData.dustHousekeeping;
+  // Helper: Map severity to priority band
+  const severityToPriority = (severity: string): { priority: string; tier: string } => {
+    switch (severity) {
+      case 'CRITICAL':
+        return { priority: 'P1', tier: 'T4' };
+      case 'HIGH':
+        return { priority: 'P2', tier: 'T3' };
+      case 'MODERATE':
+        return { priority: 'P3', tier: 'T2' };
+      case 'LOW':
+        return { priority: 'P4', tier: 'T1' };
+      default:
+        return { priority: 'P4', tier: 'T1' };
+    }
+  };
 
-    if (hasCriticalTrigger) {
-      priorityBand = 'P1';
-      severityTier = 'T4';
-      triggerId = 'EX-MANUAL-CRITICAL';
-      triggerText = 'Critical explosion hazard trigger identified by assessor.';
-    } else if (hasHighTrigger) {
-      priorityBand = 'P2';
-      severityTier = 'T3';
-      triggerId = 'EX-MANUAL-HIGH';
-      triggerText = 'High explosion hazard trigger identified by assessor.';
-    } else if (hasModerateTrigger) {
-      priorityBand = 'P3';
-      severityTier = 'T2';
-      triggerId = 'EX-MANUAL-MODERATE';
-      triggerText = 'Moderate explosion hazard trigger identified by assessor.';
+  // Helper: Compare severities and return highest
+  const getHighestSeverity = (sev1: string, sev2: string): string => {
+    const rank = { CRITICAL: 4, HIGH: 3, MODERATE: 2, LOW: 1, NONE: 0 };
+    return (rank[sev1 as keyof typeof rank] || 0) >= (rank[sev2 as keyof typeof rank] || 0) ? sev1 : sev2;
+  };
+
+  // Determine which frameworks are enabled
+  const hasFra = enabledModules.includes('FRA');
+  const hasDsear = enabledModules.includes('DSEAR');
+
+  // Compute severity from both engines if applicable
+  let fraSeverity = 'NONE';
+  let dsearSeverity = 'NONE';
+
+  if (hasFra) {
+    const severityResult = deriveSeverity(actionInput, fraContext);
+    // Map FRA tier to severity name
+    fraSeverity = severityResult.tier === 'T4' ? 'CRITICAL'
+                : severityResult.tier === 'T3' ? 'HIGH'
+                : severityResult.tier === 'T2' ? 'MODERATE'
+                : 'LOW';
+  }
+
+  if (hasDsear) {
+    dsearSeverity = computeExplosionTriggerSeverity();
+  }
+
+  // Choose final severity as highest of both
+  const finalSeverity = getHighestSeverity(fraSeverity, dsearSeverity);
+  const severityMapping = severityToPriority(finalSeverity);
+  priorityBand = severityMapping.priority;
+  severityTier = severityMapping.tier;
+
+  // Build trigger_id and trigger_text
+  const customTriggerText = buildTriggerText();
+
+  if (customTriggerText) {
+    // Use custom trigger text with selected labels
+    triggerText = customTriggerText;
+    // Set trigger_id based on final severity and source
+    if (finalSeverity === dsearSeverity && dsearSeverity !== 'NONE') {
+      triggerId = `EX-MANUAL-${finalSeverity}`;
+    } else if (finalSeverity === fraSeverity && fraSeverity !== 'NONE') {
+      triggerId = `FRA-MANUAL-${finalSeverity}`;
     } else {
-      // Default to low priority
-      priorityBand = 'P4';
-      severityTier = 'T1';
-      triggerId = 'EX-MANUAL-LOW';
-      triggerText = 'Advisory improvement identified during DSEAR assessment.';
+      triggerId = `MANUAL-${finalSeverity}`;
     }
   } else {
-    const severityResult = deriveSeverity(actionInput, fraContext);
-    priorityBand = severityResult.priority;
-    severityTier = severityResult.tier;
-    triggerId = severityResult.triggerId;
-    triggerText = severityResult.triggerText;
+    // No triggers selected - use defaults
+    triggerId = 'MANUAL-LOW';
+    triggerText = '';
   }
 
   // Allow manual escalation to P1 with justification
@@ -600,23 +685,14 @@ export default function AddActionModal({
               Critical Triggers (check if applicable)
             </label>
             <div className="space-y-2">
-              {documentType === 'DSEAR' ? (
+              {/* Show FRA triggers if FRA is enabled */}
+              {hasFra && (
                 <>
-                  {/* DSEAR Triggers */}
-                  {DSEAR_TRIGGERS.map((trigger) => (
-                    <label key={trigger.id} className="flex items-start gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData[trigger.id as keyof typeof formData] as boolean}
-                        onChange={(e) => setFormData({ ...formData, [trigger.id]: e.target.checked })}
-                        className="mt-1"
-                      />
-                      <span className="text-sm text-neutral-700">{trigger.label}</span>
-                    </label>
-                  ))}
-                </>
-              ) : (
-                <>
+                  {hasDsear && (
+                    <div className="text-xs font-semibold text-neutral-600 uppercase tracking-wider mb-2 mt-2">
+                      Fire Safety Triggers
+                    </div>
+                  )}
                   {/* FRA Triggers */}
                   {(formData.category === 'MeansOfEscape' || formData.category === 'Other') && (
                     <>
@@ -713,6 +789,29 @@ export default function AddActionModal({
                       <span className="text-sm text-neutral-700">No FRA evidence / overdue review</span>
                     </label>
                   )}
+                </>
+              )}
+
+              {/* Show DSEAR triggers if DSEAR is enabled */}
+              {hasDsear && (
+                <>
+                  {hasFra && (
+                    <div className="text-xs font-semibold text-neutral-600 uppercase tracking-wider mb-2 mt-4">
+                      Explosion Hazard Triggers
+                    </div>
+                  )}
+                  {/* DSEAR Triggers */}
+                  {DSEAR_TRIGGERS.map((trigger) => (
+                    <label key={trigger.id} className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData[trigger.id as keyof typeof formData] as boolean}
+                        onChange={(e) => setFormData({ ...formData, [trigger.id]: e.target.checked })}
+                        className="mt-1"
+                      />
+                      <span className="text-sm text-neutral-700">{trigger.label}</span>
+                    </label>
+                  ))}
                 </>
               )}
             </div>

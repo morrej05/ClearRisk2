@@ -391,7 +391,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   totalPages.push(page);
   yPosition = PAGE_TOP_Y;
 
-  yPosition = drawCombinedExecutiveSummary(
+  ({ page, yPosition } = drawCombinedExecutiveSummary(
     page,
     moduleInstances,
     actions,
@@ -401,7 +401,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     pdfDoc,
     isDraft,
     totalPages
-  );
+  ));
 
   // FRA section modules - render in order
   const FRA_MODULE_ORDER = [
@@ -520,7 +520,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   page = addNewPage(pdfDoc, isDraft, totalPages).page;
   yPosition = PAGE_TOP_Y;
 
-  yPosition = drawCombinedActionRegister(
+  ({ page, yPosition } = drawCombinedActionRegister(
     page,
     actions,
     actionRatings,
@@ -531,7 +531,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     pdfDoc,
     isDraft,
     totalPages
-  );
+  ));
 
   // Apply watermarks if needed
   if (isDraft) {
@@ -560,7 +560,7 @@ function drawCombinedExecutiveSummary(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
+): { page: PDFPage; yPosition: number } {
   page.drawText(sanitizePdfText('Executive Summary'), {
     x: MARGIN,
     y: yPosition,
@@ -687,19 +687,17 @@ function drawCombinedExecutiveSummary(
     });
     yPosition -= 18;
 
-    criticalActions.forEach((action, idx) => {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
+    for (let idx = 0; idx < criticalActions.length; idx++) {
+      const action = criticalActions[idx];
+      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
 
       const truncated = action.trigger_text!.length > 100
         ? action.trigger_text!.substring(0, 97) + '...'
         : action.trigger_text!;
 
       const lines = wrapText(`${idx + 1}. ${truncated}`, CONTENT_WIDTH - 20, 9, font);
-      lines.slice(0, 2).forEach(line => {
+      for (const line of lines.slice(0, 2)) {
+        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
         page.drawText(sanitizePdfText(line), {
           x: MARGIN + 20,
           y: yPosition,
@@ -708,12 +706,12 @@ function drawCombinedExecutiveSummary(
           color: rgb(0.3, 0.3, 0.3),
         });
         yPosition -= 12;
-      });
+      }
       yPosition -= 3;
-    });
+    }
   }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 function drawCombinedActionRegister(
@@ -727,7 +725,7 @@ function drawCombinedActionRegister(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[]
-): number {
+): { page: PDFPage; yPosition: number } {
   page.drawText(sanitizePdfText('Action Register (Fire + Explosion)'), {
     x: MARGIN,
     y: yPosition,
@@ -745,7 +743,7 @@ function drawCombinedActionRegister(
       font: font,
       color: rgb(0.5, 0.5, 0.5),
     });
-    return yPosition - 20;
+    return { page, yPosition: yPosition - 20 };
   }
 
   // Deduplicate actions
@@ -770,12 +768,8 @@ function drawCombinedActionRegister(
     return 0;
   });
 
-  sortedActions.forEach((action) => {
-    if (yPosition < 120) {
-      const result = addNewPage(pdfDoc, isDraft, totalPages);
-      page = result.page;
-      yPosition = PAGE_TOP_Y;
-    }
+  for (const action of sortedActions) {
+    ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
     const rating = actionRatings.find(r => r.action_id === action.id);
     const lxi = rating ? `L${rating.likelihood}xI${rating.impact}` : '-';
@@ -813,11 +807,7 @@ function drawCombinedActionRegister(
       );
 
       for (const line of triggerLines.slice(0, 2)) {
-        if (yPosition < MARGIN + 50) {
-          const result = addNewPage(pdfDoc, isDraft, totalPages);
-          page = result.page;
-          yPosition = PAGE_TOP_Y;
-        }
+        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
 
         page.drawText(sanitizePdfText(line), {
           x: MARGIN + 20,
@@ -831,9 +821,9 @@ function drawCombinedActionRegister(
     }
 
     yPosition -= 5;
-  });
+  }
 
-  return yPosition;
+  return { page, yPosition };
 }
 
 function deduplicateActions(actions: Action[], moduleInstances: ModuleInstance[]): Action[] {

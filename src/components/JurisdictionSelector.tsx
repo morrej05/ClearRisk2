@@ -12,7 +12,7 @@ import {
 interface JurisdictionSelectorProps {
   documentId: string;
   currentJurisdiction: Jurisdiction | string;
-  documentType?: string;
+  product?: string;
   status: 'draft' | 'in_review' | 'approved' | 'issued';
   onUpdate?: (jurisdiction: Jurisdiction | string) => void;
   className?: string;
@@ -35,15 +35,24 @@ export function JurisdictionSelector({
   });
 
   const normalizeForContext = (value: Jurisdiction | string) =>
-    isDsearContext ? normalizeDsearJurisdiction(value) : normalizeJurisdiction(value);
+   String(isDsearContext ? normalizeDsearJurisdiction(value) : normalizeJurisdiction(value));
 
-  const [jurisdiction, setJurisdiction] = useState<string>(() => String(normalizeForContext(currentJurisdiction)));
+  const [jurisdiction, setJurisdiction] = useState<string>(() => normalizeForContext(currentJurisdiction));
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    setJurisdiction(String(normalizeForContext(currentJurisdiction)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDsearContext, currentJurisdiction]);
 
+const availableJurisdictions = isDsearContext
+    ? getDsearJurisdictionOptions()
+    : getAvailableJurisdictions();
+
+  const safeValue = availableJurisdictions.some((option) => option.value === jurisdiction)
+    ? jurisdiction
+    : (availableJurisdictions[0]?.value ?? '');
+  
+  useEffect(() => {
+    if (saving) return;
+    setJurisdiction(normalizeForContext(currentJurisdiction));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentJurisdiction, isDsearContext, saving]);
 
   const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'org_admin';
 
@@ -57,21 +66,11 @@ export function JurisdictionSelector({
     : (status === 'in_review' || status === 'approved')
     ? 'Only admins can change jurisdiction for documents in review or approved status.'
     : '';
-
-  console.log('[JurisdictionSelector]', {
-  documentType,
-  isDsearContext,
-  currentJurisdiction,
-});
-
+  
    const handleChange = async (rawValue: string) => {
     if (isDisabled || rawValue === jurisdiction) return;
 
-    const newJurisdiction = String(
-      isDsearContext
-        ? normalizeDsearJurisdiction(rawValue)
-        : normalizeJurisdiction(rawValue)
-    );
+    const newJurisdiction = normalizeForContext(rawValue);
 
     setSaving(true);
     try {
@@ -83,7 +82,7 @@ export function JurisdictionSelector({
       if (error) throw error;
 
       setJurisdiction(newJurisdiction);
-      if (onUpdate) onUpdate(newJurisdiction);
+      onUpdate?.(newJurisdiction);
     } catch (error) {
       console.error('Failed to update jurisdiction:', error);
       alert('Failed to update jurisdiction. Please try again.');
@@ -92,8 +91,6 @@ export function JurisdictionSelector({
     }
   };
 
-  const availableJurisdictions = isDsearContext ? getDsearJurisdictionOptions() : getAvailableJurisdictions();
-
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       <label className="text-sm font-medium text-gray-700">
@@ -101,7 +98,7 @@ export function JurisdictionSelector({
       </label>
       <div className="relative inline-block">
         <select
-          value={jurisdiction}
+          value={safeValue}
           onChange={(e) => handleChange(e.target.value)}
           disabled={isDisabled || saving}
           title={tooltipText}

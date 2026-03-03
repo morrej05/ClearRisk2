@@ -664,9 +664,7 @@ const product = isDsearDoc ? 'DSEAR' : 'GENERIC';
               setDocument((prev) =>
                 prev ? { ...prev, jurisdiction: String(newJurisdiction) } : prev
               );
-              // optionally refetch after (safe but not required)
-              fetchDocument();
-            }}
+              }}
           />
         </div>
       </div>

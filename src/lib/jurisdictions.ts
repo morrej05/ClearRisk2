@@ -267,10 +267,9 @@ export function normalizeDsearJurisdiction(jurisdiction: Jurisdiction | string |
 /**
  * Get available jurisdictions for DSEAR selection
  */
-export function getDsearJurisdictionOptions(): Array<{ value: Jurisdiction; label: string }> {
+export function getDsearJurisdictionOptions() {
   return [
-    { value: 'england_wales', label: 'England & Wales' },
-    { value: 'scotland', label: 'Scotland' },
-    { value: 'northern_ireland', label: 'Northern Ireland' },
+    { value: 'UK', label: 'UK (DSEAR)' },
+    { value: 'EUROPE', label: 'Europe (ATEX)' },
   ];
 }

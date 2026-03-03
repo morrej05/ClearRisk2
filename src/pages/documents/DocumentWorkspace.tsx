@@ -797,7 +797,7 @@ const fetchModules = async () => {
            document.enabled_modules?.some(m => m.startsWith('FRA_') || m.startsWith('FSD_') || m.startsWith('DSEAR_')) ? (
             <JurisdictionSelector
               documentId={document.id}
-              currentJurisdiction={normalizeJurisdiction(document.jurisdiction)}
+              currentJurisdiction={document.jurisdiction}
                documentType={document.document_type}
               status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
               onUpdate={fetchDocument}

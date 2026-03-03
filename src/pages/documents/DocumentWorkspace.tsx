@@ -715,6 +715,10 @@ const fetchModules = async () => {
 
   const isEditable = document.issue_status === 'draft';
 
+  const product =
+  document?.enabled_modules?.some((m) => m.startsWith('DSEAR_'))
+    ? 'DSEAR'
+    : 'GENERIC';
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
       {!isEditable && (
@@ -786,28 +790,27 @@ const fetchModules = async () => {
             </button>
           )}
         </div>
+        
+      return (
         <div className="max-w-[1800px] mx-auto flex items-center justify-between pt-3">
           <SurveyBadgeRow
             status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
-            jurisdiction={normalizeJurisdiction(document.jurisdiction)}
+            jurisdiction={document.jurisdiction}
             enabledModules={document.enabled_modules}
           />
-          {/* Risk Engineering is jurisdiction-neutral - hide selector for pure RE documents */}
+      
           {(document.document_type !== 'RE' && !document.enabled_modules?.includes('RE')) ||
-           document.enabled_modules?.some(m => m.startsWith('FRA_') || m.startsWith('FSD_') || m.startsWith('DSEAR_')) ? (
-            const product =
-            document.enabled_modules?.some(m => m.startsWith('DSEAR_'))
-              ? 'DSEAR'
-              : 'GENERIC';
-             <JurisdictionSelector
+          document.enabled_modules?.some(m => m.startsWith('FRA_') || m.startsWith('FSD_') || m.startsWith('DSEAR_')) ? (
+            <JurisdictionSelector
               documentId={document.id}
               currentJurisdiction={document.jurisdiction}
-               product={product}
+              product={product}
               status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
               onUpdate={fetchDocument}
             />
           ) : null}
         </div>
+      );
       </div>
 
       <div className="flex flex-1 max-w-[1800px] mx-auto w-full relative">

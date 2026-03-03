@@ -565,6 +565,12 @@ export default function DocumentWorkspace() {
   }
 
   const isEditable = document.issue_status === 'draft';
+  const isDsearDoc =
+  document.enabled_modules?.includes('DSEAR') ||
+  document.enabled_modules?.some((m) => m.startsWith('DSEAR_')) ||
+  modules.some((m) => m.module_key?.startsWith('DSEAR_'));
+
+const product = isDsearDoc ? 'DSEAR' : 'GENERIC';
 
   // ✅ THIS is the simple, reliable DSEAR mode switch
   const product = document.document_type === 'DSEAR' ? 'DSEAR' : 'GENERIC';

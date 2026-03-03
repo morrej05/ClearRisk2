@@ -790,27 +790,6 @@ const fetchModules = async () => {
             </button>
           )}
         </div>
-        
-      return (
-        <div className="max-w-[1800px] mx-auto flex items-center justify-between pt-3">
-          <SurveyBadgeRow
-            status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
-            jurisdiction={document.jurisdiction}
-            enabledModules={document.enabled_modules}
-          />
-      
-          {(document.document_type !== 'RE' && !document.enabled_modules?.includes('RE')) ||
-          document.enabled_modules?.some(m => m.startsWith('FRA_') || m.startsWith('FSD_') || m.startsWith('DSEAR_')) ? (
-            <JurisdictionSelector
-              documentId={document.id}
-              currentJurisdiction={document.jurisdiction}
-              product={product}
-              status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
-              onUpdate={fetchDocument}
-            />
-          ) : null}
-        </div>
-      );
       </div>
 
       <div className="flex flex-1 max-w-[1800px] mx-auto w-full relative">

@@ -5,7 +5,6 @@ import {
   Jurisdiction,
   getAvailableJurisdictions,
   getDsearJurisdictionOptions,
-  normalizeDsearJurisdiction,
   normalizeJurisdiction,
 } from '../lib/jurisdictions';
 
@@ -51,8 +50,12 @@ export function JurisdictionSelector({
     [isDsearContext]
   );
 
-  const normalizeForContext = (value: Jurisdiction | string) =>
-    String(isDsearContext ? normalizeDsearJurisdiction(value) : normalizeJurisdiction(value));
+  const normalizeForContext = (value: Jurisdiction | string) => {
+    if (!isDsearContext) return String(normalizeJurisdiction(value));
+
+    const upper = String(value ?? '').toUpperCase();
+    return upper === 'EUROPE' || upper === 'ATEX' ? 'EUROPE' : 'UK';
+  };
 
   // Keep local state aligned with props + ensure the selected value always exists in options
   useEffect(() => {
@@ -88,7 +91,7 @@ export function JurisdictionSelector({
       console.error('Failed to update jurisdiction:', error);
       alert('Failed to update jurisdiction. Please try again.');
 
-      // Revert UI to current persisted value
+      // Revert UI to current persisted value from props
       const normalized = normalizeForContext(currentJurisdiction);
       const exists = availableJurisdictions.some((o) => o.value === normalized);
       setJurisdiction(exists ? normalized : (availableJurisdictions[0]?.value ?? ''));

@@ -20,24 +20,22 @@ interface JurisdictionSelectorProps {
 export function JurisdictionSelector({
   documentId,
   currentJurisdiction,
-  documentType,
+  product,
   status,
   onUpdate,
   className = '',
 }: JurisdictionSelectorProps) {
   const { userProfile } = useAuth();
-  const isDsearContext = documentType === 'DSEAR';
-  
+  const isDsearContext = product === 'DSEAR';
+
   console.log('[JURISDICTION DEBUG]', {
-  product,
-  isDsearContext,
-  currentJurisdiction,
-});
-  
+    product,
+    isDsearContext,
+    currentJurisdiction,
+  });
+
   const normalizeForContext = (value: Jurisdiction | string) =>
-    isDsearContext
-      ? normalizeDsearJurisdiction(value)
-      : normalizeJurisdiction(value);
+    isDsearContext ? normalizeDsearJurisdiction(value) : normalizeJurisdiction(value);
 
   const [jurisdiction, setJurisdiction] = useState<string>(() => String(normalizeForContext(currentJurisdiction)));
   const [saving, setSaving] = useState(false);

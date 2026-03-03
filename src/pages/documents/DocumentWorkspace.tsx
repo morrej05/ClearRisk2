@@ -572,9 +572,6 @@ export default function DocumentWorkspace() {
 
 const product = isDsearDoc ? 'DSEAR' : 'GENERIC';
 
-  // ✅ THIS is the simple, reliable DSEAR mode switch
-  const product = document.document_type === 'DSEAR' ? 'DSEAR' : 'GENERIC';
-
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
       {!isEditable && (

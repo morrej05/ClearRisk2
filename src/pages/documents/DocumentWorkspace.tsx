@@ -693,7 +693,12 @@ const product = isDsearDoc ? 'DSEAR' : 'GENERIC';
                 initialAiSummary={document.executive_summary_ai}
                 initialAuthorSummary={document.executive_summary_author}
                 initialMode={(document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'ai'}
-                onUpdate={fetchDocument}
+                onUpdate={(newJurisdiction) => {
+                  setDocument((prev) =>
+                    prev ? { ...prev, jurisdiction: String(newJurisdiction) } : prev
+                  );
+                  fetchDocument();
+                }}
               />
             )}
 

@@ -716,7 +716,7 @@ const fetchModules = async () => {
   const isEditable = document.issue_status === 'draft';
 
   const product =
-  document?.enabled_modules?.some((m) => m.startsWith('DSEAR_'))
+  document.document_type === 'DSEAR' || document.enabled_modules?.includes('DSEAR')
     ? 'DSEAR'
     : 'GENERIC';
   return (

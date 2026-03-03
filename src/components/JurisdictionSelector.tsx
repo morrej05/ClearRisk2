@@ -79,17 +79,23 @@ export function JurisdictionSelector({
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('documents')
-        .update({ jurisdiction: newJurisdiction })
-        .eq('id', documentId);
+      const { data, error } = await supabase
+  .from('documents')
+  .update({ jurisdiction: newJurisdiction })
+  .eq('id', documentId)
+  .select('id, jurisdiction')
+  .single();
 
-      if (error) throw error;
+if (error) throw error;
 
       onUpdate?.(newJurisdiction);
     } catch (error) {
       console.error('Failed to update jurisdiction:', error);
-      alert('Failed to update jurisdiction. Please try again.');
+      alert(
+  `Failed to update jurisdiction: ${
+    error instanceof Error ? error.message : JSON.stringify(error)
+  }`
+);
 
       // Revert UI to current persisted value from props
       const normalized = normalizeForContext(currentJurisdiction);

@@ -1,14 +1,21 @@
 import { AlertCircle } from 'lucide-react';
-import { type Jurisdiction, getJurisdictionLabel } from '../lib/jurisdictions';
+import { getJurisdictionLabel, normalizeJurisdiction } from '../lib/jurisdictions';
 
 interface SurveyBadgeRowProps {
   status: 'draft' | 'in_review' | 'approved' | 'issued';
-  jurisdiction: Jurisdiction | string;
+  jurisdiction: string;
+  product?: string; // 'DSEAR' | 'GENERIC' (keep loose)
   enabledModules?: string[];
   className?: string;
 }
 
-export function SurveyBadgeRow({ status, jurisdiction, enabledModules, className = '' }: SurveyBadgeRowProps) {
+export function SurveyBadgeRow({
+  status,
+  jurisdiction,
+  product,
+  enabledModules,
+  className = '',
+}: SurveyBadgeRowProps) {
   const statusColors = {
     draft: 'bg-gray-100 text-gray-700 border-gray-300',
     in_review: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -23,22 +30,38 @@ export function SurveyBadgeRow({ status, jurisdiction, enabledModules, className
     issued: 'Issued',
   };
 
-  // Get jurisdiction label from canonical adapter
-  const jurisdictionLabel = getJurisdictionLabel(jurisdiction);
+  const isDsear = product === 'DSEAR';
 
-  // Color mapping by normalized jurisdiction
-  const getJurisdictionColor = (jur: string) => {
+  // --- Jurisdiction label ---
+  const dsearJurisdictionLabel =
+    String(jurisdiction).toUpperCase() === 'EUROPE' ? 'Europe (ATEX)' : 'UK (DSEAR)';
+
+  const genericJurisdictionLabel = getJurisdictionLabel(jurisdiction);
+
+  const jurisdictionLabel = isDsear ? dsearJurisdictionLabel : genericJurisdictionLabel;
+
+  // --- Jurisdiction color ---
+  const getGenericJurisdictionColor = (jur: string) => {
     const label = getJurisdictionLabel(jur);
     if (label.includes('Scotland')) return 'bg-blue-100 text-blue-700 border-blue-300';
     if (label.includes('Northern Ireland')) return 'bg-indigo-100 text-indigo-700 border-indigo-300';
-    if (label.includes('Republic') || label.includes('Ireland')) return 'bg-emerald-100 text-emerald-700 border-emerald-300';
+    if (label.includes('Republic') || label.includes('Ireland'))
+      return 'bg-emerald-100 text-emerald-700 border-emerald-300';
     return 'bg-slate-100 text-slate-700 border-slate-300'; // England & Wales
   };
 
-  const jurisdictionColor = getJurisdictionColor(jurisdiction);
+  const getDsearJurisdictionColor = (jur: string) =>
+    String(jur).toUpperCase() === 'EUROPE'
+      ? 'bg-violet-100 text-violet-700 border-violet-300'
+      : 'bg-slate-100 text-slate-700 border-slate-300';
 
-  const hasFRA = enabledModules?.some(m => m.startsWith('FRA_'));
-  const hasFSD = enabledModules?.some(m => m.startsWith('FSD_'));
+  const jurisdictionColor = isDsear
+    ? getDsearJurisdictionColor(jurisdiction)
+    : getGenericJurisdictionColor(normalizeJurisdiction(jurisdiction));
+
+  const hasFRA = enabledModules?.some((m) => m.startsWith('FRA_'));
+  const hasFSD = enabledModules?.some((m) => m.startsWith('FSD_'));
+  const hasDSEAR = enabledModules?.some((m) => m.startsWith('DSEAR_')) || enabledModules?.includes('DSEAR');
   const hasRE = enabledModules?.includes('RE');
 
   let moduleLabel = '';
@@ -53,10 +76,13 @@ export function SurveyBadgeRow({ status, jurisdiction, enabledModules, className
   } else if (hasFSD) {
     moduleLabel = 'FSD';
     moduleColor = 'bg-cyan-100 text-cyan-700 border-cyan-300';
+  } else if (hasDSEAR) {
+    moduleLabel = 'DSEAR';
+    moduleColor = 'bg-amber-100 text-amber-800 border-amber-300';
   }
 
-  // Risk Engineering is jurisdiction-neutral - hide jurisdiction badge for pure RE documents
-  const showJurisdiction = !hasRE || hasFRA || hasFSD;
+  // Hide jurisdiction only for pure RE docs; always show for DSEAR
+  const showJurisdiction = isDsear || !hasRE || hasFRA || hasFSD;
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>

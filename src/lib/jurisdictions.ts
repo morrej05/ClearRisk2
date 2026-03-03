@@ -253,3 +253,24 @@ export function getStandardsOptions(jurisdiction: Jurisdiction | string | null |
     'Other',
   ];
 }
+
+
+/**
+ * Normalize jurisdiction values for DSEAR context
+ * DSEAR is currently constrained to Great Britain jurisdictions.
+ */
+export function normalizeDsearJurisdiction(jurisdiction: Jurisdiction | string | null | undefined): Jurisdiction {
+  const normalized = normalizeJurisdiction(jurisdiction);
+  return normalized === 'ireland' ? 'england_wales' : normalized;
+}
+
+/**
+ * Get available jurisdictions for DSEAR selection
+ */
+export function getDsearJurisdictionOptions(): Array<{ value: Jurisdiction; label: string }> {
+  return [
+    { value: 'england_wales', label: 'England & Wales' },
+    { value: 'scotland', label: 'Scotland' },
+    { value: 'northern_ireland', label: 'Northern Ireland' },
+  ];
+}

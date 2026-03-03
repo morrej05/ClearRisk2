@@ -35,7 +35,7 @@ export function JurisdictionSelector({
   });
 
   const normalizeForContext = (value: Jurisdiction | string) =>
-   String(isDsearContext ? normalizeDsearJurisdiction(value) : normalizeJurisdiction(value));
+  isDsearContext ? normalizeDsearJurisdiction(value) : normalizeJurisdiction(value);
 
   const [jurisdiction, setJurisdiction] = useState<string>(() => normalizeForContext(currentJurisdiction));
   const [saving, setSaving] = useState(false);

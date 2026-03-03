@@ -33,6 +33,9 @@ import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle, drawContentsRow } from './pdfPrimitives';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
 
+const DSEAR_PDF_DEBUG = true;
+void DSEAR_PDF_DEBUG;
+
 interface Document {
   id: string;
   document_type: string;

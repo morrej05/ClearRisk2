@@ -17,7 +17,6 @@ interface JurisdictionSelectorProps {
   onUpdate?: (jurisdiction: Jurisdiction | string) => void;
   className?: string;
 }
-console.log('[JURISDICTION]', { product, isDsearContext, currentJurisdiction });
 export function JurisdictionSelector({
   documentId,
   currentJurisdiction,

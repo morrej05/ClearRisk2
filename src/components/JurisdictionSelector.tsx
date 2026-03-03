@@ -55,6 +55,12 @@ export function JurisdictionSelector({
     ? 'Only admins can change jurisdiction for documents in review or approved status.'
     : '';
 
+  console.log('[JurisdictionSelector]', {
+  documentType,
+  isDsearContext,
+  currentJurisdiction,
+});
+
    const handleChange = async (rawValue: string) => {
     if (isDisabled || rawValue === jurisdiction) return;
 

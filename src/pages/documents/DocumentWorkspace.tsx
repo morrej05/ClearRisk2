@@ -795,7 +795,11 @@ const fetchModules = async () => {
           {/* Risk Engineering is jurisdiction-neutral - hide selector for pure RE documents */}
           {(document.document_type !== 'RE' && !document.enabled_modules?.includes('RE')) ||
            document.enabled_modules?.some(m => m.startsWith('FRA_') || m.startsWith('FSD_') || m.startsWith('DSEAR_')) ? (
-            <JurisdictionSelector
+            const product =
+            document.enabled_modules?.some(m => m.startsWith('DSEAR_'))
+              ? 'DSEAR'
+              : 'GENERIC';
+             <JurisdictionSelector
               documentId={document.id}
               currentJurisdiction={document.jurisdiction}
                documentType={document.document_type}

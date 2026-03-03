@@ -792,8 +792,7 @@ const fetchModules = async () => {
         </div>
         <div className="bg-white border-b border-neutral-200 px-4 py-3">
   <div className="max-w-[1800px] mx-auto flex items-center justify-between">
-    ... existing header ...
-  </div>
+   </div>
 
   <div className="max-w-[1800px] mx-auto flex items-center justify-between pt-3">
     <SurveyBadgeRow

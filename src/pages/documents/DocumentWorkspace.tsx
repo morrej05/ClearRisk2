@@ -660,7 +660,13 @@ const product = isDsearDoc ? 'DSEAR' : 'GENERIC';
             currentJurisdiction={document.jurisdiction}
             product={product}
             status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
-            onUpdate={fetchDocument}
+            onUpdate={(newJurisdiction) => {
+              setDocument((prev) =>
+                prev ? { ...prev, jurisdiction: String(newJurisdiction) } : prev
+              );
+              // optionally refetch after (safe but not required)
+              fetchDocument();
+            }}
           />
         </div>
       </div>

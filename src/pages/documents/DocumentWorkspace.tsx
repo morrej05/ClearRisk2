@@ -651,6 +651,7 @@ const product = isDsearDoc ? 'DSEAR' : 'GENERIC';
             status={document.status as 'draft' | 'in_review' | 'approved' | 'issued'}
             jurisdiction={document.jurisdiction}
             enabledModules={document.enabled_modules}
+            product={product}
           />
 
           {/* Keep your hide logic if you want, but this is the simplest “always show” version */}

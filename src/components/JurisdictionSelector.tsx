@@ -28,6 +28,7 @@ export function JurisdictionSelector({
 }: JurisdictionSelectorProps) {
   const { userProfile } = useAuth();
   const isDsearContext = documentType === 'DSEAR';
+  console.log('[JURISDICTION]', { product, isDsearContext, currentJurisdiction });
 
   const normalizeForContext = (value: Jurisdiction | string) =>
     isDsearContext

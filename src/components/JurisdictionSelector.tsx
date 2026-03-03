@@ -29,10 +29,10 @@ export function JurisdictionSelector({
   const isDsearContext = product === 'DSEAR';
 
   console.log('[JURISDICTION DEBUG]', {
-  documentType,
-  isDsearContext,
-  currentJurisdiction,
-});
+    product,
+    isDsearContext,
+    currentJurisdiction,
+  });
 
   const normalizeForContext = (value: Jurisdiction | string) =>
     isDsearContext ? normalizeDsearJurisdiction(value) : normalizeJurisdiction(value);

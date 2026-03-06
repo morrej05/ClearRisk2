@@ -68,8 +68,17 @@ export default function A2BuildingProfileForm({
     notes: moduleInstance.data.notes || '',
   });
 
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+  const [outcome, setOutcome] = useState(
+  moduleInstance.data?.section_assessment_outcome ??
+  moduleInstance.outcome ??
+  ''
+);
+
+const [assessorNotes, setAssessorNotes] = useState(
+  moduleInstance.data?.section_assessment_notes ??
+  moduleInstance.assessor_notes ??
+  ''
+);
 
   const getSuggestedOutcome = (): { outcome: string; reason: string } | null => {
     const unknowns = [

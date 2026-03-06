@@ -20,7 +20,7 @@ interface RiskRow {
   rationale?: string;
 }
 
-interface ModuleInstance { id: string; outcome: string | null; assessor_notes: string; data: Record<string, any>; }
+interface ModuleInstance { id: string; module_key: string; outcome: string | null; assessor_notes: string; data: Record<string, any>; }
 interface Document { id: string; title: string; }
 interface Props { moduleInstance: ModuleInstance; document: Document; onSaved: () => void; }
 

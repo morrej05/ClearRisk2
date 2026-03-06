@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'reac
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, FileText, Calendar, User, CheckCircle, AlertCircle, Clock, FileDown, Edit3, AlertTriangle, Image, List, FileCheck, Shield, Package, Trash2, PlayCircle, Circle, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { withResolvedSectionAssessment } from '../../utils/moduleAssessment';
 import { getModuleName, getModuleNavigationPath as getModulePath, getReModulesForDocument } from '../../lib/modules/moduleCatalog';
 import { buildModuleSections, getModuleCode, getModuleDisplayName, isDerivedModule } from '../../lib/modules/moduleDisplay';
 import { buildFraPdf } from '../../lib/pdf/buildFraPdf';
@@ -239,7 +240,7 @@ export default function DocumentOverview() {
         ? getReModulesForDocument(moduleInstancesSafe as any[], { documentId: id })
         : moduleInstancesSafe;
 
-      setModules(modulesForUi);
+       setModules(modulesForUi.map(withResolvedSectionAssessment));
     } catch (error) {
       console.error('Error fetching modules:', error);
     } finally {

@@ -18,6 +18,7 @@ interface OutcomePanelProps {
     gapType?: string;
   };
   onScoringChange?: (scoring: { extent?: string; gapType?: string }) => void;
+  optionSet?: 'auto' | 'critical' | 'governance';
 }
 
 function Badge({ children, variant = 'outline' }: { children: React.ReactNode; variant?: 'outline' }) {
@@ -38,11 +39,12 @@ export default function OutcomePanel({
   moduleKey,
   scoringData = {},
   onScoringChange,
+  optionSet = 'auto',
 }: OutcomePanelProps) {
   // Guard against undefined/empty moduleKey to prevent crashes
   const moduleKeySafe = typeof moduleKey === 'string' && moduleKey.length > 0 ? moduleKey : '';
 
-  const outcomeCategory = getModuleOutcomeCategory(moduleKeySafe);
+  const outcomeCategory = optionSet === 'auto' ? getModuleOutcomeCategory(moduleKeySafe) : optionSet;
   const isCritical = outcomeCategory === 'critical';
 
   const criticalOptionsWithRefinedLabels = [

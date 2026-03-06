@@ -109,7 +109,7 @@ export default function DSEAR1DangerousSubstancesForm({
     setIsSaving(true);
     try {
       const payload = sanitizeModuleInstancePayload({
-        data: formData,
+        data: { substances },
         outcome,
         assessor_notes: assessorNotes,
         updated_at: new Date().toISOString(),
@@ -323,6 +323,7 @@ export default function DSEAR1DangerousSubstancesForm({
         onNotesChange={setAssessorNotes}
         onSave={handleSave}
         isSaving={isSaving}
+        moduleKey={moduleInstance.module_key}
         suggestedOutcome={getSuggestedOutcome()}
       />
 

@@ -47,20 +47,20 @@ export default function OutcomePanel({
   const outcomeCategory = optionSet === 'auto' ? getModuleOutcomeCategory(moduleKeySafe) : optionSet;
   const isCritical = outcomeCategory === 'critical';
 
-  const criticalOptionsWithRefinedLabels = [
+  const CRITICAL_OPTIONS = [
   { value: 'compliant', label: 'Compliant' },
   { value: 'minor_def', label: 'Minor Deficiency' },
   { value: 'material_def', label: 'Material Deficiency' },
-  { value: 'information_incomplete', label: 'Information Incomplete' },
-  { value: 'not_applicable', label: 'Not Applicable' },
+  { value: 'info_gap', label: 'Information Gap' },
+  { value: 'na', label: 'Not Applicable' },
 ];
 
-const governanceOptionsWithRefinedLabels = [
-  { value: 'compliant', label: 'Compliant' },
-  { value: 'minor_def', label: 'Minor Deficiency' },
-  { value: 'material_def', label: 'Material Deficiency' },
-  { value: 'information_incomplete', label: 'Information Incomplete' },
-  { value: 'not_applicable', label: 'Not Applicable' },
+const GOVERNANCE_OPTIONS = [
+  { value: 'compliant', label: 'Adequate' },
+  { value: 'minor_def', label: 'Improvement Recommended' },
+  { value: 'material_def', label: 'Significant Improvement Required' },
+  { value: 'info_gap', label: 'Information Incomplete' },
+  { value: 'na', label: 'Not Applicable' },
 ];
 
   const options = isCritical ? criticalOptionsWithRefinedLabels : governanceOptionsWithRefinedLabels;

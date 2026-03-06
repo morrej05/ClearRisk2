@@ -620,7 +620,10 @@ export default function A2BuildingProfileForm({
       <OutcomePanel
         outcome={outcome}
         assessorNotes={assessorNotes}
-        onOutcomeChange={setOutcome}
+        onOutcomeChange={(value) => {
+  console.log('A2 DROPDOWN CHANGED TO:', value);
+  setOutcome(value);
+}}
         onNotesChange={setAssessorNotes}
         onSave={handleSave}
         isSaving={isSaving}

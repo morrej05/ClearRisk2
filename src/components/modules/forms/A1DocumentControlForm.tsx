@@ -92,8 +92,8 @@ export default function A1DocumentControlForm({
     };
   });
 
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+  const [outcome, setOutcome] = useState(resolveSectionAssessmentOutcome(moduleInstance));
+  const [assessorNotes, setAssessorNotes] = useState(resolveSectionAssessmentNotes(moduleInstance));
 
   useEffect(() => {
     setDocumentFields({
@@ -171,6 +171,8 @@ export default function A1DocumentControlForm({
         assessor_notes: assessorNotes,
         updated_at: new Date().toISOString(),
       }, moduleInstance.module_key);
+
+      console.log('MODULE SAVE PAYLOAD', JSON.parse(JSON.stringify(payload)));
 
       const { error: moduleError } = await supabase
         .from('module_instances')
@@ -639,6 +641,7 @@ export default function A1DocumentControlForm({
         onSave={handleSave}
         isSaving={isSaving}
         moduleKey={moduleInstance.module_key}
+        optionSet="governance"
       />
     </div>
   );

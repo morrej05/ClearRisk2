@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { withResolvedSectionAssessment } from '../../utils/moduleAssessment';
 import {
   sortModulesByOrder,
   getModuleKeysForDocType,
@@ -379,7 +380,7 @@ export default function DocumentWorkspace() {
             ? getReModulesForDocument(seededSafe as ModuleInstance[], { documentId: id })
             : seededSafe.filter((m: any) => expectedKeys.includes(m.module_key));
 
-        setModules(sortModulesByOrder(filtered) as ModuleInstance[]);
+        setModules(sortModulesByOrder(filtered).map(withResolvedSectionAssessment) as ModuleInstance[]);
         return;
       }
 
@@ -389,7 +390,7 @@ export default function DocumentWorkspace() {
           ? getReModulesForDocument(existingSafe as ModuleInstance[], { documentId: id })
           : existingSafe.filter((m: any) => expectedKeys.includes(m.module_key));
 
-      setModules(sortModulesByOrder(filtered) as ModuleInstance[]);
+      setModules(sortModulesByOrder(filtered).map(withResolvedSectionAssessment) as ModuleInstance[]);
     } finally {
       setIsModulesLoading(false);
     }

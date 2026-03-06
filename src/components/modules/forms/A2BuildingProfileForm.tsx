@@ -123,6 +123,17 @@ export default function A2BuildingProfileForm({
         updated_at: new Date().toISOString(),
       }, moduleInstance.module_key);
 
+      payload.data = (payload.data && typeof payload.data === 'object') ? payload.data : {};
+
+      if (payload.outcome) {
+        payload.data.section_assessment_outcome = payload.outcome;
+      }
+
+      if (typeof payload.assessor_notes === 'string') {
+        payload.data.section_assessment_notes = payload.assessor_notes;
+      }
+
+
       const { error } = await supabase
         .from('module_instances')
         .update(payload)

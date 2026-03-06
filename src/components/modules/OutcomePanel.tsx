@@ -56,12 +56,12 @@ export default function OutcomePanel({
 ];
 
   const governanceOptionsWithRefinedLabels = [
-    { value: 'Adequate', label: 'Adequate' },
-    { value: 'Improvement Recommended', label: 'Improvement Recommended' },
-    { value: 'Significant Improvement Required', label: 'Significant Improvement Required' },
-    { value: 'Information Incomplete', label: 'Information Incomplete' },
-    { value: 'Not Applicable', label: 'Not Applicable' },
-  ];
+  { value: 'compliant', label: 'Compliant' },
+  { value: 'minor_def', label: 'Minor Deficiency' },
+  { value: 'material_def', label: 'Material Deficiency' },
+  { value: 'information_incomplete', label: 'Information Incomplete' },
+  { value: 'not_applicable', label: 'Not Applicable' },
+];
 
   const options = isCritical ? criticalOptionsWithRefinedLabels : governanceOptionsWithRefinedLabels;
 

@@ -102,14 +102,14 @@ export const MODULE_CATALOG: Record<string, ModuleDefinition> = {
     docTypes: ['FRA', 'FSD', 'DSEAR'],
     order: 2,
     type: 'input',
-    outcomeCategory: 'critical', // Drives scoring inputs, info gaps
+    outcomeCategory: 'governance', // Context/inputs - governance assessment
   },
   A3_PERSONS_AT_RISK: {
     name: 'A3 - Occupancy & Persons at Risk',
     docTypes: ['FRA', 'FSD', 'DSEAR'],
     order: 3,
     type: 'input',
-    outcomeCategory: 'critical', // Drives vulnerability profile
+    outcomeCategory: 'governance', // Context/inputs - governance assessment
   },
   FRA_6_MANAGEMENT_SYSTEMS: {
     name: 'FRA-6 - Management Systems',

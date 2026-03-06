@@ -6,6 +6,7 @@ import { sanitizeModuleInstancePayload } from '../../../utils/modulePayloadSanit
 import { updateDocumentMeta } from '../../../lib/documents/updateDocumentMeta';
 import { useAuth } from '../../../contexts/AuthContext';
 import { normalizeJurisdiction, getStandardsOptions } from '../../../lib/jurisdictions';
+import { resolveSectionAssessmentOutcome, resolveSectionAssessmentNotes } from '../../../utils/moduleAssessment';
 
 interface Document {
   id: string;

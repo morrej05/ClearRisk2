@@ -7,7 +7,7 @@ import AutoExpandTextarea from '../../AutoExpandTextarea';
 import OutcomePanel from '../OutcomePanel';
 import ModuleActions from '../ModuleActions';
 
-interface ModuleInstance { id: string; outcome: string | null; assessor_notes: string; data: Record<string, any>; }
+interface ModuleInstance { id: string; module_key: string; outcome: string | null; assessor_notes: string; data: Record<string, any>; }
 interface Document { id: string; title: string; }
 interface Props { moduleInstance: ModuleInstance; document: Document; onSaved: () => void; }
 
@@ -33,7 +33,8 @@ export default function DSEAR10HierarchyControlForm({ moduleInstance, document, 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const payload = sanitizeModuleInstancePayload({ data: { substitution_considered: substitutionConsidered, elimination_possible: eliminationPossible, engineering_controls: engineeringControls, administrative_controls: administrativeControls, PPE_controls: ppeControls, justification_for_retained_risk: justification }, outcome, assessor_notes: assessorNotes, updated_at: new Date().toISOString() });
+      const payload = sanitizeModuleInstancePayload({ data: { substitution_considered: substitutionConsidered, elimination_possible: eliminationPossible, engineering_controls: engineeringControls, administrative_controls: administrativeControls, PPE_controls: ppeControls, justification_for_retained_risk: justification }, outcome, assessor_notes: assessorNotes, updated_at: new Date().toISOString() }, moduleInstance.module_key);
+      console.log('MODULE SAVE PAYLOAD', JSON.parse(JSON.stringify(payload)));
       const { error } = await supabase.from('module_instances').update(payload).eq('id', moduleInstance.id);
       if (error) throw error;
       setLastSaved(new Date().toLocaleTimeString());

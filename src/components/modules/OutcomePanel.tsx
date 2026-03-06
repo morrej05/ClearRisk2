@@ -79,7 +79,7 @@ export default function OutcomePanel({
         </h3>
         {outcome && (
           <Badge variant="outline">
-            {options.find(opt => opt.value === outcome)?.label || outcome}
+            {options.find(opt => opt.value === normalizedOutcome)?.label || outcome}
           </Badge>
         )}
       </div>

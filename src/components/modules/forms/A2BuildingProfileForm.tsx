@@ -133,7 +133,6 @@ export default function A2BuildingProfileForm({
         payload.data.section_assessment_notes = payload.assessor_notes;
       }
 
-
       const { error } = await supabase
         .from('module_instances')
         .update(payload)

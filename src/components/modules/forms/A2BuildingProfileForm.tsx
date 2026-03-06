@@ -641,10 +641,7 @@ export default function A2BuildingProfileForm({
 
           moduleInstanceId={moduleInstance.id}
 
-
         />
-
-
       )}
 
             {showActionModal && (

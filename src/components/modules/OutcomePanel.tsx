@@ -55,10 +55,10 @@ export default function OutcomePanel({
   { value: 'not_applicable', label: 'Not Applicable' },
 ];
 
-  const governanceOptionsWithRefinedLabels = [
+const governanceOptionsWithRefinedLabels = [
   { value: 'compliant', label: 'Compliant' },
-  { value: 'minor_def', label: 'Minor Deficiency' },
-  { value: 'material_def', label: 'Material Deficiency' },
+  { value: 'minor_def', label: 'Improvement Recommended' },
+  { value: 'material_def', label: 'Significant Improvement Required' },
   { value: 'information_incomplete', label: 'Information Incomplete' },
   { value: 'not_applicable', label: 'Not Applicable' },
 ];

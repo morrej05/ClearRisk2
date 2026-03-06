@@ -12,7 +12,7 @@ export function sanitizeModuleInstancePayload<T extends Record<string, any>>(
   payload: T,
   moduleKey?: string
 ): T {
-  const sanitized = { ...payload };
+  const sanitized = { ...payload } as Record<string, any>;
 
   // Remove or normalize outcome
   if ('outcome' in sanitized) {
@@ -42,5 +42,21 @@ export function sanitizeModuleInstancePayload<T extends Record<string, any>>(
     }
   }
 
-  return sanitized;
+   const hasOutcome = 'outcome' in sanitized;
+  const hasAssessorNotes = 'assessor_notes' in sanitized;
+
+  if (hasOutcome || hasAssessorNotes) {
+    const existingData =
+      sanitized.data && typeof sanitized.data === 'object' && !Array.isArray(sanitized.data)
+        ? sanitized.data
+        : {};
+
+    sanitized.data = {
+      ...existingData,
+      ...(hasOutcome ? { section_assessment_outcome: sanitized.outcome ?? null } : {}),
+      ...(hasAssessorNotes ? { section_assessment_notes: sanitized.assessor_notes ?? '' } : {}),
+    };
+  }
+
+  return sanitized as T;
 }

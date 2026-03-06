@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getModuleName } from '../../lib/modules/moduleCatalog';
+import { sanitizeModuleInstancePayload } from '../../utils/modulePayloadSanitizer';
 import A1DocumentControlForm from './forms/A1DocumentControlForm';
 import A2BuildingProfileForm from './forms/A2BuildingProfileForm';
 import A3PersonsAtRiskForm from './forms/A3PersonsAtRiskForm';
@@ -32,6 +33,7 @@ import DSEAR10HierarchyControlForm from './forms/DSEAR10HierarchyControlForm';
 import DSEAR11ExplosionEmergencyResponseForm from './forms/DSEAR11ExplosionEmergencyResponseForm';
 import OutcomePanel from './OutcomePanel';
 import ModuleActions from './ModuleActions';
+import { resolveSectionAssessmentOutcome, resolveSectionAssessmentNotes } from '../../utils/moduleAssessment';
 // RiskEngineeringForm is deprecated - RISK_ENGINEERING now routes to RE14DraftOutputsForm (RE-11 Summary)
 import RE01DocumentControlForm from './forms/RE01DocumentControlForm';
 import RE02ConstructionForm from './forms/RE02ConstructionForm';
@@ -613,8 +615,8 @@ function PlaceholderModuleForm({
   onSaved,
 }: ModuleRendererProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [outcome, setOutcome] = useState(moduleInstance.outcome || '');
-  const [assessorNotes, setAssessorNotes] = useState(moduleInstance.assessor_notes || '');
+  const [outcome, setOutcome] = useState(resolveSectionAssessmentOutcome(moduleInstance));
+  const [assessorNotes, setAssessorNotes] = useState(resolveSectionAssessmentNotes(moduleInstance));
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -622,13 +624,16 @@ function PlaceholderModuleForm({
     try {
       const completedAt = outcome ? new Date().toISOString() : null;
 
+       const payload = sanitizeModuleInstancePayload({
+        outcome: outcome || null,
+        assessor_notes: assessorNotes,
+        completed_at: completedAt,
+      }, moduleInstance.module_key);
+
+      console.log('MODULE SAVE PAYLOAD', JSON.parse(JSON.stringify(payload)));
       const { error } = await supabase
         .from('module_instances')
-        .update({
-          outcome: outcome || null,
-          assessor_notes: assessorNotes,
-          completed_at: completedAt,
-        })
+        .update(payload)
         .eq('id', moduleInstance.id);
 
       if (error) throw error;

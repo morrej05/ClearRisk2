@@ -7,7 +7,7 @@ import {
   isDerivedModule,
   type ModuleInstance,
 } from '../../lib/modules/moduleDisplay';
-import { getDsearSpecificModuleKeys, getFireRiskModuleKeys } from '../../lib/modules/moduleCatalog';
+import { getDsearSpecificModuleKeys, getFireRiskModuleKeys, getModuleOutcomeCategory } from '../../lib/modules/moduleCatalog';
 
 interface ModuleSidebarProps {
   modules: ModuleInstance[];
@@ -103,8 +103,29 @@ export default function ModuleSidebar({
     return false;
   };
 
+  const getOutcomeLabel = (outcome: string, moduleKey: string): string => {
+    const category = getModuleOutcomeCategory(moduleKey);
+
+    if (category === 'governance') {
+      if (outcome === 'compliant') return 'Adequate';
+      if (outcome === 'minor_def') return 'Improvement Recommended';
+      if (outcome === 'material_def') return 'Significant Improvement Required';
+      if (outcome === 'info_gap') return 'Information Incomplete';
+      if (outcome === 'na') return 'Not Applicable';
+    } else {
+      if (outcome === 'compliant') return 'Compliant';
+      if (outcome === 'minor_def') return 'Minor Deficiency';
+      if (outcome === 'material_def') return 'Material Deficiency';
+      if (outcome === 'info_gap') return 'Information Gap';
+      if (outcome === 'na') return 'Not Applicable';
+    }
+
+    return outcome;
+  };
+
   const ModuleNavItem = ({ module, productTag }: { module: ModuleInstance; productTag?: 'fire' | 'explosion' | null }) => {
     const isDerived = isDerivedModule(module.module_key);
+    const storedOutcome = module.data?.section_assessment_outcome ?? module.outcome ?? '';
 
     return (
     <button
@@ -118,9 +139,9 @@ export default function ModuleSidebar({
     >
       <div className="flex items-start gap-2.5 md:flex-col md:items-center md:gap-1 lg:flex-row lg:items-start lg:gap-2.5">
         <div className="flex-shrink-0 mt-0.5 md:mt-0">
-          {!isDerived && module.outcome && module.outcome !== 'info_gap' ? (
+          {!isDerived && storedOutcome && storedOutcome !== 'info_gap' ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          ) : !isDerived && module.outcome === 'info_gap' ? (
+          ) : !isDerived && storedOutcome === 'info_gap' ? (
             <AlertCircle className="w-4 h-4 text-blue-600" />
           ) : !isDerived ? (
             <Circle className="w-4 h-4 text-neutral-300" />
@@ -163,28 +184,24 @@ export default function ModuleSidebar({
               </span>
             </div>
           </div>
-          {!isDerived && module.outcome && (
+          {!isDerived && storedOutcome && (
             <span
               className={`inline-flex mt-1 px-2 py-0.5 text-[11px] font-medium rounded border ${getOutcomeColor(
-                module.outcome
+                storedOutcome
               )}`}
             >
-              {module.outcome === 'compliant' && 'Compliant'}
-              {module.outcome === 'minor_def' && 'Minor deficiency'}
-              {module.outcome === 'material_def' && 'Material deficiency'}
-              {module.outcome === 'info_gap' && 'Information gap'}
-              {module.outcome === 'na' && 'N/A'}
+              {getOutcomeLabel(storedOutcome, module.module_key)}
             </span>
           )}
         </div>
         {/* Icon-only badge for tablet view */}
         <div className="hidden md:block lg:hidden">
-          {!isDerived && module.outcome && (
+          {!isDerived && storedOutcome && (
             <div className={`w-2 h-2 rounded-full ${
-              module.outcome === 'compliant' ? 'bg-green-600' :
-              module.outcome === 'minor_def' ? 'bg-amber-600' :
-              module.outcome === 'material_def' ? 'bg-red-600' :
-              module.outcome === 'info_gap' ? 'bg-blue-600' :
+              storedOutcome === 'compliant' ? 'bg-green-600' :
+              storedOutcome === 'minor_def' ? 'bg-amber-600' :
+              storedOutcome === 'material_def' ? 'bg-red-600' :
+              storedOutcome === 'info_gap' ? 'bg-blue-600' :
               'bg-neutral-400'
             }`} />
           )}

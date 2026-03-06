@@ -447,18 +447,30 @@ export const GOVERNANCE_OUTCOME_OPTIONS = [
 export function normalizeOutcome(
   outcome: string | null | undefined,
   category: 'critical' | 'governance'
-): NormalizedOutcome {
-  if (!outcome) return 'na';
+): NormalizedOutcome | '' | string {
+  if (!outcome) return '';
 
   const normalized = outcome.toLowerCase().trim();
 
+  // Preserve canonical values
+  if (normalized === 'compliant') return 'compliant';
+  if (normalized === 'minor_def') return 'minor_def';
+  if (normalized === 'material_def') return 'material_def';
+  if (normalized === 'info_gap' || normalized === 'information_incomplete') return 'info_gap';
+  if (
+    normalized === 'na' ||
+    normalized === 'n/a' ||
+    normalized === 'not_applicable' ||
+    normalized === 'not applicable'
+  ) {
+    return 'na';
+  }
+
   // Critical mapping
   if (category === 'critical') {
-    if (normalized === 'compliant') return 'compliant';
     if (normalized === 'minor deficiency') return 'minor_def';
     if (normalized === 'material deficiency') return 'material_def';
     if (normalized === 'information gap') return 'info_gap';
-    if (normalized === 'not applicable') return 'na';
   }
 
   // Governance mapping
@@ -467,11 +479,9 @@ export function normalizeOutcome(
     if (normalized === 'improvement recommended') return 'minor_def';
     if (normalized === 'significant improvement required') return 'material_def';
     if (normalized === 'information incomplete') return 'info_gap';
-    if (normalized === 'not applicable') return 'na';
   }
 
-  // Fallback to NA for unknown values
-  return 'na';
+  return normalized;
 }
 
 // Legacy RE keys that should normalize to canonical MODULE_CATALOG keys

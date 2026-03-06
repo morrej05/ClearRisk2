@@ -48,12 +48,12 @@ export default function OutcomePanel({
   const isCritical = outcomeCategory === 'critical';
 
   const criticalOptionsWithRefinedLabels = [
-    { value: 'Compliant', label: 'Compliant' },
-    { value: 'Minor Deficiency', label: 'Minor Deficiency' },
-    { value: 'Material Deficiency', label: 'Material Deficiency' },
-    { value: 'Information Gap', label: 'Information Incomplete' },
-    { value: 'Not Applicable', label: 'Not Applicable' },
-  ];
+  { value: 'compliant', label: 'Compliant' },
+  { value: 'minor_def', label: 'Minor Deficiency' },
+  { value: 'material_def', label: 'Material Deficiency' },
+  { value: 'information_incomplete', label: 'Information Incomplete' },
+  { value: 'not_applicable', label: 'Not Applicable' },
+];
 
   const governanceOptionsWithRefinedLabels = [
     { value: 'Adequate', label: 'Adequate' },

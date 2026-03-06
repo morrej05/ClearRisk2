@@ -114,42 +114,36 @@ export default function A2BuildingProfileForm({
   const suggestedOutcome = !String(outcome ?? '').trim() ? getSuggestedOutcome() : null;
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const payload = sanitizeModuleInstancePayload({
-        data: formData,
-        outcome,
-        assessor_notes: assessorNotes,
-        updated_at: new Date().toISOString(),
-      }, moduleInstance.module_key);
+  setIsSaving(true);
+  try {
+    console.log('A2 OUTCOME STATE BEFORE SAVE:', outcome);
 
-      payload.data = (payload.data && typeof payload.data === 'object') ? payload.data : {};
+    const payload = sanitizeModuleInstancePayload({
+      data: formData,
+      outcome,
+      assessor_notes: assessorNotes,
+      updated_at: new Date().toISOString(),
+    }, moduleInstance.module_key);
 
-      if (payload.outcome) {
-        payload.data.section_assessment_outcome = payload.outcome;
-      }
+    console.log('A2 PAYLOAD BEFORE DB WRITE:', payload);
 
-      if (typeof payload.assessor_notes === 'string') {
-        payload.data.section_assessment_notes = payload.assessor_notes;
-      }
+    const { error } = await supabase
+      .from('module_instances')
+      .update(payload)
+      .eq('id', moduleInstance.id);
 
-      const { error } = await supabase
-        .from('module_instances')
-        .update(payload)
-        .eq('id', moduleInstance.id);
+    if (error) throw error;
 
-      if (error) throw error;
-
-      const now = new Date().toLocaleTimeString();
-      setLastSaved(now);
-      onSaved();
-    } catch (error) {
-      console.error('Error saving A2 module:', error);
-      alert('Failed to save. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    const now = new Date().toLocaleTimeString();
+    setLastSaved(now);
+    onSaved();
+  } catch (error) {
+    console.error('Error saving A2 module:', error);
+    alert('Failed to save. Please try again.');
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const handleQuickAction = (template: QuickActionTemplate) => {
     setQuickActionTemplate(template);

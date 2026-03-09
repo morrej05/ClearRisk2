@@ -17,6 +17,7 @@ import {
   getOutcomeLabel,
   getPriorityColor,
   addNewPage,
+  ensurePageSpace,
   deriveAutoActionTitle,
   deriveSystemActionTitle,
   normalizeDisplayValue,
@@ -657,11 +658,7 @@ export function drawInfoGapQuickActions(input: {
 
     if (hasAssuranceGapKeyPoint && allReasonsAreUnknowns) {
       // Render compact reference instead of full box
-      if (yPosition < MARGIN + 100) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
+       ({ page, yPosition } = ensurePageSpace(32, page, yPosition, pdfDoc, isDraft, totalPages));
 
       yPosition -= 12;
 
@@ -686,27 +683,43 @@ export function drawInfoGapQuickActions(input: {
     }
   }
 
-  // Precompute total line count for wrapped reasons to calculate accurate box height
-  let totalReasonLines = 0;
-  for (const reason of detection.reasons) {
-    const wrappedLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
-    totalReasonLines += wrappedLines.length;
+  // Pre-measure wrapped content for exact box height calculation.
+  const wrappedReasons = detection.reasons.map((reason) => wrapText(reason, CONTENT_WIDTH - 30, 9, font));
+  const wrappedActions = detection.quickActions.map((quickAction) => ({
+    titleLines: wrapText(quickAction.action, CONTENT_WIDTH - 55, 9.5, fontBold),
+    whyLines: quickAction.reason ? wrapText(`Why: ${quickAction.reason}`, CONTENT_WIDTH - 55, 8.5, font) : [],
+    quickAction,
+  }));
+
+  // Keep these constants aligned to the draw calls below.
+  const titleRowHeight = 18;
+  const reasonLineHeight = 12;
+  const reasonItemGap = 4;
+  const gapBeforeActions = 6;
+  const recommendedActionsHeaderHeight = 16;
+  const actionTitleLineHeight = 12;
+  const actionReasonLineHeight = 11;
+  const actionItemGap = 6;
+  const boxPaddingTop = 12;
+  const boxPaddingBottom = 6;
+
+  let measuredReasonsHeight = titleRowHeight;
+  for (const reasonLines of wrappedReasons) {
+    measuredReasonsHeight += (reasonLines.length * reasonLineHeight) + reasonItemGap;
   }
 
-  // Calculate box height based on actual wrapped content
-  const lineHeight = 13;
-  const headingHeight = 30;
-  const paddingTop = 10;
-  const paddingBottom = 6;
-  const quickActionsHeight = detection.quickActions.length > 0 ? 20 + (detection.quickActions.length * 38) : 0;
-  const boxHeight = headingHeight + (totalReasonLines * lineHeight) + quickActionsHeight + paddingTop + paddingBottom;
-
-  // Check if we need a new page (reduced threshold from 50 to 30 for tighter packing)
-  if (yPosition < MARGIN + boxHeight + 30) {
-    const result = addNewPage(pdfDoc, isDraft, totalPages);
-    page = result.page;
-    yPosition = PAGE_TOP_Y;
+  let measuredActionsHeight = 0;
+  if (wrappedActions.length > 0) {
+    measuredActionsHeight += gapBeforeActions + recommendedActionsHeaderHeight;
+    for (const { titleLines, whyLines } of wrappedActions) {
+      measuredActionsHeight += titleLines.length * actionTitleLineHeight;
+      measuredActionsHeight += whyLines.length * actionReasonLineHeight;
+      measuredActionsHeight += actionItemGap;
+    }
   }
+
+  const boxHeight = boxPaddingTop + measuredReasonsHeight + measuredActionsHeight + boxPaddingBottom;
+  ({ page, yPosition } = ensurePageSpace(boxHeight + 20, page, yPosition, pdfDoc, isDraft, totalPages));
 
   // --- INFO GAP BOX (single-cursor, self-contained) ---
 yPosition -= 12;
@@ -749,7 +762,7 @@ page.drawText(sanitizePdfText('Assessment notes (incomplete information)'), {
 boxY -= 18;
 
 // Reasons
-for (const reason of detection.reasons) {
+for (const reasonLines of wrappedReasons) {
   page.drawText(sanitizePdfText('•'), {
     x: MARGIN + 8,
     y: boxY,
@@ -758,8 +771,7 @@ for (const reason of detection.reasons) {
     color: rgb(0.5, 0.5, 0.5),
   });
 
-  const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
-  for (const line of reasonLines) {
+    for (const line of reasonLines) {
     page.drawText(line, {
       x: MARGIN + 18,
       y: boxY,
@@ -767,15 +779,15 @@ for (const reason of detection.reasons) {
       font,
       color: rgb(0.4, 0.4, 0.4),
     });
-    boxY -= 12;
+    boxY -= reasonLineHeight;
   }
-  boxY -= 4;
+  boxY -= reasonItemGap;
 }
 
-boxY -= 6;
-
 // Recommended actions
-if (detection.quickActions.length > 0) {
+if (wrappedActions.length > 0) {
+  boxY -= gapBeforeActions;
+
   page.drawText('Recommended actions:', {
     x: MARGIN + 8,
     y: boxY,
@@ -784,9 +796,9 @@ if (detection.quickActions.length > 0) {
     color: rgb(0.4, 0.4, 0.4),
   });
 
-  boxY -= 16;
+  boxY -= recommendedActionsHeaderHeight;
 
-  for (const quickAction of detection.quickActions) {
+  for (const { quickAction, titleLines, whyLines } of wrappedActions) {
     // Use PDF_THEME token-based colors for priority
     const priorityColor =
       quickAction.priority === 'P2' ? PDF_THEME.colours.risk.medium.fg : PDF_THEME.colours.risk.medium.fg;
@@ -809,7 +821,6 @@ if (detection.quickActions.length > 0) {
     });
 
     // title
-    const titleLines = wrapText(quickAction.action, CONTENT_WIDTH - 55, 9.5, fontBold);
     for (const line of titleLines) {
       page.drawText(line, {
         x: MARGIN + 42,
@@ -818,25 +829,22 @@ if (detection.quickActions.length > 0) {
         font: fontBold,
         color: rgb(0.2, 0.2, 0.2),
       });
-      boxY -= 12;
+      boxY -= actionTitleLineHeight;
     }
 
     // why (small)
-    if (quickAction.reason) {
-      const whyLines = wrapText(`Why: ${quickAction.reason}`, CONTENT_WIDTH - 55, 8.5, font);
-      for (const line of whyLines) {
-        page.drawText(line, {
-          x: MARGIN + 42,
-          y: boxY,
-          size: 8.5,
-          font,
-          color: rgb(0.35, 0.35, 0.35),
-        });
-        boxY -= 11;
-      }
+    for (const line of whyLines) {
+      page.drawText(line, {
+        x: MARGIN + 42,
+        y: boxY,
+        size: 8.5,
+        font,
+        color: rgb(0.35, 0.35, 0.35),
+      });
+      boxY -= actionReasonLineHeight;
     }
 
-    boxY -= 6;
+    boxY -= actionItemGap;
   }
 }
 

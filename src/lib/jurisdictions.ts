@@ -27,7 +27,7 @@ export interface JurisdictionConfig {
 export const JURISDICTION_CONFIG: Record<Jurisdiction, JurisdictionConfig> = {
   england_wales: {
     code: 'england_wales',
-    label: 'England & Wales',
+    label: 'England',
     fullName: 'England and Wales',
     primaryLegislation: [
       'Regulatory Reform (Fire Safety) Order 2005 (FSO)',
@@ -190,6 +190,10 @@ export function normalizeJurisdiction(jurisdiction: Jurisdiction | string | null
     return 'ireland';
   }
 
+  if (upper === 'EUROPE' || upper === 'ATEX' || upper === 'ROI') {
+    return 'ireland';
+  }
+
   if (upper.includes('SCOT')) {
     return 'scotland';
   }
@@ -221,7 +225,7 @@ export function getJurisdictionLabel(jurisdiction: Jurisdiction | string | null 
  */
 export function getAvailableJurisdictions(): Array<{ value: Jurisdiction; label: string }> {
   return [
-    { value: 'england_wales', label: 'England & Wales' },
+    { value: 'england_wales', label: 'England' },
     { value: 'scotland', label: 'Scotland' },
     { value: 'northern_ireland', label: 'Northern Ireland' },
     { value: 'ireland', label: 'Republic of Ireland' },
@@ -270,8 +274,10 @@ export function normalizeDsearJurisdiction(jurisdiction: Jurisdiction | string |
  */
 export function getDsearJurisdictionOptions() {
   return [
-    { value: 'UK', label: 'UK (DSEAR)' },
-    { value: 'EUROPE', label: 'Europe (ATEX)' },
+   { value: 'england_wales', label: 'England' },
+    { value: 'scotland', label: 'Scotland' },
+    { value: 'northern_ireland', label: 'Northern Ireland' },
+    { value: 'ireland', label: 'Republic of Ireland' },
   ];
 }
 

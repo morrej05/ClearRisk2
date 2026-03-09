@@ -961,7 +961,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   // Add footers
   totalPages.forEach((p, index) => {
-    drawFooter(p, index + 1, totalPages.length, organisation.name, font);
+     drawFooter(p, organisation.name, index + 1, totalPages.length, font);
   });
 
   return await pdfDoc.save();

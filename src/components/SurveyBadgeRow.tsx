@@ -1,5 +1,5 @@
 import { AlertCircle } from 'lucide-react';
-import { getJurisdictionLabel, normalizeJurisdiction } from '../lib/jurisdictions';
+import { getJurisdictionLabel, normalizeJurisdiction, resolveExplosionRegime } from '../lib/jurisdictions';
 
 interface SurveyBadgeRowProps {
   status: 'draft' | 'in_review' | 'approved' | 'issued';
@@ -33,12 +33,8 @@ export function SurveyBadgeRow({
   const isDsear = product === 'DSEAR';
 
   // --- Jurisdiction label ---
-  const dsearJurisdictionLabel =
-    String(jurisdiction).toUpperCase() === 'EUROPE' ? 'Europe (ATEX)' : 'UK (DSEAR)';
-
-  const genericJurisdictionLabel = getJurisdictionLabel(jurisdiction);
-
-  const jurisdictionLabel = isDsear ? dsearJurisdictionLabel : genericJurisdictionLabel;
+  const normalizedJurisdiction = normalizeJurisdiction(jurisdiction);
+  const jurisdictionLabel = getJurisdictionLabel(normalizedJurisdiction);
 
   // --- Jurisdiction color ---
   const getGenericJurisdictionColor = (jur: string) => {
@@ -51,13 +47,13 @@ export function SurveyBadgeRow({
   };
 
   const getDsearJurisdictionColor = (jur: string) =>
-    String(jur).toUpperCase() === 'EUROPE'
+    resolveExplosionRegime(jur) === 'ROI_ATEX'
       ? 'bg-violet-100 text-violet-700 border-violet-300'
-      : 'bg-slate-100 text-slate-700 border-slate-300';
+       : getGenericJurisdictionColor(jur);
 
   const jurisdictionColor = isDsear
-    ? getDsearJurisdictionColor(jurisdiction)
-    : getGenericJurisdictionColor(normalizeJurisdiction(jurisdiction));
+    ? getDsearJurisdictionColor(normalizedJurisdiction)
+    : getGenericJurisdictionColor(normalizedJurisdiction);
 
   const hasFRA = enabledModules?.some((m) => m.startsWith('FRA_'));
   const hasFSD = enabledModules?.some((m) => m.startsWith('FSD_'));

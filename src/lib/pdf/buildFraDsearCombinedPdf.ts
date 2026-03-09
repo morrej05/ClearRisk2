@@ -1048,8 +1048,11 @@ function drawTableOfContents(
   font: any,
   fontBold: any
 ): void {
-  let yPosition = PAGE_TOP_Y - 40;
+  let yPosition = PAGE_TOP_Y - 36;
   const pageNumberX = PAGE_WIDTH - MARGIN;
+  const topLevelIndentX = MARGIN + 18;
+  const childIndentX = MARGIN + 40;
+  const partHeadingIndentX = MARGIN + 8;
 
   // Title
   tocPage.drawText(sanitizePdfText('Contents'), {
@@ -1059,7 +1062,7 @@ function drawTableOfContents(
     font: fontBold,
     color: rgb(0, 0, 0),
   });
-  yPosition -= 36;
+  yPosition -= 42;
 
   // Render TOC entries with page numbers
   for (const entry of tocEntries) {
@@ -1068,12 +1071,12 @@ function drawTableOfContents(
     const isIndented = entry.title.startsWith('  ');
     const displayTitle = entry.title.trim();
     const isPartHeading = /^Part\s+[12]\b/.test(displayTitle);
-    const titleSize = isIndented ? 10.5 : 11.5;
+    const titleSize = isPartHeading ? 12.5 : isIndented ? 11 : 12;
     const titleFont = isPartHeading ? fontBold : isIndented ? font : fontBold;
-    const xOffset = isPartHeading ? MARGIN + 8 : isIndented ? MARGIN + 34 : MARGIN + 18;
+    const xOffset = isPartHeading ? partHeadingIndentX : isIndented ? childIndentX : topLevelIndentX;
 
     if (isPartHeading) {
-      yPosition -= 8;
+      yPosition -= 12;
     }
 
     // Draw section title (left-aligned)
@@ -1088,16 +1091,17 @@ function drawTableOfContents(
 
     // Draw page number (right-aligned)
     const pageNumText = entry.pageNo.toString();
-    const pageNumWidth = font.widthOfTextAtSize(pageNumText, 11);
+    const pageNumSize = 11;
+    const pageNumWidth = font.widthOfTextAtSize(pageNumText, pageNumSize);
     tocPage.drawText(pageNumText, {
       x: pageNumberX - pageNumWidth,
       y: yPosition,
-      size: 11,
+      size: pageNumSize,
       font: font,
       color: rgb(0, 0, 0),
     });
 
-    yPosition -= isPartHeading ? 19 : isIndented ? 15 : 17;
+     yPosition -= isPartHeading ? 22 : isIndented ? 17 : 19;
   }
 }
 

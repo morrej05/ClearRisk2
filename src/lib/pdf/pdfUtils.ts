@@ -902,6 +902,18 @@ export function getCoverTitleContent(documentType: string, rawTitle: string | nu
 
   const inputTitle = (rawTitle || '').trim();
 
+  // Guard against single-output PDFs derived from a combined/base document title.
+  // In FRA-only/DSEAR-only modes, cover should show only the product label.
+  const isSingleFraOrDsear = documentType === 'FRA' || documentType === 'DSEAR';
+  const hasCombinedBaseTitle = /(fire\s*\+\s*explosion|fra\s*\+\s*dsear|\bcombined\b)/i.test(inputTitle);
+  if (isSingleFraOrDsear && hasCombinedBaseTitle) {
+    return {
+      title: productLabel,
+      subtitle: null,
+      productLabel,
+    };
+  }
+
   const stripCombinedPhrases = (text: string): string => text
     .replace(/combined\s+fire\s*\+\s*explosion\s+report/gi, '')
     .replace(/combined\s+fra\s*\+\s*dsear\s+report/gi, '')

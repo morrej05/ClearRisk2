@@ -150,7 +150,7 @@ function drawModuleSection(
     showModuleHeading?: boolean;
   }
 ): { page: PDFPage; yPosition: number } {
-  const showModuleHeading = options?.showModuleHeading ?? true;
+  const showModuleHeading = options?.showModuleHeading ?? (contextDocumentType !== 'DSEAR');
   // Ensure space for module header
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 

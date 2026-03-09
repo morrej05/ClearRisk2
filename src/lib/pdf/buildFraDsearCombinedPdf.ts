@@ -23,7 +23,7 @@ import {
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
-import { FRA_REPORT_STRUCTURE, type PdfSection } from './fraReportStructure';
+import { FRA_REPORT_STRUCTURE } from './fraReportStructure';
 import {
   drawRegulatoryFramework,
   drawResponsiblePersonDuties,
@@ -413,11 +413,6 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   const tocEntries: Array<{ title: string; pageNo: number }> = [];
   const recordToc = (title: string) => tocEntries.push({ title, pageNo: totalPages.length });
 
-  const getFraSectionForModule = (moduleKey: string): PdfSection | null => {
-    return FRA_REPORT_STRUCTURE.find(section => section.moduleKeys.includes(moduleKey)) || null;
-  };
-
-
   let page: PDFPage;
   let yPosition = PAGE_TOP_Y;
 
@@ -652,30 +647,48 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       const bIndex = FRA_MODULE_ORDER.indexOf(b.module_key);
       return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
     });
-
-    // Render each FRA module grouped under logical FRA section headings
-    const recordedFraSections = new Set<number>();
-    const renderedFraSectionHeadings = new Set<number>();
-    const part1TocSectionNumbers = new Map<number, number>();
-    let part1TocNextSectionNumber = 1;
+    const modulesByKey = new Map<string, ModuleInstance[]>();
     for (const module of sortedFraModules) {
-       const fraSection = getFraSectionForModule(module.module_key);
-      if (fraSection) {
-        if (!part1TocSectionNumbers.has(fraSection.id)) {
-          part1TocSectionNumbers.set(fraSection.id, part1TocNextSectionNumber++);
-        }
-        const fraSectionLabel = `${part1TocSectionNumbers.get(fraSection.id)}. ${fraSection.title}`;
-        if (!recordedFraSections.has(fraSection.id)) {
-          recordToc(`  ${fraSectionLabel}`);
-          recordedFraSections.add(fraSection.id);
-        }
-        if (!renderedFraSectionHeadings.has(fraSection.id)) {
-          ({ page, yPosition } = ensurePageSpace(42, page, yPosition, pdfDoc, isDraft, totalPages));
-          yPosition = drawPageTitle(page, MARGIN, yPosition, fraSectionLabel, { regular: font, bold: fontBold });
-          yPosition -= 10;
-          renderedFraSectionHeadings.add(fraSection.id);
-        }
+       const existing = modulesByKey.get(module.module_key) ?? [];
+      existing.push(module);
+      modulesByKey.set(module.module_key, existing);
+    }
+
+    // Render Part 1 body by FRA_REPORT_STRUCTURE so TOC and body always align
+    const renderedModuleIds = new Set<string>();
+    for (const fraSection of FRA_REPORT_STRUCTURE) {
+      const sectionModules = fraSection.moduleKeys.flatMap((moduleKey) => modulesByKey.get(moduleKey) ?? []);
+      if (sectionModules.length === 0) continue;
+
+      const sectionNumber = fraSection.displayNumber ?? fraSection.id;
+      const fraSectionLabel = `${sectionNumber}. ${fraSection.title}`;
+      recordToc(`  ${fraSectionLabel}`);
+
+      ({ page, yPosition } = ensurePageSpace(42, page, yPosition, pdfDoc, isDraft, totalPages));
+      yPosition = drawPageTitle(page, MARGIN, yPosition, fraSectionLabel, { regular: font, bold: fontBold });
+      yPosition -= 10;
+
+      for (const module of sectionModules) {
+        renderedModuleIds.add(module.id);
+        ({ page, yPosition } = drawModuleSection(
+          page,
+          module,
+          document,
+          font,
+          fontBold,
+          yPosition,
+          pdfDoc,
+          isDraft,
+          totalPages,
+          'FRA',
+          { showModuleHeading: false }
+        ));
       }
+    }
+
+    // Fallback for any FRA module not yet mapped into FRA_REPORT_STRUCTURE
+    for (const module of sortedFraModules) {
+      if (renderedModuleIds.has(module.id)) continue;
       ({ page, yPosition } = drawModuleSection(
         page,
         module,

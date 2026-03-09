@@ -500,38 +500,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       product: 'fra',
       fonts: { regular: font, bold: fontBold },
     });
-
-    // Reuse the same standalone FRA canned narrative pages in combined output.
-    // Keep existing module ordering/TOC numbering unchanged by rendering these blocks
-    // before the module loop without adding new TOC entries.
-    {
-      const regulatoryPageResult = addNewPage(pdfDoc, isDraft, totalPages);
-      page = regulatoryPageResult.page;
-      yPosition = PAGE_TOP_Y;
-      ({ page, yPosition } = drawRegulatoryFramework(
-        { page, yPosition },
-        document,
-        font,
-        fontBold,
-        pdfDoc,
-        isDraft,
-        totalPages
-      ));
-
-      const dutiesPageResult = addNewPage(pdfDoc, isDraft, totalPages);
-      page = dutiesPageResult.page;
-      yPosition = PAGE_TOP_Y;
-      ({ page, yPosition } = drawResponsiblePersonDuties(
-        { page, yPosition },
-        document,
-        font,
-        fontBold,
-        pdfDoc,
-        isDraft,
-        totalPages
-      ));
-    }
-
+    
     // Sort modules by FRA order
     const sortedFraModules = fraModules.sort((a, b) => {
       const aIndex = FRA_MODULE_ORDER.indexOf(a.module_key);
@@ -548,8 +517,15 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     // Render Part 1 body by FRA_REPORT_STRUCTURE so TOC and body always align
     const renderedModuleIds = new Set<string>();
     for (const fraSection of FRA_REPORT_STRUCTURE) {
-      const sectionModules = fraSection.moduleKeys.flatMap((moduleKey) => modulesByKey.get(moduleKey) ?? []);
-      if (sectionModules.length === 0) continue;
+      const isRegulationSection = fraSection.id === 4;
+      const sectionModules = fraSection.moduleKeys.flatMap((moduleKey) => {
+        if (isRegulationSection && moduleKey === 'A1_DOC_CONTROL') {
+          return [];
+        }
+        return modulesByKey.get(moduleKey) ?? [];
+      });
+
+      if (!isRegulationSection && sectionModules.length === 0) continue;
 
       const sectionNumber = fraSection.displayNumber ?? fraSection.id;
       const fraSectionLabel = `${sectionNumber}. ${fraSection.title}`;
@@ -558,6 +534,28 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       ({ page, yPosition } = ensurePageSpace(42, page, yPosition, pdfDoc, isDraft, totalPages));
       yPosition = drawPageTitle(page, MARGIN, yPosition, fraSectionLabel, { regular: font, bold: fontBold });
       yPosition -= 10;
+
+      if (isRegulationSection) {
+        ({ page, yPosition } = drawRegulatoryFramework(
+          { page, yPosition },
+          document,
+          font,
+          fontBold,
+          pdfDoc,
+          isDraft,
+          totalPages
+        ));
+
+        ({ page, yPosition } = drawResponsiblePersonDuties(
+          { page, yPosition },
+          document,
+          font,
+          fontBold,
+          pdfDoc,
+          isDraft,
+          totalPages
+        ));
+      }
 
       for (const module of sectionModules) {
         renderedModuleIds.add(module.id);

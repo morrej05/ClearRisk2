@@ -466,6 +466,11 @@ export default function DocumentPreviewPage() {
       saveReModuleSelection(document.id, newSelection);
     }
   };
+  const handleOutputModeChange = (mode: OutputMode) => {
+    setOutputMode(mode);
+    setSignedUrl(null);
+    setDraftPath(null);
+  };
 
   if (isLoading) {
     return (
@@ -632,7 +637,7 @@ export default function DocumentPreviewPage() {
             <select
               id="outputMode"
               value={outputMode}
-              onChange={(e) => setOutputMode(e.target.value as OutputMode)}
+               onChange={(e) => handleOutputModeChange(e.target.value as OutputMode)}
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               {availableModes.map((mode) => (

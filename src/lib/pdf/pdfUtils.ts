@@ -882,14 +882,18 @@ export async function drawCoverPage(
 
 function getDocumentTypeLabel(type: string): string {
   switch (type) {
+    case 'FRA':
     case 'fire_risk_assessment':
-      return 'Fire Risk Assessment';
+    return 'Fire Risk Assessment';
+    case 'FSD':
     case 'fire_safety_design':
       return 'Fire Safety Design Review';
+      case 'DSEAR':
     case 'explosion_risk_assessment':
-      return 'Explosion Risk Assessment';
+      return 'Explosive Atmospheres Assessment';
+    case 'FIRE_EXPLOSION_COMBINED':
     case 'combined':
-      return 'Combined Assessment';
+      return 'Combined Fire + Explosion Report';
     case 'RE':
       return 'Risk Engineering Survey';
     default:

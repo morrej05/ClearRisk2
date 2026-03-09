@@ -602,7 +602,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
   if (dsearModules.length > 0) {
     // Compute explosion summary for criticality and flags
-    const explosionSummary = computeExplosionSummary(moduleInstances, actions);
+     const explosionSummary = computeExplosionSummary({ modules: dsearModules });
 
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
     recordToc('Part 2 — Explosive Atmospheres Assessment');

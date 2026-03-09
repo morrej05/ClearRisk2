@@ -27,7 +27,7 @@ export interface JurisdictionConfig {
 export const JURISDICTION_CONFIG: Record<Jurisdiction, JurisdictionConfig> = {
   england_wales: {
     code: 'england_wales',
-    label: 'England',
+    label: 'England & Wales',
     fullName: 'England and Wales',
     primaryLegislation: [
       'Regulatory Reform (Fire Safety) Order 2005 (FSO)',
@@ -225,7 +225,7 @@ export function getJurisdictionLabel(jurisdiction: Jurisdiction | string | null 
  */
 export function getAvailableJurisdictions(): Array<{ value: Jurisdiction; label: string }> {
   return [
-    { value: 'england_wales', label: 'England' },
+    { value: 'england_wales', label: 'England & Wales' },
     { value: 'scotland', label: 'Scotland' },
     { value: 'northern_ireland', label: 'Northern Ireland' },
     { value: 'ireland', label: 'Republic of Ireland' },
@@ -274,7 +274,7 @@ export function normalizeDsearJurisdiction(jurisdiction: Jurisdiction | string |
  */
 export function getDsearJurisdictionOptions() {
   return [
-   { value: 'england_wales', label: 'England' },
+   { value: 'england_wales', label: 'England & Wales' },
     { value: 'scotland', label: 'Scotland' },
     { value: 'northern_ireland', label: 'Northern Ireland' },
     { value: 'ireland', label: 'Republic of Ireland' },

@@ -25,6 +25,10 @@ import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
 import { FRA_REPORT_STRUCTURE, type PdfSection } from './fraReportStructure';
 import {
+  drawRegulatoryFramework,
+  drawResponsiblePersonDuties,
+} from './fra/fraCoreDraw';
+import {
   explosiveAtmospheresPurposeText,
   hazardousAreaClassificationText,
   zoneDefinitionsText,
@@ -580,6 +584,37 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       product: 'fra',
       fonts: { regular: font, bold: fontBold },
     });
+
+    // Reuse the same standalone FRA canned narrative pages in combined output.
+    // Keep existing module ordering/TOC numbering unchanged by rendering these blocks
+    // before the module loop without adding new TOC entries.
+    {
+      const regulatoryPageResult = addNewPage(pdfDoc, isDraft, totalPages);
+      page = regulatoryPageResult.page;
+      yPosition = PAGE_TOP_Y;
+      ({ page, yPosition } = drawRegulatoryFramework(
+        { page, yPosition },
+        document,
+        font,
+        fontBold,
+        pdfDoc,
+        isDraft,
+        totalPages
+      ));
+
+      const dutiesPageResult = addNewPage(pdfDoc, isDraft, totalPages);
+      page = dutiesPageResult.page;
+      yPosition = PAGE_TOP_Y;
+      ({ page, yPosition } = drawResponsiblePersonDuties(
+        { page, yPosition },
+        document,
+        font,
+        fontBold,
+        pdfDoc,
+        isDraft,
+        totalPages
+      ));
+    }
 
     // Sort modules by FRA order
     const sortedFraModules = fraModules.sort((a, b) => {

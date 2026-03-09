@@ -624,10 +624,11 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   ];
 
   const dsearModules = moduleInstances.filter(m => m.module_key.startsWith('DSEAR'));
+  let explosionSummary: ReturnType<typeof getExplosionCriticalityLabel>['summary'] | null = null;
 
   if (dsearModules.length > 0) {
     const explosionCriticality = getExplosionCriticalityLabel(dsearModules);
-    const explosionSummary = explosionCriticality.summary;
+    explosionSummary = explosionCriticality.summary;
 
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
     recordToc('Part 2 — Explosive Atmospheres Assessment');
@@ -861,7 +862,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     dsearSectionNumber += 1;
 
     // 2.X Compliance-Critical Findings (if present)
-    if (explosionSummary && explosionSummary.flags.length > 0) {
+     if (explosionSummary?.flags.length) {
       page = addNewPage(pdfDoc, isDraft, totalPages).page;
       recordToc(`${formatPart2Section(dsearSectionNumber)} Compliance-Critical Findings`);
       yPosition = PAGE_TOP_Y;

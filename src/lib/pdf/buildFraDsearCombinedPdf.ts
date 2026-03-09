@@ -113,10 +113,27 @@ function hasMeaningfulText(value: unknown, minLength = 3): boolean {
 function hasMeaningfulValue(value: unknown): boolean {
   if (value === null || value === undefined) return false;
   if (typeof value === 'string') return hasMeaningfulText(value);
-  if (typeof value === 'number' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'boolean') return value;
   if (Array.isArray(value)) return value.some(hasMeaningfulValue);
   if (typeof value === 'object') return Object.values(value as Record<string, unknown>).some(hasMeaningfulValue);
   return false;
+}
+function mapExplosionCriticalityLabel(overall: string): string {
+  if (overall === 'Moderate') return 'Medium';
+  return overall;
+}
+
+function getExplosionCriticalityLabel(dsearModules: ModuleInstance[]): {
+  label: string;
+  summary: ReturnType<typeof computeExplosionSummary> | null;
+} {
+  if (!hasMeaningfulDsearAssessment(dsearModules)) {
+    return { label: NOT_ASSESSED_LABEL, summary: null };
+  }
+
+  const summary = computeExplosionSummary({ modules: dsearModules });
+  return { label: mapExplosionCriticalityLabel(summary.overall), summary };
 }
 
 function hasMeaningfulFraAssessment(fraModules: ModuleInstance[]): boolean {
@@ -609,8 +626,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   const dsearModules = moduleInstances.filter(m => m.module_key.startsWith('DSEAR'));
 
   if (dsearModules.length > 0) {
-    // Compute explosion summary for criticality and flags
-     const explosionSummary = computeExplosionSummary({ modules: dsearModules });
+    const explosionCriticality = getExplosionCriticalityLabel(dsearModules);
 
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
     recordToc('Part 2 — Explosive Atmospheres Assessment');
@@ -639,11 +655,12 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     yPosition -= 20;
 
     // Render explosion criticality summary (simplified inline version)
-    const criticalityLevel = explosionSummary.overall;
+    const criticalityLevel = explosionCriticality.label;
     const criticalityColors: Record<string, ReturnType<typeof rgb>> = {
+      'Not assessed': rgb(0.5, 0.5, 0.5),
       Critical: rgb(0.8, 0, 0),
       High: rgb(0.9, 0.5, 0),
-      Moderate: rgb(0.9, 0.7, 0),
+      Medium: rgb(0.9, 0.7, 0),
       Low: rgb(0.2, 0.7, 0.2),
     };
     page.drawText(`Overall Criticality: ${criticalityLevel}`, {
@@ -1064,9 +1081,7 @@ function drawCombinedExecutiveSummary(
   const dsearModules = moduleInstances.filter(m => m.module_key.startsWith('DSEAR'));
   if (dsearModules.length > 0) {
     try {
-      const explosionSummary = computeExplosionSummary({ modules: dsearModules });
-      const hasDsearAssessment = hasMeaningfulDsearAssessment(dsearModules);
-      const criticalityLabel = hasDsearAssessment ? explosionSummary.overall : NOT_ASSESSED_LABEL;
+      const explosionCriticality = getExplosionCriticalityLabel(dsearModules);
 
       page.drawText(sanitizePdfText('Explosive Atmospheres Criticality:'), {
         x: MARGIN,
@@ -1077,8 +1092,17 @@ function drawCombinedExecutiveSummary(
       });
       yPosition -= 18;
 
-      if (hasDsearAssessment) {
-        page.drawText(sanitizePdfText(`Critical: ${explosionSummary.criticalCount}, High: ${explosionSummary.highCount}`), {
+      page.drawText(sanitizePdfText(explosionCriticality.label), {
+        x: MARGIN + 20,
+        y: yPosition,
+        size: 10,
+        font: font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 16;
+
+      if (explosionCriticality.summary) {
+        page.drawText(sanitizePdfText(`Critical: ${explosionCriticality.summary.criticalCount}, High: ${explosionCriticality.summary.highCount}`), {
           x: MARGIN + 20,
           y: yPosition,
           size: 9,
@@ -1088,27 +1112,18 @@ function drawCombinedExecutiveSummary(
         yPosition -= 25;
       }
 
-      // Flags summary
-      page.drawText(sanitizePdfText(`Critical: ${explosionSummary.criticalCount}, High: ${explosionSummary.highCount}`), {
-        x: MARGIN + 20,
-        y: yPosition,
-        size: 9,
-        font: font,
-        color: rgb(0.4, 0.4, 0.4),
-      });
-      yPosition -= 25;
-    } catch (error) {
+      } catch (error) {
       console.error('Error computing explosion summary:', error);
     }
   }
-
+const deduplicatedActions = deduplicateActions(actions, moduleInstances);
   // Action counts
-  const fraActions = actions.filter(a => {
+  const fraActions = deduplicatedActions.filter(a => {
     const module = moduleInstances.find(m => m.id === a.module_instance_id);
     return module && (module.module_key.startsWith('FRA') || module.module_key.startsWith('A'));
   });
 
-  const dsearActions = actions.filter(a => {
+  const dsearActions = deduplicatedActions.filter(a => {
     const module = moduleInstances.find(m => m.id === a.module_instance_id);
     return module && module.module_key.startsWith('DSEAR');
   });
@@ -1122,8 +1137,8 @@ function drawCombinedExecutiveSummary(
   });
   yPosition -= 18;
 
-  const p1Count = actions.filter(a => a.priority_band === 'P1').length;
-  const p2Count = actions.filter(a => a.priority_band === 'P2').length;
+  const p1Count = deduplicatedActions.filter(a => a.priority_band === 'P1').length;
+  const p2Count = deduplicatedActions.filter(a => a.priority_band === 'P2').length;
 
   page.drawText(sanitizePdfText(`Fire: ${fraActions.length} actions | Explosion: ${dsearActions.length} actions`), {
     x: MARGIN + 20,

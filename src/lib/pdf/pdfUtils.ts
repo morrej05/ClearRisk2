@@ -890,6 +890,16 @@ export function getCoverTitleContent(documentType: string, rawTitle: string | nu
 } {
   const productLabel = getDocumentTypeLabel(documentType);
   const isCombinedReport = documentType === 'FIRE_EXPLOSION_COMBINED' || documentType === 'combined';
+   // Combined reports should always render as a single canonical title line.
+  // This prevents duplicate hierarchy (title + repeated/competing subtitle).
+  if (isCombinedReport) {
+    return {
+      title: productLabel,
+      subtitle: null,
+      productLabel,
+    };
+  }
+
   const inputTitle = (rawTitle || '').trim();
 
   const stripCombinedPhrases = (text: string): string => text
@@ -900,7 +910,7 @@ export function getCoverTitleContent(documentType: string, rawTitle: string | nu
     .replace(/\s{2,}/g, ' ')
     .trim();
 
-  const cleanedTitle = isCombinedReport ? inputTitle : stripCombinedPhrases(inputTitle);
+  const cleanedTitle = stripCombinedPhrases(inputTitle);
   const title = cleanedTitle || productLabel;
   const subtitle = title.toLowerCase() === productLabel.toLowerCase() ? null : productLabel;
 

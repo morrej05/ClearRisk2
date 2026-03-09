@@ -977,33 +977,40 @@ function drawTableOfContents(
   fontBold: any
 ): void {
   let yPosition = PAGE_TOP_Y - 40;
+  const pageNumberX = PAGE_WIDTH - MARGIN;
 
   // Title
   tocPage.drawText(sanitizePdfText('Contents'), {
     x: MARGIN,
     y: yPosition,
-    size: 18,
+    size: 19,
     font: fontBold,
     color: rgb(0, 0, 0),
   });
-  yPosition -= 40;
+  yPosition -= 36;
 
   // Render TOC entries with page numbers
   for (const entry of tocEntries) {
     if (yPosition < MARGIN + 50) break; // Stop if we run out of space
 
-    // Determine if this is an indented entry (module-level)
     const isIndented = entry.title.startsWith('  ');
     const displayTitle = entry.title.trim();
-    const xOffset = isIndented ? MARGIN + 30 : MARGIN + 10;
+    const isPartHeading = /^Part\s+[12]\b/.test(displayTitle);
+    const titleSize = isIndented ? 10.5 : 11.5;
+    const titleFont = isPartHeading ? fontBold : isIndented ? font : fontBold;
+    const xOffset = isPartHeading ? MARGIN + 8 : isIndented ? MARGIN + 34 : MARGIN + 18;
+
+    if (isPartHeading) {
+      yPosition -= 8;
+    }
 
     // Draw section title (left-aligned)
     const sanitizedTitle = sanitizePdfText(displayTitle);
     tocPage.drawText(sanitizedTitle, {
       x: xOffset,
       y: yPosition,
-      size: isIndented ? 10 : 11,
-      font: isIndented ? font : fontBold,
+      size: titleSize,
+      font: titleFont,
       color: rgb(0, 0, 0),
     });
 
@@ -1011,14 +1018,14 @@ function drawTableOfContents(
     const pageNumText = entry.pageNo.toString();
     const pageNumWidth = font.widthOfTextAtSize(pageNumText, 11);
     tocPage.drawText(pageNumText, {
-      x: PAGE_WIDTH - MARGIN - pageNumWidth,
+      x: pageNumberX - pageNumWidth,
       y: yPosition,
       size: 11,
       font: font,
       color: rgb(0, 0, 0),
     });
 
-    yPosition -= isIndented ? 14 : 16;
+    yPosition -= isPartHeading ? 19 : isIndented ? 15 : 17;
   }
 }
 

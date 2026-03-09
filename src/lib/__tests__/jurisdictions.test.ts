@@ -10,6 +10,7 @@ import {
   getAvailableJurisdictions,
   isEnglandWales,
   getStandardsOptions,
+  resolveExplosionRegime,
   type Jurisdiction,
 } from '../jurisdictions';
 
@@ -112,6 +113,26 @@ describe('normalizeJurisdiction', () => {
     it('should default random string to england_wales', () => {
       expect(normalizeJurisdiction('xyz123')).toBe('england_wales');
     });
+  });
+});
+
+
+describe('resolveExplosionRegime', () => {
+  it('maps England to UK_DSEAR', () => {
+    expect(resolveExplosionRegime('England')).toBe('UK_DSEAR');
+  });
+
+  it('maps Scotland to UK_DSEAR', () => {
+    expect(resolveExplosionRegime('Scotland')).toBe('UK_DSEAR');
+  });
+
+  it('maps Northern Ireland to UK_DSEAR', () => {
+    expect(resolveExplosionRegime('Northern Ireland')).toBe('UK_DSEAR');
+  });
+
+  it('maps ROI/Ireland to ROI_ATEX', () => {
+    expect(resolveExplosionRegime('ROI')).toBe('ROI_ATEX');
+    expect(resolveExplosionRegime('Ireland')).toBe('ROI_ATEX');
   });
 });
 

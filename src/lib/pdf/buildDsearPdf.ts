@@ -237,12 +237,9 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   let page: PDFPage;
   let yPosition: number;
 
-  // Filter modules for DSEAR-only context: exclude A2, A3, and other non-DSEAR modules
-  // Keep A1_DOC_CONTROL for governance, keep all DSEAR_* modules
-  const filteredModules = moduleInstances.filter(m =>
-    m.module_key.startsWith('DSEAR_') ||
-    m.module_key === 'A1_DOC_CONTROL'
-  );
+  // DSEAR technical sections must only include DSEAR_* modules.
+  // A1 document control is rendered separately via addIssuedReportPages (docControlPage).
+  const filteredModules = moduleInstances.filter(m => m.module_key.startsWith('DSEAR_'));
 
   // Sort modules once for consistency across Contents and module sections
   const sortedModules = sortModules(filteredModules);

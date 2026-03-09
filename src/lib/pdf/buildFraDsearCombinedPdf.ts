@@ -2,7 +2,7 @@ import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import { getModuleName } from '../modules/moduleCatalog';
-import { normalizeJurisdiction, getJurisdictionLabel } from '../jurisdictions';
+import { normalizeJurisdiction, getJurisdictionLabel, resolveExplosionRegime } from '../jurisdictions';
 import { detectInfoGapsForModule } from '../../utils/infoGapQuickActions';
 import {
   PAGE_WIDTH,
@@ -816,8 +816,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     yPosition = drawPageTitle(page, MARGIN, yPosition, refTitle, { regular: font, bold: fontBold });
     yPosition -= 20;
 
-    const jurisdiction = normalizeJurisdiction(document.jurisdiction);
-    const references = getExplosiveAtmospheresReferences(jurisdiction);
+    const explosionRegime = resolveExplosionRegime(document.jurisdiction);
+    const references = getExplosiveAtmospheresReferences(explosionRegime);
     for (const ref of references) {
       ({ page, yPosition } = ensurePageSpace(18, page, yPosition, pdfDoc, isDraft, totalPages));
       page.drawText(sanitizePdfText(`• ${ref}`), {

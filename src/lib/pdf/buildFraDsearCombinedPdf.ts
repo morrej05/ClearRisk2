@@ -2,7 +2,7 @@ import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import { getModuleName } from '../modules/moduleCatalog';
-import { normalizeJurisdiction, getJurisdictionLabel, resolveExplosionRegime } from '../jurisdictions';
+import { resolveExplosionRegime } from '../jurisdictions';
 import { detectInfoGapsForModule } from '../../utils/infoGapQuickActions';
 import {
   PAGE_WIDTH,
@@ -13,15 +13,13 @@ import {
   sanitizePdfText,
   wrapText,
   formatDate,
-  formatAddress,
   getPriorityColor,
   drawDraftWatermark,
   addNewPage,
   drawFooter,
   addSupersededWatermark,
   ensurePageSpace,
-  getCoverTitleContent,
-} from './pdfUtils';
+  } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
 import { FRA_REPORT_STRUCTURE } from './fraReportStructure';
@@ -417,142 +415,29 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   let page: PDFPage;
   let yPosition = PAGE_TOP_Y;
 
-  // Add issued report pages if needed (cover + doc control)
-  if (renderMode === 'issued') {
-    const { coverPage, docControlPage } = await addIssuedReportPages({
-      pdfDoc,
-      document: {
-        id: document.id,
-        title: document.title,
-        document_type: 'FIRE_EXPLOSION_COMBINED',
-        version_number: (document as any).version_number || document.version || 1,
-        issue_date: (document as any).issue_date || new Date().toISOString(),
-        issue_status: ((document as any).issue_status || 'draft') as 'draft' | 'issued' | 'superseded',
-        assessor_name: document.assessor_name,
-        base_document_id: (document as any).base_document_id,
-      },
-      organisation,
-      client: document.meta?.client || null,
-      fonts: { bold: fontBold, regular: font }
-    });
-    totalPages.push(coverPage, docControlPage);
-    page = docControlPage; // Start from doc control page
-  } else {
-    // Draft mode: create simple cover page
-    page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    totalPages.push(page);
-
-    // Cover page title
-   const coverTitleContent = getCoverTitleContent('FIRE_EXPLOSION_COMBINED', document.title);
-    page.drawText(sanitizePdfText(coverTitleContent.title), {
-      x: MARGIN,
-      y: yPosition,
-      size: 20,
-      font: fontBold,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 30;
-
-    if (coverTitleContent.subtitle) {
-      page.drawText(sanitizePdfText(coverTitleContent.subtitle), {
-        x: MARGIN,
-        y: yPosition,
-        size: 14,
-        font: font,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-      yPosition -= 40;
-    } else {
-      yPosition -= 10;
-    }
-
-    // Client
-    const clientName = document.meta?.client?.name || document.responsible_person || '';
-    if (clientName) {
-      page.drawText(sanitizePdfText(`Client: ${clientName}`), {
-        x: MARGIN,
-        y: yPosition,
-        size: 11,
-        font: font,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= 20;
-    }
-
-    // Site
-    const siteName = document.meta?.site?.name || document.scope_description || '';
-    if (siteName) {
-      page.drawText(sanitizePdfText(`Site: ${siteName}`), {
-        x: MARGIN,
-        y: yPosition,
-        size: 11,
-        font: font,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= 20;
-    }
-
-    // Address
-    const address = document.meta?.site?.address;
-    if (address) {
-      const formattedAddress = formatAddress(address);
-      if (formattedAddress) {
-        page.drawText(sanitizePdfText(`Address: ${formattedAddress}`), {
-          x: MARGIN,
-          y: yPosition,
-          size: 10,
-          font: font,
-          color: rgb(0.3, 0.3, 0.3),
-        });
-        yPosition -= 20;
-      }
-    }
-
-    // Organisation
-    page.drawText(sanitizePdfText(`Assessment Organisation: ${organisation.name}`), {
-      x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font: font,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-    yPosition -= 25;
-
-    // Assessment date
-    page.drawText(sanitizePdfText(`Assessment Date: ${formatDate(document.assessment_date)}`), {
-      x: MARGIN,
-      y: yPosition,
-      size: 11,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 20;
-
-    // Jurisdiction
-    const j = normalizeJurisdiction(document.jurisdiction);
-    const jurisdictionLabel = getJurisdictionLabel(j);
-    page.drawText(sanitizePdfText(`Jurisdiction: ${jurisdictionLabel}`), {
-      x: MARGIN,
-      y: yPosition,
-      size: 11,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 20;
-
-    // Assessor
-    if (document.assessor_name) {
-      page.drawText(sanitizePdfText(`Assessor: ${document.assessor_name}`), {
-        x: MARGIN,
-        y: yPosition,
-        size: 11,
-        font: font,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= 20;
-    }
-  }
-
+  // Use shared cover + document-control rendering for both draft and issued modes.
+  const { coverPage, docControlPage } = await addIssuedReportPages({
+    pdfDoc,
+    document: {
+      id: document.id,
+      title: document.title,
+      document_type: 'FIRE_EXPLOSION_COMBINED',
+      version_number: (document as any).version_number || document.version || 1,
+      issue_date: (document as any).issue_date || new Date().toISOString(),
+      issue_status: ((document as any).issue_status || 'draft') as 'draft' | 'issued' | 'superseded',
+      assessor_name: document.assessor_name,
+      base_document_id: (document as any).base_document_id,
+    },
+    organisation,
+    client: {
+      name: document.meta?.client?.name || document.responsible_person || '',
+      site: document.meta?.site?.name || document.scope_description || '',
+    },
+    fonts: { bold: fontBold, regular: font },
+  });
+  totalPages.push(coverPage, docControlPage);
+  page = docControlPage; // Start from doc control page
+  
   // Reserve TOC page immediately after cover (will be populated after all sections are rendered)
   const tocPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   totalPages.push(tocPage);

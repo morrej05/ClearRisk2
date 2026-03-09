@@ -6,6 +6,7 @@ import {
   drawCoverPage,
   drawDocumentControlPage,
   fetchAndEmbedLogo,
+  getCoverTitleContent,
 } from './pdfUtils';
 import { resolveOrganisationLogo } from './logoResolver';
 // Enable PDF image logos via env var (default: true)
@@ -195,12 +196,13 @@ export async function addIssuedReportPages(options: IssuedPdfOptions): Promise<{
   }
 
   const docControlPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  const reportTitleForControl = getCoverTitleContent(document.document_type, document.title).title;
 
   await drawDocumentControlPage(
     docControlPage,
     fonts,
     {
-      title: document.title,
+      title: reportTitleForControl,
       version_number: document.version_number,
       issue_date: document.issue_date,
       issue_status: document.issue_status,

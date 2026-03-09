@@ -6,6 +6,7 @@
  */
 
 export type Jurisdiction = 'england_wales' | 'scotland' | 'northern_ireland' | 'ireland';
+export type ExplosionRegime = 'UK_DSEAR' | 'ROI_ATEX';
 
 export interface JurisdictionConfig {
   code: Jurisdiction;
@@ -272,4 +273,20 @@ export function getDsearJurisdictionOptions() {
     { value: 'UK', label: 'UK (DSEAR)' },
     { value: 'EUROPE', label: 'Europe (ATEX)' },
   ];
+}
+
+/**
+ * Resolve explosion regulatory regime from jurisdiction.
+ * Keeps mapping explicit to avoid drift across PDF/reference paths.
+ */
+export function resolveExplosionRegime(
+  jurisdiction: Jurisdiction | string | null | undefined
+): ExplosionRegime {
+  const raw = String(jurisdiction ?? '').toUpperCase().trim();
+  if (raw === 'ROI') {
+    return 'ROI_ATEX';
+  }
+
+  const normalized = normalizeJurisdiction(jurisdiction);
+  return normalized === 'ireland' ? 'ROI_ATEX' : 'UK_DSEAR';
 }

@@ -111,24 +111,30 @@ function drawModuleSection(
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
-  contextDocumentType?: 'FRA' | 'DSEAR'
+  contextDocumentType?: 'FRA' | 'DSEAR',
+  options?: {
+    showModuleHeading?: boolean;
+  }
 ): { page: PDFPage; yPosition: number } {
+  const showModuleHeading = options?.showModuleHeading ?? true;
   // Ensure space for module header
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  // Module heading - strip DSEAR prefix if DSEAR module
-  const moduleName = getModuleName(module.module_key);
-  const displayName = module.module_key.startsWith('DSEAR')
-    ? moduleName.replace(/^DSEAR-\d+\s*-\s*/, '')
-    : moduleName;
-  page.drawText(sanitizePdfText(displayName), {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 22;
+  if (showModuleHeading) {
+    // Module heading - strip DSEAR prefix if DSEAR module
+    const moduleName = getModuleName(module.module_key);
+    const displayName = module.module_key.startsWith('DSEAR')
+      ? moduleName.replace(/^DSEAR-\d+\s*-\s*/, '')
+      : moduleName;
+    page.drawText(sanitizePdfText(displayName), {
+      x: MARGIN,
+      y: yPosition,
+      size: 14,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 22;
+  }
 
   // Outcome badge if present
   if (module.outcome) {
@@ -831,7 +837,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
         pdfDoc,
         isDraft,
         totalPages,
-        'DSEAR'
+        'DSEAR',
+        { showModuleHeading: false }
       ));
       dsearSectionNumber += 1;
     }

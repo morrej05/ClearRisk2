@@ -23,6 +23,7 @@ import {
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
+import { FRA_REPORT_STRUCTURE, type PdfSection } from './fraReportStructure';
 import {
   explosiveAtmospheresPurposeText,
   hazardousAreaClassificationText,
@@ -372,6 +373,16 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   const tocEntries: Array<{ title: string; pageNo: number }> = [];
   const recordToc = (title: string) => tocEntries.push({ title, pageNo: totalPages.length });
 
+  const getFraSectionLabel = (section: PdfSection): string => {
+    const displayNum = section.displayNumber ?? section.id;
+    return `${displayNum}. ${section.title}`;
+  };
+
+  const getFraSectionForModule = (moduleKey: string): PdfSection | null => {
+    return FRA_REPORT_STRUCTURE.find(section => section.moduleKeys.includes(moduleKey)) || null;
+  };
+
+
   let page: PDFPage;
   let yPosition = PAGE_TOP_Y;
 
@@ -576,10 +587,17 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
     });
 
-    // Render each FRA module
+    // Render each FRA module (TOC uses logical FRA section titles, not module IDs)
+    const recordedFraSections = new Set<string>();
     for (const module of sortedFraModules) {
-      const moduleName = getModuleName(module.module_key);
-      recordToc(`  ${moduleName}`); // Indent FRA modules
+       const fraSection = getFraSectionForModule(module.module_key);
+      if (fraSection) {
+        const fraSectionLabel = getFraSectionLabel(fraSection);
+        if (!recordedFraSections.has(fraSectionLabel)) {
+          recordToc(`  ${fraSectionLabel}`);
+          recordedFraSections.add(fraSectionLabel);
+        }
+      }
       ({ page, yPosition } = drawModuleSection(
         page,
         module,

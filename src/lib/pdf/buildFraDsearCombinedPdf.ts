@@ -20,6 +20,7 @@ import {
   drawFooter,
   addSupersededWatermark,
   ensurePageSpace,
+  getCoverTitleContent,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
@@ -442,7 +443,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     totalPages.push(page);
 
     // Cover page title
-    page.drawText(sanitizePdfText('Combined Fire + Explosion Report'), {
+   const coverTitleContent = getCoverTitleContent('FIRE_EXPLOSION_COMBINED', document.title);
+    page.drawText(sanitizePdfText(coverTitleContent.title), {
       x: MARGIN,
       y: yPosition,
       size: 20,
@@ -451,14 +453,18 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     });
     yPosition -= 30;
 
-    page.drawText(sanitizePdfText(document.title || 'Untitled'), {
-      x: MARGIN,
-      y: yPosition,
-      size: 14,
-      font: font,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-    yPosition -= 40;
+    if (coverTitleContent.subtitle) {
+      page.drawText(sanitizePdfText(coverTitleContent.subtitle), {
+        x: MARGIN,
+        y: yPosition,
+        size: 14,
+        font: font,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPosition -= 40;
+    } else {
+      yPosition -= 10;
+    }
 
     // Client
     const clientName = document.meta?.client?.name || document.responsible_person || '';

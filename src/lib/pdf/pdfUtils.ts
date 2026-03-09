@@ -801,7 +801,8 @@ export async function drawCoverPage(
 
   yPosition -= 60;
 
-  const titleLines = wrapText(document.title, CONTENT_WIDTH, 24, fonts.bold);
+  const coverContent = getCoverTitleContent(document.document_type, document.title);
+  const titleLines = wrapText(coverContent.title, CONTENT_WIDTH, 24, fonts.bold);
   for (const line of titleLines) {
     page.drawText(line, {
       x: pageWidth / 2 - fonts.bold.widthOfTextAtSize(line, 24) / 2,
@@ -815,12 +816,9 @@ export async function drawCoverPage(
 
   yPosition -= 20;
 
-  const docTypeText = getDocumentTypeLabel(document.document_type);
-   const isCombinedReport = document.document_type === 'FIRE_EXPLOSION_COMBINED' || document.document_type === 'combined';
-
-  if (!isCombinedReport) {
-    page.drawText(docTypeText, {
-      x: pageWidth / 2 - fonts.regular.widthOfTextAtSize(docTypeText, 14) / 2,
+  if (coverContent.subtitle) {
+    page.drawText(coverContent.subtitle, {
+      x: pageWidth / 2 - fonts.regular.widthOfTextAtSize(coverContent.subtitle, 14) / 2,
       y: yPosition,
       size: 14,
       font: fonts.regular,
@@ -884,6 +882,29 @@ export async function drawCoverPage(
     font: fonts.bold,
     color: document.issue_status === 'issued' ? rgb(0, 0, 0) : rgb(0.7, 0, 0),
   });
+}
+export function getCoverTitleContent(documentType: string, rawTitle: string | null | undefined): {
+  title: string;
+  subtitle: string | null;
+  productLabel: string;
+} {
+  const productLabel = getDocumentTypeLabel(documentType);
+  const isCombinedReport = documentType === 'FIRE_EXPLOSION_COMBINED' || documentType === 'combined';
+  const inputTitle = (rawTitle || '').trim();
+
+  const stripCombinedPhrases = (text: string): string => text
+    .replace(/combined\s+fire\s*\+\s*explosion\s+report/gi, '')
+    .replace(/combined\s+fra\s*\+\s*dsear\s+report/gi, '')
+    .replace(/fire\s*\+\s*explosion\s+combined\s+report/gi, '')
+    .replace(/combined\s+report/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  const cleanedTitle = isCombinedReport ? inputTitle : stripCombinedPhrases(inputTitle);
+  const title = cleanedTitle || productLabel;
+  const subtitle = title.toLowerCase() === productLabel.toLowerCase() ? null : productLabel;
+
+  return { title, subtitle, productLabel };
 }
 
 function getDocumentTypeLabel(type: string): string {

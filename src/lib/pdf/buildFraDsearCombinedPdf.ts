@@ -379,7 +379,16 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   if (renderMode === 'issued') {
     const { coverPage, docControlPage } = await addIssuedReportPages({
       pdfDoc,
-      document,
+      document: {
+        id: document.id,
+        title: document.title,
+        document_type: 'FIRE_EXPLOSION_COMBINED',
+        version_number: (document as any).version_number || document.version || 1,
+        issue_date: (document as any).issue_date || new Date().toISOString(),
+        issue_status: ((document as any).issue_status || 'draft') as 'draft' | 'issued' | 'superseded',
+        assessor_name: document.assessor_name,
+        base_document_id: (document as any).base_document_id,
+      },
       organisation,
       client: document.meta?.client || null,
       fonts: { bold: fontBold, regular: font }
@@ -630,7 +639,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     yPosition -= 20;
 
     // Render explosion criticality summary (simplified inline version)
-    const criticalityLevel = explosionSummary.overallCriticality;
+    const criticalityLevel = explosionSummary.overall;
     const criticalityColors: Record<string, ReturnType<typeof rgb>> = {
       Critical: rgb(0.8, 0, 0),
       High: rgb(0.9, 0.5, 0),
@@ -819,8 +828,9 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     const explosionRegime = resolveExplosionRegime(document.jurisdiction);
     const references = getExplosiveAtmospheresReferences(explosionRegime);
     for (const ref of references) {
+      const formattedReference = ref.detail ? `${ref.label} — ${ref.detail}` : ref.label;
       ({ page, yPosition } = ensurePageSpace(18, page, yPosition, pdfDoc, isDraft, totalPages));
-      page.drawText(sanitizePdfText(`• ${ref}`), {
+      page.drawText(sanitizePdfText(`• ${formattedReference}`), {
         x: MARGIN,
         y: yPosition,
         size: 10,

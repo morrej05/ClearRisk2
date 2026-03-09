@@ -50,12 +50,7 @@ export function JurisdictionSelector({
     [isDsearContext]
   );
 
-  const normalizeForContext = (value: Jurisdiction | string) => {
-    if (!isDsearContext) return String(normalizeJurisdiction(value));
-
-    const upper = String(value ?? '').toUpperCase();
-    return upper === 'EUROPE' || upper === 'ATEX' ? 'EUROPE' : 'UK';
-  };
+  const normalizeForContext = (value: Jurisdiction | string) => String(normalizeJurisdiction(value));
 
   // Keep local state aligned with props + ensure the selected value always exists in options
   useEffect(() => {

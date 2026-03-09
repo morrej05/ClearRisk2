@@ -6,6 +6,7 @@ import { canAccessPillarB } from '../utils/entitlements';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { getModuleKeysForDocType } from '../lib/modules/moduleCatalog';
 import { getAssessmentDisplayName } from '../utils/displayNames';
+import { getAvailableJurisdictions, normalizeJurisdiction } from '../lib/jurisdictions';
 
 export default function NewAssessment() {
   const { user, userProfile, organisation } = useAuth();
@@ -13,7 +14,7 @@ export default function NewAssessment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     type: 'fra',
-    jurisdiction: 'UK-EN',
+    jurisdiction: 'england_wales',
     site_name: '',
     site_address: '',
     client_name: '',
@@ -76,7 +77,7 @@ export default function NewAssessment() {
           assessment_date: formData.assessment_date,
           assessor_name: formData.assessor_name,
           standards_selected: [],
-          jurisdiction: formData.jurisdiction === 'UK-EN' ? 'UK' : 'IE',
+          jurisdiction: normalizeJurisdiction(formData.jurisdiction),
         })
         .select()
         .single();
@@ -196,8 +197,11 @@ export default function NewAssessment() {
                   required
                   className="w-full border border-neutral-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="UK-EN">United Kingdom</option>
-                  <option value="IE">Ireland</option>
+                   {getAvailableJurisdictions().map((jurisdictionOption) => (
+                    <option key={jurisdictionOption.value} value={jurisdictionOption.value}>
+                      {jurisdictionOption.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

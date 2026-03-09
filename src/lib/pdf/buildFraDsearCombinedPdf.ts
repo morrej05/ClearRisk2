@@ -653,8 +653,9 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
     });
 
-    // Render each FRA module (TOC uses logical FRA section titles, not module IDs)
+    // Render each FRA module grouped under logical FRA section headings
     const recordedFraSections = new Set<number>();
+    const renderedFraSectionHeadings = new Set<number>();
     const part1TocSectionNumbers = new Map<number, number>();
     let part1TocNextSectionNumber = 1;
     for (const module of sortedFraModules) {
@@ -668,6 +669,12 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
           recordToc(`  ${fraSectionLabel}`);
           recordedFraSections.add(fraSection.id);
         }
+        if (!renderedFraSectionHeadings.has(fraSection.id)) {
+          ({ page, yPosition } = ensurePageSpace(42, page, yPosition, pdfDoc, isDraft, totalPages));
+          yPosition = drawPageTitle(page, MARGIN, yPosition, fraSectionLabel, { regular: font, bold: fontBold });
+          yPosition -= 10;
+          renderedFraSectionHeadings.add(fraSection.id);
+        }
       }
       ({ page, yPosition } = drawModuleSection(
         page,
@@ -679,7 +686,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
         pdfDoc,
         isDraft,
         totalPages,
-        'FRA'
+        'FRA',
+        { showModuleHeading: false }
       ));
     }
   }

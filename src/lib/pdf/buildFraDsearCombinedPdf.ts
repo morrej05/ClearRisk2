@@ -646,7 +646,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       fonts: { regular: font, bold: fontBold },
     });
 
-    let dsearSectionNumber = 2.1;
+    let dsearSectionNumber = 1;
+    const formatPart2Section = (sectionNumber: number) => `2.${sectionNumber}`;
 
     // 2.1 Explosion Criticality Assessment
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
@@ -675,7 +676,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
     // 2.2 Purpose and Introduction
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
-    dsearSectionNumber = 2.2;
+    dsearSectionNumber = 2;
     recordToc('2.2 Purpose and Introduction');
     yPosition = PAGE_TOP_Y;
     const purposeTitle = '2.2 Purpose and Introduction';
@@ -698,7 +699,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
     // 2.3 Hazardous Area Classification Methodology
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
-    dsearSectionNumber = 2.3;
+    dsearSectionNumber = 3;
     recordToc('2.3 Hazardous Area Classification Methodology');
     yPosition = PAGE_TOP_Y;
     const hacTitle = '2.3 Hazardous Area Classification Methodology';
@@ -726,7 +727,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
     // 2.4 Zone Definitions
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
-    dsearSectionNumber = 2.4;
+    dsearSectionNumber = 4;
     recordToc('2.4 Zone Definitions');
     yPosition = PAGE_TOP_Y;
     const zoneTitle = '2.4 Zone Definitions';
@@ -753,7 +754,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     }
 
     // 2.5 Scope (if present)
-    dsearSectionNumber = 2.5;
+    dsearSectionNumber = 5;
     if (document.scope_description?.trim()) {
       page = addNewPage(pdfDoc, isDraft, totalPages).page;
       recordToc('2.5 Scope');
@@ -774,15 +775,15 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
         });
         yPosition -= 16;
       }
-      dsearSectionNumber = 2.6;
+      dsearSectionNumber = 6;
     }
 
     // 2.X Limitations and Assumptions (if present)
     if (document.limitations_assumptions?.trim()) {
       page = addNewPage(pdfDoc, isDraft, totalPages).page;
-      recordToc(`${dsearSectionNumber.toFixed(1)} Limitations and Assumptions`);
+      recordToc(`${formatPart2Section(dsearSectionNumber)} Limitations and Assumptions`);
       yPosition = PAGE_TOP_Y;
-      const limTitle = `${dsearSectionNumber.toFixed(1)} Limitations and Assumptions`;
+      const limTitle = `${formatPart2Section(dsearSectionNumber)} Limitations and Assumptions`;
       yPosition = drawPageTitle(page, MARGIN, yPosition, limTitle, { regular: font, bold: fontBold });
       yPosition -= 20;
 
@@ -798,7 +799,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
         });
         yPosition -= 16;
       }
-      dsearSectionNumber += 0.1;
+      dsearSectionNumber += 1;
     }
 
     // Sort modules by DSEAR order
@@ -812,7 +813,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     for (const module of sortedDsearModules) {
       const moduleName = getModuleName(module.module_key);
       const displayName = stripDsearPrefix(moduleName);
-      const numberedModuleName = `${dsearSectionNumber.toFixed(1)} ${displayName}`;
+       const numberedModuleName = `${formatPart2Section(dsearSectionNumber)} ${displayName}`;
       recordToc(numberedModuleName);
 
       page = addNewPage(pdfDoc, isDraft, totalPages).page;
@@ -832,14 +833,14 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
         totalPages,
         'DSEAR'
       ));
-      dsearSectionNumber += 0.1;
+      dsearSectionNumber += 1;
     }
 
     // 2.X References and Compliance
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
-    recordToc(`${dsearSectionNumber.toFixed(1)} References and Compliance`);
+    recordToc(`${formatPart2Section(dsearSectionNumber)} References and Compliance`);
     yPosition = PAGE_TOP_Y;
-    const refTitle = `${dsearSectionNumber.toFixed(1)} References and Compliance`;
+    const refTitle = `${formatPart2Section(dsearSectionNumber)} References and Compliance`;
     yPosition = drawPageTitle(page, MARGIN, yPosition, refTitle, { regular: font, bold: fontBold });
     yPosition -= 20;
 
@@ -857,14 +858,14 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
       });
       yPosition -= 18;
     }
-    dsearSectionNumber += 0.1;
+    dsearSectionNumber += 1;
 
     // 2.X Compliance-Critical Findings (if present)
     if (explosionSummary.flags.length > 0) {
       page = addNewPage(pdfDoc, isDraft, totalPages).page;
-      recordToc(`${dsearSectionNumber.toFixed(1)} Compliance-Critical Findings`);
+      recordToc(`${formatPart2Section(dsearSectionNumber)} Compliance-Critical Findings`);
       yPosition = PAGE_TOP_Y;
-      const ccfTitle = `${dsearSectionNumber.toFixed(1)} Compliance-Critical Findings`;
+      const ccfTitle = `${formatPart2Section(dsearSectionNumber)} Compliance-Critical Findings`;
       yPosition = drawPageTitle(page, MARGIN, yPosition, ccfTitle, { regular: font, bold: fontBold });
       yPosition -= 20;
 

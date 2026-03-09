@@ -1,15 +1,20 @@
-import { type Jurisdiction, normalizeJurisdiction } from '../jurisdictions';
+import { type ExplosionRegime, type Jurisdiction, resolveExplosionRegime } from '../jurisdictions';
 
 export interface ReferenceItem {
   label: string;
   detail?: string;
 }
 
-export function getExplosiveAtmospheresReferences(jurisdiction: Jurisdiction | string): ReferenceItem[] {
-  const j = normalizeJurisdiction(jurisdiction);
+export function getExplosiveAtmospheresReferences(
+  jurisdictionOrRegime: Jurisdiction | ExplosionRegime | string
+): ReferenceItem[] {
+  const explosionRegime: ExplosionRegime =
+    jurisdictionOrRegime === 'UK_DSEAR' || jurisdictionOrRegime === 'ROI_ATEX'
+      ? jurisdictionOrRegime
+      : resolveExplosionRegime(jurisdictionOrRegime);
 
-  // Ireland uses Irish/European standards
-  if (j === 'ireland') {
+  // ROI uses Irish/European standards
+  if (explosionRegime === 'ROI_ATEX') {
     return [
       {
         label: 'Safety, Health and Welfare at Work Act 2005',

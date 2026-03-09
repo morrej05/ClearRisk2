@@ -2181,6 +2181,10 @@ function drawModuleSummary(
   }
 
   if (module.assessor_notes && module.assessor_notes.trim()) {
+     const notesLines = wrapText(module.assessor_notes, CONTENT_WIDTH, 10, font);
+    const notesBlockHeight = 18 + (notesLines.length * 14) + 10;
+    ({ page, yPosition } = ensurePageSpace(notesBlockHeight, page, yPosition, pdfDoc, isDraft, totalPages));
+
     page.drawText('Assessor Notes:', {
       x: MARGIN,
       y: yPosition,
@@ -2190,13 +2194,8 @@ function drawModuleSummary(
     });
 
     yPosition -= 18;
-    const notesLines = wrapText(module.assessor_notes, CONTENT_WIDTH, 10, font);
     for (const line of notesLines) {
-      if (yPosition < MARGIN + 50) {
-        const result = addNewPage(pdfDoc, isDraft, totalPages);
-        page = result.page;
-        yPosition = PAGE_TOP_Y;
-      }
+      
       page.drawText(line, {
         x: MARGIN,
         y: yPosition,

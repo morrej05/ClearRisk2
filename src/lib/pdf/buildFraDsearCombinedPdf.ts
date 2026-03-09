@@ -105,6 +105,36 @@ interface BuildPdfOptions {
   renderMode: 'preview' | 'issued';
 }
 
+const NOT_ASSESSED_LABEL = 'Not assessed';
+
+function hasMeaningfulText(value: unknown, minLength = 3): boolean {
+  return typeof value === 'string' && value.trim().length >= minLength;
+}
+
+function hasMeaningfulValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return hasMeaningfulText(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return true;
+  if (Array.isArray(value)) return value.some(hasMeaningfulValue);
+  if (typeof value === 'object') return Object.values(value as Record<string, unknown>).some(hasMeaningfulValue);
+  return false;
+}
+
+function hasMeaningfulFraAssessment(fraModules: ModuleInstance[]): boolean {
+  return fraModules.some((module) => {
+    if (module.outcome && module.outcome !== 'not_assessed') return true;
+    if (hasMeaningfulText(module.assessor_notes, 10)) return true;
+    return hasMeaningfulValue(module.data);
+  });
+}
+
+function hasMeaningfulDsearAssessment(dsearModules: ModuleInstance[]): boolean {
+  return dsearModules.some((module) => {
+    if (module.outcome && module.outcome !== 'not_assessed') return true;
+    if (hasMeaningfulText(module.assessor_notes, 10)) return true;
+    return hasMeaningfulValue(module.data);
+  });
+}
 function drawModuleSection(
   page: PDFPage,
   module: ModuleInstance,
@@ -1094,7 +1124,9 @@ function drawCombinedExecutiveSummary(
   // FRA section
   const fraModules = moduleInstances.filter(m => m.module_key.startsWith('FRA') || m.module_key.startsWith('A'));
   const fra4 = fraModules.find(m => m.module_key === 'FRA_4_SIGNIFICANT_FINDINGS');
-  const fraOutcome = fra4?.data?.summary_outcome || 'Not assessed';
+   const fraOutcome = hasMeaningfulFraAssessment(fraModules)
+    ? (fra4?.data?.summary_outcome || NOT_ASSESSED_LABEL)
+    : NOT_ASSESSED_LABEL;
 
   page.drawText(sanitizePdfText('Fire Risk Assessment Outcome:'), {
     x: MARGIN,
@@ -1119,6 +1151,8 @@ function drawCombinedExecutiveSummary(
   if (dsearModules.length > 0) {
     try {
       const explosionSummary = computeExplosionSummary({ modules: dsearModules });
+      const hasDsearAssessment = hasMeaningfulDsearAssessment(dsearModules);
+      const criticalityLabel = hasDsearAssessment ? explosionSummary.overall : NOT_ASSESSED_LABEL;
 
       page.drawText(sanitizePdfText('Explosive Atmospheres Criticality:'), {
         x: MARGIN,
@@ -1129,14 +1163,16 @@ function drawCombinedExecutiveSummary(
       });
       yPosition -= 18;
 
-      page.drawText(sanitizePdfText(explosionSummary.overall), {
-        x: MARGIN + 20,
-        y: yPosition,
-        size: 10,
-        font: font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      yPosition -= 25;
+      if (hasDsearAssessment) {
+        page.drawText(sanitizePdfText(`Critical: ${explosionSummary.criticalCount}, High: ${explosionSummary.highCount}`), {
+          x: MARGIN + 20,
+          y: yPosition,
+          size: 9,
+          font: font,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        yPosition -= 25;
+      }
 
       // Flags summary
       page.drawText(sanitizePdfText(`Critical: ${explosionSummary.criticalCount}, High: ${explosionSummary.highCount}`), {

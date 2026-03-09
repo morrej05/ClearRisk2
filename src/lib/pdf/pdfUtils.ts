@@ -816,14 +816,20 @@ export async function drawCoverPage(
   yPosition -= 20;
 
   const docTypeText = getDocumentTypeLabel(document.document_type);
-  page.drawText(docTypeText, {
-    x: pageWidth / 2 - fonts.regular.widthOfTextAtSize(docTypeText, 14) / 2,
-    y: yPosition,
-    size: 14,
-    font: fonts.regular,
-    color: rgb(0.3, 0.3, 0.3),
-  });
-  yPosition -= 60;
+   const isCombinedReport = document.document_type === 'FIRE_EXPLOSION_COMBINED' || document.document_type === 'combined';
+
+  if (!isCombinedReport) {
+    page.drawText(docTypeText, {
+      x: pageWidth / 2 - fonts.regular.widthOfTextAtSize(docTypeText, 14) / 2,
+      y: yPosition,
+      size: 14,
+      font: fonts.regular,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPosition -= 60;
+  } else {
+    yPosition -= 40;
+  }
 
   if (client) {
     if (client.name) {

@@ -373,11 +373,6 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   const tocEntries: Array<{ title: string; pageNo: number }> = [];
   const recordToc = (title: string) => tocEntries.push({ title, pageNo: totalPages.length });
 
-  const getFraSectionLabel = (section: PdfSection): string => {
-    const displayNum = section.displayNumber ?? section.id;
-    return `${displayNum}. ${section.title}`;
-  };
-
   const getFraSectionForModule = (moduleKey: string): PdfSection | null => {
     return FRA_REPORT_STRUCTURE.find(section => section.moduleKeys.includes(moduleKey)) || null;
   };
@@ -588,14 +583,19 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     });
 
     // Render each FRA module (TOC uses logical FRA section titles, not module IDs)
-    const recordedFraSections = new Set<string>();
+    const recordedFraSections = new Set<number>();
+    const part1TocSectionNumbers = new Map<number, number>();
+    let part1TocNextSectionNumber = 1;
     for (const module of sortedFraModules) {
        const fraSection = getFraSectionForModule(module.module_key);
       if (fraSection) {
-        const fraSectionLabel = getFraSectionLabel(fraSection);
-        if (!recordedFraSections.has(fraSectionLabel)) {
+        if (!part1TocSectionNumbers.has(fraSection.id)) {
+          part1TocSectionNumbers.set(fraSection.id, part1TocNextSectionNumber++);
+        }
+        const fraSectionLabel = `${part1TocSectionNumbers.get(fraSection.id)}. ${fraSection.title}`;
+        if (!recordedFraSections.has(fraSection.id)) {
           recordToc(`  ${fraSectionLabel}`);
-          recordedFraSections.add(fraSectionLabel);
+          recordedFraSections.add(fraSection.id);
         }
       }
       ({ page, yPosition } = drawModuleSection(

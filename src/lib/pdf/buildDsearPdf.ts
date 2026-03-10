@@ -161,24 +161,66 @@ function getModuleSectionNumber(moduleKey: string, sortedModules: ModuleInstance
  * Draw Table of Contents for DSEAR PDF with actual page numbers
  */
 function drawTableOfContents(
+  pdfDoc: PDFDocument,
+  totalPages: PDFPage[],
   tocPage: PDFPage,
   tocEntries: Array<{ title: string; pageNo: number }>,
   font: any,
   fontBold: any
 ): void {
-  let yPosition = PAGE_TOP_Y - 40;
+  const tocStartY = PAGE_TOP_Y - 40;
+  const contentStartY = tocStartY - 12;
+  const minY = MARGIN + 50;
+  const rowHeight = 16;
+
+  const countNeededTocPages = (): number => {
+    let pageCount = 1;
+    let yPosition = contentStartY;
+
+    for (let i = 0; i < tocEntries.length; i += 1) {
+      if (yPosition < minY) {
+        pageCount += 1;
+        yPosition = contentStartY;
+      }
+      yPosition -= rowHeight;
+    }
+
+    return pageCount;
+  };
+
+  const tocPageCount = countNeededTocPages();
+  const extraTocPages = Math.max(0, tocPageCount - 1);
+
+  if (extraTocPages > 0) {
+    const tocPageIndex = totalPages.indexOf(tocPage);
+    for (let i = 0; i < extraTocPages; i += 1) {
+      const inserted = pdfDoc.insertPage(tocPageIndex + 1 + i, [PAGE_WIDTH, PAGE_HEIGHT]);
+      totalPages.splice(tocPageIndex + 1 + i, 0, inserted);
+    }
+  }
+
+  const tocPageIndex = totalPages.indexOf(tocPage);
+  const allTocPages = totalPages.slice(tocPageIndex, tocPageIndex + tocPageCount);
+  let currentTocPageIndex = 0;
+  let activeTocPage = allTocPages[currentTocPageIndex];
+  let yPosition = tocStartY;
 
   // Title
-  yPosition = drawPageTitle(tocPage, MARGIN, yPosition, 'Contents', { regular: font, bold: fontBold });
+  yPosition = drawPageTitle(activeTocPage, MARGIN, yPosition, 'Contents', { regular: font, bold: fontBold });
   yPosition -= 12;
 
   // Render TOC entries with page numbers
   for (const entry of tocEntries) {
-    if (yPosition < MARGIN + 50) break; // Stop if we run out of space
+    if (yPosition < minY) {
+      currentTocPageIndex += 1;
+      activeTocPage = allTocPages[currentTocPageIndex];
+      yPosition = drawPageTitle(activeTocPage, MARGIN, tocStartY, 'Contents', { regular: font, bold: fontBold });
+      yPosition -= 12;
+    }
 
     // Draw section title (left-aligned)
     const sanitizedTitle = sanitizePdfText(entry.title);
-    tocPage.drawText(sanitizedTitle, {
+    activeTocPage.drawText(sanitizedTitle, {
       x: MARGIN + 20,
       y: yPosition,
       size: 11,
@@ -187,9 +229,9 @@ function drawTableOfContents(
     });
 
     // Draw page number (right-aligned)
-    const pageNumText = entry.pageNo.toString();
+    const pageNumText = (entry.pageNo + extraTocPages).toString();
     const pageNumWidth = font.widthOfTextAtSize(pageNumText, 11);
-    tocPage.drawText(pageNumText, {
+    activeTocPage.drawText(pageNumText, {
       x: PAGE_WIDTH - MARGIN - pageNumWidth,
       y: yPosition,
       size: 11,
@@ -379,7 +421,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   }
 
   // Now render the TOC with collected entries
-  drawTableOfContents(tocPage, tocEntries, font, fontBold);
+  drawTableOfContents(pdfDoc, totalPages, tocPage, tocEntries, font, fontBold);
 
   // Add footers to all pages
   const footerReportTitle = getReportFooterTitle('DSEAR', document.title);

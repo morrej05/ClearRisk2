@@ -21,6 +21,7 @@ import {
   deriveAutoActionTitle,
   deriveSystemActionTitle,
   normalizeDisplayValue,
+  getCoverTitleContent,
 } from '../pdfUtils';
 import {
   drawExecutiveRiskHeader,
@@ -2304,10 +2305,13 @@ export function drawCleanAuditPage1(
 ): void {
   const centerX = PAGE_WIDTH / 2;
   let yPosition = PAGE_TOP_Y - 40;
+  const coverTitleContent = getCoverTitleContent(document.document_type, document.title);
+  const reportProductLabel = sanitizePdfText(coverTitleContent.productLabel);
+  const reportTitle = sanitizePdfText(coverTitleContent.title);
 
   // Extract site identity from A1 module (single source of truth)
   const a1Data = a1Module?.data || {};
-  const siteName = sanitizePdfText(a1Data.site?.name || document.title);
+  const siteName = sanitizePdfText(a1Data.site?.name || reportTitle);
   const clientName = sanitizePdfText(a1Data.client?.name || document.responsible_person || organisation.name);
 
   // Build site address from A1
@@ -2319,8 +2323,8 @@ export function drawCleanAuditPage1(
   const siteAddress = sanitizePdfText(siteAddressParts.join(', '));
 
   // Title Block (Centered)
-  page.drawText('Fire Risk Assessment', {
-    x: centerX - (fontBold.widthOfTextAtSize('Fire Risk Assessment', 24) / 2),
+  page.drawText(reportProductLabel, {
+    x: centerX - (fontBold.widthOfTextAtSize(reportProductLabel, 24) / 2),
     y: yPosition,
     size: 24,
     font: fontBold,

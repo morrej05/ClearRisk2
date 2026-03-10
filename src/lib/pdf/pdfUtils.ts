@@ -589,9 +589,10 @@ export function addExecutiveSummaryPages(
 
   if ((mode === 'ai' || mode === 'both') && aiSummary) {
     const { page } = addNewPage(pdfDoc, isDraft, totalPages);
+    let currentPage = page;
     let yPosition = PAGE_TOP_Y;
 
-    page.drawText('Executive Summary', {
+    currentPage.drawText('Executive Summary', {
       x: MARGIN,
       y: yPosition,
       size: 18,
@@ -610,24 +611,18 @@ export function addExecutiveSummaryPages(
       for (const line of lines) {
         if (yPosition < MARGIN + 40) {
           const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
+          currentPage = newPage;
           pagesAdded++;
           yPosition = PAGE_TOP_Y;
-          page.drawText(line, {
-            x: MARGIN,
-            y: yPosition,
-            size: 11,
-            font: fonts.regular,
-            color: rgb(0, 0, 0),
-          });
-        } else {
-          page.drawText(line, {
-            x: MARGIN,
-            y: yPosition,
-            size: 11,
-            font: fonts.regular,
-            color: rgb(0, 0, 0),
-          });
+          
         }
+        currentPage.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font: fonts.regular,
+          color: rgb(0, 0, 0),
+        });
         yPosition -= 14;
       }
 
@@ -639,11 +634,12 @@ export function addExecutiveSummaryPages(
 
   if ((mode === 'author' || mode === 'both') && authorSummary) {
     const { page } = addNewPage(pdfDoc, isDraft, totalPages);
+    let currentPage = page;
     let yPosition = PAGE_TOP_Y;
 
     const heading = 'Executive Summary';
 
-    page.drawText(heading, {
+    currentPage.drawText(heading, {
       x: MARGIN,
       y: yPosition,
       size: 18,
@@ -662,24 +658,18 @@ export function addExecutiveSummaryPages(
       for (const line of lines) {
         if (yPosition < MARGIN + 40) {
           const { page: newPage } = addNewPage(pdfDoc, isDraft, totalPages);
+          currentPage = newPage;
           pagesAdded++;
           yPosition = PAGE_TOP_Y;
-          page.drawText(line, {
-            x: MARGIN,
-            y: yPosition,
-            size: 11,
-            font: fonts.regular,
-            color: rgb(0, 0, 0),
-          });
-        } else {
-          page.drawText(line, {
-            x: MARGIN,
-            y: yPosition,
-            size: 11,
-            font: fonts.regular,
-            color: rgb(0, 0, 0),
-          });
+          
         }
+        currentPage.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font: fonts.regular,
+          color: rgb(0, 0, 0),
+        });
         yPosition -= 14;
       }
 

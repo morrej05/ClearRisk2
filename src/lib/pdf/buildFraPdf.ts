@@ -63,6 +63,7 @@ import { drawUsingThisReportSection, drawAssuranceGapsBlock } from './usingThisR
 import { Cursor, ensureCursor, ensureSpace as ensureSpaceCursor } from './pdfCursor';
 import { drawSectionHeader as drawSectionHeaderCommon } from './fra/fraDrawCommon';
 import { PDF_STYLES } from './pdfStyles';
+import { compareActionsByDisplayReference } from './actionContracts';
 
 // Import from refactored FRA modules
 import type { Document, ModuleInstance, Action, ActionRating, Organisation, BuildPdfOptions } from './fra/fraTypes';
@@ -258,41 +259,9 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   // This is the SINGLE source of truth for action order throughout the FRA PDF
   // ============================================================================
 
-  /**
-   * Priority rank helper: P1=1, P2=2, P3=3, P4=4, others=99
-   */
-  function priorityRank(p?: string): number {
-    const v = (p || '').toUpperCase().trim();
-    if (v === 'P1') return 1;
-    if (v === 'P2') return 2;
-    if (v === 'P3') return 3;
-    if (v === 'P4') return 4;
-    return 99;
-  }
-
-  /**
-   * Date value helper: null/undefined -> Infinity (nulls last)
-   */
-  function dateValue(d?: string | null): number {
-    if (!d) return Number.POSITIVE_INFINITY;
-    const t = new Date(d).getTime();
-    return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
-  }
-
-  /**
-   * Canonical action comparator:
-   * - reference_number ASC (nulls last)
-   * This ensures FRA-2026-001, 002, 003... appear in correct sequence.
-   * Lexicographic sort works correctly due to PREFIX-YYYY-### format.
-   */
-  function sortActionsCanonical(a: any, b: any): number {
-    if (!a.reference_number) return 1;
-    if (!b.reference_number) return -1;
-    return a.reference_number.localeCompare(b.reference_number);
-  }
-
+ 
   // Sort actions using canonical comparator (used everywhere in FRA PDF)
-  const sortedActions = [...actions].sort(sortActionsCanonical);
+  const sortedActions = [...actions].sort(compareActionsByDisplayReference);
 
   // Build module_instance_id -> FRA section mapping
   const moduleToSectionMap = new Map<string, number>();
@@ -393,11 +362,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
 
       const priorityActions = actions
         .filter((a) => ['P1', 'P2', 'P3'].includes(a.priority_band) && (a.status === 'open' || a.status === 'in_progress'))
-        .sort((a, b) => {
-          if (!a.reference_number) return 1;
-          if (!b.reference_number) return -1;
-          return a.reference_number.localeCompare(b.reference_number);
-        });
+        .sort(compareActionsByDisplayReference);
 
       const riskSummaryResult = addNewPage(pdfDoc, isDraft, totalPages);
       page = riskSummaryResult.page;
@@ -1656,11 +1621,7 @@ page.drawText(outcomeLabel, {
     yPosition -= 22;
 
     // Sort actions by reference number (stable professional order)
-    const sortedTopActions = [...openActions].sort((a, b) => {
-      if (!a.reference_number) return 1;
-      if (!b.reference_number) return -1;
-      return a.reference_number.localeCompare(b.reference_number);
-    });
+    const sortedTopActions = [...openActions].sort(compareActionsByDisplayReference);
 
     const topActions = sortedTopActions.slice(0, 3);
 

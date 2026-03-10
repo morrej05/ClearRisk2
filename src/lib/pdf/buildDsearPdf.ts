@@ -649,15 +649,13 @@ function drawModuleSection(
   // Ensure space for section header bar (requires ~60px)
   ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  // Add section number prefix to module title
-  const numberedTitle = `${sectionNumber}. ${displayName}`;
-
   yPosition = drawSectionHeaderBar({
     page,
     x: MARGIN,
     y: yPosition,
     w: CONTENT_WIDTH,
-    title: sanitizePdfText(numberedTitle),
+    sectionNo: String(sectionNumber),
+    title: sanitizePdfText(displayName),
     product: 'dsear',
     fonts: { regular: font, bold: fontBold },
   });

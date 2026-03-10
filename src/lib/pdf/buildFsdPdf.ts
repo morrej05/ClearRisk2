@@ -274,34 +274,35 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
   }
 
   let page: PDFPage;
+  let yPosition: number;
 
-  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
   recordToc('Computed Assurance Summary');
   page = drawComputedAssuranceSummary(page, computedSummary, pdfDoc, isDraft, totalPages, font, fontBold);
 
   if (computedSummary.deviations.length > 0) {
-    ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
     recordToc('Deviation Register');
     page = drawDeviationRegister(page, computedSummary.deviations, pdfDoc, isDraft, totalPages, font, fontBold);
   }
 
   if (computedSummary.assuranceFlags.length > 0) {
-    ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
     recordToc('Assurance Checks');
     page = drawAssuranceChecks(page, computedSummary.assuranceFlags, pdfDoc, isDraft, totalPages, font, fontBold);
   }
 
-  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
   recordToc('Purpose and Scope');
   page = drawPurposeAndScope(page, pdfDoc, isDraft, totalPages, font, fontBold);
 
   if (document.scope_description) {
-    ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
     recordToc('Document Scope');
     page = drawDocumentScope(page, document.scope_description, pdfDoc, isDraft, totalPages, font, fontBold);
   }
 
-  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
   recordToc('Limitations and Assumptions');
   page = drawFsdLimitations(page, pdfDoc, isDraft, totalPages, font, fontBold);
 

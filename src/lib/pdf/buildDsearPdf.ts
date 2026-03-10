@@ -28,6 +28,7 @@ import {
   addExecutiveSummaryPages,
   addSupersededWatermark,
   ensurePageSpace,
+  getReportFooterTitle,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle, drawContentsRow } from './pdfPrimitives';
@@ -373,8 +374,9 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   drawTableOfContents(tocPage, tocEntries, font, fontBold);
 
   // Add footers to all pages
+  const footerReportTitle = getReportFooterTitle(document.document_type, document.title);
   totalPages.forEach((p, idx) => {
-    drawFooter(p, document.title, idx + 1, totalPages.length, font);
+    drawFooter(p, footerReportTitle, idx + 1, totalPages.length, font);
   });
 
   if (document.issue_status === 'superseded') {

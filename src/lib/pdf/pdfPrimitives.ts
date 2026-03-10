@@ -6,24 +6,29 @@ type Fonts = { regular: PDFFont; bold: PDFFont };
 
 const REPORT_HEADING_STYLES = {
   part: {
-    size: 17,
+    size: 16,
     color: rgb(0.35, 0.38, 0.42),
-    spacingBelow: 14,
+    spacingBelow: 16,
   },
   section: {
-    size: 21,
-    lineHeight: 25,
-    spacingAbove: 18,
-    spacingBelow: 22,
+    size: 20,
+    lineHeight: 24,
+    spacingAbove: 20,
+    spacingBelow: 20,
     color: PDF_THEME.colours.charcoal,
   },
   module: {
-    size: 13,
+    size: 12,
+    lineHeight: 16,
+    spacingAbove: 4,
     spacingBelow: 16,
     color: PDF_THEME.colours.charcoal,
   },
 } as const;
 
+export function getReportHeadingStyles() {
+  return REPORT_HEADING_STYLES;
+}
 /**
  * Debug helper: Draw bounding box with label for layout debugging
  */
@@ -537,6 +542,32 @@ export function drawSectionTitle(
   });
 
   return y - REPORT_HEADING_STYLES.module.spacingBelow;
+}
+
+export function drawWrappedSubsectionHeading(
+  page: PDFPage,
+  x: number,
+  y: number,
+  title: string,
+  fonts: Fonts,
+  maxWidth = 495,
+) {
+  const lines = wrapText(sanitizePdfText(title), maxWidth, REPORT_HEADING_STYLES.module.size, fonts.bold);
+  const startY = y - REPORT_HEADING_STYLES.module.spacingAbove;
+  let cursorY = startY;
+
+  for (const line of lines) {
+    page.drawText(line, {
+      x,
+      y: cursorY,
+      size: REPORT_HEADING_STYLES.module.size,
+      font: fonts.bold,
+      color: REPORT_HEADING_STYLES.module.color,
+    });
+    cursorY -= REPORT_HEADING_STYLES.module.lineHeight;
+  }
+
+  return cursorY - REPORT_HEADING_STYLES.module.spacingBelow;
 }
 
 /**

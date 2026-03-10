@@ -1,5 +1,6 @@
 import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
+import { compareActionsByDisplayReference, filterActiveActions } from './actionContracts';
 import { listAttachments, type Attachment } from '../supabase/attachments';
 import { getModuleName } from '../modules/moduleCatalog';
 import { resolveExplosionRegime } from '../jurisdictions';
@@ -1226,13 +1227,14 @@ function drawCombinedExecutiveSummary(
     }
   }
 const deduplicatedActions = deduplicateActions(actions, moduleInstances);
-  // Action counts
-  const fraActions = deduplicatedActions.filter(a => {
+  const activeActions = filterActiveActions(deduplicatedActions);
+  // Action counts (active actions only for executive summary)
+  const fraActions = activeActions.filter(a => {
     const module = moduleInstances.find(m => m.id === a.module_instance_id);
     return module && (module.module_key.startsWith('FRA') || module.module_key.startsWith('A'));
   });
 
-  const dsearActions = deduplicatedActions.filter(a => {
+  const dsearActions = activeActions.filter(a => {
     const module = moduleInstances.find(m => m.id === a.module_instance_id);
     return module && module.module_key.startsWith('DSEAR');
   });
@@ -1246,8 +1248,8 @@ const deduplicatedActions = deduplicateActions(actions, moduleInstances);
   });
   yPosition -= 18;
 
-  const p1Count = deduplicatedActions.filter(a => a.priority_band === 'P1').length;
-  const p2Count = deduplicatedActions.filter(a => a.priority_band === 'P2').length;
+  const p1Count = activeActions.filter(a => a.priority_band === 'P1').length;
+  const p2Count = activeActions.filter(a => a.priority_band === 'P2').length;
 
   page.drawText(sanitizePdfText(`Fire: ${fraActions.length} actions | Explosion: ${dsearActions.length} actions`), {
     x: MARGIN + 20,
@@ -1268,7 +1270,7 @@ const deduplicatedActions = deduplicateActions(actions, moduleInstances);
   yPosition -= 25;
 
   // Top issues from both
-  const criticalActions = deduplicatedActions
+  const criticalActions = activeActions
     .filter(a => (a.priority_band === 'P1' || a.priority_band === 'P2') && a.trigger_text)
     .slice(0, 5);
 
@@ -1344,24 +1346,8 @@ function drawCombinedActionRegister(
   // Deduplicate actions
   const deduplicatedActions = deduplicateActions(actions, moduleInstances);
 
-  // Sort by priority
-  const sortedActions = deduplicatedActions.sort((a, b) => {
-    const priority = { P1: 1, P2: 2, P3: 3, P4: 4 };
-    const aPri = priority[a.priority_band as keyof typeof priority] || 999;
-    const bPri = priority[b.priority_band as keyof typeof priority] || 999;
-    if (aPri !== bPri) return aPri - bPri;
-
-    // Then by status (open first)
-    if (a.status !== b.status) {
-      return a.status === 'open' ? -1 : 1;
-    }
-
-    // Then by target date
-    if (a.target_date && b.target_date) {
-      return a.target_date.localeCompare(b.target_date);
-    }
-    return 0;
-  });
+  // Shared display sort contract: reference number first, deterministic fallback
+  const sortedActions = deduplicatedActions.sort(compareActionsByDisplayReference);
 
   for (const action of sortedActions) {
     ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));

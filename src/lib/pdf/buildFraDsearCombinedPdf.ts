@@ -1205,7 +1205,7 @@ const deduplicatedActions = deduplicateActions(actions, moduleInstances);
   yPosition -= 25;
 
   // Top issues from both
-  const criticalActions = actions
+  const criticalActions = deduplicatedActions
     .filter(a => (a.priority_band === 'P1' || a.priority_band === 'P2') && a.trigger_text)
     .slice(0, 5);
 

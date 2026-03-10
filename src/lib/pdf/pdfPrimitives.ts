@@ -4,6 +4,26 @@ import { wrapText, PDF_DEBUG_LAYOUT, normalizeDisplayValue, sanitizePdfText } fr
 
 type Fonts = { regular: PDFFont; bold: PDFFont };
 
+const REPORT_HEADING_STYLES = {
+  part: {
+    size: 17,
+    color: rgb(0.35, 0.38, 0.42),
+    spacingBelow: 14,
+  },
+  section: {
+    size: 21,
+    lineHeight: 25,
+    spacingAbove: 18,
+    spacingBelow: 22,
+    color: PDF_THEME.colours.charcoal,
+  },
+  module: {
+    size: 13,
+    spacingBelow: 16,
+    color: PDF_THEME.colours.charcoal,
+  },
+} as const;
+
 /**
  * Debug helper: Draw bounding box with label for layout debugging
  */
@@ -47,41 +67,31 @@ export function drawSectionHeaderBar(args: {
 }) {
   const { page, x, y, w, sectionNo, title, fonts } = args;
 
-  const barH = PDF_THEME.shapes.headerBarH;
+  if (!sectionNo) {
+    page.drawText(title, {
+      x,
+      y,
+      size: REPORT_HEADING_STYLES.part.size,
+      font: fonts.regular,
+      color: REPORT_HEADING_STYLES.part.color,
+    });
 
-  // Subtle section header band with neutral fill
-  page.drawRectangle({
-    x,
-    y: y - barH,
-    width: w,
-    height: barH,
-    color: PDF_THEME.colours.divider,
-  });
+  drawDivider(page, x, y - 8, w);
+    return y - REPORT_HEADING_STYLES.part.spacingBelow - 8;
+  }
 
-  // Optional left accent rule
-  page.drawRectangle({
-    x,
-    y: y - barH,
-    width: 3,
-    height: barH,
-    color: PDF_THEME.colours.brand.accent,
-  });
-
-  const text = sectionNo ? `${sectionNo}   ${title}` : title;
-  const fontSize = PDF_THEME.typography.section;
-
-  // Center text vertically in the bar
-  const textYOffset = (barH - fontSize) / 2 + 2;
+  const text = `${sectionNo}. ${title}`;
+  const drawY = y - REPORT_HEADING_STYLES.section.spacingAbove;
 
   page.drawText(text, {
-    x: x + 10,
-    y: y - barH + textYOffset,
-    size: fontSize,
+    x,
+    y: drawY,
+    size: REPORT_HEADING_STYLES.section.size,
     font: fonts.bold,
-    color: PDF_THEME.colours.ink,
+    color: REPORT_HEADING_STYLES.section.color,
   });
 
-  return y - barH - PDF_THEME.rhythm.md;
+  return drawY - REPORT_HEADING_STYLES.section.spacingBelow;
 }
 
 function normalizeOutcome(outcome: string) {
@@ -490,29 +500,21 @@ export function drawPageTitle(
   title: string,
   fonts: { regular: PDFFont; bold: PDFFont }
 ): number {
-  const titleLines = wrapText(sanitizePdfText(title), 495, 26, fonts.bold);
+  const titleLines = wrapText(sanitizePdfText(title), 495, REPORT_HEADING_STYLES.section.size, fonts.bold);
   let cursorY = y;
 
   for (const line of titleLines) {
     page.drawText(line, {
       x,
       y: cursorY,
-      size: 26,
+      size: REPORT_HEADING_STYLES.section.size,
       font: fonts.bold,
-      color: PDF_THEME.colours.charcoal,
+      color: REPORT_HEADING_STYLES.section.color,
     });
-    cursorY -= 30;
+    cursorY -= REPORT_HEADING_STYLES.section.lineHeight;
   }
 
-  const ruleY = cursorY + 10;
-  page.drawLine({
-    start: { x, y: ruleY },
-    end: { x: x + 495, y: ruleY },
-    thickness: 1,
-    color: PDF_THEME.colours.divider,
-  });
-
-  return ruleY - 24;
+  return cursorY - REPORT_HEADING_STYLES.section.spacingBelow;
 }
 
 /**
@@ -526,15 +528,15 @@ export function drawSectionTitle(
   title: string,
   fonts: { regular: PDFFont; bold: PDFFont }
 ): number {
-  page.drawText(title, {
+  page.drawText(sanitizePdfText(title), {
     x,
     y,
-    size: 14,
+    size: REPORT_HEADING_STYLES.module.size,
     font: fonts.bold,
-    color: PDF_THEME.colours.charcoal,
+    color: REPORT_HEADING_STYLES.module.color,
   });
 
-  return y - 18;
+  return y - REPORT_HEADING_STYLES.module.spacingBelow;
 }
 
 /**

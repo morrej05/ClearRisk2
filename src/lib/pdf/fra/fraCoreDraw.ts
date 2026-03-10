@@ -597,8 +597,7 @@ export function drawInfoGapQuickActions(input: {
   keyPoints?: string[];
   expectedModuleKeys?: string[];
 }): { page: PDFPage; yPosition: number } {
-  console.log('[PDF] drawInfoGapQuickActions CLEAN VERSION');
-
+  
   // Maintain consistent visual separation from preceding section content/header.
   const INFO_GAP_TOP_SPACING = REPORT_LAYOUT_SPACING.sectionHeaderToInfoGap + 2;
 
@@ -906,8 +905,7 @@ export function drawAssessorSummary(
 ): { page: PDFPage; yPosition: number } {
 
   // DEBUG MARKER — REMOVE AFTER CONFIRMED
-  console.log('[PDF] drawAssessorSummary v2 (fraCoreDraw.ts)');
-
+  
   const PAD = 12;
   const LABEL_SIZE = 9;
   const BODY_SIZE = 11;
@@ -1360,16 +1358,9 @@ export async function drawModuleContent(
   actions?: Action[], // Optional: for action-linked evidence
   actionIdToSectionId?: Map<string, number> // Optional: action->section map for null module_instance_id fallback
 ): Promise<Cursor> {
-
-  console.log('[PDF FRA] drawModuleContent invoked', { sectionId });
   
   let { page, yPosition } = cursor;
-
-  // Debug marker for Section 6 (FRA_2_ESCAPE_ASIS)
-  if (module.module_key === 'FRA_2_ESCAPE_ASIS') {
-    console.log('[PDF] S6 spacing patch applied');
-  }
-
+  
  // Outcome badge
 if (module.outcome) {
   const outcomeLabel = getOutcomeLabel(module.outcome);
@@ -1434,17 +1425,7 @@ if (module.outcome) {
 
   // Module data
   ({ page, yPosition } = drawModuleKeyDetails({ page, yPosition }, module, document, font, fontBold, pdfDoc, isDraft, totalPages, sectionId));
-
-  // Debug evidence context arguments
-  console.log('[PDF FRA] drawModuleContent evidence args', {
-    sectionId,
-    attachmentsType: Array.isArray(attachments) ? 'array' : typeof attachments,
-    attachmentsLen: attachments?.length,
-    evidenceRefMapType: evidenceRefMap instanceof Map ? 'map' : typeof evidenceRefMap,
-    evidenceRefMapSize: (evidenceRefMap as any)?.size,
-    moduleInstancesLen: moduleInstances?.length,
-  });
-
+  
   // Inline evidence block (if data provided and sectionId available)
   if (sectionId && attachments && evidenceRefMap && moduleInstances) {
     ({ page, yPosition } = await drawInlineEvidenceBlock(

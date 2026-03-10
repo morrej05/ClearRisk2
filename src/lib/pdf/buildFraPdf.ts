@@ -138,27 +138,8 @@ async function renderStandardSection(
 ): Promise<Cursor> {
   let { page, yPosition } = cursor;
 
-  // Print section header using displayNumber
-  const displayNum = getDisplaySectionNumber(section.id);
-  const sectionTitle = `${displayNum}. ${section.title}`;
-
-  console.log('[FRA] renderStandardSection:', section.id, '→ display:', displayNum, sectionTitle);
-
-  // Ensure space for section header
-  const spaceResult = ensureSpace(56, page, yPosition, pdfDoc, isDraft, totalPages);
-  page = spaceResult.page;
-  yPosition = spaceResult.yPosition;
-
-  // Draw section header
-  yPosition -= 20;
-  page.drawText(sanitizePdfText(sectionTitle), {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 30;
+  // Section heading is drawn once in the shared section pass above.
+  // Keep only module content rendering here to prevent duplicated headings.
 
   // Render each module in this section with full evidence support
   for (const module of sectionModules) {

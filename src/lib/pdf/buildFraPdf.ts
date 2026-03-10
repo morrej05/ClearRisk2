@@ -143,8 +143,7 @@ async function renderStandardSection(
 
   // Render each module in this section with full evidence support
   for (const module of sectionModules) {
-    console.log('[FRA] renderStandardSection rendering module:', module.module_key);
-
+    
     ({ page, yPosition } = await drawModuleContent(
       { page, yPosition },
       module,
@@ -169,43 +168,17 @@ async function renderStandardSection(
 }
 
 export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array> {
-  console.log('[PDF FRA] Starting FRA PDF build');
   const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
-
-  console.log('[PDF FRA] Build options:', {
-    documentId: document.id,
-    title: document.title,
-    renderMode,
-    modules: moduleInstances.length,
-    actions: actions.length,
-    ratings: actionRatings.length,
-  });
-
-  console.log('[PDF] Sanitization test:', {
-    input: '⚠ test ✅ ❌ — "quotes" •',
-    output: sanitizePdfText('⚠ test ✅ ❌ — "quotes" •'),
-    expected: '! test [OK] [X] - "quotes" *',
-  });
-
-  console.log('[PDF] £ symbol test:', {
-    input: '£100',
-    output: sanitizePdfText('£100'),
-    expected: '£100',
-  });
-
-  console.log('[PDF FRA] Fetching attachments...');
   let attachments: Attachment[] = [];
   try {
     attachments = await listAttachments(document.id);
-    console.log('[PDF FRA] Fetched', attachments.length, 'attachments');
-  } catch (error) {
+    } catch (error) {
     console.warn('[PDF FRA] Failed to fetch attachments:', error);
   }
 
   // Build evidence reference map for consistent E-00X numbering
   const evidenceRefMap = buildEvidenceRefMap(attachments);
-  console.log('[PDF FRA] Built evidence reference map with', evidenceRefMap.size, 'entries');
-
+  
   // Build actionId -> sectionId map for action-linked evidence matching
   // This allows attachments to match sections even when action.module_instance_id is null
   const actionIdToSectionId = new Map<string, number>();
@@ -224,18 +197,10 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
     // Note: If action.module_instance_id is null/invalid and no section_reference exists,
     // the action won't be mapped. This is acceptable as we can't determine the section.
   }
-  console.log('[PDF FRA] Built action->section map with', actionIdToSectionId.size, 'entries');
-
+  
   // Run quality gate validation
-  console.log('[PDF FRA] Running quality gate validation...');
   const qualityResult = validateReportQuality(moduleInstances, actions);
-  console.log('[PDF FRA] Quality validation:', {
-    passed: qualityResult.passed,
-    blockingIssues: qualityResult.blockingIssues.length,
-    warnings: qualityResult.warnings.length,
-    assuranceGaps: qualityResult.assuranceGaps.length,
-  });
-
+  
   // ============================================================================
   // CANONICAL ACTION SORTING FOR FRA PDF
   // This is the SINGLE source of truth for action order throughout the FRA PDF
@@ -276,8 +241,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  console.log('[PDF FRA] Fonts embedded successfully');
-
+  
   const isIssuedMode = renderMode === 'issued';
   const isDraft = !isIssuedMode;
   const totalPages: PDFPage[] = [];
@@ -286,10 +250,7 @@ export async function buildFraPdf(options: BuildPdfOptions): Promise<Uint8Array>
   let page: PDFPage | undefined;
   let yPosition: number | undefined;
 
-  console.log('[PDF FRA] Render mode:', isIssuedMode ? 'ISSUED' : 'DRAFT');
-
-  // Use addIssuedReportPages for both draft and issued modes to ensure logo embedding
-  console.log('[PDF FRA] Adding report pages with logo (cover + doc control)');
+    // Use addIssuedReportPages for both draft and issued modes to ensure logo embedding
   const { coverPage, docControlPage } = await addIssuedReportPages({
     pdfDoc,
     document: {
@@ -448,26 +409,7 @@ drawTableOfContents(page, font, fontBold);
     superseded_by_action_id: null,
     superseded_at: null,
   }));
-
-  console.log('[PDF] actions sample (before snapshot)', (actionsForPdf || []).slice(0,3).map(a => ({
-    id: a.id,
-    source: a.source,
-    ref: a.reference_number,
-    text: (a.recommended_action||'').slice(0,60),
-  })));
-
-  console.log('[PDF] actions source counts (before snapshot):',
-    (actionsForPdf || []).reduce((acc: any, a: any) => {
-      const k = (a.source ?? 'null') as string;
-      acc[k] = (acc[k] || 0) + 1;
-      return acc;
-    }, {})
-  );
-
-  console.log('[PDF] first 10 action sources:',
-    (actionsForPdf || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
-  );
-
+  
   drawActionPlanSnapshot(
     pdfDoc,
     actionsForPdf,
@@ -517,7 +459,6 @@ drawTableOfContents(page, font, fontBold);
 
     // Skip empty sections
     if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) {
-  console.log('[FRA] skipping empty section', section.id);
   continue;
 }
 
@@ -556,10 +497,6 @@ drawTableOfContents(page, font, fontBold);
 
   // Conditional page: only create if we don't have one yet
   if (!page) {
-    console.log(
-  '[PDF] addNewPage caller:',
-  new Error().stack?.split('\n').slice(1, 5).join(' | ')
-  );
     const sectionStartResult = addNewPage(pdfDoc, isDraft, totalPages);
     page = sectionStartResult.page;
     yPosition = PAGE_TOP_Y;
@@ -590,16 +527,13 @@ drawTableOfContents(page, font, fontBold);
       section.moduleKeys.includes(m.module_key)
     );
 
-    console.log('[FRA] main', section.id, 'found', sectionModules.map(m => m.module_key));
-
     // DIAGNOSTIC: Check Section 4 module key matching
     if (section.id === 4) {
-      console.log('[FRA] section 4 expects', section.moduleKeys, 'found', sectionModules.map(m => m.module_key));
+      
     }
 
     // Skip empty sections (except special sections that have custom logic)
     if (sectionModules.length === 0 && section.id !== 13 && section.id !== 14) {
-      console.log('[FRA] skipping empty section', section.id, 'moduleKeys=', section.moduleKeys);
       continue;
     }
 
@@ -644,11 +578,7 @@ drawTableOfContents(page, font, fontBold);
 
     // Right after sectionModules is computed (and before summary/key points/renderers)
 if (section.id === 5) {
-  console.log('[S5] moduleKeys expected:', section.moduleKeys);
-  console.log('[S5] modulesFound:', sectionModules.map(m => m.module_key));
-  console.log('[S5] firstModuleId:', sectionModules[0]?.id);
-  console.log('[S5] data:', sectionModules[0]?.data);
-  console.log('[S5] dataKeys:', Object.keys(sectionModules[0]?.data || {}));
+  
 }
     // Draw section header (use displayNumber for continuous numbering)
     yPosition = drawSectionHeaderBar({
@@ -789,14 +719,8 @@ if (section.id === 5) {
       }
     } else {
       // Use section renderer if available, otherwise fallback to generic rendering
-      console.log('Rendering section:', section.id);
       const renderer = SECTION_RENDERERS[section.id];
-
-      console.log('[PDF FRA] renderer exists?', {
-        sectionId: section.id,
-        hasRenderer: !!renderer
-      });
-
+      
       if (renderer) {
         cursor = await renderer(cursor, sectionModules, document, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap, moduleInstances, actions, actionIdToSectionId);
         ({ page, yPosition } = cursor);
@@ -944,18 +868,6 @@ if (section.id === 5) {
       text: (a.recommended_action||'').slice(0,60),
     })));
 
-    console.log('[PDF] actions source counts (before register):',
-      (actionsWithRefs || []).reduce((acc: any, a: any) => {
-        const k = (a.source ?? 'null') as string;
-        acc[k] = (acc[k] || 0) + 1;
-        return acc;
-      }, {})
-    );
-
-    console.log('[PDF] first 10 action sources:',
-       (actionsWithRefs || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
-    );
-
     ({ page, yPosition } = await drawActionRegister({ page, yPosition }, actionsWithRefs, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap));
   }
 
@@ -1025,21 +937,16 @@ if (attachments.length > 0) {
   const footerReportTitle = getReportFooterTitle(document.document_type, document.title);
   const footerText = `FRA Report — ${footerReportTitle} —     v${versionNum}.0 — Generated ${today}`;
 
-  console.log('[PDF FRA] Drawing footers for', totalPages.length, 'pages');
   const startPageForFooters = isIssuedMode ? 2 : 1;
   for (let i = startPageForFooters; i < totalPages.length; i++) {
     drawFooter(totalPages[i], footerText, i, totalPages.length - 1, font);
   }
 
   if ((document as any).issue_status === 'superseded') {
-    console.log('[PDF FRA] Adding superseded watermark');
     await addSupersededWatermark(pdfDoc);
   }
 
-  console.log('[PDF FRA] Saving PDF document...');
   const pdfBytes = await pdfDoc.save();
-  console.log('[PDF FRA] PDF saved successfully,', pdfBytes.length, 'bytes');
-  console.log('[PDF FRA] Build complete');
   return pdfBytes;
 }
 

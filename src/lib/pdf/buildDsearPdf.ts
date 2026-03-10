@@ -35,7 +35,12 @@ import {
   REPORT_TITLE_TO_BODY_GAP,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
-import { drawSectionHeaderBar, drawPageTitle, drawContentsRow } from './pdfPrimitives';
+import {
+  drawSectionHeaderBar,
+  drawPageTitle,
+  drawContentsRow,
+  drawWrappedSubsectionHeading,
+} from './pdfPrimitives';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
 import { compareActionsByDisplayReference, filterActiveActions } from './actionContracts';
 
@@ -1462,15 +1467,8 @@ function drawZoneDefinitions(
   const narrativeBlocks = parseNarrativeBlocks(zoneDefinitionsText);
   for (const block of narrativeBlocks) {
     if (block.kind === 'heading') {
-      ({ page, yPosition } = ensurePageSpace(24, page, yPosition, pdfDoc, isDraft, totalPages));
-      page.drawText(block.text, {
-        x: MARGIN,
-        y: yPosition,
-        size: 12,
-        font: fontBold,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= 20;
+      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
+      yPosition = drawWrappedSubsectionHeading(page, MARGIN, yPosition, block.text, { regular: font, bold: fontBold }, CONTENT_WIDTH);
       continue;
     }
 ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));

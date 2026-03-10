@@ -26,7 +26,7 @@ import {
   REPORT_TITLE_TO_BODY_GAP,
   } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
-import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
+import { drawSectionHeaderBar, drawPageTitle, drawSectionTitle } from './pdfPrimitives';
 import { FRA_REPORT_STRUCTURE } from './fraReportStructure';
 import {
   drawRegulatoryFramework,
@@ -183,14 +183,7 @@ function drawModuleSection(
     const displayName = module.module_key.startsWith('DSEAR')
       ? moduleName.replace(/^DSEAR-\d+\s*-\s*/, '')
       : moduleName;
-    page.drawText(sanitizePdfText(displayName), {
-      x: MARGIN,
-      y: yPosition,
-      size: 14,
-      font: fontBold,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 22;
+    yPosition = drawSectionTitle(page, MARGIN, yPosition, displayName, { regular: font, bold: fontBold });
   }
 
   // Outcome badge if present
@@ -1318,14 +1311,7 @@ function drawCombinedActionRegister(
   isDraft: boolean,
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
-  page.drawText(sanitizePdfText('Action Register (Fire + Explosion)'), {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 25;
+  yPosition = drawSectionTitle(page, MARGIN, yPosition, 'Action Register (Fire + Explosion)', { regular: font, bold: fontBold });
 
   if (actions.length === 0) {
     page.drawText(sanitizePdfText('No actions recorded'), {

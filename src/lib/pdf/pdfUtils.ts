@@ -6,6 +6,10 @@ export const PAGE_HEIGHT = 841.89;
 export const MARGIN = 50;
 export const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
 export const PAGE_TOP_Y = PAGE_HEIGHT - MARGIN;
+export const REPORT_TITLE_TO_BODY_GAP = 20;
+export const REPORT_BODY_TEXT_SIZE = 11;
+export const REPORT_BODY_LINE_GAP = 16;
+export const REPORT_BODY_PARAGRAPH_GAP = 10;
 
 // PDF Debug Layout Mode - developer-only overlay for spacing/pagination tuning
 // export const PDF_DEBUG_LAYOUT = import.meta.env.VITE_PDF_DEBUG_LAYOUT === 'true';
@@ -87,6 +91,70 @@ export function wrapText(text: unknown, maxWidth: number, fontSize: number, font
   }
 
   return lines;
+}
+
+export function splitNarrativeParagraphs(text: string): string[] {
+  return sanitizePdfText(text)
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+export function drawNarrativeParagraphs(args: {
+  page: PDFPage;
+  yPosition: number;
+  paragraphs: string[];
+  font: any;
+  pdfDoc: PDFDocument;
+  isDraft: boolean;
+  totalPages: PDFPage[];
+  x?: number;
+  maxWidth?: number;
+  lineHeight?: number;
+  paragraphGap?: number;
+  fontSize?: number;
+  color?: ReturnType<typeof rgb>;
+}): { page: PDFPage; yPosition: number } {
+  const {
+    page,
+    yPosition,
+    paragraphs,
+    font,
+    pdfDoc,
+    isDraft,
+    totalPages,
+    x = MARGIN,
+    maxWidth = CONTENT_WIDTH,
+    lineHeight = REPORT_BODY_LINE_GAP,
+    paragraphGap = REPORT_BODY_PARAGRAPH_GAP,
+    fontSize = REPORT_BODY_TEXT_SIZE,
+    color = rgb(0.1, 0.1, 0.1),
+  } = args;
+
+  let currentPage = page;
+  let cursorY = yPosition;
+
+  for (const paragraph of paragraphs) {
+    if (!paragraph.trim()) continue;
+    ({ page: currentPage, yPosition: cursorY } = ensurePageSpace(40, currentPage, cursorY, pdfDoc, isDraft, totalPages));
+
+    const lines = wrapText(paragraph, maxWidth, fontSize, font);
+    for (const line of lines) {
+      ({ page: currentPage, yPosition: cursorY } = ensurePageSpace(lineHeight - 2, currentPage, cursorY, pdfDoc, isDraft, totalPages));
+      currentPage.drawText(line, {
+        x,
+        y: cursorY,
+        size: fontSize,
+        font,
+        color,
+      });
+      cursorY -= lineHeight;
+    }
+
+    cursorY -= paragraphGap;
+  }
+
+  return { page: currentPage, yPosition: cursorY };
 }
 
 export function formatDate(dateString: string | null): string {

@@ -1966,4 +1966,3 @@ function drawComplianceCriticalFindings(
 
   return { page, yPosition };
 }
-}

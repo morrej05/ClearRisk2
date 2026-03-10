@@ -20,6 +20,7 @@ import {
   drawFooter,
   addSupersededWatermark,
   ensurePageSpace,
+  getReportFooterTitle,
   } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
@@ -1007,8 +1008,9 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   }
 
   // Add footers
+  const footerReportTitle = getReportFooterTitle(document.document_type, document.title);
   totalPages.forEach((p, index) => {
-     drawFooter(p, organisation.name, index + 1, totalPages.length, font);
+     drawFooter(p, footerReportTitle, index + 1, totalPages.length, font);
   });
 
   return await pdfDoc.save();

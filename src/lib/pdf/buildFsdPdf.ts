@@ -984,7 +984,8 @@ function drawPurposeAndScope(
 
   yPosition -= 30;
 
-  const paragraphs = fsdPurposeAndScopeText.split('\n\n');
+  const purposeAndScopeText = normalizeNarrativeReportText(fsdPurposeAndScopeText);
+  const paragraphs = purposeAndScopeText.split('\n\n');
   for (const paragraph of paragraphs) {
     if (!paragraph.trim()) continue;
 
@@ -1028,7 +1029,8 @@ function drawFsdLimitations(
 
   yPosition -= 30;
 
-  const paragraphs = fsdLimitationsText.split('\n\n');
+  const limitationsText = normalizeNarrativeReportText(fsdLimitationsText);
+  const paragraphs = limitationsText.split('\n\n');
   for (const paragraph of paragraphs) {
     if (!paragraph.trim()) continue;
 
@@ -1049,6 +1051,44 @@ function drawFsdLimitations(
   }
 
   return page;
+}
+function normalizeNarrativeReportText(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'function') {
+    return normalizeNarrativeReportText(value());
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => normalizeNarrativeReportText(entry))
+      .filter((entry) => entry.trim().length > 0)
+      .join('\n\n');
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+
+    if (typeof record.text === 'string') {
+      return record.text;
+    }
+
+    if (typeof record.content === 'string') {
+      return record.content;
+    }
+
+    if (Array.isArray(record.paragraphs)) {
+      return normalizeNarrativeReportText(record.paragraphs);
+    }
+
+    if (Array.isArray(record.content)) {
+      return normalizeNarrativeReportText(record.content);
+    }
+  }
+
+  return '';
 }
 
 function drawDocumentScope(

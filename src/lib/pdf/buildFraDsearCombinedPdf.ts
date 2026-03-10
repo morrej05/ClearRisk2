@@ -21,6 +21,9 @@ import {
   addSupersededWatermark,
   ensurePageSpace,
   getReportFooterTitle,
+  splitNarrativeParagraphs,
+  drawNarrativeParagraphs,
+  REPORT_TITLE_TO_BODY_GAP,
   } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle } from './pdfPrimitives';
@@ -123,12 +126,6 @@ function hasMeaningfulValue(value: unknown): boolean {
   return false;
 }
 
-function splitNarrativeParagraphs(text: string): string[] {
-  return text
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-}
 function mapExplosionCriticalityLabel(overall: string): string {
   if (overall === 'Moderate') return 'Medium';
   return overall;
@@ -340,67 +337,78 @@ function drawModuleSection(
   );
 
   if (detection.hasInfoGap && detection.quickActions.length > 0) {
-    ({ page, yPosition } = ensurePageSpace(80, page, yPosition, pdfDoc, isDraft, totalPages));
+    const reasons = detection.reasons.slice(0, 3);
+    const quickActions = detection.quickActions.slice(0, 3);
+    const boxHeight = 44 + (reasons.length * 16) + (quickActions.length * 24);
 
-    // Info gap heading
-    page.drawText('Information Gaps:', {
+    ({ page, yPosition } = ensurePageSpace(boxHeight + 12, page, yPosition, pdfDoc, isDraft, totalPages));
+    const boxTopY = yPosition;
+    const boxBottomY = boxTopY - boxHeight;
+
+    page.drawRectangle({
       x: MARGIN,
-      y: yPosition,
-      size: 10,
-      font: fontBold,
-      color: rgb(0.9, 0.5, 0.1),
+      y: boxBottomY,
+      width: CONTENT_WIDTH,
+      height: boxHeight,
+      borderColor: rgb(0.7, 0.7, 0.7),
+      borderWidth: 1,
+      color: rgb(0.98, 0.98, 0.98),
     });
-    yPosition -= 16;
+    let boxY = boxTopY - 14;
+    page.drawText('i', {
+      x: MARGIN + 8,
+      y: boxY,
+      size: 11,
+      font: fontBold,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    page.drawText('Assessment notes (incomplete information)', {
+      x: MARGIN + 25,
+      y: boxY,
+      size: 11,
+      font: fontBold,
+      color: rgb(0.4, 0.4, 0.4),
+    });
 
-    // Render quick actions
-    for (const action of detection.quickActions) {
-      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
-
-      // Priority badge
-      const priorityColor = action.priority === 'P2' ? rgb(0.9, 0.3, 0.1) : rgb(0.95, 0.7, 0.2);
-      page.drawRectangle({
-        x: MARGIN + 10,
-        y: yPosition - 2,
-        width: 24,
-        height: 14,
-        color: priorityColor,
+      boxY -= 18;
+    for (const reason of reasons) {
+      page.drawText('•', {
+        x: MARGIN + 8,
+        y: boxY,
+        size: 10,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
       });
-      page.drawText(action.priority, {
-        x: MARGIN + 14,
-        y: yPosition,
-        size: 8,
-        font: fontBold,
-        color: rgb(1, 1, 1),
-      });
-
-      // Action text
-      const actionLines = wrapText(action.action, CONTENT_WIDTH - 50, 9, font);
-      for (let i = 0; i < Math.min(actionLines.length, 2); i++) {
-        page.drawText(sanitizePdfText(actionLines[i]), {
-          x: MARGIN + 40,
-          y: yPosition - (i * 11),
+const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
+      for (const line of reasonLines.slice(0, 2)) {
+        page.drawText(sanitizePdfText(line), {
+          x: MARGIN + 18,
+          y: boxY,
           size: 9,
           font,
-          color: rgb(0.2, 0.2, 0.2),
+          color: rgb(0.4, 0.4, 0.4),
         });
+        boxY -= 11;
       }
-      yPosition -= Math.min(actionLines.length, 2) * 11 + 6;
-
-      // Reason (smaller, indented)
-      const reasonLines = wrapText(`Why: ${action.reason}`, CONTENT_WIDTH - 50, 8, font);
-      for (let i = 0; i < Math.min(reasonLines.length, 2); i++) {
-        ({ page, yPosition } = ensurePageSpace(12, page, yPosition, pdfDoc, isDraft, totalPages));
-        page.drawText(sanitizePdfText(reasonLines[i]), {
-          x: MARGIN + 40,
-          y: yPosition,
-          size: 8,
-          font,
-          color: rgb(0.5, 0.5, 0.5),
-        });
-        yPosition -= 10;
-      }
-      yPosition -= 8;
+      boxY -= 4;
     }
+
+    for (const action of quickActions) {
+      const actionLines = wrapText(`[${action.priority}] ${action.action}`, CONTENT_WIDTH - 26, 9, font);
+      for (const line of actionLines.slice(0, 2)) {
+        page.drawText(sanitizePdfText(line), {
+          x: MARGIN + 12,
+          y: boxY,
+          size: 9,
+          font,
+          color: rgb(0.35, 0.35, 0.35),
+        });
+        boxY -= 11;
+      }
+      boxY -= 2;
+    }
+    
+    yPosition = boxBottomY - 12;
   }
 
   yPosition -= 15; // Space between modules
@@ -691,25 +699,18 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     yPosition = PAGE_TOP_Y;
     const purposeTitle = '2.2 Purpose and Introduction';
     yPosition = drawPageTitle(page, MARGIN, yPosition, purposeTitle, { regular: font, bold: fontBold });
-    yPosition -= 20;
+    yPosition -= REPORT_TITLE_TO_BODY_GAP;
 
     const purposeParagraphs = splitNarrativeParagraphs(explosiveAtmospheresPurposeText);
-    for (const paragraph of purposeParagraphs) {
-      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
-      const purposeLines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
-      for (const line of purposeLines) {
-        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-        page.drawText(line, {
-          x: MARGIN,
-          y: yPosition,
-          size: 11,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        yPosition -= 16;
-      }
-      yPosition -= 10;
-    }
+    ({ page, yPosition } = drawNarrativeParagraphs({
+      page,
+      yPosition,
+      paragraphs: purposeParagraphs,
+      font,
+      pdfDoc,
+      isDraft,
+      totalPages,
+    }));
 
     // 2.3 Hazardous Area Classification Methodology
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
@@ -718,26 +719,18 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     yPosition = PAGE_TOP_Y;
     const hacTitle = '2.3 Hazardous Area Classification Methodology';
     yPosition = drawPageTitle(page, MARGIN, yPosition, hacTitle, { regular: font, bold: fontBold });
-    yPosition -= 20;
+    yPosition -= REPORT_TITLE_TO_BODY_GAP;
 
     const paragraphs = splitNarrativeParagraphs(hazardousAreaClassificationText);
-    for (const paragraph of paragraphs) {
-      if (!paragraph.trim()) continue;
-      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
-      const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
-      for (const line of lines) {
-        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-        page.drawText(line, {
-          x: MARGIN,
-          y: yPosition,
-          size: 11,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        yPosition -= 16;
-      }
-      yPosition -= 10;
-    }
+    ({ page, yPosition } = drawNarrativeParagraphs({
+      page,
+      yPosition,
+      paragraphs,
+      font,
+      pdfDoc,
+      isDraft,
+      totalPages,
+    }));
 
     // 2.4 Zone Definitions
     page = addNewPage(pdfDoc, isDraft, totalPages).page;
@@ -746,7 +739,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     yPosition = PAGE_TOP_Y;
     const zoneTitle = '2.4 Zone Definitions';
     yPosition = drawPageTitle(page, MARGIN, yPosition, zoneTitle, { regular: font, bold: fontBold });
-    yPosition -= 20;
+    yPosition -= REPORT_TITLE_TO_BODY_GAP;
 
     const zoneParagraphs = splitNarrativeParagraphs(zoneDefinitionsText);
     for (const paragraph of zoneParagraphs) {
@@ -1008,7 +1001,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
   }
 
   // Add footers
-  const footerReportTitle = getReportFooterTitle(document.document_type, document.title);
+  const footerReportTitle = getReportFooterTitle('FIRE_EXPLOSION_COMBINED', document.title);
   totalPages.forEach((p, index) => {
      drawFooter(p, footerReportTitle, index + 1, totalPages.length, font);
   });

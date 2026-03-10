@@ -29,6 +29,9 @@ import {
   addSupersededWatermark,
   ensurePageSpace,
   getReportFooterTitle,
+  splitNarrativeParagraphs,
+  drawNarrativeParagraphs,
+  REPORT_TITLE_TO_BODY_GAP,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle, drawContentsRow } from './pdfPrimitives';
@@ -374,7 +377,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   drawTableOfContents(tocPage, tocEntries, font, fontBold);
 
   // Add footers to all pages
-  const footerReportTitle = getReportFooterTitle(document.document_type, document.title);
+  const footerReportTitle = getReportFooterTitle('DSEAR', document.title);
   totalPages.forEach((p, idx) => {
     drawFooter(p, footerReportTitle, idx + 1, totalPages.length, font);
   });
@@ -594,7 +597,7 @@ function drawExecutiveSummary(
         yPosition -= 3;
       }
 
-      yPosition -= 10;
+      yPosition -= 12;
     }
   }
 
@@ -1427,30 +1430,21 @@ function drawHazardousAreaClassification(
   const sectionTitle = `${sectionNumber}. Hazardous Area Classification Methodology`;
   yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 20;
-
-  const paragraphs = hazardousAreaClassificationText.split('\n\n');
-  for (const paragraph of paragraphs) {
-    if (!paragraph.trim()) continue;
-
-    ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
-
+  yPosition -= REPORT_TITLE_TO_BODY_GAP;
     const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
     for (const line of lines) {
       ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
 
-      page.drawText(line, {
-        x: MARGIN,
-        y: yPosition,
-        size: 11,
-        font,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      yPosition -= 16;
-    }
-
-    yPosition -= 8;
-  }
+      const paragraphs = splitNarrativeParagraphs(hazardousAreaClassificationText);
+  ({ page, yPosition } = drawNarrativeParagraphs({
+    page,
+    yPosition,
+    paragraphs,
+    font,
+    pdfDoc,
+    isDraft,
+    totalPages,
+  }));
 
   return { page, yPosition };
 }
@@ -1468,9 +1462,9 @@ function drawZoneDefinitions(
   const sectionTitle = `${sectionNumber}. Zone Definitions`;
   yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 20;
+  yPosition -= REPORT_TITLE_TO_BODY_GAP;
 
-  const paragraphs = zoneDefinitionsText.split('\n\n');
+  const paragraphs = splitNarrativeParagraphs(zoneDefinitionsText);
   for (const paragraph of paragraphs) {
     if (!paragraph.trim()) continue;
 

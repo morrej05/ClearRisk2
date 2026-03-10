@@ -1905,7 +1905,11 @@ export function drawRegulatoryFramework(
     font: fontBold,
     color: rgb(0.1, 0.1, 0.1),
   });
-  yPosition -= 18;
+  yPosition -= 22;
+
+  const bulletX = MARGIN;
+  const bulletTextX = MARGIN + 12;
+  const bulletWrapWidth = CONTENT_WIDTH - (bulletTextX - MARGIN);
 
   for (const legislation of jurisdictionConfig.primaryLegislation) {
     if (yPosition < MARGIN + 50) {
@@ -1914,17 +1918,35 @@ export function drawRegulatoryFramework(
       yPosition = PAGE_TOP_Y;
     }
 
-    page.drawText(`• ${sanitizePdfText(legislation)}`, {
-      x: MARGIN + 10,
+    const legislationLines = wrapText(sanitizePdfText(legislation), bulletWrapWidth, 10, font);
+
+    page.drawText('•', {
+      x: bulletX,
       y: yPosition,
       size: 10,
       font,
       color: rgb(0.2, 0.2, 0.2),
     });
-    yPosition -= 12;
+    for (const line of legislationLines) {
+      if (yPosition < MARGIN + 50) {
+        const result = addNewPage(pdfDoc, isDraft, totalPages);
+        page = result.page;
+        yPosition = PAGE_TOP_Y;
+      }
+      page.drawText(line, {
+        x: bulletTextX,
+        y: yPosition,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPosition -= 12;
+    }
+
+    yPosition -= 2;
   }
 
-  yPosition -= 10;
+  yPosition -= 8;
 
   // Draw regulatory framework text
   const paragraphs = jurisdictionConfig.regulatoryFrameworkText.split('\n\n');

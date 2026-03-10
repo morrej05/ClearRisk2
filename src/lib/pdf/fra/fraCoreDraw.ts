@@ -2295,12 +2295,12 @@ export function drawCleanAuditPage1(
   const centerX = PAGE_WIDTH / 2;
   let yPosition = PAGE_TOP_Y - 40;
   const coverTitleContent = getCoverTitleContent(document.document_type, document.title);
+  const resolvedReportTitle = sanitizePdfText(coverTitleContent.title);
   const reportProductLabel = sanitizePdfText(coverTitleContent.productLabel);
-  const rawDocumentTitle = sanitizePdfText((document.title || '').trim());
-
+  
   // Extract site identity from A1 module (single source of truth)
   const a1Data = a1Module?.data || {};
-  const siteName = sanitizePdfText(a1Data.site?.name || rawDocumentTitle || reportProductLabel);
+  const siteName = sanitizePdfText(a1Data.site?.name || resolvedReportTitle || reportProductLabel);
   const clientName = sanitizePdfText(a1Data.client?.name || document.responsible_person || organisation.name);
 
   // Build site address from A1

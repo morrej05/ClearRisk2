@@ -888,21 +888,8 @@ export async function renderSection7Detection(
     yPosition = PAGE_TOP_Y;
   }
 
-  // Draw section header with displayNumber
-  const displayNum = getDisplaySectionNumber(7);
-  const section = FRA_REPORT_STRUCTURE.find(s => s.id === 7);
-  const sectionTitle = section ? `${displayNum}. ${section.title}` : '7. Fire Detection, Alarm & Emergency Lighting';
-
-  ({ page, yPosition } = ensureSpace(56, page, yPosition, pdfDoc, isDraft, totalPages));
-  yPosition -= 20;
-  page.drawText(sanitizePdfText(sectionTitle), {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 30;
+   // Primary section heading is rendered once by buildFraPdf's shared section pass.
+  // Keep only section body content here to prevent duplicate top-level headings.
 
   const fra3Module = sectionModules.find(m => m.module_key === 'FRA_3_ACTIVE_SYSTEMS');
 
@@ -988,21 +975,8 @@ export async function renderSection10Suppression(
     yPosition = PAGE_TOP_Y;
   }
 
-  // Draw section header with displayNumber
-  const displayNum = getDisplaySectionNumber(10);
-  const section = FRA_REPORT_STRUCTURE.find(s => s.id === 10);
-  const sectionTitle = section ? `${displayNum}. ${section.title}` : '9. Fixed Suppression Systems & Firefighting Facilities';
-
-  ({ page, yPosition } = ensureSpace(56, page, yPosition, pdfDoc, isDraft, totalPages));
-  yPosition -= 20;
-  page.drawText(sanitizePdfText(sectionTitle), {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 30;
+  // Primary section heading is rendered once by buildFraPdf's shared section pass.
+  // Keep only section body content here to prevent duplicate top-level headings.
 
   const fra8Module = sectionModules.find(m => m.module_key === 'FRA_8_FIREFIGHTING_EQUIPMENT');
 
@@ -1067,21 +1041,10 @@ export async function renderSection11Management(
     }
   }
 
-  // Draw section header with displayNumber
-  const displayNum = getDisplaySectionNumber(11);
-  const section = FRA_REPORT_STRUCTURE.find(s => s.id === 11);
-  const sectionTitle = section ? `${displayNum}. ${section.title}` : '10. Fire Safety Management & Procedures';
+  // Primary section heading is rendered once by buildFraPdf's shared section pass.
+  // Keep only section body content here to prevent duplicate top-level headings.
 
-  ({ page, yPosition } = ensureSpace(56, page, yPosition, pdfDoc, isDraft, totalPages));
-  yPosition -= 20;
-  page.drawText(sanitizePdfText(sectionTitle), {
-    x: MARGIN,
-    y: yPosition,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 30;
+  const displayNum = getDisplaySectionNumber(11);
 
   // 11.1 Management Systems
   const managementSystemsModule = sectionModules.find(

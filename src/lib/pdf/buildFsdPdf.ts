@@ -130,10 +130,17 @@ function drawTableOfContents(
   fontBold: any
 ): void {
   const tocStartY = PAGE_TOP_Y - 40;
-  const contentStartY = tocStartY - 12;
+  const tocTitleLineHeight = 24;
+  const tocTitleSpacingBelow = 20;
+  const tocContentGap = 12;
+  const contentStartY = tocStartY - tocTitleLineHeight - tocTitleSpacingBelow - tocContentGap;
   const minY = MARGIN + 50;
   const rowHeight = 16;
 
+  const drawTocHeader = (page: PDFPage): number => {
+    drawPageTitle(page, MARGIN, tocStartY, 'Contents', { regular: font, bold: fontBold });
+    return contentStartY;
+  };
   const countNeededTocPages = (): number => {
     let pageCount = 1;
     let yPosition = contentStartY;
@@ -164,17 +171,13 @@ function drawTableOfContents(
   const allTocPages = totalPages.slice(tocPageIndex, tocPageIndex + tocPageCount);
   let currentTocPageIndex = 0;
   let activeTocPage = allTocPages[currentTocPageIndex];
-  let yPosition = tocStartY;
-
-  yPosition = drawPageTitle(activeTocPage, MARGIN, yPosition, 'Contents', { regular: font, bold: fontBold });
-  yPosition -= 12;
+  let yPosition = drawTocHeader(activeTocPage);
 
   for (const entry of tocEntries) {
     if (yPosition < minY) {
       currentTocPageIndex += 1;
       activeTocPage = allTocPages[currentTocPageIndex];
-      yPosition = drawPageTitle(activeTocPage, MARGIN, tocStartY, 'Contents', { regular: font, bold: fontBold });
-      yPosition -= 12;
+      yPosition = drawTocHeader(activeTocPage);
     }
 
     const sanitizedTitle = sanitizePdfText(entry.title);
@@ -249,7 +252,7 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
 
   const { page: tocPage } = addNewPage(pdfDoc, isDraft, totalPages);
   const tocEntries: Array<{ title: string; pageNo: number }> = [];
-  const recordToc = (title: string) => tocEntries.push({ title, pageNo: totalPages.length });
+  const recordToc = (title: string, pageNo = totalPages.length) => tocEntries.push({ title, pageNo });
 
   const executiveSummaryMode = (document.executive_summary_mode as 'ai' | 'author' | 'both' | 'none') || 'none';
   const hasExecutiveSummary =
@@ -257,7 +260,7 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
     (executiveSummaryMode === 'author' || executiveSummaryMode === 'both') && !!document.executive_summary_author;
 
   if (hasExecutiveSummary) {
-    recordToc('Executive Summary');
+    const executiveSummaryStartPage = totalPages.length + 1;
     addExecutiveSummaryPages(
       pdfDoc,
       isDraft,
@@ -267,6 +270,7 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
       document.executive_summary_author,
       { bold: fontBold, regular: font }
     );
+    recordToc('Executive Summary', executiveSummaryStartPage);
   }
 
   let page: PDFPage;

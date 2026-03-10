@@ -86,6 +86,7 @@ interface Action {
   module_instance_id: string;
   created_at: string;
 }
+const INFO_GAP_TOP_SPACING = 26;
 
 interface ActionRating {
   action_id: string;
@@ -334,7 +335,8 @@ function drawModuleSection(
     const quickActions = detection.quickActions.slice(0, 3);
     const boxHeight = 44 + (reasons.length * 16) + (quickActions.length * 24);
 
-    ({ page, yPosition } = ensurePageSpace(boxHeight + 12, page, yPosition, pdfDoc, isDraft, totalPages));
+    ({ page, yPosition } = ensurePageSpace(boxHeight + 12 + INFO_GAP_TOP_SPACING, page, yPosition, pdfDoc, isDraft, totalPages));
+    yPosition -= INFO_GAP_TOP_SPACING;
     const boxTopY = yPosition;
     const boxBottomY = boxTopY - boxHeight;
 

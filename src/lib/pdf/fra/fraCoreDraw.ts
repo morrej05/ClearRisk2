@@ -34,6 +34,7 @@ import {
   drawContentsRow,
   drawActionRegisterIntroBox,
   measureActionRegisterIntroBoxHeight,
+  getReportLayoutSpacing,
 } from '../pdfPrimitives';
 import { CRITICAL_FIELDS } from './fraConstants';
 import { safeArray, mapModuleKeyToSectionName } from './fraUtils';
@@ -50,6 +51,7 @@ import { type ScoringResult } from '../../fra/scoring/scoringEngine';
  * Prevents re-downloading and re-embedding the same image multiple times
  */
 const imageCache = new Map<string, PDFImage>();
+const REPORT_LAYOUT_SPACING = getReportLayoutSpacing();
 
 /**
  * Build stable evidence reference map for consistent E-00X numbering
@@ -598,7 +600,7 @@ export function drawInfoGapQuickActions(input: {
   console.log('[PDF] drawInfoGapQuickActions CLEAN VERSION');
 
   // Maintain consistent visual separation from preceding section content/header.
-  const INFO_GAP_TOP_SPACING = 26;
+  const INFO_GAP_TOP_SPACING = REPORT_LAYOUT_SPACING.sectionHeaderToInfoGap + 2;
 
   let { page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints, expectedModuleKeys } = input;
 

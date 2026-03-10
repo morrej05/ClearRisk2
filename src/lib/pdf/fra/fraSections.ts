@@ -169,11 +169,7 @@ export function renderSection2Premises(
   let { page, yPosition } = cursor;
 
   const a2Module = sectionModules[0];
-  console.log('[A2 MODULE]', a2Module);
-console.log('[A2 MODULE KEYS]', a2Module ? Object.keys(a2Module as any) : null);
-console.log('[A2 DATA]', (a2Module as any)?.data);
-console.log('[A2 DATA KEYS]', (a2Module as any)?.data ? Object.keys((a2Module as any).data) : null);
-
+  
   if (!a2Module) {
     page.drawText('No Premises & General Information data captured (A2).', {
       x: MARGIN,
@@ -331,9 +327,7 @@ export function renderSection3Occupants(
   }
 
   const data: any = (a3Module as any).data;
-  console.log('[A3 DATA KEYS]', Object.keys(data));
-console.log('[A3 DATA FULL]', data);
-
+  
   if (!data) {
     page.drawText('Occupants & Vulnerability module has no data payload (A3).', {
       x: MARGIN,
@@ -960,9 +954,7 @@ export async function renderSection10Suppression(
   actions?: Action[],
   actionIdToSectionId?: Map<string, number>
 ): Promise<Cursor> {
-
-  console.log('[PDF FRA] renderSection10Suppression called');
-
+  
   let { page, yPosition } = cursor;
 
   // ✅ Hard guarantee: always have a page before any operations

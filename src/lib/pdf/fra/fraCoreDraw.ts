@@ -596,6 +596,9 @@ export function drawInfoGapQuickActions(input: {
 }): { page: PDFPage; yPosition: number } {
   console.log('[PDF] drawInfoGapQuickActions CLEAN VERSION');
 
+  // Maintain consistent visual separation from preceding section content/header.
+  const INFO_GAP_TOP_SPACING = 26;
+
   let { page, module, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages, keyPoints, expectedModuleKeys } = input;
 
   // TEMP SAFETY (keep): if page is missing, bail so preview doesn't hard-crash
@@ -658,9 +661,9 @@ export function drawInfoGapQuickActions(input: {
 
     if (hasAssuranceGapKeyPoint && allReasonsAreUnknowns) {
       // Render compact reference instead of full box
-       ({ page, yPosition } = ensurePageSpace(32, page, yPosition, pdfDoc, isDraft, totalPages));
+      ({ page, yPosition } = ensurePageSpace(32 + INFO_GAP_TOP_SPACING, page, yPosition, pdfDoc, isDraft, totalPages));
 
-      yPosition -= 12;
+      yPosition -= INFO_GAP_TOP_SPACING;
 
       page.drawText(sanitizePdfText('i'), {
         x: MARGIN + 8,
@@ -719,10 +722,10 @@ export function drawInfoGapQuickActions(input: {
   }
 
   const boxHeight = boxPaddingTop + measuredReasonsHeight + measuredActionsHeight + boxPaddingBottom;
-  ({ page, yPosition } = ensurePageSpace(boxHeight + 20, page, yPosition, pdfDoc, isDraft, totalPages));
+  ({ page, yPosition } = ensurePageSpace(boxHeight + 20 + INFO_GAP_TOP_SPACING, page, yPosition, pdfDoc, isDraft, totalPages));
 
   // --- INFO GAP BOX (single-cursor, self-contained) ---
-yPosition -= 12;
+yPosition -= INFO_GAP_TOP_SPACING;
 
 // Box geometry
 const boxTopY = yPosition;

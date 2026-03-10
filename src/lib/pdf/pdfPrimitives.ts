@@ -26,8 +26,22 @@ const REPORT_HEADING_STYLES = {
   },
 } as const;
 
+const REPORT_LAYOUT_SPACING = {
+  partToSectionHeader: 12,
+  sectionHeaderToBody: REPORT_HEADING_STYLES.section.spacingBelow,
+  sectionHeaderToInfoGap: 24,
+  sectionToNextHeader: 18,
+} as const;
+
 export function getReportHeadingStyles() {
   return REPORT_HEADING_STYLES;
+}
+export function getReportLayoutSpacing() {
+  return REPORT_LAYOUT_SPACING;
+}
+
+export function applyReportSpacing(y: number, spacingKey: keyof typeof REPORT_LAYOUT_SPACING): number {
+  return y - REPORT_LAYOUT_SPACING[spacingKey];
 }
 /**
  * Debug helper: Draw bounding box with label for layout debugging

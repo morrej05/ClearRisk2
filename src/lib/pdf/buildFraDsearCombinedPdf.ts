@@ -859,21 +859,38 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     yPosition = PAGE_TOP_Y;
     const refTitle = `${formatPart2Section(dsearSectionNumber)} References and Compliance`;
     yPosition = drawPageTitle(page, MARGIN, yPosition, refTitle, { regular: font, bold: fontBold });
-    yPosition -= 20;
+    yPosition -= 28;
+
+    const bulletX = MARGIN;
+    const bulletTextX = MARGIN + 12;
+    const bulletWrapWidth = CONTENT_WIDTH - (bulletTextX - MARGIN);
 
     const explosionRegime = resolveExplosionRegime(document.jurisdiction);
     const references = getExplosiveAtmospheresReferences(explosionRegime);
     for (const ref of references) {
       const formattedReference = ref.detail ? `${ref.label} — ${ref.detail}` : ref.label;
+       const wrappedReferenceLines = wrapText(sanitizePdfText(formattedReference), bulletWrapWidth, 10, font);
       ({ page, yPosition } = ensurePageSpace(18, page, yPosition, pdfDoc, isDraft, totalPages));
-      page.drawText(sanitizePdfText(`• ${formattedReference}`), {
-        x: MARGIN,
+      page.drawText(sanitizePdfText('•'), {
+        x: bulletX,
         y: yPosition,
         size: 10,
         font,
         color: rgb(0.1, 0.1, 0.1),
       });
-      yPosition -= 18;
+      for (const line of wrappedReferenceLines) {
+        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(line, {
+          x: bulletTextX,
+          y: yPosition,
+          size: 10,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 14;
+      }
+
+      yPosition -= 8;
     }
     dsearSectionNumber += 1;
 

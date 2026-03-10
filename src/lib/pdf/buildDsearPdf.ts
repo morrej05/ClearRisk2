@@ -1611,29 +1611,47 @@ function drawReferencesAndCompliance(
   const sectionTitle = `${sectionNumber}. References and Compliance`;
   yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
-  yPosition -= 20;
+  yPosition -= 28;
+
+  const bulletX = MARGIN;
+  const bulletTextX = MARGIN + 12;
+  const bulletWrapWidth = CONTENT_WIDTH - (bulletTextX - MARGIN);
 
   const references = getExplosiveAtmospheresReferences(jurisdiction);
 
   for (const ref of references) {
     ({ page, yPosition } = ensurePageSpace(24, page, yPosition, pdfDoc, isDraft, totalPages));
 
-    page.drawText(sanitizePdfText(`• ${ref.label}`), {
-      x: MARGIN,
+    page.drawText(sanitizePdfText('•'), {
+      x: bulletX,
       y: yPosition,
       size: 11,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
+    
+    const labelLines = wrapText(sanitizePdfText(ref.label), bulletWrapWidth, 11, fontBold);
+    for (const line of labelLines) {
+      ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawText(line, {
+        x: bulletTextX,
+        y: yPosition,
+        size: 11,
+        font: fontBold,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= 14;
+    }
+
     yPosition -= 16;
 
     if (ref.detail) {
-      const detailLines = wrapText(sanitizePdfText(ref.detail), CONTENT_WIDTH - 20, 10, font);
+      const detailLines = wrapText(sanitizePdfText(ref.detail), bulletWrapWidth, 10, font);
       for (const line of detailLines) {
         ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
 
         page.drawText(line, {
-          x: MARGIN + 15,
+          x: bulletTextX,
           y: yPosition,
           size: 10,
           font,

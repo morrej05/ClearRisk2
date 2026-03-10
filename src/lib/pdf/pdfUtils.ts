@@ -920,6 +920,9 @@ export function getCoverTitleContent(documentType: string, rawTitle: string | nu
   return { title, subtitle, productLabel };
 }
 
+export function getReportFooterTitle(documentType: string, rawTitle: string | null | undefined): string {
+  return getCoverTitleContent(documentType, rawTitle).productLabel;
+}
 function getDocumentTypeLabel(type: string): string {
   switch (type) {
     case 'FRA':

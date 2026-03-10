@@ -32,6 +32,7 @@ import {
   drawPageTitle,
   drawSectionTitle,
   drawWrappedSubsectionHeading,
+  getReportLayoutSpacing,
 } from './pdfPrimitives';
 import { FRA_REPORT_STRUCTURE } from './fraReportStructure';
 import {
@@ -92,7 +93,8 @@ interface Action {
   module_instance_id: string;
   created_at: string;
 }
-const INFO_GAP_TOP_SPACING = 26;
+const REPORT_LAYOUT_SPACING = getReportLayoutSpacing();
+const INFO_GAP_TOP_SPACING = REPORT_LAYOUT_SPACING.sectionHeaderToInfoGap + 2;
 
 interface ActionRating {
   action_id: string;
@@ -409,10 +411,10 @@ const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
       boxY -= 2;
     }
     
-    yPosition = boxBottomY - 12;
+     yPosition = boxBottomY - REPORT_LAYOUT_SPACING.sectionToNextHeader;
   }
 
-  yPosition -= 15; // Space between modules
+  yPosition -= REPORT_LAYOUT_SPACING.sectionToNextHeader; // Space between modules
   return { page, yPosition };
 }
 

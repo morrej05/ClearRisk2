@@ -45,7 +45,11 @@ export function sanitizePdfText(input: unknown): string {
     .replace(/←/g, '<-')
     .replace(/⇒/g, '=>');
 
-  sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
+  // Preserve line breaks/tabs for narrative rendering while still stripping
+  // unsupported control characters for PDF font output.
+  sanitized = sanitized
+    .replace(/\r\n?/g, '\n')
+    .replace(/[^\n\t\x20-\x7E\xA0-\xFF]/g, '');
 
   return sanitized;
 }
@@ -98,6 +102,37 @@ export function splitNarrativeParagraphs(text: string): string[] {
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean);
+}
+export type NarrativeBlock =
+  | { kind: 'heading'; text: string }
+  | { kind: 'paragraph'; text: string };
+
+export function parseNarrativeBlocks(text: string): NarrativeBlock[] {
+  const chunks = sanitizePdfText(text)
+    .split(/\n\s*\n/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  const blocks: NarrativeBlock[] = [];
+
+  for (const chunk of chunks) {
+    const headingWithBodyMatch = chunk.match(/^\*\*(.+?)\*\*\s+([\s\S]+)$/);
+    if (headingWithBodyMatch) {
+      blocks.push({ kind: 'heading', text: headingWithBodyMatch[1].trim() });
+      blocks.push({ kind: 'paragraph', text: headingWithBodyMatch[2].trim() });
+      continue;
+    }
+
+    const headingOnlyMatch = chunk.match(/^\*\*(.+?)\*\*$/);
+    if (headingOnlyMatch) {
+      blocks.push({ kind: 'heading', text: headingOnlyMatch[1].trim() });
+      continue;
+    }
+
+    blocks.push({ kind: 'paragraph', text: chunk });
+  }
+
+  return blocks;
 }
 
 export function drawNarrativeParagraphs(args: {

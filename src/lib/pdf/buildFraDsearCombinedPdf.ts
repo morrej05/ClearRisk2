@@ -95,6 +95,7 @@ interface Action {
 }
 const REPORT_LAYOUT_SPACING = getReportLayoutSpacing();
 const INFO_GAP_TOP_SPACING = REPORT_LAYOUT_SPACING.sectionHeaderToInfoGap + 2;
+const PART1_SECTION_TO_CONTENT_SPACING = REPORT_TITLE_TO_BODY_GAP;
 
 interface ActionRating {
   action_id: string;
@@ -338,6 +339,7 @@ function drawModuleSection(
     }
   );
 
+  let infoGapRendered = false;
   if (detection.hasInfoGap && detection.quickActions.length > 0) {
     const reasons = detection.reasons.slice(0, 3);
     const quickActions = detection.quickActions.slice(0, 3);
@@ -412,9 +414,12 @@ const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
     }
     
      yPosition = boxBottomY - REPORT_LAYOUT_SPACING.sectionToNextHeader;
+    infoGapRendered = true;
   }
 
-  yPosition -= REPORT_LAYOUT_SPACING.sectionToNextHeader; // Space between modules
+  if (!infoGapRendered) {
+    yPosition -= REPORT_LAYOUT_SPACING.sectionToNextHeader; // Space between modules
+  }
   return { page, yPosition };
 }
 
@@ -571,7 +576,7 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
 
       ({ page, yPosition } = ensurePageSpace(42, page, yPosition, pdfDoc, isDraft, totalPages));
       yPosition = drawPageTitle(page, MARGIN, yPosition, fraSectionLabel, { regular: font, bold: fontBold });
-      yPosition -= 10;
+      yPosition -= PART1_SECTION_TO_CONTENT_SPACING;
 
       if (isRegulationSection) {
         ({ page, yPosition } = drawRegulatoryFramework(

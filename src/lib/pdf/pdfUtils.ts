@@ -948,6 +948,9 @@ export function getCoverTitleContent(documentType: string, rawTitle: string | nu
   productLabel: string;
 } {
   const productLabel = getDocumentTypeLabel(documentType);
+  const normalizedDocumentType = (documentType || '').toUpperCase();
+  const isFraReport = normalizedDocumentType === 'FRA' || documentType === 'fire_risk_assessment';
+  const isDsearReport = normalizedDocumentType === 'DSEAR' || documentType === 'explosion_risk_assessment';
   const isCombinedReport = documentType === 'FIRE_EXPLOSION_COMBINED' || documentType === 'combined';
    // Combined reports should always render as a single canonical title line.
   // This prevents duplicate hierarchy (title + repeated/competing subtitle).
@@ -963,7 +966,7 @@ export function getCoverTitleContent(documentType: string, rawTitle: string | nu
 
   // Guard against single-output PDFs derived from a combined/base document title.
   // In FRA-only/DSEAR-only modes, cover should show only the product label.
-  const isSingleFraOrDsear = documentType === 'FRA' || documentType === 'DSEAR';
+  const isSingleFraOrDsear = isFraReport || isDsearReport;
   const hasCombinedBaseTitle = /(fire\s*\+\s*explosion|fra\s*\+\s*dsear|\bcombined\b)/i.test(inputTitle);
   if (isSingleFraOrDsear && hasCombinedBaseTitle) {
     return {

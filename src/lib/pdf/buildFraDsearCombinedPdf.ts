@@ -993,8 +993,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     }
   }
 
-  // Now render the TOC with collected entries
-  drawTableOfContents(tocPage, tocEntries, font, fontBold);
+  // Now render the TOC with collected entries (flowing to extra TOC pages if needed)
+  drawTableOfContents(pdfDoc, totalPages, tocPage, tocEntries, font, fontBold);
 
   // Apply watermarks if needed
   if (isDraft) {
@@ -1017,19 +1017,62 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
  * Draw Table of Contents for Combined PDF with actual page numbers
  */
 function drawTableOfContents(
+  pdfDoc: PDFDocument,
+  totalPages: PDFPage[],
   tocPage: PDFPage,
   tocEntries: Array<{ title: string; pageNo: number }>,
   font: any,
   fontBold: any
 ): void {
-  let yPosition = PAGE_TOP_Y - 36;
+  const tocStartY = PAGE_TOP_Y - 36;
+  const contentStartY = tocStartY - 42;
+  const minY = MARGIN + 50;
   const pageNumberX = PAGE_WIDTH - MARGIN;
   const topLevelIndentX = MARGIN + 18;
   const childIndentX = MARGIN + 40;
   const partHeadingIndentX = MARGIN + 8;
 
+  const entryHeight = (title: string): number => {
+    const displayTitle = title.trim();
+    const isPartHeading = /^Part\s+[12]\b/.test(displayTitle);
+    return isPartHeading ? 34 : title.startsWith('  ') ? 17 : 19;
+  };
+
+  const countNeededTocPages = (): number => {
+    let pageCount = 1;
+    let yPosition = contentStartY;
+
+    for (const entry of tocEntries) {
+      const height = entryHeight(entry.title);
+      if (yPosition - height < minY) {
+        pageCount += 1;
+        yPosition = contentStartY;
+      }
+      yPosition -= height;
+    }
+
+    return pageCount;
+  };
+
+  const tocPageCount = countNeededTocPages();
+  const extraTocPages = Math.max(0, tocPageCount - 1);
+
+  if (extraTocPages > 0) {
+    const tocPageIndex = totalPages.indexOf(tocPage);
+    for (let i = 0; i < extraTocPages; i += 1) {
+      const inserted = pdfDoc.insertPage(tocPageIndex + 1 + i, [PAGE_WIDTH, PAGE_HEIGHT]);
+      totalPages.splice(tocPageIndex + 1 + i, 0, inserted);
+    }
+  }
+
+  const tocPageIndex = totalPages.indexOf(tocPage);
+  const allTocPages = totalPages.slice(tocPageIndex, tocPageIndex + tocPageCount);
+  const tocPageOffset = extraTocPages;
+  let currentTocPageIndex = 0;
+  let activePage = allTocPages[currentTocPageIndex];
+  let yPosition = t
   // Title
-  tocPage.drawText(sanitizePdfText('Contents'), {
+  activePage.drawText(sanitizePdfText('Contents'), {
     x: MARGIN,
     y: yPosition,
     size: 19,
@@ -1040,7 +1083,12 @@ function drawTableOfContents(
 
   // Render TOC entries with page numbers
   for (const entry of tocEntries) {
-    if (yPosition < MARGIN + 50) break; // Stop if we run out of space
+    const neededHeight = entryHeight(entry.title);
+    if (yPosition - neededHeight < minY) {
+      currentTocPageIndex += 1;
+      activePage = allTocPages[currentTocPageIndex] ?? activePage;
+      yPosition = contentStartY;
+    }
 
     const isIndented = entry.title.startsWith('  ');
     const displayTitle = entry.title.trim();
@@ -1055,7 +1103,7 @@ function drawTableOfContents(
 
     // Draw section title (left-aligned)
     const sanitizedTitle = sanitizePdfText(displayTitle);
-    tocPage.drawText(sanitizedTitle, {
+    activePage.drawText(sanitizedTitle, {
       x: xOffset,
       y: yPosition,
       size: titleSize,
@@ -1064,10 +1112,10 @@ function drawTableOfContents(
     });
 
     // Draw page number (right-aligned)
-    const pageNumText = entry.pageNo.toString();
+    const pageNumText = (entry.pageNo + tocPageOffset).toString();
     const pageNumSize = 11;
     const pageNumWidth = font.widthOfTextAtSize(pageNumText, pageNumSize);
-    tocPage.drawText(pageNumText, {
+    activePage.drawText(pageNumText, {
       x: pageNumberX - pageNumWidth,
       y: yPosition,
       size: pageNumSize,

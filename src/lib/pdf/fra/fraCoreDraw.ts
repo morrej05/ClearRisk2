@@ -2178,15 +2178,7 @@ export function drawScope(
 ): { page: PDFPage; yPosition: number } {
   let { page, yPosition } = cursor;
   yPosition -= 20;
-  page.drawText('SCOPE', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-
-  yPosition -= 30;
+  yPosition = drawSectionTitle(page, MARGIN, yPosition, 'SCOPE', { regular: font, bold: fontBold });
 
   const sanitized = sanitizePdfText(scopeText);
   const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);
@@ -2224,15 +2216,7 @@ export function drawLimitations(
 ): { page: PDFPage; yPosition: number } {
   let { page, yPosition } = cursor;
   yPosition -= 20;
-  page.drawText('LIMITATIONS AND ASSUMPTIONS', {
-    x: MARGIN,
-    y: yPosition,
-    size: 16,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-
-  yPosition -= 30;
+   yPosition = drawSectionTitle(page, MARGIN, yPosition, 'LIMITATIONS AND ASSUMPTIONS', { regular: font, bold: fontBold });
 
   const sanitized = sanitizePdfText(limitationsText);
   const lines = wrapText(sanitized, CONTENT_WIDTH, 11, font);

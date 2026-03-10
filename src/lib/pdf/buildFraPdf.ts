@@ -963,8 +963,8 @@ if (section.id === 5) {
     }
   }
 
-  if (isIssuedMode && actions.length > 0) {
-    const actionsForPdf = actions.map((action: any) => ({
+  if (isIssuedMode && actionsWithRefs.length > 0) {
+    const actionsForPdf = actionsWithRefs.map((action: any) => ({
       id: action.id,
       reference_number: action.reference_number || null,
       recommended_action: action.recommended_action,
@@ -990,7 +990,7 @@ if (section.id === 5) {
     yPosition = PAGE_TOP_Y;
     yPosition = drawLikelihoodConsequenceExplanation(page, font, fontBold, yPosition, pdfDoc, isDraft, totalPages);
 
-    console.log('[PDF] actions sample (before register)', (actions || []).slice(0,3).map(a => ({
+    console.log('[PDF] actions sample (before register)', (actionsWithRefs || []).slice(0,3).map(a => ({
       id: a.id,
       source: a.source,
       ref: a.reference_number,
@@ -998,7 +998,7 @@ if (section.id === 5) {
     })));
 
     console.log('[PDF] actions source counts (before register):',
-      (actions || []).reduce((acc: any, a: any) => {
+      (actionsWithRefs || []).reduce((acc: any, a: any) => {
         const k = (a.source ?? 'null') as string;
         acc[k] = (acc[k] || 0) + 1;
         return acc;
@@ -1006,10 +1006,10 @@ if (section.id === 5) {
     );
 
     console.log('[PDF] first 10 action sources:',
-      (actions || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
+       (actionsWithRefs || []).slice(0, 10).map((a: any) => ({ ref: a.reference_number, source: a.source }))
     );
 
-    ({ page, yPosition } = await drawActionRegister({ page, yPosition }, actions, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap));
+    ({ page, yPosition } = await drawActionRegister({ page, yPosition }, actionsWithRefs, actionRatings, moduleInstances, font, fontBold, pdfDoc, isDraft, totalPages, attachments, evidenceRefMap));
   }
 
 // --- APPENDICES ---

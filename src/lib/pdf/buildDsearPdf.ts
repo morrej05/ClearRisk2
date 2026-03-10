@@ -1431,11 +1431,7 @@ function drawHazardousAreaClassification(
   yPosition = drawPageTitle(page, MARGIN, yPosition, sectionTitle, { regular: font, bold: fontBold });
 
   yPosition -= REPORT_TITLE_TO_BODY_GAP;
-    const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
-    for (const line of lines) {
-      ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-
-      const paragraphs = splitNarrativeParagraphs(hazardousAreaClassificationText);
+    const paragraphs = splitNarrativeParagraphs(hazardousAreaClassificationText);
   ({ page, yPosition } = drawNarrativeParagraphs({
     page,
     yPosition,

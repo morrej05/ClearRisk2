@@ -41,6 +41,7 @@ import {
   drawActionPlanSnapshot,
   drawRecommendationsSection,
   ensurePageSpace,
+  getReportFooterTitle,
   type ActionForPdf,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
@@ -1040,7 +1041,8 @@ if (attachments.length > 0) {
     year: 'numeric',
   });
   const versionNum = (document as any).version_number ?? document.version ?? 1;
-  const footerText = `FRA Report — ${document.title} —     v${versionNum}.0 — Generated ${today}`;
+  const footerReportTitle = getReportFooterTitle(document.document_type, document.title);
+  const footerText = `FRA Report — ${footerReportTitle} —     v${versionNum}.0 — Generated ${today}`;
 
   console.log('[PDF FRA] Drawing footers for', totalPages.length, 'pages');
   const startPageForFooters = isIssuedMode ? 2 : 1;

@@ -31,6 +31,7 @@ import {
   getReportFooterTitle,
   splitNarrativeParagraphs,
   drawNarrativeParagraphs,
+  parseNarrativeBlocks,
   REPORT_TITLE_TO_BODY_GAP,
 } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
@@ -1458,65 +1459,34 @@ function drawZoneDefinitions(
 
   yPosition -= REPORT_TITLE_TO_BODY_GAP;
 
-  const paragraphs = splitNarrativeParagraphs(zoneDefinitionsText);
-  for (const paragraph of paragraphs) {
-    if (!paragraph.trim()) continue;
-
-    if (paragraph.startsWith('**') && paragraph.includes('**')) {
-      const match = paragraph.match(/\*\*(.+?)\*\*\s*(.*)/s);
-      if (match) {
-        const heading = match[1];
-        const content = match[2];
-
-        ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
-
-        page.drawText(heading, {
-          x: MARGIN,
-          y: yPosition,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
-
-        yPosition -= 20;
-
-        if (content.trim()) {
-          const lines = wrapText(content, CONTENT_WIDTH, 11, font);
-          for (const line of lines) {
-            ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-
-            page.drawText(line, {
-              x: MARGIN,
-              y: yPosition,
-              size: 11,
-              font,
-              color: rgb(0.1, 0.1, 0.1),
-            });
-            yPosition -= 16;
-          }
-        }
-
-        yPosition -= 10;
-      }
-    } else {
-      ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
-
-      const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
-      for (const line of lines) {
-        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-
-        page.drawText(line, {
-          x: MARGIN,
-          y: yPosition,
-          size: 11,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        yPosition -= 16;
-      }
-
-      yPosition -= 8;
+  const narrativeBlocks = parseNarrativeBlocks(zoneDefinitionsText);
+  for (const block of narrativeBlocks) {
+    if (block.kind === 'heading') {
+      ({ page, yPosition } = ensurePageSpace(24, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawText(block.text, {
+        x: MARGIN,
+        y: yPosition,
+        size: 12,
+        font: fontBold,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= 20;
+      continue;
     }
+({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
+    const lines = wrapText(block.text, CONTENT_WIDTH, 11, font);
+    for (const line of lines) {
+      ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+      page.drawText(line, {
+        x: MARGIN,
+        y: yPosition,
+        size: 11,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+      yPosition -= 16;
+    }
+     yPosition -= 10;
   }
 
   return { page, yPosition };

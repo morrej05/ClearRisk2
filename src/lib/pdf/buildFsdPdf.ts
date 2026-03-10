@@ -1151,6 +1151,24 @@ function drawComputedAssuranceSummary(
   fontBold: any
 ): PDFPage {
   let yPosition = PAGE_TOP_Y;
+  const safeString = (value: unknown, fallback = ''): string => {
+    if (typeof value === 'string') {
+      const normalized = value.trim();
+      return normalized.length > 0 ? normalized : fallback;
+    }
+    return fallback;
+  };
+
+  const mappedLevel = summary?.computedOutcome === 'compliant' ? 'high' :
+                      summary?.computedOutcome === 'minor_def' || summary?.computedOutcome === 'info_gap' ? 'medium' :
+                      summary?.computedOutcome === 'material_def' ? 'low' :
+                      undefined;
+
+  const overallLevel = safeString(summary?.overallLevel, mappedLevel || 'Unknown').toLowerCase();
+  const overallLevelLabel = safeString(overallLevel, 'unknown').toUpperCase();
+  const levelReason = safeString(summary?.levelReason);
+  const deviations = Array.isArray(summary?.deviations) ? summary.deviations : [];
+  const infoGaps = Array.isArray(summary?.infoGaps) ? summary.infoGaps : [];
 
   page.drawText('COMPUTED ASSURANCE SUMMARY', {
     x: MARGIN,
@@ -1172,11 +1190,11 @@ function drawComputedAssuranceSummary(
 
   yPosition -= 20;
 
-  const levelColor = summary.overallLevel === 'high' ? rgb(0, 0.6, 0) :
-                     summary.overallLevel === 'medium' ? rgb(0.8, 0.6, 0) :
-                     rgb(0.8, 0, 0);
+  const levelColor = overallLevel === 'high' ? rgb(0, 0.6, 0) :
+                     overallLevel === 'medium' ? rgb(0.8, 0.6, 0) :
+    rgb(0.8, 0, 0);
 
-  page.drawText(summary.overallLevel.toUpperCase(), {
+  page.drawText(overallLevelLabel, {
     x: MARGIN + 10,
     y: yPosition,
     size: 14,
@@ -1186,7 +1204,7 @@ function drawComputedAssuranceSummary(
 
   yPosition -= 30;
 
-  if (summary.levelReason) {
+  if (levelReason) {
     page.drawText('Reason:', {
       x: MARGIN,
       y: yPosition,
@@ -1196,7 +1214,7 @@ function drawComputedAssuranceSummary(
     });
     yPosition -= 18;
 
-    const reasonLines = wrapText(summary.levelReason, CONTENT_WIDTH - 10, 10, font);
+    const reasonLines = wrapText(levelReason, CONTENT_WIDTH - 10, 10, font);
     for (const line of reasonLines) {
       if (yPosition < MARGIN + 50) {
         ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
@@ -1215,7 +1233,7 @@ function drawComputedAssuranceSummary(
 
   yPosition -= 20;
 
-  if (summary.deviations.length > 0) {
+  if (deviations.length > 0) {
     page.drawText('Deviations from Standards:', {
       x: MARGIN,
       y: yPosition,
@@ -1226,7 +1244,7 @@ function drawComputedAssuranceSummary(
 
     yPosition -= 22;
 
-    const displayDeviations = summary.deviations.slice(0, 3);
+    const displayDeviations = deviations.slice(0, 3);
     for (let i = 0; i < displayDeviations.length; i++) {
       const deviation = displayDeviations[i];
 
@@ -1235,24 +1253,25 @@ function drawComputedAssuranceSummary(
         yPosition = PAGE_TOP_Y;
       }
 
-      const truncatedDeviation = deviation.deviation.length > 80
-        ? deviation.deviation.substring(0, 77) + '...'
-        : deviation.deviation;
+      const deviationText = safeString(deviation?.deviation, 'Not Assessed');
+      const truncatedDeviation = deviationText.length > 80
+        ? deviationText.substring(0, 77) + '...'
+        : deviationText;
 
-      const qualityIndicator = deviation.score < 4 ? ' [Incomplete justification]' : '';
-      page.drawText(`${i + 1}. ${deviation.topic || 'Unspecified'}: ${sanitizePdfText(truncatedDeviation)}${qualityIndicator}`, {
+      const qualityIndicator = deviation?.score < 4 ? ' [Incomplete justification]' : '';
+      page.drawText(`${i + 1}. ${safeString(deviation?.topic, 'Unspecified')}: ${sanitizePdfText(truncatedDeviation)}${qualityIndicator}`, {
         x: MARGIN + 10,
         y: yPosition,
         size: 10,
         font,
-        color: deviation.score < 4 ? PDF_THEME.colours.risk.high.fg : PDF_THEME.colours.text.primary,
+        color: deviation?.score < 4 ? PDF_THEME.colours.risk.high.fg : PDF_THEME.colours.text.primary,
       });
 
       yPosition -= 20;
     }
 
-    if (summary.deviations.length > 3) {
-      page.drawText(`... and ${summary.deviations.length - 3} more. See Deviation Register for full details.`, {
+    if (deviations.length > 3) {
+      page.drawText(`... and ${deviations.length - 3} more. See Deviation Register for full details.`, {
         x: MARGIN + 10,
         y: yPosition,
         size: 9,
@@ -1265,7 +1284,7 @@ function drawComputedAssuranceSummary(
 
   yPosition -= 10;
 
-  if (summary.infoGaps.length > 0) {
+  if (infoGaps.length > 0) {
     ({ page, yPosition } = ensurePageSpace(110, page, yPosition, pdfDoc, isDraft, totalPages));
 
     page.drawText('Information Gaps:', {
@@ -1278,16 +1297,17 @@ function drawComputedAssuranceSummary(
 
     yPosition -= 22;
 
-    const displayGaps = summary.infoGaps.slice(0, 5);
+    const displayGaps = infoGaps.slice(0, 5);
     for (const gap of displayGaps) {
       if (yPosition < MARGIN + 60) {
         ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
         yPosition = PAGE_TOP_Y;
       }
 
-      const gapText = gap.note
-        ? `${gap.title}: ${sanitizePdfText(gap.note)}`
-        : gap.title;
+      const gapTitle = safeString(gap?.title, 'Unknown');
+      const gapText = safeString(gap?.note)
+        ? `${gapTitle}: ${sanitizePdfText(safeString(gap.note))}`
+        : gapTitle;
 
       const truncatedGap = gapText.length > 90
         ? gapText.substring(0, 87) + '...'
@@ -1304,8 +1324,8 @@ function drawComputedAssuranceSummary(
       yPosition -= 18;
     }
 
-    if (summary.infoGaps.length > 5) {
-      page.drawText(`... and ${summary.infoGaps.length - 5} more information gaps.`, {
+    if (infoGaps.length > 5) {
+      page.drawText(`... and ${infoGaps.length - 5} more information gaps.`, {
         x: MARGIN + 10,
         y: yPosition,
         size: 9,

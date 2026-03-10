@@ -1227,7 +1227,7 @@ const deduplicatedActions = deduplicateActions(actions, moduleInstances);
     return module && module.module_key.startsWith('DSEAR');
   });
 
-  page.drawText(sanitizePdfText('Priority Actions:'), {
+  page.drawText(sanitizePdfText('Priority Actions (Active only):'), {
     x: MARGIN,
     y: yPosition,
     size: 11,
@@ -1239,7 +1239,7 @@ const deduplicatedActions = deduplicateActions(actions, moduleInstances);
   const p1Count = activeActions.filter(a => a.priority_band === 'P1').length;
   const p2Count = activeActions.filter(a => a.priority_band === 'P2').length;
 
-  page.drawText(sanitizePdfText(`Fire: ${fraActions.length} actions | Explosion: ${dsearActions.length} actions`), {
+  page.drawText(sanitizePdfText(`Active actions — Fire: ${fraActions.length} | Explosion: ${dsearActions.length}`), {
     x: MARGIN + 20,
     y: yPosition,
     size: 10,
@@ -1249,6 +1249,15 @@ const deduplicatedActions = deduplicateActions(actions, moduleInstances);
   yPosition -= 16;
 
   page.drawText(sanitizePdfText(`Total P1: ${p1Count}, P2: ${p2Count}`), {
+    x: MARGIN + 20,
+    y: yPosition,
+    size: 10,
+    font: font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  yPosition -= 16;
+
+  page.drawText(sanitizePdfText(`Total actions (register scope): ${deduplicatedActions.length}`), {
     x: MARGIN + 20,
     y: yPosition,
     size: 10,
@@ -1312,6 +1321,14 @@ function drawCombinedActionRegister(
   totalPages: PDFPage[]
 ): { page: PDFPage; yPosition: number } {
   yPosition = drawSectionTitle(page, MARGIN, yPosition, 'Action Register (Fire + Explosion)', { regular: font, bold: fontBold });
+page.drawText(sanitizePdfText('Includes all deduplicated actions (active and closed).'), {
+    x: MARGIN,
+    y: yPosition,
+    size: 9,
+    font,
+    color: rgb(0.35, 0.35, 0.35),
+  });
+  yPosition -= 16;
 
   if (actions.length === 0) {
     page.drawText(sanitizePdfText('No actions recorded'), {

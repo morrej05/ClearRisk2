@@ -23,6 +23,7 @@ import {
   getReportFooterTitle,
   splitNarrativeParagraphs,
   drawNarrativeParagraphs,
+  parseNarrativeBlocks,
   REPORT_TITLE_TO_BODY_GAP,
   } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
@@ -736,17 +737,11 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     yPosition = drawPageTitle(page, MARGIN, yPosition, zoneTitle, { regular: font, bold: fontBold });
     yPosition -= REPORT_TITLE_TO_BODY_GAP;
 
-    const zoneParagraphs = splitNarrativeParagraphs(zoneDefinitionsText);
-    for (const paragraph of zoneParagraphs) {
-      if (!paragraph.trim()) continue;
-      
-      const markdownHeadingMatch = paragraph.match(/^\*\*(.+?)\*\*\s*(.*)$/s);
-      if (markdownHeadingMatch) {
-        const heading = markdownHeadingMatch[1].trim();
-        const body = markdownHeadingMatch[2].trim();
-
-        ({ page, yPosition } = ensurePageSpace(60, page, yPosition, pdfDoc, isDraft, totalPages));
-        page.drawText(sanitizePdfText(heading), {
+    const zoneBlocks = parseNarrativeBlocks(zoneDefinitionsText);
+    for (const block of zoneBlocks) {
+      if (block.kind === 'heading') {
+        ({ page, yPosition } = ensurePageSpace(24, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(sanitizePdfText(block.text), {
           x: MARGIN,
           y: yPosition,
           size: 12,
@@ -754,35 +749,21 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
           color: rgb(0, 0, 0),
         });
         yPosition -= 20;
+        continue;
+      }
 
-        if (body) {
-          const lines = wrapText(body, CONTENT_WIDTH, 11, font);
-          for (const line of lines) {
-            ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-            page.drawText(line, {
-              x: MARGIN,
-              y: yPosition,
-              size: 11,
-              font,
-              color: rgb(0.1, 0.1, 0.1),
-            });
-            yPosition -= 16;
-          }
-        }
-      } else {
         ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
-        const lines = wrapText(paragraph, CONTENT_WIDTH, 11, font);
-        for (const line of lines) {
-          ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
-          page.drawText(line, {
-            x: MARGIN,
-            y: yPosition,
-            size: 11,
-            font,
-            color: rgb(0.1, 0.1, 0.1),
-          });
-          yPosition -= 16;
-        }
+      const lines = wrapText(block.text, CONTENT_WIDTH, 11, font);
+      for (const line of lines) {
+        ({ page, yPosition } = ensurePageSpace(14, page, yPosition, pdfDoc, isDraft, totalPages));
+        page.drawText(line, {
+          x: MARGIN,
+          y: yPosition,
+          size: 11,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPosition -= 16;
       }
       
       yPosition -= 10;

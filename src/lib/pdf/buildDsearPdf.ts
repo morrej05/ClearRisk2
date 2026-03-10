@@ -40,12 +40,15 @@ import {
   drawPageTitle,
   drawContentsRow,
   drawWrappedSubsectionHeading,
+  getReportLayoutSpacing,
 } from './pdfPrimitives';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
 import { compareActionsByDisplayReference, filterActiveActions } from './actionContracts';
 
 const DSEAR_PDF_DEBUG = true;
 void DSEAR_PDF_DEBUG;
+
+const REPORT_LAYOUT_SPACING = getReportLayoutSpacing();
 
 interface Document {
   id: string;
@@ -1130,7 +1133,7 @@ function drawInfoGapQuickActions(
   // Ensure space for info gap header block
   ({ page, yPosition } = ensurePageSpace(200, page, yPosition, pdfDoc, isDraft, totalPages));
 
-  yPosition -= 20;
+  yPosition -= REPORT_LAYOUT_SPACING.sectionHeaderToInfoGap;
 
   // Neutral callout - light border instead of warning banner
   // Draw subtle border box

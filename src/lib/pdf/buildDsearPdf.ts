@@ -71,6 +71,7 @@ interface ModuleInstance {
 
 interface Action {
   id: string;
+  reference_number?: string | null;
   recommended_action: string;
   priority_band: string;
   status: string;
@@ -1040,7 +1041,8 @@ function drawActionRegister(
     const rating = actionRatings.find(r => r.action_id === action.id);
     const lxi = rating ? `L${rating.likelihood}xI${rating.impact}` : '-';
 
-    page.drawText(sanitizePdfText(`[${action.priority_band}] ${action.recommended_action}`), {
+    const referencePrefix = action.reference_number ? `${action.reference_number} ` : '';
+    page.drawText(sanitizePdfText(`[${action.priority_band}] ${referencePrefix}${action.recommended_action}`), {
       x: MARGIN,
       y: yPosition,
       size: 9,

@@ -1067,26 +1067,40 @@ function drawTableOfContents(
 
   const tocPageIndex = totalPages.indexOf(tocPage);
   const allTocPages = totalPages.slice(tocPageIndex, tocPageIndex + tocPageCount);
-  const tocPageOffset = extraTocPages;
+  let tocPageOffset = extraTocPages;
   let currentTocPageIndex = 0;
   let activePage = allTocPages[currentTocPageIndex];
-  let yPosition = t
-  // Title
-  activePage.drawText(sanitizePdfText('Contents'), {
-    x: MARGIN,
-    y: yPosition,
-    size: 19,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 42;
+  let yPosition = tocStartY;
+
+  const drawTocTitle = (targetPage: PDFPage) => {
+    targetPage.drawText(sanitizePdfText('Contents'), {
+      x: MARGIN,
+      y: tocStartY,
+      size: 19,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+  };
+
+  drawTocTitle(activePage);
+  yPosition = contentStartY;
 
   // Render TOC entries with page numbers
   for (const entry of tocEntries) {
     const neededHeight = entryHeight(entry.title);
     if (yPosition - neededHeight < minY) {
       currentTocPageIndex += 1;
-      activePage = allTocPages[currentTocPageIndex] ?? activePage;
+      const nextExistingPage = allTocPages[currentTocPageIndex];
+      if (nextExistingPage) {
+        activePage = nextExistingPage;
+      } else {
+        const inserted = pdfDoc.insertPage(tocPageIndex + currentTocPageIndex, [PAGE_WIDTH, PAGE_HEIGHT]);
+        totalPages.splice(tocPageIndex + currentTocPageIndex, 0, inserted);
+        allTocPages.push(inserted);
+        activePage = inserted;
+        tocPageOffset += 1;
+      }
+      drawTocTitle(activePage);
       yPosition = contentStartY;
     }
 

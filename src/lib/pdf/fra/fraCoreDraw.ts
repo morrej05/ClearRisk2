@@ -2293,11 +2293,11 @@ export function drawCleanAuditPage1(
   let yPosition = PAGE_TOP_Y - 40;
   const coverTitleContent = getCoverTitleContent(document.document_type, document.title);
   const reportProductLabel = sanitizePdfText(coverTitleContent.productLabel);
-  const reportTitle = sanitizePdfText(coverTitleContent.title);
+  const rawDocumentTitle = sanitizePdfText((document.title || '').trim());
 
   // Extract site identity from A1 module (single source of truth)
   const a1Data = a1Module?.data || {};
-  const siteName = sanitizePdfText(a1Data.site?.name || reportTitle);
+  const siteName = sanitizePdfText(a1Data.site?.name || rawDocumentTitle || reportProductLabel);
   const clientName = sanitizePdfText(a1Data.client?.name || document.responsible_person || organisation.name);
 
   // Build site address from A1

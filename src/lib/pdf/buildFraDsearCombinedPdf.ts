@@ -426,15 +426,10 @@ const reasonLines = wrapText(reason, CONTENT_WIDTH - 30, 9, font);
 export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promise<Uint8Array> {
   const { document, moduleInstances, actions, actionRatings, organisation, renderMode } = options;
 
-  console.log('[FRA+DSEAR PDF] Building combined Fire + Explosion PDF with:', {
-    modules: moduleInstances.length,
-    actions: actions.length,
-  });
-
   let attachments: Attachment[] = [];
   try {
     attachments = await listAttachments(document.id);
-    console.log('[FRA+DSEAR PDF] Fetched', attachments.length, 'attachments');
+    
   } catch (error) {
     console.warn('[FRA+DSEAR PDF] Failed to fetch attachments:', error);
   }

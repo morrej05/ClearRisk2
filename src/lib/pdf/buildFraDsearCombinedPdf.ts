@@ -69,6 +69,7 @@ interface ModuleInstance {
 
 interface Action {
   id: string;
+  reference_number?: string | null;
   recommended_action: string;
   priority_band: string;
   status: string;
@@ -1311,7 +1312,8 @@ function drawCombinedActionRegister(
     const moduleType = module?.module_key.startsWith('FRA') ? '[Fire]' :
                        module?.module_key.startsWith('DSEAR') ? '[Explosion]' : '[General]';
 
-    page.drawText(sanitizePdfText(`[${action.priority_band}] ${moduleType} ${action.recommended_action}`), {
+    const referencePrefix = action.reference_number ? `${action.reference_number} ` : '';
+    page.drawText(sanitizePdfText(`[${action.priority_band}] ${moduleType} ${referencePrefix}${action.recommended_action}`), {
       x: MARGIN,
       y: yPosition,
       size: 9,

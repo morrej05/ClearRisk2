@@ -50,6 +50,7 @@ interface Document {
   executive_summary_author: string | null;
   executive_summary_mode: string | null;
   issue_status: string;
+  jurisdiction?: string | null;
 }
 
 interface ModuleInstance {
@@ -205,6 +206,7 @@ function drawTableOfContents(
 
 export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Array> {
   const { document, moduleInstances, actions, organisation, renderMode } = options;
+  const jurisdiction = document.jurisdiction || (document as any).meta?.jurisdiction || 'england_wales';
 
   let attachments: Attachment[] = [];
   try {
@@ -294,7 +296,7 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
 
   ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
   recordToc('Purpose and Scope');
-  page = drawPurposeAndScope(page, pdfDoc, isDraft, totalPages, font, fontBold);
+  page = drawPurposeAndScope(page, jurisdiction, pdfDoc, isDraft, totalPages, font, fontBold);
 
   if (document.scope_description) {
     ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
@@ -304,27 +306,30 @@ export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Arr
 
   ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
   recordToc('Limitations and Assumptions');
-  page = drawFsdLimitations(page, pdfDoc, isDraft, totalPages, font, fontBold);
+  page = drawFsdLimitations(page, jurisdiction, pdfDoc, isDraft, totalPages, font, fontBold);
 
   if (document.limitations_assumptions) {
     page = drawDocumentLimitations(page, document.limitations_assumptions, pdfDoc, isDraft, totalPages, font, fontBold);
   }
 
   if (sortedModules.length > 0) {
+    ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
     recordToc('Module Summaries');
     for (const moduleInstance of sortedModules) {
-      ({ page } = drawModuleSummary(page, moduleInstance, document, pdfDoc, isDraft, totalPages, font, fontBold));
+      ({ page, yPosition } = drawModuleSummary(page, yPosition, moduleInstance, document, pdfDoc, isDraft, totalPages, font, fontBold));
     }
   }
 
   if (actions.length > 0) {
+    ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
     recordToc('Action Register');
-    ({ page } = drawActionRegister(page, actions, pdfDoc, isDraft, totalPages, font, fontBold));
+    ({ page, yPosition } = drawActionRegister(page, yPosition, actions, pdfDoc, isDraft, totalPages, font, fontBold));
   }
 
   if (attachments.length > 0) {
+    ({ page, yPosition } = addNewPage(pdfDoc, isDraft, totalPages));
     recordToc('Attachments Index');
-    ({ page } = drawAttachmentsIndex(page, attachments, filteredModules, actions, pdfDoc, isDraft, totalPages, font, fontBold));
+    ({ page, yPosition } = drawAttachmentsIndex(page, yPosition, attachments, filteredModules, actions, pdfDoc, isDraft, totalPages, font, fontBold));
   }
 
   drawTableOfContents(pdfDoc, totalPages, tocPage, tocEntries, font, fontBold);
@@ -356,6 +361,7 @@ function sortModules(moduleInstances: ModuleInstance[]): ModuleInstance[] {
 
 function drawModuleSummary(
   page: PDFPage,
+  startY: number,
   moduleInstance: ModuleInstance,
   document: Document,
   pdfDoc: PDFDocument,
@@ -363,9 +369,9 @@ function drawModuleSummary(
   totalPages: PDFPage[],
   font: any,
   fontBold: any
-): { page: PDFPage } {
+): { page: PDFPage; yPosition: number } {
   let currentPage = page;
-  let yPosition = PAGE_TOP_Y;
+  let yPosition = startY;
 
   ({ page: currentPage, yPosition } = ensurePageSpace(90, currentPage, yPosition, pdfDoc, isDraft, totalPages));
 
@@ -419,7 +425,8 @@ function drawModuleSummary(
   ({ page: currentPage, yPosition } = drawModuleKeyDetails(currentPage, moduleInstance, yPosition, pdfDoc, isDraft, totalPages, font, fontBold));
   ({ page: currentPage, yPosition } = drawInfoGapQuickActions(currentPage, moduleInstance, document, font, fontBold, yPosition, pdfDoc, isDraft, totalPages));
 
-  return { page: currentPage };
+  yPosition -= 16;
+  return { page: currentPage, yPosition };
 }
 
 function drawModuleKeyDetails(
@@ -745,15 +752,16 @@ function drawInfoGapQuickActions(
 
 function drawActionRegister(
   page: PDFPage,
+  startY: number,
   actions: Action[],
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
   font: any,
   fontBold: any
-): { page: PDFPage } {
+): { page: PDFPage; yPosition: number } {
   let currentPage = page;
-  let yPosition = PAGE_TOP_Y;
+  let yPosition = startY;
 
   ({ page: currentPage, yPosition } = ensurePageSpace(90, currentPage, yPosition, pdfDoc, isDraft, totalPages));
 
@@ -792,7 +800,9 @@ function drawActionRegister(
   sortedActions.forEach((action, index) => {
     ({ page: currentPage, yPosition } = ensurePageSpace(18, currentPage, yPosition, pdfDoc, isDraft, totalPages));
 
-    const actionLines = wrapText(action.recommended_action, 300, 7, font);
+    const actionText = action.recommended_action?.trim() || '(No action text provided)';
+    const ownerDisplay = action.owner_display_name?.trim() || '-';
+    const actionLines = wrapText(`${actionText} (Owner: ${ownerDisplay})`, 300, 7, font);
     const firstLine = actionLines[0] || '';
 
     currentPage.drawText(`${index + 1}`, {
@@ -811,7 +821,8 @@ function drawActionRegister(
       color: rgb(0.2, 0.2, 0.2),
     });
 
-    const priorityColor = getPriorityColor(action.priority_band);
+    const priorityBand = action.priority_band?.trim() || '-';
+    const priorityColor = getPriorityColor(priorityBand);
     currentPage.drawRectangle({
       x: colX2,
       y: yPosition - 2,
@@ -819,7 +830,7 @@ function drawActionRegister(
       height: 10,
       color: priorityColor,
     });
-    currentPage.drawText(sanitizePdfText(action.priority_band), {
+    currentPage.drawText(sanitizePdfText(priorityBand), {
       x: colX2 + 5,
       y: yPosition,
       size: 7,
@@ -827,7 +838,7 @@ function drawActionRegister(
       color: rgb(1, 1, 1),
     });
 
-    currentPage.drawText(sanitizePdfText(action.status), {
+    currentPage.drawText(sanitizePdfText(action.status?.trim() || '-'), {
       x: colX3,
       y: yPosition,
       size: 7,
@@ -835,7 +846,8 @@ function drawActionRegister(
       color: rgb(0.2, 0.2, 0.2),
     });
 
-    currentPage.drawText(formatDate(action.target_date), {
+    const targetDate = action.target_date ? formatDate(action.target_date) : '-';
+    currentPage.drawText(targetDate, {
       x: colX4,
       y: yPosition,
       size: 7,
@@ -846,11 +858,12 @@ function drawActionRegister(
     yPosition -= rowHeight;
   });
 
-  return { page: currentPage };
+  return { page: currentPage, yPosition };
 }
 
 function drawAttachmentsIndex(
   page: PDFPage,
+  startY: number,
   attachments: Attachment[],
   moduleInstances: ModuleInstance[],
   actions: Action[],
@@ -859,9 +872,8 @@ function drawAttachmentsIndex(
   totalPages: PDFPage[],
   font: any,
   fontBold: any
-): { page: PDFPage } {
-  ({ page } = addNewPage(pdfDoc, isDraft, totalPages));
-  let yPosition = PAGE_TOP_Y;
+): { page: PDFPage; yPosition: number } {
+  let yPosition = startY;
 
   page.drawText('ATTACHMENTS & EVIDENCE INDEX', {
     x: MARGIN,
@@ -881,7 +893,7 @@ function drawAttachmentsIndex(
       font,
       color: rgb(0.5, 0.5, 0.5),
     });
-    return { page };
+    return { page, yPosition };
   }
 
   for (let i = 0; i < attachments.length; i++) {
@@ -960,11 +972,12 @@ function drawAttachmentsIndex(
     yPosition -= 15;
   }
 
-  return { page };
+  return { page, yPosition };
 }
 
 function drawPurposeAndScope(
   page: PDFPage,
+  jurisdiction: string,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
@@ -984,7 +997,7 @@ function drawPurposeAndScope(
 
   yPosition -= 30;
 
-  const purposeAndScopeText = normalizeNarrativeReportText(fsdPurposeAndScopeText);
+  const purposeAndScopeText = normalizeNarrativeReportText(fsdPurposeAndScopeText(jurisdiction));
   const paragraphs = purposeAndScopeText.split('\n\n');
   for (const paragraph of paragraphs) {
     if (!paragraph.trim()) continue;
@@ -1010,6 +1023,7 @@ function drawPurposeAndScope(
 
 function drawFsdLimitations(
   page: PDFPage,
+  jurisdiction: string,
   pdfDoc: PDFDocument,
   isDraft: boolean,
   totalPages: PDFPage[],
@@ -1029,7 +1043,7 @@ function drawFsdLimitations(
 
   yPosition -= 30;
 
-  const limitationsText = normalizeNarrativeReportText(fsdLimitationsText);
+  const limitationsText = normalizeNarrativeReportText(fsdLimitationsText(jurisdiction));
   const paragraphs = limitationsText.split('\n\n');
   for (const paragraph of paragraphs) {
     if (!paragraph.trim()) continue;

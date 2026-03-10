@@ -1,4 +1,5 @@
 import { PDFDocument, PDFPage, rgb, degrees, StandardFonts } from 'pdf-lib';
+import { compareActionsByDisplayReference, filterActiveActions } from './actionContracts';
 
 export const PAGE_WIDTH = 595.28;
 export const PAGE_HEIGHT = 841.89;
@@ -1131,10 +1132,8 @@ export function drawActionPlanSnapshot(
     return 0;
   }
 
-  // Filter to open actions only (exclude closed, superseded, etc.)
-  const openActions = actions.filter(a =>
-    a.status === 'open' || a.status === 'in_progress'
-  );
+  // Filter to active actions only (exclude closed, superseded, etc.)
+  const openActions = filterActiveActions(actions);
 
   if (openActions.length === 0) {
     return 0; // Don't add page if no open actions
@@ -1208,15 +1207,7 @@ export function drawActionPlanSnapshot(
     context.yPosition -= 20;
 
     // List actions (max 5 per priority to keep snapshot concise)
-    // Sort system actions first within each priority group
-    const sortedActions = [...priorityActions].sort((a, b) => {
-      const aSys = (a.source === 'system') ? 0 : 1;
-      const bSys = (b.source === 'system') ? 0 : 1;
-      if (aSys !== bSys) return aSys - bSys;
-
-      // Stable secondary sort (by ref if present, else by created_at)
-      return String(a.reference_number || '').localeCompare(String(b.reference_number || ''));
-    });
+    const sortedActions = [...priorityActions].sort(compareActionsByDisplayReference);
 
     const displayActions = sortedActions.slice(0, 5);
     for (const action of displayActions) {

@@ -207,8 +207,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   let attachments: Attachment[] = [];
   try {
     attachments = await listAttachments(document.id);
-    console.log('[DSEAR PDF] Fetched', attachments.length, 'attachments');
-  } catch (error) {
+    } catch (error) {
     console.warn('[DSEAR PDF] Failed to fetch attachments:', error);
   }
 
@@ -220,10 +219,7 @@ export async function buildDsearPdf(options: BuildPdfOptions): Promise<Uint8Arra
   const isDraft = !isIssuedMode;
   const totalPages: PDFPage[] = [];
 
-  console.log('[DSEAR PDF] Render mode:', isIssuedMode ? 'ISSUED' : 'DRAFT');
-  console.log('[DSEAR PDF] Adding report pages with logo (cover + doc control)');
-
-  // Use addIssuedReportPages for both draft and issued modes to ensure logo embedding
+    // Use addIssuedReportPages for both draft and issued modes to ensure logo embedding
   const { coverPage, docControlPage } = await addIssuedReportPages({
     pdfDoc,
     document: {

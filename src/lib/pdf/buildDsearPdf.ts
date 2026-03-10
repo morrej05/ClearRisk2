@@ -32,6 +32,7 @@ import {
 import { addIssuedReportPages } from './issuedPdfPages';
 import { drawSectionHeaderBar, drawPageTitle, drawContentsRow } from './pdfPrimitives';
 import { computeExplosionSummary } from '../dsear/criticalityEngine';
+import { compareActionsByDisplayReference, filterActiveActions } from './actionContracts';
 
 const DSEAR_PDF_DEBUG = true;
 void DSEAR_PDF_DEBUG;
@@ -525,10 +526,12 @@ function drawExecutiveSummary(
   });
   yPosition -= 25;
 
-  // Priority actions summary
-  const p1Count = actions.filter(a => a.priority_band === 'P1').length;
-  const p2Count = actions.filter(a => a.priority_band === 'P2').length;
-  const p34Count = actions.filter(a => ['P3', 'P4'].includes(a.priority_band)).length;
+  const activeActions = filterActiveActions(actions);
+
+  // Priority actions summary (active actions only)
+  const p1Count = activeActions.filter(a => a.priority_band === 'P1').length;
+  const p2Count = activeActions.filter(a => a.priority_band === 'P2').length;
+  const p34Count = activeActions.filter(a => ['P3', 'P4'].includes(a.priority_band)).length;
 
   page.drawText(sanitizePdfText('Priority Actions:'), {
     x: MARGIN,
@@ -560,7 +563,7 @@ function drawExecutiveSummary(
     });
     yPosition -= 18;
 
-    const criticalActions = actions
+    const criticalActions = activeActions
       .filter(a => a.priority_band === 'P1' || a.priority_band === 'P2')
       .filter(a => a.trigger_text && a.trigger_text !== 'Priority derived from previous assessment model.')
       .slice(0, 3);
@@ -1028,11 +1031,7 @@ function drawActionRegister(
     return { page, yPosition: yPosition - 20 };
   }
 
-  const sortedActions = [...actions].sort((a, b) => {
-    if (!a.reference_number) return 1;
-    if (!b.reference_number) return -1;
-    return a.reference_number.localeCompare(b.reference_number);
-  });
+  const sortedActions = [...actions].sort(compareActionsByDisplayReference);
 
   for (const action of sortedActions) {
     // Ensure space for action card

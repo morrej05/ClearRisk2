@@ -27,7 +27,12 @@ import {
   REPORT_TITLE_TO_BODY_GAP,
   } from './pdfUtils';
 import { addIssuedReportPages } from './issuedPdfPages';
-import { drawSectionHeaderBar, drawPageTitle, drawSectionTitle } from './pdfPrimitives';
+import {
+  drawSectionHeaderBar,
+  drawPageTitle,
+  drawSectionTitle,
+  drawWrappedSubsectionHeading,
+} from './pdfPrimitives';
 import { FRA_REPORT_STRUCTURE } from './fraReportStructure';
 import {
   drawRegulatoryFramework,
@@ -740,15 +745,8 @@ export async function buildFraDsearCombinedPdf(options: BuildPdfOptions): Promis
     const zoneBlocks = parseNarrativeBlocks(zoneDefinitionsText);
     for (const block of zoneBlocks) {
       if (block.kind === 'heading') {
-        ({ page, yPosition } = ensurePageSpace(24, page, yPosition, pdfDoc, isDraft, totalPages));
-        page.drawText(sanitizePdfText(block.text), {
-          x: MARGIN,
-          y: yPosition,
-          size: 12,
-          font: fontBold,
-          color: rgb(0, 0, 0),
-        });
-        yPosition -= 20;
+         ({ page, yPosition } = ensurePageSpace(40, page, yPosition, pdfDoc, isDraft, totalPages));
+        yPosition = drawWrappedSubsectionHeading(page, MARGIN, yPosition, block.text, { regular: font, bold: fontBold }, CONTENT_WIDTH);
         continue;
       }
 

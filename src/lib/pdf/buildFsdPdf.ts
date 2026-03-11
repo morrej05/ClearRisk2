@@ -6,6 +6,7 @@ import {
   fsdPurposeAndScopeText,
   fsdLimitationsText,
 } from '../reportText';
+import { normalizeFsdJurisdiction } from '../reportText/fsd/jurisdiction';
 import {
   PAGE_WIDTH,
   PAGE_HEIGHT,
@@ -206,7 +207,7 @@ function drawTableOfContents(
 
 export async function buildFsdPdf(options: BuildFsdPdfOptions): Promise<Uint8Array> {
   const { document, moduleInstances, actions, organisation, renderMode } = options;
-  const jurisdiction = document.jurisdiction || (document as any).meta?.jurisdiction || 'england_wales';
+  const jurisdiction = normalizeFsdJurisdiction(document.jurisdiction || (document as any).meta?.jurisdiction || null);
 
   let attachments: Attachment[] = [];
   try {

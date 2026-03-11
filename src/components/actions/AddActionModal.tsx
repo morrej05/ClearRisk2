@@ -43,6 +43,108 @@ const DSEAR_TRIGGERS = [
   { id: 'dustHousekeeping', label: 'Combustible dust accumulation / housekeeping inadequate', category: 'Management' },
 ];
 
+
+
+type FsdFindingCategory =
+  | 'RegulatoryBasis'
+  | 'BuildingProfileOccupancy'
+  | 'FireStrategy'
+  | 'EscapeDesign'
+  | 'EvacuationStrategy'
+  | 'PassiveFireProtection'
+  | 'ActiveFireSystems'
+  | 'SmokeControl'
+  | 'FireRescueServiceAccess'
+  | 'DrawingsSchedules'
+  | 'ConstructionPhaseFireSafety'
+  | 'DeviationsAlternativeApproach'
+  | 'InformationGap'
+  | 'Other';
+
+type ActionCategory = FraFindingCategory | FsdFindingCategory;
+
+const FSD_CATEGORY_OPTIONS: Array<{ value: FsdFindingCategory; label: string }> = [
+  { value: 'RegulatoryBasis', label: 'Regulatory Basis' },
+  { value: 'BuildingProfileOccupancy', label: 'Building Profile / Occupancy' },
+  { value: 'FireStrategy', label: 'Fire Strategy' },
+  { value: 'EscapeDesign', label: 'Escape Design' },
+  { value: 'EvacuationStrategy', label: 'Evacuation Strategy' },
+  { value: 'PassiveFireProtection', label: 'Passive Fire Protection' },
+  { value: 'ActiveFireSystems', label: 'Active Fire Systems' },
+  { value: 'SmokeControl', label: 'Smoke Control' },
+  { value: 'FireRescueServiceAccess', label: 'Fire & Rescue Service Access' },
+  { value: 'DrawingsSchedules', label: 'Drawings & Schedules' },
+  { value: 'ConstructionPhaseFireSafety', label: 'Construction Phase Fire Safety' },
+  { value: 'DeviationsAlternativeApproach', label: 'Deviations / Alternative Approach' },
+  { value: 'InformationGap', label: 'Information Gap' },
+  { value: 'Other', label: 'Other' },
+];
+
+function getDefaultFsdCategory(sourceModuleKey?: string): FsdFindingCategory {
+  switch (sourceModuleKey) {
+    case 'FSD_1_REG_BASIS':
+      return 'RegulatoryBasis';
+    case 'A2_BUILDING_PROFILE':
+    case 'A3_PERSONS_AT_RISK':
+      return 'BuildingProfileOccupancy';
+    case 'FSD_2_EVAC_STRATEGY':
+      return 'EvacuationStrategy';
+    case 'FSD_3_ESCAPE_DESIGN':
+      return 'EscapeDesign';
+    case 'FSD_4_PASSIVE_PROTECTION':
+      return 'PassiveFireProtection';
+    case 'FSD_5_ACTIVE_SYSTEMS':
+      return 'ActiveFireSystems';
+    case 'FSD_6_FRS_ACCESS':
+      return 'FireRescueServiceAccess';
+    case 'FSD_7_DRAWINGS':
+      return 'DrawingsSchedules';
+    case 'FSD_8_SMOKE_CONTROL':
+      return 'SmokeControl';
+    case 'FSD_9_CONSTRUCTION_PHASE':
+      return 'ConstructionPhaseFireSafety';
+    default:
+      return 'FireStrategy';
+  }
+}
+
+function improveGenericFsdActionText(actionText: string, sourceModuleKey?: string): string {
+  const normalized = actionText.trim().toLowerCase();
+  const genericTexts = new Set([
+    'improvement needed',
+    'improvements needed',
+    'improvement required',
+    'action required',
+  ]);
+
+  if (!genericTexts.has(normalized)) {
+    return actionText;
+  }
+
+  switch (sourceModuleKey) {
+    case 'FSD_1_REG_BASIS':
+      return 'Document the regulatory basis, standards, and any engineered departures applied to the design.';
+    case 'FSD_2_EVAC_STRATEGY':
+      return 'Define the evacuation strategy, management dependencies, and assisted evacuation assumptions for the design case.';
+    case 'FSD_3_ESCAPE_DESIGN':
+      return 'Complete and record means-of-escape capacity/travel distance checks against the selected design approach.';
+    case 'FSD_4_PASSIVE_PROTECTION':
+      return 'Define the passive fire protection strategy, including compartmentation lines, fire resistance periods, and interfaces.';
+    case 'FSD_5_ACTIVE_SYSTEMS':
+      return 'Specify active fire systems design intent, performance criteria, and key cause-and-effect interfaces.';
+    case 'FSD_6_FRS_ACCESS':
+      return 'Confirm fire and rescue service access provisions and document the supporting design assumptions.';
+    case 'FSD_7_DRAWINGS':
+      return 'Provide the required fire strategy drawings and schedules to support design coordination and approval.';
+    case 'FSD_8_SMOKE_CONTROL':
+      return 'Provide smoke control design basis, supporting calculations/drawings, and system interface requirements.';
+    case 'FSD_9_CONSTRUCTION_PHASE':
+      return 'Confirm temporary means of escape and construction-phase fire safety controls during works.';
+    default:
+      return 'Provide a clear fire safety design action with scope, basis, and deliverable evidence.';
+  }
+}
+
 export default function AddActionModal({
   documentId,
   moduleInstanceId,
@@ -67,7 +169,7 @@ export default function AddActionModal({
 
   const [formData, setFormData] = useState({
     recommendedAction: defaultAction,
-    category: 'Other' as FraFindingCategory,
+    category: 'Other' as ActionCategory,
     // FRA triggers
     finalExitLocked: false,
     finalExitObstructed: false,
@@ -100,6 +202,12 @@ export default function AddActionModal({
   useEffect(() => {
     setUserEditedActionText(false);
   }, [defaultAction, documentId, moduleInstanceId]);
+
+  useEffect(() => {
+    if (documentType === 'FSD') {
+      setFormData((prev) => ({ ...prev, category: getDefaultFsdCategory(sourceModuleKey) }));
+    }
+  }, [documentType, sourceModuleKey]);
 
   useEffect(() => {
     const fetchContext = async () => {
@@ -198,7 +306,7 @@ export default function AddActionModal({
 
   // Build action input for severity engine
   const actionInput: FraActionInput = {
-    category: formData.category,
+    category: (formData.category as FraFindingCategory),
     finalExitLocked: formData.finalExitLocked,
     finalExitObstructed: formData.finalExitObstructed,
     noFireDetection: formData.noFireDetection,
@@ -367,7 +475,10 @@ export default function AddActionModal({
     setIsSubmitting(true);
 
     try {
-      const trimmedAction = formData.recommendedAction.trim().toLowerCase();
+      const normalizedActionText = (documentType === 'FSD'
+        ? improveGenericFsdActionText(formData.recommendedAction, sourceModuleKey)
+        : formData.recommendedAction).trim();
+      const trimmedAction = normalizedActionText.toLowerCase();
 
       const { data: existingActions, error: checkError } = await supabase
         .from('actions')
@@ -430,7 +541,7 @@ export default function AddActionModal({
         document_id: documentId,
         source_document_id: documentId,
         module_instance_id: moduleInstanceId,
-        recommended_action: formData.recommendedAction.trim(),
+        recommended_action: normalizedActionText,
         status: 'open',
         priority_band: priorityBand,
         severity_tier: severityTier,
@@ -663,23 +774,32 @@ export default function AddActionModal({
             <select
               value={formData.category}
               onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value as FraFindingCategory })
+                setFormData({ ...formData, category: e.target.value as ActionCategory })
               }
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
               required
             >
-              <option value="MeansOfEscape">Means of Escape</option>
-              <option value="DetectionAlarm">Detection & Alarm</option>
-              <option value="EmergencyLighting">Emergency Lighting</option>
-              <option value="Compartmentation">Compartmentation</option>
-              <option value="FireDoors">Fire Doors</option>
-              <option value="FireFighting">Fire Fighting Equipment</option>
-              <option value="Management">Management & Procedures</option>
-              <option value="Housekeeping">Housekeeping</option>
-              <option value="Other">Other</option>
+              {documentType === 'FSD' ? (
+                FSD_CATEGORY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))
+              ) : (
+                <>
+                  <option value="MeansOfEscape">Means of Escape</option>
+                  <option value="DetectionAlarm">Detection & Alarm</option>
+                  <option value="EmergencyLighting">Emergency Lighting</option>
+                  <option value="Compartmentation">Compartmentation</option>
+                  <option value="FireDoors">Fire Doors</option>
+                  <option value="FireFighting">Fire Fighting Equipment</option>
+                  <option value="Management">Management & Procedures</option>
+                  <option value="Housekeeping">Housekeeping</option>
+                  <option value="Other">Other</option>
+                </>
+              )}
             </select>
           </div>
 
+          {documentType !== 'FSD' && (
           <div className="border border-neutral-200 rounded-lg p-4">
             <label className="block text-sm font-medium text-neutral-700 mb-3">
               Critical Triggers (check if applicable)
@@ -816,6 +936,7 @@ export default function AddActionModal({
               )}
             </div>
           </div>
+          )}
 
           <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">

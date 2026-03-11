@@ -1,28 +1,27 @@
-import { type Jurisdiction, normalizeJurisdiction } from '../../jurisdictions';
+import { normalizeFsdJurisdiction } from './jurisdiction';
 
-export function fsdPurposeAndScopeText(jurisdiction: Jurisdiction | string = 'england_wales'): string {
-  const j = normalizeJurisdiction(jurisdiction);
-
-  // Generate jurisdiction-appropriate compliance reference
-  let complianceRef: string;
-  switch (j) {
-    case 'england_wales':
-      complianceRef = 'the Building Regulations Approved Document B (Fire Safety) and associated guidance';
-      break;
+function getComplianceReference(jurisdiction: ReturnType<typeof normalizeFsdJurisdiction>): string {
+  switch (jurisdiction) {
+    case 'england':
+      return 'the Building Regulations 2010 (England), Approved Document B and the agreed fire engineering/design standards for the project';
+    case 'wales':
+      return 'the Building Regulations applicable in Wales (including Approved Document B for Wales) and the agreed fire engineering/design standards for the project';
     case 'scotland':
-      complianceRef = 'the Building (Scotland) Regulations and associated technical guidance';
-      break;
+      return 'the Building (Scotland) Regulations 2004 and the Scottish Technical Handbooks (Fire), together with the agreed fire engineering/design standards for the project';
     case 'northern_ireland':
-      complianceRef = 'the Building Regulations (Northern Ireland) and associated technical guidance';
-      break;
+      return 'the Building Regulations (Northern Ireland) 2012 and Technical Booklet E (Fire Safety), together with the agreed fire engineering/design standards for the project';
     case 'ireland':
-      complianceRef = 'applicable building regulations and fire safety standards';
-      break;
+      return 'the Building Regulations (Republic of Ireland), Technical Guidance Document B (Fire Safety), and the agreed fire engineering/design standards for the project';
     default:
-      complianceRef = 'applicable building regulations and fire safety standards';
+      return 'the project fire safety regulatory framework and agreed fire engineering/design standards';
   }
+}
 
-  return `This Fire Strategy document has been prepared to demonstrate compliance with ${complianceRef}, or equivalent approved standards and regulations applicable to the building type and jurisdiction. The document provides a comprehensive overview of the fire safety design principles, life safety provisions, and protective measures incorporated into the building design to ensure the safety of occupants and facilitate effective firefighting operations.
+export function fsdPurposeAndScopeText(jurisdiction: string = 'england'): string {
+  const fsdJurisdiction = normalizeFsdJurisdiction(jurisdiction);
+  const complianceRef = getComplianceReference(fsdJurisdiction);
+
+  return `This Fire Strategy document has been prepared to demonstrate compliance with ${complianceRef}. The document provides a comprehensive overview of the fire safety design principles, life safety provisions, and protective measures incorporated into the building design to ensure the safety of occupants and facilitate effective firefighting operations.
 
 The fire strategy establishes the fundamental approach to fire safety design including the basis of design, relevant standards and guidance applied, and any departures from standard provisions where alternative solutions have been developed. It describes the means of escape strategy, travel distances, stair provisions, and evacuation assumptions appropriate to the building occupancy and user characteristics.
 

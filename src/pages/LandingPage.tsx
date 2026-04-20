@@ -4,6 +4,7 @@ import WhatItDoes from '../components/landing/WhatItDoes';
 import HowItWorks from '../components/landing/HowItWorks';
 import WhoItsFor from '../components/landing/WhoItsFor';
 import WhyClearRisk from '../components/landing/WhyClearRisk';
+import Pricing from '../components/landing/Pricing';
 import CallToAction from '../components/landing/CallToAction';
 import Footer from '../components/landing/Footer';
 
@@ -16,6 +17,7 @@ export default function LandingPage() {
       <HowItWorks />
       <WhoItsFor />
       <WhyClearRisk />
+      <Pricing />
       <CallToAction />
       <Footer />
     </div>
